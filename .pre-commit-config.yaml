@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      # 1. FIX: Formatierung & Autofix (Läuft vor Commit & Push)
+      - id: fix-local
+        name: Fix (Format & Lint)
+        entry: ./scripts/fix.sh
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [commit, push]
+
+      # 2. CHECK: Strikte Tests & Checks (Läuft nur vor Push)
+      - id: check-local
+        name: Check (Deep Verification)
+        entry: ./scripts/check.sh
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [push]
