@@ -1,0 +1,27 @@
+{
+  "recommendations": [
+    // 🐍 Python & Quality Assurance
+    "ms-python.python",              // Core Python Support
+    "astral-sh.ruff",            // Linter/Formatter (Du nutzt ruff in scripts/fix.sh)
+    "ms-python.mypy-type-checker",   // Type Checking (Du nutzt mypy in scripts/check.sh)
+    "tamasfe.even-better-toml",      // Für pyproject.toml Highlighting
+
+    // 🐳 Containers & Infrastructure
+    "ms-azuretools.vscode-docker",   // Syntax Highlighting für Dockerfile & Compose (auch für Podman nützlich)
+    "redhat.vscode-yaml",            // Für podman-compose.yml, GitHub Actions & Configs
+    "redhat.vscode-podman",          // Podman Integration
+    "mikestead.dotenv",              // Highlighting für .env Dateien
+
+    // 🎨 Frontend (Dashboard)
+    "bradlc.vscode-tailwindcss",     // Intellisense für deine Tailwind-Klassen im Dashboard
+    "ecmel.vscode-html-css",         // Besserer HTML Support (für Jinja Templates)
+
+    // 🐚 Shell & Scripts
+    "timonwong.shellcheck",          // Prüft deine Shell-Skripte (init.sh, start.sh etc.) auf Fehler
+    "foxundermoon.shell-format",     // Formatter für Shell-Skripte
+
+    // 🛠️ General Productivity
+    "eamodio.gitlens",               // Git Superpowers (wer hat wann was geändert)
+    "yzhang.markdown-all-in-one"     // Für deine umfangreiche Dokumentation (docs/*.md)
+  ]
+}

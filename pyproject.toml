@@ -1,0 +1,125 @@
+[project]
+name = "silvasonic"
+version = "0.1.0"
+description = "Silvasonic Bioacoustic Monitoring System"
+readme = "README.md"
+# WICHTIG: BatDetect/Tensorflow brauchen <3.12, daher bleiben wir strikt bei 3.11
+requires-python = ">=3.11, <3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["services/*"]
+
+# Diese Mapping-Tabelle sagt UV: "Wenn jemand 'silvasonic-controller' will,
+# schau im Workspace nach, ob es das Paket gibt."
+[tool.uv.sources]
+silvasonic-controller = { workspace = true }
+silvasonic-recorder = { workspace = true }
+silvasonic-dashboard = { workspace = true }
+silvasonic-birdnet = { workspace = true }
+silvasonic-uploader = { workspace = true }
+silvasonic-processor = { workspace = true }
+silvasonic-weather = { workspace = true }
+silvasonic-healthchecker = { workspace = true }
+silvasonic-livesound = { workspace = true }
+
+# --- DEVELOPMENT DEPENDENCIES ---
+[dependency-groups]
+dev = [
+    # -- Code Quality & Formatting --
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "beautysh>=6.4.2",   # Shell formatter
+    "djlint>=1.36.4",    # HTML/Jinja formatter
+    "yamlfix>=1.19.1",   # YAML formatter
+    "pre-commit>=4.0.0",
+
+    # -- Testing --
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-playwright>=0.5.0",
+
+    # -- Type Stubs (Wichtig für Mypy strict) --
+    "types-pyyaml",
+    "types-requests",
+    "types-aiofiles",
+
+    # -- Documentation --
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-include-markdown-plugin>=6.0.0",
+
+    # -- Local Packages (AKTIVIEREN, SOBALD IMPLEMENTIERT!) --
+    # Kommentiere diese Zeilen ein, sobald du den jeweiligen Service-Ordner 
+    # unter /services/ erstellt hast und dort eine pyproject.toml liegt.
+    # "silvasonic-controller",
+    # "silvasonic-monitor",
+    # "silvasonic-recorder",
+    # "silvasonic-processor",
+    # "silvasonic-uploader",
+    # "silvasonic-web-interface",
+    # "silvasonic-birdnet", 
+    # "silvasonic-weather",
+]
+
+# --- TOOLS CONFIGURATION ---
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort (Imports sortieren)
+    "B",  # flake8-bugbear (Bugs finden)
+    "UP", # pyupgrade (Modernen Syntax erzwingen)
+    "N",  # pep8-naming
+    "D",  # pydocstyle (Google Docs)
+]
+ignore = [
+    "D100", # Missing docstring in public module (nervt oft im Root)
+    "D104", # Missing docstring in public package
+    "E501", # Line too long (Ruff macht das meist eh, aber bei Strings toleranter)
+    "B008", # Do not perform function call in argument defaults (Nötig für FastAPI)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# Wichtig für Monorepos:
+explicit_package_bases = true
+ignore_missing_imports = true
+# Verhindert Fehler, wenn Services noch fehlen
+warn_unused_ignores = false
+
+# Ignoriere Libraries, die keine Typen haben
+[[tool.mypy.overrides]]
+module = ["watchdog.*", "sqlalchemy.*", "scipy.*", "pandas.*"]
+ignore_errors = true
+follow_imports = "skip"
+
+# Tests müssen nicht so streng typisiert sein
+# Pfad angepasst auf services/
+[[tool.mypy.overrides]]
+module = ["tests.*", "services.*.tests.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-v --cov --cov-report=term-missing"
+# Pfad angepasst auf services/
+testpaths = ["tests", "services/*/tests", "packages/*/tests"]
+python_files = ["test_*.py"]
+# Ordner ignorieren, die keine Python-Tests sind
+norecursedirs = ["services/db", "services/gateway", "dist", "build"]
+asyncio_mode = "auto"

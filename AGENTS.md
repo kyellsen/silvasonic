@@ -72,6 +72,7 @@ Agents must strictly adhere to the following data ownership rules to prevent rac
 * **File Handling:**
     * **Recorder:** Creates dual streams (High-Res/Archive & Low-Res/Analysis).
     * **Janitor:** Only the `processor` service is allowed to delete files from NVMe.
+    * **Monitor:** Read-only surveillance an notifcation service.
 
 ## 7. Definition of Done (Quality Gates)
 Code is not "done" until it passes:

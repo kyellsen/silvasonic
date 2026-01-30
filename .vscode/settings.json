@@ -1,0 +1,92 @@
+{
+  // --------------------------------------------------------
+  // 🐍 PYTHON (Ruff + Mypy + Pytest)
+  // --------------------------------------------------------
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.analysis.typeCheckingMode": "off", // Wir nutzen die Mypy Extension statt Pylance für Types!
+
+  // Ruff als Standard-Formatter für Python
+  "[python]": {
+    "editor.defaultFormatter": "astral-sh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // Mypy Extension Config (Nutzt deine uv Umgebung)
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "mypy-type-checker.args": [
+    "--config-file=${workspaceFolder}/pyproject.toml"
+  ],
+
+  // --------------------------------------------------------
+  // 🐚 SHELL SCRIPTS (für deine scripts/*.sh)
+  // --------------------------------------------------------
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+
+  // --------------------------------------------------------
+  // 🐳 INFRASTRUKTUR (YAML / Docker)
+  // --------------------------------------------------------
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
+  },
+
+  // --------------------------------------------------------
+  // 🎨 FRONTEND (HTML / Tailwind / Jinja)
+  // --------------------------------------------------------
+  // Damit HTML-Templates als Jinja2 erkannt werden (besseres Highlighting)
+  "files.associations": {
+    "*.html": "html",
+    "*.css": "tailwindcss"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features",
+    "editor.formatOnSave": true
+  },
+  // Tailwind CSS IntelliSense Config
+  "tailwindCSS.includeLanguages": {
+    "html": "html",
+    "python": "html" // Trick: Damit Tailwind auch in Python-Strings (falls nötig) erkannt wird
+  },
+  "tailwindCSS.experimental.classRegex": [
+    "class_name\\s*=\\s*[\"']([^\"']*)[\"']", // Für Python/Jinja
+    "class\\s*=\\s*[\"']([^\"']*)[\"']"
+  ],
+
+  // --------------------------------------------------------
+  // 🧹 GENERAL CLEANUP
+  // --------------------------------------------------------
+  // Versteckt Dateien, die man nie manuell anfassen sollte
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.venv": true,          // Virtual Env
+    "**/__pycache__": true,    // Python Cache
+    "**/.pytest_cache": true,  // Test Cache
+    "**/.mypy_cache": true,    // Type Cache
+    "**/.ruff_cache": true,    // Linter Cache
+    "**/*.egg-info": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/*.code-search": true
+  }
+}

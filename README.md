@@ -46,6 +46,7 @@ Silvasonic is a modern Python monolith split into micro-services, managed via a 
 The system is composed of the following containerized services:
 
 * **controller**: Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles.
+* **monitor**: System Watchdog. Monitors service heartbeats/alerts and sends push notifications (via Apprise) in case of failure.
 * **recorder**: Critical path. Buffers audio in RAM and writes dual-stream RAW WAV files (384kHz & 48kHz) to NVMe to decouple recording from processing.
 * **processor**: Local data handler. Indexes files, generates spectrograms, and manages storage retention (Janitor).
 * **uploader**: Handles data exfiltration. Compresses raw data (FLAC 384kHz) and syncs to remote storage using rclone.
