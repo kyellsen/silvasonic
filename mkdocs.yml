@@ -1,9 +1,9 @@
+---
 site_name: Silvasonic
 site_description: Bioacoustic Monitoring System Documentation
 site_author: Silvasonic Team
 repo_url: https://github.com/yourusername/silvasonic
 edit_uri: edit/main/docs/
-
 theme:
   name: material
   features:
@@ -26,26 +26,17 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-
 nav:
   - Home: index.md
-  - Architecture:
-      - architecture/
+  - Architecture: [architecture/]
   - Services:
       - Template Service: services/template.md
-  - ADRs:
-      - adr/
-  - Development:
-      - development/
-  - Deployment:
-      - deployment/
+  - ADRs: [adr/]
+  - Development: [development/]
+  - Deployment: [deployment/]
   - Hardware: hardware.md
   - Glossary: glossary.md
-
-plugins:
-  - search
-  - include-markdown
-
+plugins: [search, include-markdown]
 markdown_extensions:
   - admonition
   - pymdownx.details

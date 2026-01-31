@@ -12,8 +12,7 @@ We need a container runtime environment for developing, testing, and running the
 *   **Rootless by Design:** Podman allows running containers as a non-privileged user (rootless mode). This is a significant security advantage as it prevents container processes from having root privileges on the host system.
 *   **Fedora Native:** The primary development environment is Fedora Workstation. Podman is the native, default container engine in Fedora/RHEL, ensuring first-class support and seamless OS integration.
 *   **Daemonless Architecture:** Unlike Docker, Podman does not rely on a central daemon (dockerd) running in the background. This eliminates a single point of failure and reduces idle resource consumption.
-*   **Systemd Integration:** Podman is designed to work closely with existing Linux process managers. It can generate systemd unit files (`podman generate systemd`) for managing containers as robust system services, which aligns with our deployment strategy.
-*   **Kubernetes Compatibility:** Podman facilitates a smoother transition to Kubernetes. It can generate K8s YAML from running containers (`podman generate kube`) and run pods locally based on K8s YAML (`podman play kube`).
+*   **Reliable Edge Deployment (Systemd):** Podman is designed to work closely with systemd. It can generate systemd unit files (`podman generate systemd`) or purely Quadlet files. This is critical for our edge device use case, ensuring all containers automatically and securely restart after a power failure without needing a complex orchestration layer.
 *   **Docker Compatibility:** Podman offers a CLI that is identical to Docker's for most commands. `alias docker=podman` works for the vast majority of workflows, lowering the barrier to entry.
 
 ## 3. Options Considered
@@ -25,7 +24,7 @@ We need a container runtime environment for developing, testing, and running the
     *   Improved security posture through rootless containers.
     *   No persistent daemon overhead.
     *   Better alignment with the OS (Fedora) and init system (systemd).
-    *   Forward compatibility with Kubernetes concepts.
+    *   High reliability on edge devices (automatic restart after power loss).
 *   **Negative:**
     *   Some legacy tools that strictly rely on the Docker socket might require configuration (e.g., enabling the `podman.socket` service).
     *   `podman-compose` is used instead of `docker-compose`, which may have minor differences in less common feature implementations, though it covers our needs.

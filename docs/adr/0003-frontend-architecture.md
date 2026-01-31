@@ -1,27 +1,27 @@
-# ADR-003: Frontend Architecture ("The Modern Monolith")
+# ADR-0003: Frontend Architecture ("The Modern Monolith")
 
 > **Status:** Accepted • **Date:** 2026-01-31
 
 ## 1. Context & Problem
-Für das Silvasonic-Projekt wird eine Frontend-Architektur benötigt, die der "Fast & Light"-Philosophie folgt. Das System soll auch auf eingeschränkter Hardware (z.B. Raspberry Pi) performant laufen. Klassische Single-Page-Applications (SPAs) erfordern oft komplexe Build-Pipelines und belasten den Client durch aufwendige Hydration-Prozesse.
+The Silvasonic project requires a frontend architecture that follows the "Fast & Light" philosophy. The system must run performantly on constrained hardware (e.g., Raspberry Pi). Classic Single-Page Applications (SPAs) often require complex build pipelines and burden the client with expensive hydration processes.
 
 ## 2. Decision
-**We chose:** Nutzung von FastAPI + Jinja2 + HTMX + Alpine.js.
+**We chose:** FastAPI + Jinja2 + HTMX + Alpine.js.
 
 **Reasoning:**
-*   **"Fast & Light" Philosophie:** Fokus auf minimalen Overhead und hohe Effizienz.
-*   **Vermeidung einer separaten Build-Pipeline:** Es wird kein Node.js Build-Step benötigt, was das Deployment und die Entwicklungsumgebung vereinfacht.
-*   **Reduzierte Komplexität:** Direkter Zugriff auf Backend-Logik durch Server-Side Rendering; keine Duplizierung von Logik zwischen Client und Server.
-*   **Performance auf dem Raspberry Pi:** Server-Side Rendering ist auf schwachen Clients oft schneller als Client-Side Hydration, was eine flüssigere User Experience auf dem Pi ermöglicht.
+*   **"Fast & Light" Philosophy:** Focus on minimal overhead and high efficiency.
+*   **Avoidance of a Separate Build Pipeline:** No Node.js build step is required, simplifying deployment and the development environment.
+*   **Reduced Complexity:** Direct access to backend logic via server-side rendering; no duplication of logic between client and server.
+*   **Performance on Raspberry Pi:** Server-side rendering is often faster on weak clients than client-side hydration, enabling a smoother user experience on the Pi.
 
 ## 3. Options Considered
-*   **Single Page Application (React/Vue):** Abgelehnt.
-    *   Gründe: Erfordert separate Build-Pipeline (Node.js), erhöht die Komplexität der Infrastruktur und kann auf schwacher Hardware (Raspberry Pi) während der Hydration-Phase langsamer sein.
+*   **Single Page Application (React/Vue):** Rejected.
+    *   Reasons: Requires a separate build pipeline (Node.js), increases infrastructure complexity, and can be slower on weak hardware (Raspberry Pi) during the hydration phase.
 
 ## 4. Consequences
 *   **Positive:**
-    *   Vereinfachtes Deployment (nur Python-Stack).
-    *   Bessere Performance auf Low-End-Geräten.
-    *   Schnellere Entwicklungszyklen für Fullstack-Features.
+    *   Simplified deployment (Python stack only).
+    *   Better performance on low-end devices.
+    *   Faster development cycles for full-stack features.
 *   **Negative:**
-    *   Verzicht auf das extrem breite Ökosystem an React/Vue-Komponenten (wobei Alpine.js/Vanilla JS Alternativen bietet).
+    *   Foregoing the extremely broad ecosystem of React/Vue components (though Alpine.js/Vanilla JS offer alternatives).

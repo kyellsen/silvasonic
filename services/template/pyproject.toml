@@ -1,13 +1,13 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "silvasonic-service-template"
+name = "silvasonic-template"
 version = "0.1.0"
-description = "Template service for Silvasonic"
+description = "Silvasonic Template Service"
 requires-python = ">=3.11"
 dependencies = []
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/template"]
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -5,7 +5,7 @@ requires-python = "==3.11.*"
 [manifest]
 members = [
     "silvasonic",
-    "silvasonic-service-template",
+    "silvasonic-template",
 ]
 
 [[package]]
@@ -958,6 +958,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-playwright" },
     { name = "ruff" },
+    { name = "silvasonic-template" },
     { name = "types-aiofiles" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
@@ -980,6 +981,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-playwright", specifier = ">=0.5.0" },
     { name = "ruff", specifier = ">=0.8.0" },
+    { name = "silvasonic-template", editable = "services/template" },
     { name = "types-aiofiles" },
     { name = "types-pyyaml" },
     { name = "types-requests" },
@@ -987,7 +989,7 @@ dev = [
 ]
 
 [[package]]
-name = "silvasonic-service-template"
+name = "silvasonic-template"
 version = "0.1.0"
 source = { editable = "services/template" }
 
