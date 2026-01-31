@@ -26,20 +26,24 @@ Please consult **[AGENTS.md](AGENTS.md)** immediately for strict architectural c
 ## Documentation Structure
 
 * **Project Documentation:** See the `docs/` directory for architecture decisions, hardware BOM, and glossaries.
-* **Service Documentation:** Each service contains its own `README.md` (e.g., `services/recorder/README.md`) detailing inputs, outputs, and configuration.
+*   **Project Documentation:** See the `docs/` directory for architecture decisions, hardware BOM, and glossaries.
+*   **Service Documentation:** Each service contains its own `README.md` (e.g., `services/recorder/README.md`) detailing inputs, outputs, and configuration.
 
 ## Tech Stack
 
 Silvasonic is a modern Python monolith split into micro-services, managed via a Monorepo.
 
-* **Hardware Target:** Raspberry Pi 5 (RaspiOS Lite) + NVMe SSD.
-* **Runtime:** Podman (Rootless Containers) & Podman Compose.
-* **Build System:** hatchling.
-* **Language:** Python 3.11+ (managed by `uv`).
-* **Frontend:** FastAPI (Jinja2) + HTMX + Alpine.js. Styled with Tailwind CSS & DaisyUI.
-* **Visualization:** Wavesurfer.js (Spectrograms) & Plotly.js (Analytics).
-* **UX Design:** IDE-inspired "Workspace" layout with Bento-Grid Dashboard. Dark-mode default, fully responsive.
-* **Documentation:** MkDocs Material (Developer) & Astro (Product Page).
+*   **Hardware-Agnostic AI:** Runs any TFLite model (BirdNET, BatDetect, etc.) on minimal hardware.
+*   **Multi-Language Support (i18n):** Native support for English/German UI and species names via JSONB-driven localization.
+*   **Resilient Design:** "No-Data-Loss" guarantee prevents recording gaps during analysis heavy load.
+*   **Hardware Target:** Raspberry Pi 5 (RaspiOS Lite) + NVMe SSD.
+*   **Runtime:** Podman (Rootless Containers) & Podman Compose.
+*   **Build System:** hatchling.
+*   **Language:** Python 3.11+ (managed by `uv`).
+*   **Frontend:** FastAPI (Jinja2) + HTMX + Alpine.js. Styled with Tailwind CSS & DaisyUI.
+*   **Visualization:** Wavesurfer.js (Spectrograms) & Plotly.js (Analytics).
+*   **UX Design:** IDE-inspired "Workspace" layout with Bento-Grid Dashboard. Dark-mode default, fully responsive.
+*   **Documentation:** MkDocs Material (Developer) & Astro (Product Page).
 
 ## Services Architecture
 

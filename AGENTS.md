@@ -8,6 +8,9 @@ Please read **[README.md](README.md)** for project context, installation guides,
 ## 1. Language & Domain Policy
 * **Repository Content** (Code, Docs, Comments, Commits, Configs): **ENGLISH ONLY**.
 * **Chat Output / Explanations** (Interaction with User): **GERMAN ONLY**.
+* **Localization Strategy (i18n):**
+    * The Backend **MUST** deliver localized content (e.g. species names) as `JSONB` dictionaries: `{"en": "Blackbird", "de": "Amsel"}`.
+    * The Frontend resolves these at runtime based on user preference. Hardcoding single-language strings for UI-facing content is **FORBIDDEN**.
 * **Domain Language:** Terms and definitions are defined exclusively in `docs/glossary.md`. Agents must strictly adhere to these definitions.
 
 ## 2. Core Directive: Data Capture Integrity
