@@ -9,18 +9,22 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-# 1. Copy dependency files ONLY
-COPY pyproject.toml uv.lock ./
+# 1. Copy dependency files
+COPY services/batdetect/pyproject.toml ./
+COPY packages/core /packages/core
 
-# 2. Install dependencies (cached if lockfile doesn't change)
-RUN uv sync --frozen --no-dev --no-install-project
+ENV VIRTUAL_ENV=/app/.venv
+# 2. Create venv and install dependencies
+RUN uv venv
+RUN uv pip install /packages/core
+RUN uv pip install -r pyproject.toml
 
 # 3. Copy source code
-COPY src ./src
-COPY README.md ./
+COPY services/batdetect/src ./src
+COPY services/batdetect/README.md ./
 
-# 4. Install the project itself
-RUN uv sync --frozen --no-dev
+# 4. Install the project
+RUN uv pip install .
 
 # STAGE 2: Runtime
 FROM python:3.11-slim-bookworm
