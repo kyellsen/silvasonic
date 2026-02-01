@@ -11,7 +11,7 @@ audio:
   sample_rate: 384000
   channels: 1
   format: S16LE  # Hardware native
-  match_pattern: UM384
+  match_pattern: ultramic|dodotronic
 processing:
   gain_db: 12.0  # Often needs boost for distant bats
   chunk_size: 8192

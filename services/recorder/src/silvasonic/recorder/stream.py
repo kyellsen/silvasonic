@@ -22,7 +22,6 @@ class FFmpegStreamer:
         profile: MicrophoneProfile,
         output_dir: Path,
         alsa_card_index: int | None = None,
-        segment_time_s: int = 60,
         input_format: str = "alsa",
         input_device: str | None = None,
         on_segment_complete: Any | None = None,
@@ -31,7 +30,6 @@ class FFmpegStreamer:
         self.profile = profile
         self.output_dir = output_dir
         self.alsa_index = alsa_card_index if alsa_card_index is not None else 0
-        self.segment_time = segment_time_s
         self.input_format = input_format
         # Default to hw:X for alsa if not provided
         self.input_device = input_device if input_device is not None else f"hw:{self.alsa_index}"

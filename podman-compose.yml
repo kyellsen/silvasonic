@@ -46,18 +46,25 @@ services:
     restart: always
     userns_mode: keep-id
     environment:
+      PYTHONUNBUFFERED: '1'
       PODMAN_SOCKET_URL: unix:///run/podman/podman.sock
       HOST_DATA_DIR: ${SILVASONIC_WORKSPACE_PATH:-./workspace}
       POSTGRES_HOST: database
       REDIS_HOST: redis
       HOST_SOURCE_DIR: ${PWD}  # Root of the repository on the host
+      LOG_DIR: /var/log/silvasonic
     volumes:
       - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z
-      # Mount workspace/controller/logs -> /var/log/silvasonic/controller ??
+      # Log Persistence
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/controller/logs:/var/log/silvasonic:z
+      # Required for orchestrator to create log dirs for children
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/host_data/recorder:rw,z
       # Governance says: "logs/" in service folder.
       # Service writes to: stdout (structlog) usually, but we can configure file logger too.
-      # For now, let's just mount the socket.
-      - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z  # Ensure controller has access to verify profiles logic? No, orchestrator mounts HOST path.
+      # We mount the profiles directory directly from the Repo (Two-Worlds: Immutable Code)
+      - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
+      - /proc/asound:/proc/asound:ro  # Read-only access to ALSA info
+      - /sys:/sys:ro  # Read-only access to sysfs for serial numbers
     security_opt: [label=disable]
     networks: [silvasonic-net]
     devices:
@@ -89,15 +96,18 @@ services:
     container_name: silvasonic-status-board
     restart: 'no'
     userns_mode: keep-id
-    volumes: ['/run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z']
-    security_opt: [label=disable]
-    ports: [8001:8000]
     environment:
       DEV_MODE: 'true'
       POSTGRES_HOST: database
       REDIS_HOST: redis
+      LOG_DIR: /var/log/silvasonic
     networks: [silvasonic-net]
     depends_on: [redis, database]
+    volumes:
+      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/status-board/logs:/var/log/silvasonic:z
+    security_opt: [label=disable]
+    ports: [8001:8000]
   recorder:
     image: silvasonic-recorder
     build:
@@ -105,7 +115,8 @@ services:
       dockerfile: services/recorder/Dockerfile
     container_name: silvasonic-recorder
     # Template only - do not start automatically
-    # profiles: ["manual"]
+    profiles: [manual]
+    entrypoint: [/bin/true]
     restart: 'no'
     userns_mode: keep-id
     devices: [/dev/snd:/dev/snd]
@@ -114,41 +125,44 @@ services:
       MIC_NAME: default
       MIC_PROFILE: ultramic_384_evo
       ALSA_DEVICE_INDEX: '' # Auto-detect or set specific index
+      LOG_DIR: /var/log/silvasonic
     volumes:
       - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
-      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/${MIC_NAME:-default}:/data/recorder/${MIC_NAME:-default}:z
+      # Log Compliance: Mount Log Directory
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/logs:/var/log/silvasonic:z
     networks: [silvasonic-net]
     depends_on: [database]
-  birdnet:
-    image: silvasonic-birdnet
-    build:
-      context: .
-      dockerfile: services/birdnet/Dockerfile
-    container_name: silvasonic-birdnet
-    entrypoint: [/bin/true]
-    restart: 'no'
-    userns_mode: keep-id
-    networks: [silvasonic-net]
-  weather:
-    image: silvasonic-weather
-    build:
-      context: .
-      dockerfile: services/weather/Dockerfile
-    container_name: silvasonic-weather
-    entrypoint: [/bin/true]
-    restart: 'no'
-    userns_mode: keep-id
-    networks: [silvasonic-net]
-  batdetect:
-    image: silvasonic-batdetect
-    build:
-      context: .
-      dockerfile: services/batdetect/Dockerfile
-    container_name: silvasonic-batdetect
-    entrypoint: [/bin/true]
-    restart: 'no'
-    userns_mode: keep-id
-    networks: [silvasonic-net]
+  #   birdnet:
+  #     image: silvasonic-birdnet
+  #     build:
+  #       context: .
+  #       dockerfile: services/birdnet/Dockerfile
+  #     container_name: silvasonic-birdnet
+  #     entrypoint: [/bin/true]
+  #     restart: "no"
+  #     userns_mode: keep-id
+  #     networks: [silvasonic-net]
+  #   weather:
+  #     image: silvasonic-weather
+  #     build:
+  #       context: .
+  #       dockerfile: services/weather/Dockerfile
+  #     container_name: silvasonic-weather
+  #     entrypoint: [/bin/true]
+  #     restart: "no"
+  #     userns_mode: keep-id
+  #     networks: [silvasonic-net]
+  #   batdetect:
+  #     image: silvasonic-batdetect
+  #     build:
+  #       context: .
+  #       dockerfile: services/batdetect/Dockerfile
+  #     container_name: silvasonic-batdetect
+  #     entrypoint: [/bin/true]
+  #     restart: "no"
+  #     userns_mode: keep-id
+  #     networks: [silvasonic-net]
   uploader:
     image: silvasonic-uploader
     build:
@@ -158,6 +172,15 @@ services:
     entrypoint: [/bin/true]
     restart: 'no'
     userns_mode: keep-id
+    environment:
+      LOG_DIR: /var/log/silvasonic
+    volumes:
+      # Governance: Buffer (RW)
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/buffer:/data/uploader/buffer:z
+      # Governance: Logs (RW)
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/logs:/var/log/silvasonic:z
+      # Governance: Source Data (RO) - Access to recorder artifacts
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:ro,z
     networks: [silvasonic-net]
 networks:
   silvasonic-net:

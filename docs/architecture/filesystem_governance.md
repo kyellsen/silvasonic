@@ -44,9 +44,12 @@ The root of the Workspace must contain only folders matching the service names d
 *   **`uploader/`**: Must contain `buffer` (for temporary compression/conversions).
 *   **`gateway/`, `birdnet/`, `web-interface/`**: Dedicated folders for logs or runtime configs.
 
-### Logging Policy
-*   Every service folder **MUST** contain a `logs/` subdirectory.
-*   Application logs (e.g., Python `structlog` output) must be written to a file within this directory (e.g., `recorder/logs/recorder.log`).
+### Logging Policy (Dual Logging Strategy)
+*   **Archival (Mandatory)**: Every service folder **MUST** contain a `logs/` subdirectory.
+    *   Application logs (e.g., Python `structlog` output) must be written to a file within this directory (e.g., `recorder/logs/recorder.log`).
+    *   This ensures post-mortem analysis capability across container restarts.
+*   **Real-Time (Mandatory)**: Services must **ALSO** output structured JSON logs to `stdout`.
+    *   This enables the Status Board (via Podman Socket) and centralized log collectors to stream logs efficiently without file locking issues.
 
 ---
 

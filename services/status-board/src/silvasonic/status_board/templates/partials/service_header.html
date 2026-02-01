@@ -1,23 +1,38 @@
-<!-- Tabs (Contextual, Server-Side) -->
-<div class="tabs tabs-lifted pt-2 px-4 bg-base-200/50 border-b border-base-200 shrink-0">
-  <a class="tab {{ 'tab-active [--tab-bg:theme(colors.base-300) ]' if active_tab == 'overview' else '' }}"
-     hx-get="/services/{{ service_name }}"
-     hx-target="#main-view"
-     hx-trigger="click">Overview</a>
-  <a class="tab {{ 'tab-active [--tab-bg:theme(colors.base-300) ]' if active_tab == 'logs' else '' }}"
-     hx-get="/services/{{ service_name }}/logs"
-     hx-target="#main-view"
-     hx-trigger="click">Logs</a>
-  <a class="tab flex-1 cursor-default pointer-events-none"></a>
-</div>
-<!-- Header -->
-<div class="bg-base-200/50 backdrop-blur-sm border-b border-base-300 px-6 py-4 shrink-0 flex items-center justify-between">
+<div class="px-6 py-4 border-b border-base-200 bg-base-100 flex items-center justify-between">
   <div>
-    <h2 class="text-xl font-bold font-heading text-primary capitalize">{{ service_name }}</h2>
-    <div class="badge badge-ghost badge-sm font-mono opacity-70 mt-1">ID: {{ container_id[:12] }}</div>
+    <div class="text-xs font-bold uppercase tracking-wider opacity-60 mb-1">Service Detail</div>
+    <h1 class="text-2xl font-bold flex items-center gap-3">
+      {{ service_name | title }}
+      {% if container %}
+        <div class="badge badge-success gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+          Running
+        </div>
+      {% else %}
+        <div class="badge badge-error gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+          Stopped
+        </div>
+      {% endif %}
+    </h1>
   </div>
-  <div class="badge badge-success gap-2">
-    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-    Running
+  <div class="flex items-center gap-3">
+    {% if container %}
+      <div class="flex flex-col items-end">
+        <div class="text-xs opacity-50 uppercase tracking-wider">Container ID</div>
+        <div class="font-mono text-sm">{{ container.Id[:12] }}</div>
+      </div>
+    {% endif %}
+    <a href="/services/{{ service_name }}/logs"
+       class="btn btn-sm btn-ghost gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg"
+           class="h-4 w-4"
+           fill="none"
+           viewBox="0 0 24 24"
+           stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      Logs
+    </a>
   </div>
 </div>

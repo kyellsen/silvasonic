@@ -97,15 +97,16 @@ def test_scan_audio_devices_not_found(scanner):
         assert devices == []
 
 
-def test_find_dodotronic_devices(scanner):
-    """Test filtering logic."""
-    dev1 = AudioDevice(1, "Ultramic", "Desc", "SN1")  # Match ID
-    dev2 = AudioDevice(2, "Foo", "Dodotronic Mic", "SN2")  # Match Desc
-    dev3 = AudioDevice(3, "Bar", "Generic Mic", "SN3")  # No Match
+def test_find_recording_devices(scanner):
+    """Test finding all recording devices (pass-through)."""
+    dev1 = AudioDevice(1, "Ultramic", "Desc", "SN1")
+    dev2 = AudioDevice(2, "Foo", "Dodotronic Mic", "SN2")
+    dev3 = AudioDevice(3, "Bar", "Generic Mic", "SN3")
 
     with patch.object(scanner, "scan_audio_devices", return_value=[dev1, dev2, dev3]):
-        matches = scanner.find_dodotronic_devices()
-        assert len(matches) == 2
+        # The new implementation returns all devices, deferring filtering to ProfileManager
+        matches = scanner.find_recording_devices()
+        assert len(matches) == 3
         assert dev1 in matches
         assert dev2 in matches
-        assert dev3 not in matches
+        assert dev3 in matches

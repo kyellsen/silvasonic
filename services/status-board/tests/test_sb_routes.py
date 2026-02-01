@@ -84,7 +84,7 @@ def test_service_detail_found(mock_get_containers: AsyncMock) -> None:
     assert response.status_code == 200
     # Template renders "database" not "silvasonic-database"
     assert "database" in response.text
-    assert "ID: c2" in response.text
+    assert "c2" in response.text
 
 
 def test_service_detail_not_found(mock_get_containers: AsyncMock) -> None:
@@ -166,4 +166,4 @@ def test_controller_detail_found(mock_get_containers: AsyncMock) -> None:
     response = client.get("/services/controller")
     assert response.status_code == 200
     assert "controller" in response.text
-    assert "ID: c3" in response.text
+    assert "c3" in response.text

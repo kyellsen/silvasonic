@@ -3,17 +3,14 @@ import os
 import signal
 import sys
 from pathlib import Path
-from typing import Any
 
 import structlog
-from silvasonic.core.database.models.system import Device
-from silvasonic.core.database.session import AsyncSessionLocal
+from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.core.redis.subscriber import RedisSubscriber
 from silvasonic.core.schemas.control import ControlMessage
 from silvasonic.recorder.manager import ProfileManager
 from silvasonic.recorder.stream import FFmpegStreamer
-from sqlalchemy import select
 
 logger = structlog.get_logger()
 
@@ -28,31 +25,16 @@ ALSA_INDEX = int(ALSA_INDEX_STR) if ALSA_INDEX_STR and ALSA_INDEX_STR.strip() el
 OUTPUT_DIR = Path("/data/recorder") / MIC_NAME / "recordings"
 
 
-async def fetch_device_config(device_name: str) -> dict[str, Any] | None:
-    """Fetch specific device config from DB."""
-    try:
-        async with AsyncSessionLocal() as session:
-            stmt = select(Device).where(Device.name == device_name)
-            result = await session.execute(stmt)
-            device = result.scalar_one_or_none()
-            if device:
-                return device.config
-            logger.warning("device_not_found_in_db", device=device_name)
-            return None
-    except Exception as e:
-        logger.error("db_fetch_failed", error=str(e))
-        # Don't crash on DB failure, fallback to YAML
-        return None
-
-
 async def run_recorder_loop(publisher: RedisPublisher) -> None:
     """Main async loop for the recorder service."""
     # 1. Load Configuration
     profile_manager = ProfileManager()
-    db_config = await fetch_device_config(MIC_NAME)
+
+    # Configuration is now purely Environment-driven (Orchestrator responsibility)
 
     try:
-        profile = profile_manager.load_profile(MIC_PROFILE_NAME, db_config)
+        # Pass empty config dict as overrides, or rely purely on profile + env vars
+        profile = profile_manager.load_profile(MIC_PROFILE_NAME, {})
         logger.info("profile_loaded", profile=profile.model_dump())
     except Exception as e:
         logger.critical("profile_load_failed", error=str(e))
@@ -80,7 +62,6 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
         profile=profile,
         output_dir=OUTPUT_DIR,
         alsa_card_index=ALSA_INDEX,
-        segment_time_s=60,
         on_segment_complete=on_segment_complete_sync,
     )
 
@@ -142,13 +123,9 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
 
 def main() -> None:
     """Execute the main recorder loop."""
-    # Basic Logger Setup
-    structlog.configure(
-        processors=[
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
-        ]
-    )
+    # Configure logging (Dual Config: Stdout + File)
+    configure_logging(service_name="recorder", log_dir=os.getenv("LOG_DIR", None))
+
     logger.info("service_startup", service="recorder", mic_name=MIC_NAME)
 
     publisher = RedisPublisher(service_name="recorder", instance_id=MIC_NAME)

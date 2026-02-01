@@ -20,3 +20,11 @@ mypy_output*.txt
 pytest_output*.txt
 .coverage
 test_out_*.wav
+curl_out_*.txt
+hello.txt
+ps.txt
+sb_logs*.txt
+success.txt
+test_output*.txt
+verify_output*.txt
+echo.txt

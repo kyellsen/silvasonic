@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import JSON, BigInteger, DateTime, Float, ForeignKey, String
+from sqlalchemy import JSON, BigInteger, DateTime, Float, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -26,9 +26,9 @@ class Detection(Base):  # type: ignore[misc]
         BigInteger, ForeignKey("recordings.id"), nullable=False, index=True
     )
 
-    worker: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    worker: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
-    label: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    common_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    label: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    common_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default={}, nullable=False)

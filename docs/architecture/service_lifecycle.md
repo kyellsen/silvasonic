@@ -36,7 +36,7 @@ These services contain the core business logic (Recording, Processing, Analysis)
 
 | Service | Role | Criticality |
 | :--- | :--- | :--- |
-| **recorder** | Audio Capture | **High** (Dynamic/Hot-plug) |
+| **recorder** | Audio Capture | **High** (Dynamic/No DB) |
 | **processor** | Data Mgmt | **High** (Always Running) |
 | **uploader** | Sync | **Medium** (Job based) |
 | **birdnet** | Inference | **Low** (Optional Feature) |
@@ -78,5 +78,11 @@ To ensure system state survives power cycles without host-level intervention:
         - If `Desired == Disabled` and `Actual == Running` -> **Stop Service**.
 - **Discovery**: Containers are identified by the label `silvasonic.service={service_name}`, allowing the Controller to track services it spawned even after a restart.
 - **Dynamic Host Path Injection**: In development or non-standard environments (e.g., custom data directories), the Controller MUST inject host paths using the `HOST_SILVASONIC_DATA_DIR` environment variable into child container mounts. This prevents "No such file or directory" errors during `podman run` when the container attempts to mount host paths that differ from the hardcoded `/mnt/data/services/silvasonic` default.
-- **Log Persistence & UI Visibility**: To enable log viewing in the Dashboard, the `ServiceManager` must ensure that every managed service (BirdNET, Weather, etc.) mounts a host-side log directory (typically `${HOST_SILVASONIC_DATA_DIR}/logs`) to `/var/log/silvasonic` inside the container.
+- **Log Persistence & Dual Logging**:
+    - **Strategy**: Services use a "Dual Logging" approach (defined in `silvasonic.core.logging`).
+        1. **Stdout (JSON)**: For real-time monitoring via Podman API and Status Board.
+        2. **File (JSON)**: For archival and post-mortem analysis.
+    - **Injection**: The Controller injects `LOG_DIR=/var/log/silvasonic` into spawned containers.
+    - **Mounts**: It MUST mount `${HOST_SILVASONIC_DATA_DIR}/{service}//logs:/var/log/silvasonic:z`.
+    - **Result**: Even if a container restarts, the logs are preserved on the host NVMe.
 - **Recovery**: This mechanism ensures that default services (like Weather and BirdNET) start automatically on a clean database install without requiring manual activation via the Dashboard.

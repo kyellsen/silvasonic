@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+"""scripts/init.py.
+
+Initializes the Silvasonic development environment in strict compliance with
+docs/architecture/filesystem_governance.md.
+
+Roles:
+1. Enforce "Two-Worlds" architecture (Repository vs Workspace).
+2. Create standard Domain-Driven Directory Structure.
+3. Ensure 'logs' directories exist for all services.
+4. Set permissions (755) for Rootless Podman compatibility.
+"""
+
 import os
 import shutil
 import subprocess
@@ -45,7 +57,8 @@ def main() -> None:
     print_success("Git hooks installed.")
 
     # 3. Workspace Structure
-    print_step("Checking Workspace Root...")
+    print_step("Checking Workspace Root (Two-Worlds Compliance)...")
+    # Governance: SILVASONIC_WORKSPACE_PATH must remain separate from Repo.
     workspace_dir = os.environ.get(
         "SILVASONIC_WORKSPACE_PATH", "/mnt/data/dev_workspaces/silvasonic"
     )
@@ -53,23 +66,32 @@ def main() -> None:
     print_success(f"Workspace directory checked: {workspace_dir}")
 
     # 3b. Create Service Subdirectories
+    # Governance: "The Workspace directory must be strictly organized by service."
     print_step("Creating Domain-Driven Directory Structure...")
     required_service_dirs = [
+        # Persistence Stores
         "database",
         "redis",
-        "recorder",
+        # Service Working Directories
+        "recorder",  # Parent for dynamic mic folders (e.g. recorder/ultramic_1/)
         "processor/artifacts",
         "uploader/buffer",
+        # Gateway (Caddy)
         "gateway/config",
         "gateway/data",
         "gateway/logs",
-        # Logs folders for services that don't have dedicated data folders yet
+        # Logging Directories (Mandatory for all services)
         "controller/logs",
-        "recorder/logs",
+        "recorder/logs",  # Shared/Fallback log dir (individual mics use subdirs via Orchestrator)
         "processor/logs",
         "uploader/logs",
         "monitor/logs",
         "status-board/logs",
+        # Optional/Future Services
+        "birdnet/logs",
+        "batdetect/logs",
+        "weather/logs",
+        "web-interface/logs",
     ]
 
     for sub_dir in required_service_dirs:
@@ -78,45 +100,29 @@ def main() -> None:
         print(f"   Created/Verified: {sub_dir}")
 
     # 4. Permissions
+    # Governance: "It must ensure all folders are owned by the host user and have 755 (rwxr-xr-x) permissions."
     print_step("Enforcing Workspace Permissions (755)...")
     try:
-        # Just setting the root dir for now, recursive might be slow or intrusive if plenty of data
-        # The bash script did chmod -R, which is aggressive. Let's replicate it but be careful?
-        # Replicating existing behavior:
+        # We recursively set permissions to ensure containers (mapped to keep-id) can write.
         run_command(["chmod", "-R", "755", workspace_dir])
-        # Note: os.chmod matches run_command chmod generally, but -R needs os.walk.
-        # Calling chmod binary is fine and arguably faster for -R
     except Exception as e:
         print_error(f"Failed to set permissions: {e}")
     print_success("Permissions set.")
 
-    # 5. Services Permissions (Scripts)
-    # The old init.sh did: chmod +x scripts/*.sh. We are moving to .py, so maybe not needed?
-    # But files in scripts/ might still need +x if we want to run them directly.
-    # Let's assume we run via python scripts/foo.py or make calls them.
-    # But for good measure:
-    # for script in os.listdir("scripts"):
-    #     if script.endswith(".py"):
-    #         os.chmod(os.path.join("scripts", script), 0o755)
-
-    # 6. Hardware Access Verify
+    # 5. Hardware Access Verify
     print_step("Verifying Hardware Access Groups...")
+    # Required for accessing /dev/snd, GPIO, etc.
     required_groups = ["audio", "gpio", "spi", "i2c", "dialout"]
     not_configured = []
 
-    # We can check current process groups or DB database
-    # os.getgroups() checks ONLY checking active groups of current process.
-    # 'id -Gn' checks both.
-
-    # Let's use 'id' to be robust matching the bash script behavior (checking active vs potential)
     user = os.environ.get("USER", "root")
 
     for group in required_groups:
-        # Check active
+        # Check active groups (current session)
         active_groups_cmd = subprocess.run(["id", "-Gn"], capture_output=True, text=True)
         active_groups = active_groups_cmd.stdout.split()
 
-        # Check potential (db)
+        # Check potential groups (database)
         user_groups_cmd = subprocess.run(["id", "-Gn", user], capture_output=True, text=True)
         user_groups = user_groups_cmd.stdout.split()
 

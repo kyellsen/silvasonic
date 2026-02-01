@@ -32,7 +32,16 @@ def mock_broker():
 
 
 @pytest.fixture
-def service(mock_scanner, mock_podman, mock_broker):
+def mock_profiles():
+    """Mock the ProfileManager."""
+    with patch("silvasonic.controller.main.ProfileManager") as mock:
+        instance = mock.return_value
+        instance.find_profile_for_device.return_value = "custom-profile"
+        yield instance
+
+
+@pytest.fixture
+def service(mock_scanner, mock_podman, mock_broker, mock_profiles):
     """Fixture for ControllerService with mocked dependencies."""
     return ControllerService()
 
@@ -48,7 +57,7 @@ def mock_session_cls():
 
 @pytest.mark.asyncio
 async def test_reconcile_spawn_new_device(
-    service, mock_scanner, mock_podman, mock_broker, mock_session_cls
+    service, mock_scanner, mock_podman, mock_broker, mock_session_cls, mock_profiles
 ):
     """Test that a new device is detected, added to DB, and started."""
     # Setup
@@ -56,7 +65,7 @@ async def test_reconcile_spawn_new_device(
 
     # Scanner finds a device
     dev = AudioDevice(card_index=1, id="UltraMic", description="Dodotronic", serial_number="SN123")
-    mock_scanner.find_dodotronic_devices = MagicMock(return_value=[dev])
+    mock_scanner.find_recording_devices = MagicMock(return_value=[dev])
 
     # Podman has no active containers
     mock_podman.list_active_services.return_value = []
@@ -105,6 +114,7 @@ async def test_reconcile_spawn_new_device(
             break
 
     assert device_added, "Device was not added to session"
+
     assert new_device.serial_number == "SN123"
     assert new_device.enabled is True
 
@@ -124,7 +134,7 @@ async def test_reconcile_stop_removed_device(
     mock_podman.is_connected.return_value = True
 
     # Scanner finds NO devices
-    service.scanner.find_dodotronic_devices = MagicMock(return_value=[])
+    service.scanner.find_recording_devices = MagicMock(return_value=[])
 
     # Podman has ONE active container
     mock_podman.list_active_services.return_value = [
@@ -191,6 +201,7 @@ async def test_run_loop(service):
     # or rely on side_effect iteration?
 
     service.reconcile = AsyncMock()
+    service.run_db_migrations = MagicMock()
 
     # We want run() to call reconcile once then exit?
     # run() has 'while True'. We can mock asyncio.sleep to raise InterruptedError?
@@ -221,7 +232,7 @@ async def test_reconcile_scan_error(service, mock_scanner, mock_podman):
     # If using standard asyncio loop, it will raise what the function raises?
 
     # Actually, we need to mock find_dodotronic_devices to raise
-    mock_scanner.find_dodotronic_devices.side_effect = Exception("USB Error")
+    mock_scanner.find_recording_devices.side_effect = Exception("USB Error")
 
     await service.reconcile()
 
@@ -232,13 +243,13 @@ async def test_reconcile_scan_error(service, mock_scanner, mock_podman):
 
 @pytest.mark.asyncio
 async def test_reconcile_spawn_fail(
-    service, mock_scanner, mock_podman, mock_broker, mock_session_cls
+    service, mock_scanner, mock_podman, mock_broker, mock_session_cls, mock_profiles
 ):
     """Test handling of spawn failure."""
     mock_podman.is_connected.return_value = True
 
     dev = AudioDevice(1, "Mic", "Desc", "SN1")
-    mock_scanner.find_dodotronic_devices.return_value = [dev]
+    mock_scanner.find_recording_devices.return_value = [dev]
     mock_podman.list_active_services.return_value = []
 
     # Spawn fails
@@ -265,7 +276,7 @@ async def test_reconcile_stop_disabled(service, mock_scanner, mock_podman, mock_
 
     # Scanner finds device
     dev = AudioDevice(1, "Mic", "Desc", "SN1")
-    mock_scanner.find_dodotronic_devices.return_value = [dev]
+    mock_scanner.find_recording_devices.return_value = [dev]
 
     # Podman: Container is running
     mock_podman.list_active_services.return_value = [

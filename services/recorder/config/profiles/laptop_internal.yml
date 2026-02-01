@@ -1,0 +1,22 @@
+---
+# Laptop Internal Microphone Profile
+# For use with standard internal audio cards or webcams.
+schema_version: '1.0'
+slug: laptop_internal
+name: Internal Microphone
+description: Standard laptop microphone using 48kHz sample rate.
+manufacturer: Generic
+model: Internal Audio
+audio:
+  sample_rate: 48000
+  channels: 2
+  format: S16LE
+  match_pattern: HDA Intel  # Common pattern, but often varies. Controller sets profile explicitly.
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false  # Input is already 48k
+  live_stream_enabled: false
+  segment_duration_s: 60

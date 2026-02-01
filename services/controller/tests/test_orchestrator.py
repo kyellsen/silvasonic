@@ -64,8 +64,19 @@ def test_spawn_recorder_success_new(manager):
     kwargs = manager.client.containers.run.call_args.kwargs
     assert kwargs["image"] == "silvasonic-recorder"
     assert kwargs["name"] == "silvasonic-recorder-mic1"
-    # Verify volumes include :z
-    assert any(":z" in v for v in kwargs["volumes"])
+    # Verify mounts are used instead of volumes
+    assert "mounts" in kwargs
+    mounts = kwargs["mounts"]
+    # We expect 3 mounts: data, profiles, logs
+    assert len(mounts) == 3
+    # Check that they are bind mounts
+    assert all(m["Type"] == "bind" for m in mounts)
+
+    # Verify one key mount target to be sure
+    assert any(m["Target"] == "/data/recorder/mic1" for m in mounts)
+
+    # Verify security options (SELinux disabled)
+    assert kwargs["security_opt"] == ["label=disable"]
 
 
 def test_spawn_recorder_already_running(manager):

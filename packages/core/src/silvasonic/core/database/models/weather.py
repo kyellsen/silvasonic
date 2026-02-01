@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -19,9 +19,9 @@ class Weather(Base):  # type: ignore[misc]
 
     # Source identifier (e.g. 'local_bme280', 'openmeteo')
     # Part of composite PK in standard SQL, but for Timescale, time is main partition
-    source: Mapped[str] = mapped_column(String, primary_key=True)
+    source: Mapped[str] = mapped_column(Text, primary_key=True)
 
-    station_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    station_code: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     temp_c: Mapped[float] = mapped_column(Float, nullable=True)
     humidity: Mapped[float] = mapped_column(Float, nullable=True)

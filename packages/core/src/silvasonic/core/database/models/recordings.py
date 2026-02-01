@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -24,11 +24,11 @@ class Recording(Base):  # type: ignore[misc]
     # Microphone Identifier. References devices.name (lazy string ref to avoid circular imports if needed)
     # Using String for simplicity in foreign key, assuming devices.name is the PK
     sensor_id: Mapped[str] = mapped_column(
-        String, ForeignKey("devices.name"), nullable=False, index=True
+        Text, ForeignKey("devices.name"), nullable=False, index=True
     )
 
-    file_raw: Mapped[str] = mapped_column(String, nullable=False)
-    file_processed: Mapped[str] = mapped_column(String, nullable=False)
+    file_raw: Mapped[str] = mapped_column(Text, nullable=False)
+    file_processed: Mapped[str] = mapped_column(Text, nullable=False)
 
     duration: Mapped[float] = mapped_column(Float, nullable=False)
     sample_rate: Mapped[int] = mapped_column(Integer, nullable=False)

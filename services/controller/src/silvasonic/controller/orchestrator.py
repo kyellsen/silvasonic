@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import podman
@@ -43,6 +44,9 @@ class PodmanOrchestrator:
                         "service": c.labels.get("service"),
                         "device_serial": c.labels.get("device_serial"),
                         "mic_name": c.labels.get("mic_name"),
+                        "created": c.attrs.get("Created")
+                        if hasattr(c, "attrs")
+                        else None,  # Timestamp
                     }
                 )
             return results
@@ -57,12 +61,23 @@ class PodmanOrchestrator:
         container_name = f"silvasonic-recorder-{mic_name}"
         logger.info("spawning_recorder", container=container_name, device=device.display_name)
 
+        # Pre-Spawn: Ensure Log Directory exists on Host (via /host_data mount)
+        try:
+            # /host_data maps to settings.HOST_DATA_DIR
+            internal_log_path = f"/host_data/recorder/{mic_name}/logs"
+            os.makedirs(internal_log_path, exist_ok=True)
+            # Ensure permissions? Rootless inside container might own it as root (mapped to user outside)
+            # which is fine.
+        except Exception as e:
+            logger.error("failed_to_create_log_dir", path=internal_log_path, error=str(e))
+
         # Environment Variables
         env_vars = {
             "MIC_NAME": mic_name,
             "MIC_PROFILE": mic_profile,
             "ALSA_DEVICE_INDEX": str(device.card_index),
             "PYTHONUNBUFFERED": "1",
+            "LOG_DIR": "/var/log/silvasonic",
         }
 
         # Volumes
@@ -72,9 +87,11 @@ class PodmanOrchestrator:
         source_root = settings.HOST_SOURCE_DIR
 
         volumes = [
-            f"{host_root}/recorder:/data/recorder:z",
+            f"{host_root}/recorder/{mic_name}:/data/recorder/{mic_name}:z",
             # We assume the profiles are also available on the host at a known location
             f"{source_root}/services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z",
+            # Inject Host Logs
+            f"{host_root}/recorder/{mic_name}/logs:/var/log/silvasonic:z",
         ]
 
         return self._spawn_container(
@@ -90,6 +107,7 @@ class PodmanOrchestrator:
                 "device_serial": serial_number,
             },
             group_add=["keep-groups"],
+            security_opt=["label=disable"],
         )
 
     def spawn_service(
@@ -114,6 +132,32 @@ class PodmanOrchestrator:
             labels=labels,
         )
 
+    def _convert_volumes_to_mounts(self, volumes: list[str]) -> list[dict[str, Any]]:
+        """Convert list of volume strings to Mount dictionaries."""
+        mounts = []
+        for vol in volumes:
+            parts = vol.split(":")
+            if len(parts) < 2:
+                continue
+
+            source = parts[0]
+            target = parts[1]
+            options = parts[2] if len(parts) > 2 else ""
+
+            # Basic Mount structure
+            mount: dict[str, Any] = {
+                "Source": source,
+                "Target": target,
+                "Type": "bind",
+            }
+
+            # Handle Read-Only
+            if "ro" in options:
+                mount["ReadOnly"] = True
+
+            mounts.append(mount)
+        return mounts
+
     def _spawn_container(
         self,
         name: str,
@@ -123,6 +167,7 @@ class PodmanOrchestrator:
         labels: dict[str, str],
         devices: list[str] | None = None,
         group_add: list[str] | None = None,
+        security_opt: list[str] | None = None,
     ) -> bool:
         """Internal helper to spawn containers safely."""
         try:
@@ -138,6 +183,9 @@ class PodmanOrchestrator:
             except podman.errors.NotFound:
                 pass
 
+            # Convert volumes to mounts
+            mounts = self._convert_volumes_to_mounts(volumes)
+
             self.client.containers.run(
                 image=image,
                 name=name,
@@ -146,9 +194,11 @@ class PodmanOrchestrator:
                 environment=env,
                 devices=devices or [],
                 group_add=group_add or [],
-                volumes=volumes,
-                network="silvasonic-net",
+                mounts=mounts,
+                # Use correct network name created by podman-compose
+                network="silvasonic_silvasonic-net",
                 labels=labels,
+                security_opt=security_opt or [],
             )
             logger.info("container_started", container=name)
             return True

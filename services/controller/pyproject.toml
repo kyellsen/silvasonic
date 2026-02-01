@@ -12,6 +12,7 @@ dependencies = [
     "silvasonic-core",
     "structlog>=24.1.0",
     "sqlalchemy>=2.0.0",
+    "PyYAML>=6.0",
 ]
 
 [build-system]

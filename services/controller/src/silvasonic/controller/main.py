@@ -1,14 +1,20 @@
 import asyncio
 import os
+from datetime import datetime
+from typing import Any
 
 import structlog
+from alembic import command
+from alembic.config import Config
 from silvasonic.controller.hardware import AudioDevice, DeviceScanner
 from silvasonic.controller.messaging import MessageBroker
 from silvasonic.controller.orchestrator import PodmanOrchestrator
+from silvasonic.controller.profiles import ProfileManager
 from silvasonic.controller.services import ServiceManager
 from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import AsyncSessionLocal
+from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis.subscriber import RedisSubscriber
 from silvasonic.core.schemas.control import ControlMessage
 from sqlalchemy import select
@@ -29,6 +35,59 @@ class ControllerService:
         self.broker = MessageBroker()
         self.subscriber = RedisSubscriber(service_name="controller")
         self.settings = settings
+        self.profiles = ProfileManager()
+        # Anti-flapping state: {serial: {"count": int, "last_attempt": datetime}}
+        self.backoff_state: dict[str, dict[str, Any]] = {}
+
+    def _is_stable(self, created_ts: Any, now: datetime) -> bool:
+        """Check if container has been running > 5 mins."""
+        if not created_ts:
+            return False
+        try:
+            # Podman "Created" is usually ISO string or Unix timestamp.
+            # We assume ISO format from podman or timestamp from docker library.
+            # If it's pure timestamp (float/int):
+            if isinstance(created_ts, (int, float)):
+                created = datetime.utcfromtimestamp(created_ts)
+            else:
+                # Try ISO parsing - this handles standard ISO 8601
+                # We normalize to naive UTC
+                created = datetime.fromisoformat(str(created_ts).replace("Z", "+00:00")).replace(
+                    tzinfo=None
+                )
+
+            uptime = (now - created).total_seconds()
+            return uptime > 300  # 5 minutes
+        except Exception:
+            # If parsing fails, assume not stable to be safe
+            return False
+
+    def run_db_migrations(self) -> None:
+        """Run Alembic migrations to update database schema."""
+        logger.info("running_database_migrations")
+        try:
+            # Assuming alembic.ini is in current working directory /app
+            alembic_cfg = Config("alembic.ini")
+
+            # Simple Retry Loop for DB Connection
+            for i in range(30):
+                try:
+                    # We need to make sure the script location logic in env.py works.
+                    # env.py expects "migrations" directory.
+                    command.upgrade(alembic_cfg, "head")
+                    logger.info("database_migrations_completed")
+                    return
+                except Exception as e:
+                    logger.warning("database_migrations_retry", attempt=i + 1, error=str(e))
+                    import time
+
+                    time.sleep(2)
+
+            # If we get here, final attempt (will raise)
+            command.upgrade(alembic_cfg, "head")
+        except Exception as e:
+            logger.error("database_migrations_failed", error=str(e))
+            raise
 
     async def _get_or_create_device(
         self, session: AsyncSession, audio_device: AudioDevice
@@ -75,7 +134,7 @@ class ControllerService:
                 # 1. Detect Hardware (Blocking call, fast enough usually)
                 loop = asyncio.get_running_loop()
                 detected_devices = await loop.run_in_executor(
-                    None, self.scanner.find_dodotronic_devices
+                    None, self.scanner.find_recording_devices
                 )
             except Exception as e:
                 logger.error("hardware_scan_failed", error=str(e))
@@ -103,8 +162,6 @@ class ControllerService:
                         if device.status != "online":
                             device.status = "online"
 
-                        from datetime import datetime
-
                         device.last_seen = datetime.utcnow()
                         active_db_devices.append((device, hw_dev))
 
@@ -126,16 +183,68 @@ class ControllerService:
                         if s:
                             running_map[s] = c
 
+                    # Reset Backoff for Stable Services
+                    now = datetime.utcnow()
+                    for c in active_recorder_containers:
+                        s = c.get("device_serial")
+                        if s and self._is_stable(c.get("created"), now):
+                            if s in self.backoff_state:
+                                logger.info("service_stable_resetting_backoff", serial=s)
+                                self.backoff_state.pop(s)
+
                     # A. Start missing
                     for device, hw_dev in active_db_devices:
                         if device.enabled and device.status == "online":
                             if device.serial_number not in running_map:
+                                # Anti-Flapping / Backoff Check
+                                state = self.backoff_state.get(
+                                    device.serial_number, {"count": 0, "last_attempt": datetime.min}
+                                )
+                                count = state["count"]
+                                last_attempt = state["last_attempt"]
+
+                                # wait_time = min(300, 5 * (2 ** count))
+                                wait_time = min(300, 5 * (2**count))
+                                time_since = (now - last_attempt).total_seconds()
+
+                                if time_since < wait_time:
+                                    logger.info(
+                                        "backoff_active_skipping_spawn",
+                                        device=device.name,
+                                        wait_time=wait_time,
+                                        remaining=int(wait_time - time_since),
+                                    )
+                                    continue
+
                                 logger.info("starting_service", device=device.name)
-                                profile = device.config.get("profile", "ultramic_384_evo")
+
+                                # Update Backoff State (Record Attempt)
+                                self.backoff_state[device.serial_number] = {
+                                    "count": count + 1,
+                                    "last_attempt": now,
+                                }
+
+                                logger.info("starting_service", device=device.name)
+
+                                # 1. Check for manual override in DB
+                                profile_slug = device.config.get("profile")
+
+                                # 2. If not configured, try to auto-match
+                                if not profile_slug:
+                                    profile_slug = self.profiles.find_profile_for_device(hw_dev)
+
+                                if not profile_slug:
+                                    logger.warning(
+                                        "no_matching_profile_found",
+                                        device=device.name,
+                                        hw_id=hw_dev.id,
+                                        desc=hw_dev.description,
+                                    )
+                                    continue
 
                                 success = self.podman.spawn_recorder(
                                     device=hw_dev,
-                                    mic_profile=profile,
+                                    mic_profile=profile_slug,
                                     mic_name=device.name,
                                     serial_number=device.serial_number,
                                 )
@@ -208,6 +317,9 @@ class ControllerService:
             pid=os.getpid(),
         )
 
+        # Run Database Migrations
+        await asyncio.to_thread(self.run_db_migrations)
+
         try:
             while True:
                 await self.reconcile()
@@ -226,12 +338,10 @@ class ControllerService:
 
 def main() -> None:
     """Entry point for the Controller service."""
-    structlog.configure(
-        processors=[
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
-        ]
-    )
+    # Configure logging (Dual Config: Stdout + File)
+    # The Podman Orchestrator or Compose should inject LOG_DIR=/var/log/silvasonic
+    # If not present, it gracefully falls back to just Stdout.
+    configure_logging(service_name="controller", log_dir=os.getenv("LOG_DIR", None))
 
     service = ControllerService()
     try:

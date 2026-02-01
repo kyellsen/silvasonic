@@ -1,0 +1,2 @@
+recursive-include src/silvasonic/status_board/templates *.html
+recursive-include src/silvasonic/status_board/static *.css *.js

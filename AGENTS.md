@@ -50,6 +50,7 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
 * **Type Checker:** `mypy` (Strict mode).
 * **Models:** `Pydantic v2`.
 * **Database Interaction:** Use **SQLAlchemy** (Core or ORM) instead of raw SQL strings whenever best practice allows. Raw SQL is reserved for complex TimescaleDB-specific optimizations.
+    * **Exception:** The `recorder` service is **FORBIDDEN** from accessing the database directly. It receives configuration solely via Environment Variables/Profiles from the Controller.
 * **Frontend Stack:**
     * **Core:** FastAPI + Jinja2 (SSR) + HTMX + Alpine.js.
     * **Styling:** Tailwind CSS + DaisyUI (Theme: Dark/Scientific).

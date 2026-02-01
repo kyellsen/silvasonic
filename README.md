@@ -61,7 +61,7 @@ The system is composed of the following containerized services:
 * **status-board**: (Diagnostic) Lightweight, read-only system dashboard. Safe monitoring without control capability.
 
 ### Tier 2: Application (Managed by Controller)
-* **recorder**: Critical path. Buffers audio in RAM and writes dual-stream usage (Raw Native & Processed 48kHz) to NVMe.
+* **recorder**: Critical path. Managed directly by Controller via Profile Injection (No DB Access). Buffers audio in RAM and writes dual-stream usage (Raw Native & Processed 48kHz) to NVMe.
 * **processor**: Local data handler. Indexes files, generates spectrograms, and manages storage retention (Janitor).
 * **uploader**: Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage.
 * **birdnet**: (Optional feature) On-device inference for avian species classification.

@@ -29,8 +29,12 @@ RUN uv pip install -r pyproject.toml
 
 # 4. Copy source code and install project
 COPY services/status-board/src ./src
-COPY services/status-board/README.md ./
+COPY services/status-board/README.md services/status-board/MANIFEST.in* ./
 RUN uv pip install .
+
+# WORKAROUND: Explicitly copy templates and static files to site-packages as packaging is failing to include them
+RUN cp -r src/silvasonic/status_board/templates .venv/lib/python3.11/site-packages/silvasonic/status_board/
+RUN cp -r src/silvasonic/status_board/static .venv/lib/python3.11/site-packages/silvasonic/status_board/
 
 # STAGE 2: Runtime
 FROM python:3.11-slim-bookworm
@@ -42,6 +46,9 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Update PATH
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Create Log Directory
+RUN mkdir -p /var/log/silvasonic && chown -R 1000:1000 /var/log/silvasonic
 
 # Copy source code (optional if installed as package, but good for keeping context)
 COPY --from=builder /app/src /app/src

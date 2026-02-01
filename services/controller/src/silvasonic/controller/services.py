@@ -11,9 +11,9 @@ settings = ControllerSettings()
 # Default Service Registry (Baseline Configuration)
 # These defaults are used to populate the database on first run.
 REGISTRY = {
-    "birdnet": {"enabled": True},
-    "weather": {"enabled": False},  # Requires hardware
-    "batdetect": {"enabled": False},  # Specialized
+    #     "birdnet": {"enabled": True},
+    #     "weather": {"enabled": False},  # Requires hardware
+    #     "batdetect": {"enabled": False},  # Specialized
     "uploader": {"enabled": True},  # Core functionality usually
 }
 
@@ -119,8 +119,22 @@ class ServiceManager:
 
         volumes = [
             f"{host_log_dir}:/var/log/silvasonic:z",
-            # Mount /run/podman/podman.sock? No, only controller needs it.
         ]
+
+        # Specific Volume Logic for Uploader
+        # It needs access to its buffer (RW) and Recorder data (RO)
+        if service_name == "uploader":
+            # 1. Buffer (RW)
+            # Host: <HOST_DATA_DIR>/uploader/buffer -> Container: /data/uploader/buffer
+            host_buffer = f"{settings.HOST_DATA_DIR}/uploader/buffer"
+            volumes.append(f"{host_buffer}:/data/uploader/buffer:z")
+
+            # 2. Recordings (RO) - To read files for upload
+            # Host: <HOST_DATA_DIR>/recorder -> Container: /data/recorder
+            # Note: Controller manages recorder subdirs, but uploader might need to scan all?
+            # Governance says: "If a service needs data from another... must be mounted Read-Only."
+            host_recordings = f"{settings.HOST_DATA_DIR}/recorder"
+            volumes.append(f"{host_recordings}:/data/recorder:ro,z")
 
         success = self.orchestrator.spawn_service(
             service_name=service_name, image=image, env=env, volumes=volumes

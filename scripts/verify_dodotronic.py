@@ -161,6 +161,9 @@ def main() -> None:
         "/dev/snd:/dev/snd",
         "--group-add",
         "keep-groups",
+        # Network Access for Redis
+        "--network",
+        "silvasonic_silvasonic-net",
         "-v",
         f"{output_dir}:/data/recorder:z",
         # Mount the REAL profile directory
@@ -172,6 +175,8 @@ def main() -> None:
         f"ALSA_DEVICE_INDEX={selected_card}",
         "-e",
         "PYTHONUNBUFFERED=1",
+        "-e",
+        "SILVASONIC_REDIS_HOST=redis",
         IMAGE_NAME,
     ]
 

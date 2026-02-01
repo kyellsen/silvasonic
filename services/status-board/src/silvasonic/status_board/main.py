@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import socket
 import sys
 from collections.abc import AsyncGenerator
@@ -9,13 +10,14 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.status_board.config import settings
 from silvasonic.status_board.routes import router
 from silvasonic.status_board.subscriber import MessageSubscriber
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+configure_logging(service_name="status-board", log_dir=os.getenv("LOG_DIR", None))
 logger = logging.getLogger(__name__)
 
 

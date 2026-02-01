@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -38,17 +39,21 @@ class DeviceScanner:
         try:
             # Common location for USB audio devices
             serial_path = f"/sys/class/sound/card{card_index}/device/serial"
-            with open(serial_path) as f:
-                return f.read().strip()
-        except FileNotFoundError:
-            try:
-                # Try parent (sometimes device links to interface, parent is device)
-                # This is a bit rough without a robust traversing lib, but works for simple cases
-                serial_path = f"/sys/class/sound/card{card_index}/device/../serial"
+            if os.path.exists(serial_path):
                 with open(serial_path) as f:
                     return f.read().strip()
-            except Exception:
-                pass
+        except Exception as e:
+            logger.debug("serial_read_failed_primary", path=serial_path, error=str(e))
+
+        try:
+            # Try parent (sometimes device links to interface, parent is device)
+            serial_path = f"/sys/class/sound/card{card_index}/device/../serial"
+            if os.path.exists(serial_path):
+                with open(serial_path) as f:
+                    return f.read().strip()
+        except Exception as e:
+            logger.debug("serial_read_failed_fallback", path=serial_path, error=str(e))
+
         return None
 
     def scan_audio_devices(self) -> list[AudioDevice]:
@@ -59,8 +64,13 @@ class DeviceScanner:
             # and alsa-utils being installed in the container.
             # AND /sys must be mounted? usually is.
             res = subprocess.run(["arecord", "-l"], capture_output=True, text=True, check=True)
+            logger.debug("arecord_raw_output", output=res.stdout)
+
+            if not res.stdout.strip():
+                logger.warning("arecord_returned_empty_output")
+
         except subprocess.CalledProcessError as e:
-            logger.error("arecord_failed", error=str(e))
+            logger.error("arecord_failed", error=str(e), stderr=e.stderr, returncode=e.returncode)
             return []
         except FileNotFoundError:
             logger.error("arecord_not_found", hint="Is alsa-utils installed?")
@@ -94,13 +104,10 @@ class DeviceScanner:
 
         return devices
 
-    def find_dodotronic_devices(self) -> list[AudioDevice]:
-        """Filter for Dodotronic microphones."""
+    def find_recording_devices(self) -> list[AudioDevice]:
+        """Find all available recording devices."""
         all_devs = self.scan_audio_devices()
-        return [
-            d
-            for d in all_devs
-            if "dodotronic" in d.description.lower()
-            or "ultramic" in d.id.lower()
-            or "ultramic" in d.description.lower()
-        ]
+        # We could filter here, but to support generic "laptop internal" mics,
+        # we should basically return everything found by arecord -l.
+        # Users can disable specific ones via serial number in DB if they want.
+        return all_devs
