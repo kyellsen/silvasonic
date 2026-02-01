@@ -9,7 +9,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        stages: [commit, push]
+        stages: [pre-commit, pre-push]
 
       # 2. CHECK: Strikte Tests & Checks (Läuft nur vor Push)
       - id: check-local
@@ -18,4 +18,4 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        stages: [push]
+        stages: [pre-push]
