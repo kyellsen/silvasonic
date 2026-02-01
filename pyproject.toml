@@ -1,6 +1,6 @@
 [project]
 name = "silvasonic"
-version = "0.1.0"
+version = "0.2.0"
 description = "Silvasonic Bioacoustic Monitoring System"
 readme = "README.md"
 # WICHTIG: BatDetect/Tensorflow brauchen <3.12, daher bleiben wir strikt bei 3.11
