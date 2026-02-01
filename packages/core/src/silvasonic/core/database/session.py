@@ -1,10 +1,11 @@
 import os
+from collections.abc import AsyncGenerator
 
 from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
-class DatabaseSettings(BaseSettings):
+class DatabaseSettings(BaseSettings):  # type: ignore[misc]
     """Configuration settings for the database connection."""
 
     POSTGRES_USER: str = "postgres"
@@ -38,7 +39,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for FASTAPI or other services to get a DB session."""
     async with AsyncSessionLocal() as session:
         yield session
