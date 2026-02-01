@@ -1,5 +1,7 @@
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-# Create the Declarative Base
-# This class will be inherited by all ORM models (e.g. Recording, Device)
-Base = declarative_base()
+
+class Base(DeclarativeBase):  # type: ignore[misc]
+    """Base class for all SQLAlchemy ORM models."""
+
+    pass

@@ -11,44 +11,11 @@ uv sync
 echo "🪝 Installing Pre-Commit Hooks..."
 uv run pre-commit install --hook-type pre-commit --hook-type pre-push
 
-# 3. Workspace Structure (Strict Adherence to filesystem_governance.md)
-echo "📂 Enforcing Workspace Structure..."
+# 3. Workspace Structure
+# Directories are now auto-provisioned by scripts/start.sh based on podman-compose.yml
+echo "📂 Workspace root check..."
 WORKSPACE_DIR="${SILVASONIC_WORKSPACE_PATH:-/mnt/data/dev_workspaces/silvasonic}"
-
-# Helper function for directory creation
-ensure_dir() {
-  local path="$1"
-  if [ ! -d "$path" ]; then
-    echo "   Creating: $path"
-    mkdir -p "$path"
-  fi
-}
-
-# Core Infrastructure
-ensure_dir "${WORKSPACE_DIR}/database"
-ensure_dir "${WORKSPACE_DIR}/redis"
-ensure_dir "${WORKSPACE_DIR}/gateway/logs"
-ensure_dir "${WORKSPACE_DIR}/web-interface/logs"
-ensure_dir "${WORKSPACE_DIR}/monitor/logs"
-ensure_dir "${WORKSPACE_DIR}/controller/logs"
-
-# Recorder (The "Micro")
-ensure_dir "${WORKSPACE_DIR}/recorder/recordings/raw"
-ensure_dir "${WORKSPACE_DIR}/recorder/recordings/processed"
-ensure_dir "${WORKSPACE_DIR}/recorder/logs"
-
-# Processor (The Data Manager)
-ensure_dir "${WORKSPACE_DIR}/processor/artifacts"
-ensure_dir "${WORKSPACE_DIR}/processor/logs"
-
-# Uploader
-ensure_dir "${WORKSPACE_DIR}/uploader/buffer"
-ensure_dir "${WORKSPACE_DIR}/uploader/logs"
-
-# Optional/Inference Services
-ensure_dir "${WORKSPACE_DIR}/birdnet/logs"
-ensure_dir "${WORKSPACE_DIR}/batdetect/logs"
-ensure_dir "${WORKSPACE_DIR}/weather/logs"
+ensure_dir "${WORKSPACE_DIR}"
 
 # 4. Executable Permissions
 echo "🔐 Setting script permissions..."

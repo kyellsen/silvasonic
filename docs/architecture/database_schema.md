@@ -7,7 +7,7 @@ The system uses **PostgreSQL** with the **TimescaleDB** extension for time-serie
 
 ## 1. Core Data Tables
 
-These tables store the primary bioacoustic data and are optimized as TimescaleDB hypertables.
+These tables store the primary bioacoustic data. `detections` and `weather` are optimized as TimescaleDB hypertables.
 
 ### `recordings`
 The central registry of all audio files recorded by the system.
@@ -15,7 +15,7 @@ The central registry of all audio files recorded by the system.
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | Primary Key. |
-| `time` | `TIMESTAMPTZ` | **Partition Key**. Recording start time. |
+| `time` | `TIMESTAMPTZ` | Recording start time. Indexed. |
 | `sensor_id` | `TEXT` | Microphone Identifier. Foreign Key to `devices.name`. |
 | `file_raw` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Raw/Native** (Variable Rate). |
 | `file_processed` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Processed/Standardized (48kHz)**. |
@@ -129,7 +129,7 @@ Immutable audit log of all upload attempts (successful or failed).
 
 ## 4. TimescaleDB Configuration
 
-- **Chunk Time Interval**: 24 hours (for `recordings`, `detections`, `weather`).
+- **Chunk Time Interval**: 24 hours (for `detections`, `weather`).
 - **Retention Policy**: Managed by `Janitor` service (see `filesystem_governance.md`).
 
 ### Performance Tuning (Raspberry Pi 5 + NVMe)

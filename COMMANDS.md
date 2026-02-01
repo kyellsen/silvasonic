@@ -3,6 +3,8 @@ git pull
 podman-compose down --volumes
 podman-compose -f podman-compose.yml up -d --build
 
+podman logs -f silvasonic-status-board
+
 # Cleanup: 
 
 The Bomb: podman-compose down --volumes --images all

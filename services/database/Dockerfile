@@ -1,6 +1,6 @@
 # Services Database Dockerfile
-# Base: TimescaleDB (Postgres 16)
-FROM timescale/timescaledb:latest-pg16
+# Base: TimescaleDB (Postgres 17)
+FROM timescale/timescaledb:latest-pg17
 
 LABEL maintainer="Silvasonic Project"
 LABEL service="database"

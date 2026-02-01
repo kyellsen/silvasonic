@@ -19,6 +19,7 @@ exclude = [
 # Diese Mapping-Tabelle sagt UV: "Wenn jemand 'silvasonic-controller' will,
 # schau im Workspace nach, ob es das Paket gibt."
 [tool.uv.sources]
+silvasonic-core = { workspace = true }
 silvasonic-controller = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-web-interface = { workspace = true }
@@ -57,6 +58,7 @@ dev = [
     "mkdocs-include-markdown-plugin>=6.0.0",
 
     # -- Local Packages (AKTIVIEREN, SOBALD IMPLEMENTIERT!) --
+    "silvasonic-core",
     # Kommentiere diese Zeilen ein, sobald du den jeweiligen Service-Ordner 
     # unter /services/ erstellt hast und dort eine pyproject.toml liegt.
     # "silvasonic-controller",
@@ -100,6 +102,10 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.per-file-ignores]
+"packages/core/migrations/versions/*.py" = ["D", "E501"]
+"packages/core/migrations/env.py" = ["D"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -109,16 +115,31 @@ ignore_missing_imports = true
 # Verhindert Fehler, wenn Services noch fehlen
 warn_unused_ignores = false
 
+# Allow DB Models to subclass "Any" (DeclarativeBase issue)
+[[tool.mypy.overrides]]
+module = "silvasonic.core.database.models.*"
+disallow_subclassing_any = false
+
 # Ignoriere Libraries, die keine Typen haben
 [[tool.mypy.overrides]]
-module = ["watchdog.*", "sqlalchemy.*", "scipy.*", "pandas.*"]
+module = ["watchdog.*", "scipy.*", "pandas.*"]
 ignore_errors = true
 follow_imports = "skip"
+
+# SQLAlchemy 2.0 hat Typen, daher Errors ignorieren aber imports folgen
+[[tool.mypy.overrides]]
+module = ["sqlalchemy.*"]
+ignore_errors = true
 
 # Tests müssen nicht so streng typisiert sein
 # Pfad angepasst auf services/
 [[tool.mypy.overrides]]
 module = ["tests.*", "services.*.tests.*"]
+ignore_errors = true
+
+# Alembic Migrations sind autogeneriert und oft untypisiert
+[[tool.mypy.overrides]]
+module = ["packages.core.migrations.versions.*", "packages.core.migrations.env"]
 ignore_errors = true
 
 [tool.pytest.ini_options]
@@ -130,3 +151,4 @@ python_files = ["test_*.py"]
 # Ordner ignorieren, die keine Python-Tests sind
 norecursedirs = ["services/db", "services/gateway", "dist", "build"]
 asyncio_mode = "auto"
+markers = ["integration: mark a test as an integration test."]

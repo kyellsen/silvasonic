@@ -1,0 +1,25 @@
+{
+    # Use environment variable for domain, default to localhost
+    # Binds to internal ports 8080/8443 for rootless compatibility
+    http_port 8080
+    https_port 8443
+}
+
+{$DOMAIN_NAME:localhost} {
+    # Logging
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+
+    # API Routes -> Controller
+    handle_path /api/* {
+        reverse_proxy controller:8000
+    }
+
+    # All other routes -> Web Interface
+    handle {
+        reverse_proxy web-interface:8000
+    }
+}

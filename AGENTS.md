@@ -30,6 +30,7 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
 ## 4. Filesystem Constraints
 * **Persistence:** The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
     *   **Normative Rules:** See **[docs/index.md](docs/index.md)** -> "Filesystem Governance" for strict ownership, SELinux, and folder structure rules.
+    *   **SELinux:** Bind mounts in `podman-compose.yml` **MUST** use the `:Z` suffix (e.g., `./config:/etc/config:Z`) to allow container access.
 * **Temporary Artifacts:** Any temporary scripts, investigative logs, test artifacts, or debugging outputs **MUST** be placed in `.tmp/`.
     * The `.tmp/` directory is git-ignored and automatically cleaned by `make clean`.
     * Do NOT clutter root or source directories.

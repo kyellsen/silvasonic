@@ -11,9 +11,18 @@ repos:
         pass_filenames: false
         stages: [pre-commit, pre-push]
 
-      # 2. CHECK: Strikte Tests & Checks (Läuft nur vor Push)
+      # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit & Push)
+      - id: test-unit
+        name: Unit Tests
+        entry: ./scripts/test-unit.sh
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      # 3. CHECK: Strikte Tests (Integration) & Checks (Läuft nur vor Push)
       - id: check-local
-        name: Check (Deep Verification)
+        name: Check (Deep Verification & Integration)
         entry: ./scripts/check.sh
         language: system
         types: [python]

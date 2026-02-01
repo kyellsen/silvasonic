@@ -8,11 +8,13 @@ services:
       dockerfile: Dockerfile
     container_name: silvasonic-database
     restart: always
+    userns_mode: keep-id
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
-    volumes: [silvasonic-db-data:/var/lib/postgresql/data]
+    volumes:
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/database:/var/lib/postgresql/data:z
     networks: [silvasonic-net]
     shm_size: 512mb  # Matches shared_buffers recommendation
     healthcheck:
@@ -24,7 +26,10 @@ services:
     image: redis:alpine
     container_name: silvasonic-redis
     restart: always
-    volumes: [./services/redis/redis.conf:/usr/local/etc/redis/redis.conf]
+    userns_mode: keep-id
+    volumes:
+      - ./services/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro,z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/redis:/data:z
     command: [redis-server, /usr/local/etc/redis/redis.conf]
     networks: [silvasonic-net]
     healthcheck:
@@ -32,8 +37,38 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-volumes:
-  silvasonic-db-data:
+  gateway:
+    image: silvasonic-gateway
+    build:
+      context: services/gateway
+      dockerfile: Dockerfile
+    container_name: silvasonic-gateway
+    restart: always
+    userns_mode: keep-id
+    ports: [80:8080, 443:8443]
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:-localhost}
+    volumes:
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/logs:/var/log/caddy:z
+    networks: [silvasonic-net]
+    depends_on: [redis, database]
+  status-board:
+    image: silvasonic-status-board
+    build:
+      context: .
+      dockerfile: services/status-board/Dockerfile
+    container_name: silvasonic-status-board
+    restart: 'no'
+    userns_mode: keep-id
+    volumes: ['/run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z']
+    ports: [8001:8000]
+    environment:
+      DEV_MODE: 'true'
+      POSTGRES_HOST: database
+      REDIS_HOST: redis
+    networks: [silvasonic-net]
+    depends_on: [redis, database]
+volumes: {}
 networks:
   silvasonic-net:
     driver: bridge

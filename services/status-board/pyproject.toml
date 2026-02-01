@@ -1,0 +1,20 @@
+[project]
+name = "silvasonic-status-board"
+version = "0.1.0"
+description = "Silvasonic Status Board Provisional Service"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.20.0",
+    "jinja2>=3.1.0",
+    "pydantic-settings>=2.0.0",
+    "silvasonic-core",
+    "aiohttp>=3.9.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
