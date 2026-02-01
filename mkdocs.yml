@@ -5,27 +5,7 @@ site_author: Silvasonic Team
 repo_url: https://github.com/yourusername/silvasonic
 edit_uri: edit/main/docs/
 theme:
-  name: material
-  features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
-    - content.code.copy
-  palette:
-    # Light mode
-    - scheme: default
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    # Dark mode
-    - scheme: slate
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+  name: readthedocs
 nav:
   - Home: index.md
   - Project Readme: readme.md
@@ -46,10 +26,11 @@ nav:
       - Processor Service: services/processor.md
       - Recorder Service: services/recorder.md
       - Redis Service: services/redis.md
+      - Status Board Service: services/status_board.md
       - Tailscale Service: services/tailscale.md
       - Uploader Service: services/uploader.md
       - Weather Service: services/weather.md
-      - Web Interface: services/web_interface.md
+      - Web Interface: services/web-interface.md
   - Deployment:
       - Setup & Installation: deployment/setup.md
   - ADRs:

@@ -27,10 +27,11 @@ Managed by Podman Compose. Provides the runtime environment and extensive system
 | :--- | :--- | :--- | :--- |
 | **services/database** | 🟢 ✅ | **High** (Indirect) | PostgreSQL + TimescaleDB (Docker). functionality verified via `core` integration tests. |
 | **services/redis** | 🟢 ✅ | **High** (Indirect) | Redis Cache/Queue (Docker). Connectivity verified via `core` integration tests. |
-| **services/gateway** | 🔴 | None | Caddy Reverse Proxy for HTTPS/Auth. |
+| **services/gateway** | 🟢 ✅ | **Manual** | Caddy Reverse Proxy. Configured directly in `podman-compose.yml` via Caddyfile. Considered done. |
 | **services/controller** | 🟠 | None | Hardware/Container manager & orchestrator. |
 | **services/monitor** | 🟠 | None | System Watchdog (CPU, Disk, Temp). |
 | **services/web-interface** | 🟠 | None | Local management console (FastAPI + HTMX). |
+| **services/status-board** | 🟡 | 🔴 None | New Status Board (Active Dev). FastAPI/HTMX management console. |
 | **services/tailscale** | 🔴 | None | VPN mesh networking. |
 
 ---
@@ -40,7 +41,7 @@ Managed by Controller. Implements the core bioacoustic pipeline (Dataflow logic)
 
 | Service | Status | Test Coverage | Description |
 | :--- | :--- | :--- | :--- |
-| **services/recorder** | 🟠 | None | **[Input]** Captures audio. Buffers to RAM, writes dual-stream to NVMe. |
+| **services/recorder** | 🟡 | **Unit** (Passing) | **[Input]** Capable of recording dual-stream (Raw/Processed) + Live Stream (MP3). Verified via unit tests. |
 | **services/processor** | 🟠 | None | **[Process]** Indexes files, creates spectrograms, manages retention. |
 | **services/batdetect** | 🟠 | None | **[Analyze]** On-device inference for bats. |
 | **services/birdnet** | 🟠 | None | **[Analyze]** On-device inference for birds. |

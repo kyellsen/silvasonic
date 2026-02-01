@@ -1,0 +1,75 @@
+<div class="flex-1 flex flex-col h-full overflow-hidden">
+  <!-- Header -->
+  <div class="pt-2 px-4 bg-base-200/50 border-b border-base-200 shrink-0 flex items-center gap-2 text-sm breadcrumbs">
+    <ul>
+      <li>
+        <a hx-get="/services/recorders"
+           hx-target="#main-view"
+           class="text-base-content/60 hover:text-primary">Recorders</a>
+      </li>
+      <li class="font-bold text-primary">{{ recorder.name }}</li>
+    </ul>
+  </div>
+  <div class="bg-base-200/50 backdrop-blur-sm border-b border-base-300 px-6 py-4 shrink-0 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold font-heading text-primary capitalize">{{ recorder.name }}</h2>
+      <div class="badge badge-ghost badge-sm font-mono opacity-70 mt-1">ID: {{ recorder.full_id[:12] }}</div>
+    </div>
+    <div class="flex items-center gap-4">
+      {% if recorder.status == 'online' %}
+        <audio controls autoplay class="h-8">
+          <source src="{{ recorder.stream_url }}" type="audio/mpeg">
+          Your browser does not support the audio element.
+        </audio>
+      {% endif %}
+      <div class="badge {{ 'badge-success' if recorder.status == 'online' else 'badge-error' }} gap-2">
+        <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+        {{ recorder.status | capitalize }}
+      </div>
+    </div>
+  </div>
+  <!-- Content (Split View: Metrics + Logs) -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Left: Initial Metrics (Placeholder) -->
+    <div class="w-1/3 border-r border-base-300 p-6 overflow-auto bg-base-100">
+      <h3 class="font-bold text-sm uppercase opacity-50 mb-4">Instance Details</h3>
+      <dl class="space-y-4 text-sm">
+        <div>
+          <dt class="opacity-60">IP Address</dt>
+          <dd class="font-mono">
+            {{ recorder.ip }}
+          </dd>
+        </div>
+        <div>
+          <dt class="opacity-60">Stream URL</dt>
+          <dd class="font-mono break-all">
+            {{ recorder.stream_url }}
+          </dd>
+        </div>
+        <div>
+          <dt class="opacity-60">Configuration</dt>
+          <dd class="font-mono text-xs opacity-70 mt-1">
+            Please inspect container environment variables for full config.
+            (MIC_NAME, MIC_PROFILE)
+          </dd>
+        </div>
+      </dl>
+    </div>
+    <!-- Right: Terminal -->
+    <div class="flex-1 flex flex-col bg-[#1e1e1e] text-gray-300 font-mono text-xs">
+      <div class="px-4 py-2 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <span class="opacity-50">Live Logs</span>
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+      </div>
+      <div class="flex-1 overflow-auto p-4 scroll-smooth"
+           id="terminal-{{ recorder.id }}">
+        <div hx-ext="sse"
+             sse-connect="/stream/{{ recorder.full_id }}"
+             sse-swap="message"
+             hx-swap="beforeend scroll:bottom">
+          <!-- Logs appear here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

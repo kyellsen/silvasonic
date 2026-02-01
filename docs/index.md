@@ -28,10 +28,11 @@ Welcome to the **Silvasonic Bioacoustic Monitoring System** documentation.
 *   **[Controller](services/controller.md)**
 *   **[Recorder](services/recorder.md)**
 *   **[Processor](services/processor.md)**
-*   **[Web Interface](services/web_interface.md)**
+*   **[Web Interface](services/web-interface.md)**
 *   **[Monitor](services/monitor.md)**
 *   **[Uploader](services/uploader.md)**
 *   **[BirdNET](services/birdnet.md)**
+*   **[Status Board](services/status_board.md)**
 *   **[BatDetect](services/batdetect.md)**
 *   **[Weather](services/weather.md)**
 

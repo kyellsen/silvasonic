@@ -58,6 +58,7 @@ The system is composed of the following containerized services:
 * **monitor**: (Life Support/Optional) System Watchdog. Monitors service heartbeats and alerts independent of the controller.
 * **web-interface**: (Life Support/Optional) Local management console. Provides status monitoring even if the core application is down.
 * **tailscale**: (Life Support/Optional) Provides secure, zero-config remote access and VPN mesh networking.
+* **status-board**: (Diagnostic) Lightweight, read-only system dashboard. Safe monitoring without control capability.
 
 ### Tier 2: Application (Managed by Controller)
 * **recorder**: Critical path. Buffers audio in RAM and writes dual-stream usage (Raw Native & Processed 48kHz) to NVMe.

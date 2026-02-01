@@ -5,7 +5,7 @@ repos:
       # 1. FIX: Formatierung & Autofix (Läuft vor Commit & Push)
       - id: fix-local
         name: Fix (Format & Lint)
-        entry: ./scripts/fix.sh
+        entry: uv run scripts/fix.py
         language: system
         types: [python]
         pass_filenames: false
@@ -14,7 +14,7 @@ repos:
       # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit & Push)
       - id: test-unit
         name: Unit Tests
-        entry: ./scripts/test-unit.sh
+        entry: uv run scripts/test_unit.py
         language: system
         types: [python]
         pass_filenames: false
@@ -23,7 +23,7 @@ repos:
       # 3. CHECK: Strikte Tests (Integration) & Checks (Läuft nur vor Push)
       - id: check-local
         name: Check (Deep Verification & Integration)
-        entry: ./scripts/check.sh
+        entry: uv run scripts/check.py
         language: system
         types: [python]
         pass_filenames: false

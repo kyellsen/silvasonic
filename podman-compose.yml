@@ -37,6 +37,32 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+  controller:
+    image: silvasonic-controller
+    build:
+      context: .
+      dockerfile: services/controller/Dockerfile
+    container_name: silvasonic-controller
+    restart: always
+    userns_mode: keep-id
+    environment:
+      PODMAN_SOCKET_URL: unix:///run/podman/podman.sock
+      HOST_DATA_DIR: ${SILVASONIC_WORKSPACE_PATH:-./workspace}
+      POSTGRES_HOST: database
+      REDIS_HOST: redis
+      HOST_SOURCE_DIR: ${PWD}  # Root of the repository on the host
+    volumes:
+      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z
+      # Mount workspace/controller/logs -> /var/log/silvasonic/controller ??
+      # Governance says: "logs/" in service folder.
+      # Service writes to: stdout (structlog) usually, but we can configure file logger too.
+      # For now, let's just mount the socket.
+      - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z  # Ensure controller has access to verify profiles logic? No, orchestrator mounts HOST path.
+    security_opt: [label=disable]
+    networks: [silvasonic-net]
+    devices:
+      - /dev/snd:/dev/snd  # Required for hardware scanning (hardware.py)
+    depends_on: [redis, database]
   gateway:
     image: silvasonic-gateway
     build:
@@ -44,12 +70,15 @@ services:
       dockerfile: Dockerfile
     container_name: silvasonic-gateway
     restart: always
+    user: 1000:1000
     userns_mode: keep-id
     ports: [80:8080, 443:8443]
     environment:
       DOMAIN_NAME: ${DOMAIN_NAME:-localhost}
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/logs:/var/log/caddy:z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/data:/data:z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/config:/config:z
     networks: [silvasonic-net]
     depends_on: [redis, database]
   status-board:
@@ -61,6 +90,7 @@ services:
     restart: 'no'
     userns_mode: keep-id
     volumes: ['/run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z']
+    security_opt: [label=disable]
     ports: [8001:8000]
     environment:
       DEV_MODE: 'true'
@@ -68,7 +98,27 @@ services:
       REDIS_HOST: redis
     networks: [silvasonic-net]
     depends_on: [redis, database]
-volumes: {}
+  recorder:
+    image: silvasonic-recorder
+    build:
+      context: .
+      dockerfile: services/recorder/Dockerfile
+    container_name: silvasonic-recorder
+    # Template only - do not start automatically
+    # profiles: ["manual"]
+    restart: 'no'
+    userns_mode: keep-id
+    devices: [/dev/snd:/dev/snd]
+    ports: [8002:8000]
+    environment:
+      MIC_NAME: default
+      MIC_PROFILE: ultramic_384_evo
+      ALSA_DEVICE_INDEX: '' # Auto-detect or set specific index
+    volumes:
+      - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:z
+    networks: [silvasonic-net]
+    depends_on: [database]
 networks:
   silvasonic-net:
     driver: bridge

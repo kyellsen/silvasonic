@@ -50,11 +50,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** interact with external cloud services directly.
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11-slim`.
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   `psutil`.
-    *   `requests`.
-*   **Build System**: `uv` + `hatchling`.
+    *   None currently installed (Scaffolding).
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Independent monitoring layer.
@@ -63,4 +62,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected.
+*   **Conflict:** **SCAFFOLDING ONLY**: The `pyproject.toml` is empty. Core libs like `psutil` are NOT yet installed.

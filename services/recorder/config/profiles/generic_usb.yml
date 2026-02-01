@@ -1,0 +1,22 @@
+---
+# Generic USB Microphone Profile
+# Acts as a fallback for any standard USB audio device.
+schema_version: '1.0'
+slug: generic_usb
+name: Generic USB Microphone
+description: Fallback profile for standard USB Audio Class devices.
+manufacturer: Generic
+model: USB Audio
+audio:
+  sample_rate: 48000
+  channels: 1
+  format: S16LE
+  match_pattern: USB Audio  # Auto-detection pattern
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false  # Usually redundant if input is 48k
+  live_stream_enabled: false
+  segment_duration_s: 60

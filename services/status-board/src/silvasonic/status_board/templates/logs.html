@@ -1,68 +1,79 @@
-<div class="flex-1 flex flex-col overflow-hidden bg-gray-900"
+<div class="flex-1 flex flex-col overflow-hidden bg-base-100 font-mono text-sm"
      id="log-viewer">
   <!-- Toolbar -->
-  <div class="h-10 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between shrink-0">
-    <div class="flex items-center space-x-2">
+  <div class="h-12 bg-base-200/50 backdrop-blur-md border-b border-base-300 flex items-center px-4 justify-between shrink-0 z-10">
+    <div class="flex items-center gap-3">
       <button hx-get="/dashboard"
               hx-target="#main-view"
-              class="text-gray-400 hover:text-white mr-2">
-        ←
+              class="btn btn-sm btn-ghost gap-2 text-base-content/70 hover:text-base-content">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             class="h-4 w-4"
+             fill="none"
+             viewBox="0 0 24 24"
+             stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
         Back
       </button>
-      <span class="text-xs text-gray-400">Viewing Logs:</span>
-      <span class="text-sm font-mono text-emerald-400 text-ellipsis overflow-hidden whitespace-nowrap max-w-[200px]">{{
-      container_id }}</span>
+      <div class="divider divider-horizontal mx-0"></div>
+      <div class="flex flex-col">
+        <span class="text-[10px] uppercase font-bold tracking-wider opacity-50">Viewing Logs</span>
+        <span class="text-xs font-mono text-primary truncate max-w-[200px]">{{ container_id }}</span>
+      </div>
     </div>
     <div class="flex items-center space-x-2">
-      <span class="text-[10px] uppercase text-emerald-500 font-bold animate-pulse">Live</span>
+      <div class="badge badge-success gap-2 pulse-anim">
+        <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+        LIVE
+      </div>
     </div>
   </div>
   <!-- Terminal -->
-  <div class="flex-1 overflow-auto bg-[#0d1117] p-4 font-mono text-xs leading-5 text-gray-300 relative"
+  <div class="flex-1 overflow-auto bg-neutral p-4 font-mono text-xs leading-relaxed text-neutral-content relative"
        id="terminal-container">
     <div id="terminal-output" class="whitespace-pre-wrap"></div>
     <script>
-            {
-                const containerId = "{{ container_id }}";
-                const outputDiv = document.getElementById("terminal-output");
-                const containerDiv = document.getElementById("terminal-container");
-                let eventSource;
+      {
+        const containerId = "{{ container_id }}";
+        const outputDiv = document.getElementById("terminal-output");
+        const containerDiv = document.getElementById("terminal-container");
+        let eventSource;
 
-                function connect() {
-                    console.log("Connecting to log stream...");
-                    eventSource = new EventSource("/stream/" + containerId);
+        function connect() {
+          console.log("Connecting to log stream...");
+          eventSource = new EventSource("/stream/" + containerId);
 
-                    eventSource.onmessage = function (event) {
-                        const div = document.createElement("div");
-                        div.textContent = event.data; // Safe text
-                        outputDiv.appendChild(div);
+          eventSource.onmessage = function (event) {
+            const div = document.createElement("div");
+            div.textContent = event.data; // Safe text
+            outputDiv.appendChild(div);
 
-                        // Auto-scroll if near bottom
-                        if (containerDiv.scrollHeight - containerDiv.scrollTop - containerDiv.clientHeight < 100) {
-                            containerDiv.scrollTop = containerDiv.scrollHeight;
-                        }
-                    };
-
-                    eventSource.onerror = function () {
-                        console.error("Stream failed.");
-                        eventSource.close();
-                        const err = document.createElement("div");
-                        err.className = "text-red-500 font-bold";
-                        err.textContent = "\n[Stream Connection Lost]";
-                        outputDiv.appendChild(err);
-                    };
-                }
-
-                connect();
-
-                // Cleanup on HTMX swap (when this element is removed)
-                document.body.addEventListener('htmx:beforeSwap', function (evt) {
-                    if (evt.target.id === "main-view" && eventSource) {
-                        console.log("Closing stream due to navigation");
-                        eventSource.close();
-                    }
-                });
+            // Auto-scroll if near bottom
+            if (containerDiv.scrollHeight - containerDiv.scrollTop - containerDiv.clientHeight < 100) {
+              containerDiv.scrollTop = containerDiv.scrollHeight;
             }
+          };
+
+          eventSource.onerror = function () {
+            console.error("Stream failed.");
+            eventSource.close();
+            const err = document.createElement("div");
+            err.className = "text-error font-bold mt-2";
+            err.textContent = "\n[Stream Connection Lost]";
+            outputDiv.appendChild(err);
+          };
+        }
+
+        connect();
+
+        // Cleanup on HTMX swap (when this element is removed)
+        document.body.addEventListener('htmx:beforeSwap', function (evt) {
+          if (evt.target.id === "main-view" && eventSource) {
+            console.log("Closing stream due to navigation");
+            eventSource.close();
+          }
+        });
+      }
     </script>
   </div>
 </div>

@@ -3,7 +3,12 @@ name = "silvasonic-recorder"
 version = "0.1.0"
 description = "Silvasonic Recorder Service"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "silvasonic-core",
+    "pyyaml>=6.0",
+    "structlog>=23.0.0",
+    "ffmpeg-python>=0.2.0",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]

@@ -7,19 +7,24 @@
 
 {$DOMAIN_NAME:localhost} {
     # Logging
-    # Logging
     log {
         output file /var/log/caddy/access.log
         format json
     }
 
     # API Routes -> Controller
-    handle_path /api/* {
-        reverse_proxy controller:8000
+    # TODO: Revert this to route to web-interface and controller once implemented
+    # handle_path /api/* {
+    #    reverse_proxy controller:8000
+    # }
+
+    # All other routes -> Status Board (Temporary)
+    handle {
+        reverse_proxy status-board:8000
     }
 
-    # All other routes -> Web Interface
-    handle {
-        reverse_proxy web-interface:8000
-    }
+    # Original Web Interface Routing (Disabled)
+    # handle {
+    #    reverse_proxy web-interface:8000
+    # }
 }

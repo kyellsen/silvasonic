@@ -1,0 +1,22 @@
+---
+# Rode NT-USB Profile
+# High-quality cardioid condenser microphone.
+schema_version: '1.0'
+slug: rode_nt_usb
+name: Rode NT-USB
+description: Studio-quality USB condenser microphone for vocal/bird ranges.
+manufacturer: Rode
+model: NT-USB
+audio:
+  sample_rate: 48000
+  channels: 2  # Often enumerates as stereo even if mono capsule
+  format: S16LE
+  match_pattern: Rode NT-USB
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false  # Input is already 48k
+  live_stream_enabled: true
+  segment_duration_s: 60

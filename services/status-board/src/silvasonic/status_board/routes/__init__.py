@@ -17,7 +17,10 @@ templates = Jinja2Templates(directory=templates_dir)
 @router.get("/workspace", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def workspace(request: Request) -> HTMLResponse:
     """Render the main workspace shell."""
-    return templates.TemplateResponse("workspace.html", {"request": request})
+    recorders = await ContainerService.get_recorders()
+    return templates.TemplateResponse(
+        request=request, name="workspace.html", context={"recorders": recorders}
+    )
 
 
 @router.get("/dashboard", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
@@ -31,16 +34,103 @@ async def dashboard(request: Request) -> HTMLResponse:
     tcp_db, tcp_redis, containers = await asyncio.gather(db_task, redis_task, containers_task)
 
     return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "tcp_db": tcp_db, "tcp_redis": tcp_redis, "containers": containers},
+        request=request,
+        name="dashboard.html",
+        context={"tcp_db": tcp_db, "tcp_redis": tcp_redis, "containers": containers},
+    )
+
+
+@router.get("/services/recorders", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+async def list_recorders(request: Request) -> HTMLResponse:
+    """List all discovered recorder services."""
+    recorders = await ContainerService.get_recorders()
+    return templates.TemplateResponse(
+        request=request, name="recorders_list.html", context={"recorders": recorders}
+    )
+
+
+@router.get("/services/recorders/{container_id}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+async def recorder_detail(request: Request, container_id: str) -> HTMLResponse:
+    """Show details for a specific recorder."""
+    recorders = await ContainerService.get_recorders()
+    target = next(
+        (r for r in recorders if r["id"] == container_id or r["full_id"] == container_id), None
+    )
+
+    if not target:
+        return HTMLResponse(
+            "<div class='p-6 text-red-500'>Recorder not found.</div>",
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="service_recorder.html",
+        context={"recorder": target},
+    )
+
+
+@router.get("/services/{service_name}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+async def service_detail(request: Request, service_name: str) -> HTMLResponse:
+    """Render the service status page."""
+    # Map service name to expected container name substring
+    target_name = f"silvasonic-{service_name}"
+    containers = await ContainerService.get_containers()
+
+    # Find container
+    container = None
+    for c in containers:
+        if any(target_name in name for name in c.get("Names", [])):
+            container = c
+            break
+
+    if not container:
+        return HTMLResponse(
+            f"<div class='p-6 text-red-500'>Service '{service_name}' not found or container not running.</div>",
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="service_detail.html",
+        context={
+            "service_name": service_name,
+            "container_id": container["Id"],
+            "container": container,
+        },
+    )
+
+
+@router.get("/services/{service_name}/logs", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+async def service_logs(request: Request, service_name: str) -> HTMLResponse:
+    """Render the service logs page."""
+    target_name = f"silvasonic-{service_name}"
+    containers = await ContainerService.get_containers()
+
+    container = None
+    for c in containers:
+        if any(target_name in name for name in c.get("Names", [])):
+            container = c
+            break
+
+    if not container:
+        return HTMLResponse(
+            f"<div class='p-6 text-red-500'>Service '{service_name}' not found or container not running.</div>",
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="service_logs.html",
+        context={"service_name": service_name, "container_id": container["Id"]},
     )
 
 
 @router.get("/logs/{container_id}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def view_logs(request: Request, container_id: str) -> HTMLResponse:
-    """Render the log viewer partial for a specific container."""
+    """Render the generic logs page for a container."""
     return templates.TemplateResponse(
-        "logs.html", {"request": request, "container_id": container_id}
+        request=request, name="logs.html", context={"container_id": container_id}
     )
 
 
@@ -52,22 +142,8 @@ async def stream_logs(container_id: str) -> StreamingResponse:
         generator = ContainerService.stream_logs(container_id)
         try:
             async for line in generator:
-                # Format as SSE
-                # Escape newlines for safety if needed, but usually just data: payload\n\n is enough
-                # We strip the newline from the raw log line to avoid double spacing in the div logic if we used <pre>
-                # But HTML div implies text.
-                # clean_line = line.replace('"', '\\"') # minimal escaping for JSON-like safety if parsing
-                # Actually, simpler: just send raw text. EventSource.data separates by \n\n.
-                # If the log line contains \n, it might break the event.
-                # Safer: Base64 or just one event per line.
-                # Simplest for now: replacing \n with <br> or just sending multiline data?
-                # EventSource spec: If data has newlines, it is concatenated with \n.
-                # So we can just yield "data: " + line_with_newlines_replaced + "\n\n"
-
-                # Let's simple yield the line.
                 yield f"data: {line}\n\n"
         except asyncio.CancelledError:
-            # Client disconnected
             pass
 
     return StreamingResponse(sse_generator(), media_type="text/event-stream")

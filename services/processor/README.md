@@ -44,8 +44,7 @@ Specific technical rules this service must obey (derived from code analysis or a
 *   **Volumes**:
     *   `/mnt/data` (Read/Write): For accessing recordings and writing spectrograms.
 *   **Dependencies**:
-    *   `libsndfile` (Validation).
-    *   `ffmpeg` (Optional, for format conversion if needed).
+    *   `libsndfile`, `ffmpeg`.
 
 ## 6. Out of Scope (Abgrenzung)
 What does this container explicitly NOT do?
@@ -56,13 +55,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** manage service lifecycles (Controller job).
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11` (Data Science variants often used, but Standard Slim preferred if deps allow).
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   `watchdog` (Filesystem Events).
-    *   `sqlalchemy` / `asyncpg` (DB Access).
-    *   `matplotlib` or `librosa` (Spectrograms).
-    *   `pillow` (Image handling).
-*   **Build System**: `uv` + `hatchling`.
+    *   None currently installed (Scaffolding).
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Separation of Concerns: Indexing is decoupled from Capture. Using `inotify` vs Polling needs careful tuning for reliability (Polling fallback recommended per architecture).
@@ -71,4 +67,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected. (Service currently in Design/Scaffold phase).
+*   **Conflict:** **SCAFFOLDING ONLY**: The `pyproject.toml` is empty. Core libs like `watchdog`, `sqlalchemy`, `matplotlib` are NOT yet installed.

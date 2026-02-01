@@ -1,4 +1,4 @@
-.PHONY: help init fix check start stop restart logs clean
+.PHONY: help init fix check start stop restart reset logs clean docs build-docs
 
 # Default target: Zeigt Hilfe an
 help:
@@ -11,41 +11,46 @@ help:
 	@echo "  start     🚀 Start Silvasonic stack (Rootless podman-compose)"
 	@echo "  stop      🛑 Stop Silvasonic stack"
 	@echo "  restart   🔄 Restart stack (stop && start)"
+	@echo "  reset     🧨 Stop, Clean Storage, Init, and Start (Factory Reset)"
 	@echo "  logs      📜 View container logs (follow)"
 	@echo "  clean     🧹 Cleanup artifacts (caches, pyc, coverage)"
 	@echo ""
 
 # 1. Setup & Maintenance
+# 1. Setup & Maintenance
 init:
-	@./scripts/init.sh
+	@python3 scripts/init.py
 
 fix:
-	@./scripts/fix.sh
+	@python3 scripts/fix.py
 
 check:
-	@./scripts/check.sh
+	@python3 scripts/check.py
 
 clean:
-	@./scripts/clean.sh
+	@python3 scripts/clean.py
 
 clean-storage:
-	@./scripts/clean.sh --storage
+	@python3 scripts/clean.py --storage
 
 # 2. Runtime Control
 start:
-	@./scripts/start.sh
+	@uv run python3 scripts/start.py
 
 stop:
-	@./scripts/stop.sh
+	@python3 scripts/stop.py
 
 restart: stop start
+
+reset: stop clean-storage init start
 
 logs:
 	@podman-compose logs -f
 
 # 3. Documentation
 docs:
-	@uv run mkdocs serve
+	@echo "📚 Starting documentation server at http://localhost:8085..."
+	@(sleep 2 && xdg-open http://localhost:8085) & uv run mkdocs serve -a localhost:8085
 
 build-docs:
 	@uv run mkdocs build

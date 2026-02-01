@@ -1,0 +1,51 @@
+<div class="flex-1 flex flex-col h-full overflow-hidden relative bg-base-100 font-mono text-sm">
+  {% set active_tab = "logs" %}
+  {% include "partials/service_header.html" with context %}
+  <!-- Log Viewer -->
+  <div class="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-base-content/80 relative scroll-smooth"
+       id="service-terminal-{{ container_id }}">
+    <div id="file-output-{{ container_id }}"
+         class="whitespace-pre-wrap font-mono"></div>
+  </div>
+  <script>
+    // Scoped logic for this specific view instance
+    (function () {
+      const containerId = "{{ container_id }}";
+      const outputDiv = document.getElementById("file-output-" + containerId);
+      const scrollContainer = document.getElementById("service-terminal-" + containerId);
+      let eventSource = null;
+
+      function connect() {
+        if (eventSource) return;
+        console.log("Starting stream for " + containerId);
+        eventSource = new EventSource("/stream/" + containerId);
+
+        eventSource.onmessage = function (event) {
+          const div = document.createElement("div");
+          div.className = "hover:bg-base-content/5 px-1 rounded transition-colors duration-75";
+          div.textContent = event.data;
+          outputDiv.appendChild(div);
+
+          // Auto scroll
+          if (scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+          }
+        };
+
+        eventSource.onerror = function () {
+          console.log("Stream closed or failed");
+          eventSource.close();
+        };
+      }
+
+      connect();
+
+      // Cleanup
+      document.body.addEventListener('htmx:beforeSwap', function (evt) {
+        if (evt.target.id === "main-view" && eventSource) {
+          eventSource.close();
+        }
+      });
+    })();
+  </script>
+</div>

@@ -55,12 +55,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** perform heavy inference (BirdNET/BatDetect job).
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11-slim`.
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   `podman` (Python bindings) or `requests` (Raw API).
-    *   `pydantic` (Schema validation).
-    *   `pyudev` (Hardware detection).
-*   **Build System**: `uv` + `hatchling`.
+    *   None currently installed (Scaffolding).
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Complies with "Infrastructure as Code" by reconciling against DB state. Rootless execution supported via user-mode Podman socket.
@@ -69,4 +67,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected. (Service currently in Design/Scaffold phase).
+*   **Conflict:** **SCAFFOLDING ONLY**: The `pyproject.toml` currently has NO dependencies, but the design calls for `podman` bindings, `requests`, `pyudev`, etc. Code is currently empty/template.

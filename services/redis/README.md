@@ -20,6 +20,7 @@ Derived strictly from the *Code Truth* (inputs/logic/outputs).
 *   **Processing**:
     *   **Message Brokering**: routing messages to subscribers.
     *   **Transient State**: Storing short-lived keys (e.g., `status:recorder:front` TTL 10s).
+    *   **Memory Management**: Max memory 64mb, LRU eviction policy.
 *   **Outputs**:
     *   **Message Delivery**: To `web-interface` (via Websocket proxy) and other services.
 
@@ -27,15 +28,16 @@ Derived strictly from the *Code Truth* (inputs/logic/outputs).
 Specific technical rules this service must obey (derived from code analysis or architectural mandates).
 
 *   **Concurrency**: **High**. Single-threaded but extremely fast Event Loop.
-*   **State**: **Ephemeral**. Persistence is NOT relied upon for critical data (that's Postgres). Configured as a cache/broker.
+*   **State**: **Ephemeral**. Persistence is explicitly DISABLED (`save ""`, `appendonly no`) in `redis.conf`.
 *   **Privileges**: **Rootless**.
-*   **Resources**: Very Low RAM/CPU.
+*   **Resources**: Very Low RAM (Capped at 64MB).
 
 ## 5. Configuration & Environment
 *   **Environment Variables**:
     *   Standard Redis Config.
 *   **Volumes**:
-    *   `silvasonic-redis-data` (Optional, for AOF persistence if needed).
+    *   `./services/redis/redis.conf` -> `/usr/local/etc/redis/redis.conf` (Read Only).
+    *   `${SILVASONIC_WORKSPACE_PATH}/redis` -> `/data` (Mounted but not used for persistence).
 *   **Dependencies**:
     *   None.
 
@@ -54,10 +56,10 @@ What does this container explicitly NOT do?
 *   **Build System**: Docker Hub Upstream.
 
 ## 8. Critical Analysis & Future Improvements
-*   **Best Practice Check**: Standard use of Redis for Broker pattern.
+*   **Best Practice Check**: Standard use of Redis for Broker pattern. Persistence disabled for pure hygiene.
 *   **Alternatives**: RabbitMQ (Too heavy), ZeroMQ (Too complex/no persistence).
 
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected.
+*   **Conflict:** Docker Compose mounts a data volume (`/data`), but `redis.conf` explicitly disables persistence (`save ""`). The volume is currently unused.

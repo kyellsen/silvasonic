@@ -53,10 +53,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** serve files to the web interface (Gateway job).
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11-slim` + `rclone` binary.
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   `rclone` (Wrapper or Subprocess).
-*   **Build System**: `uv` + `hatchling`.
+    *   `rclone` (System Binary) - Installed in Dockerfile.
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Rclone is the industry standard for cloud sync.
@@ -65,4 +65,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected.
+*   **Conflict:** None detected. (System dependency `rclone` is correctly installed).

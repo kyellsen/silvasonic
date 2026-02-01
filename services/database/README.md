@@ -36,7 +36,7 @@ Specific technical rules this service must obey (derived from code analysis or a
     *   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
     *   `PGDATA`: `/var/lib/postgresql/data`.
 *   **Volumes**:
-    *   `silvasonic-db-data` -> `/var/lib/postgresql/data`.
+    *   `${SILVASONIC_WORKSPACE_PATH}/database` -> `/var/lib/postgresql/data`.
 *   **Dependencies**:
     *   `timescaledb-ha` or standard `timescaledb` image.
 
@@ -49,11 +49,11 @@ What does this container explicitly NOT do?
 *   **Does NOT** compress audio files (Uploader job).
 
 ## 7. Technology Stack
-*   **Base Image**: `timescale/timescaledb:latest-pg16` (or current stable).
+*   **Base Image**: `timescale/timescaledb:latest-pg17`
 *   **Key Libraries**:
-    *   PostgreSQL 16.
+    *   PostgreSQL 17.
     *   TimescaleDB Extension.
-*   **Build System**: Docker Hub Upstream.
+*   **Build System**: Use `services/database/Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Uses TimescaleDB for time-series efficiency.

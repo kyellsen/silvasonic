@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import socket
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -7,12 +9,31 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.status_board.config import settings
 from silvasonic.status_board.routes import router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+async def run_heartbeat(publisher: RedisPublisher) -> None:
+    """Background task to publish status heartbeats."""
+    while True:
+        try:
+            await publisher.publish_status(
+                status="online",
+                activity="monitoring",
+                message="Status Board Active",
+                meta={"port": settings.PORT, "dev_mode": settings.DEV_MODE},
+            )
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Heartbeat failed: {e}")
+            await asyncio.sleep(5)
 
 
 @asynccontextmanager
@@ -24,8 +45,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         sys.exit(1)
 
     logger.info(f"Starting Status Board in DEV_MODE. Listening on port {settings.PORT}")
+
+    # Initialize Publisher
+    publisher = RedisPublisher(service_name="status-board", instance_id=socket.gethostname())
+    await publisher.publish_lifecycle("started", reason="Service startup")
+
+    # Start Heartbeat
+    heartbeat_task = asyncio.create_task(run_heartbeat(publisher))
+
     yield
-    # Shutdown logic if any
+
+    # Shutdown logic
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
+
+    await publisher.publish_lifecycle("stopping", reason="Service shutdown")
 
 
 app = FastAPI(

@@ -1,0 +1,61 @@
+<div class="flex-1 overflow-auto p-6" id="dashboard-content">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h2 class="text-2xl font-heading font-bold text-primary">Active Recorders</h2>
+      <p class="text-base-content/60 text-sm mt-1">
+        Discovered {{ recorders|length }} recorder instances on the
+        network.
+      </p>
+    </div>
+    <div class="badge badge-neutral">{{ recorders|length }} Active</div>
+  </div>
+  {% if recorders %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for recorder in recorders %}
+        <div class="card bg-base-100 shadow-xl border border-base-200 hover:border-primary/50 transition-colors group">
+          <div class="card-body">
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="card-title text-lg font-mono">{{ recorder.name }}</h3>
+                <div class="text-xs font-mono opacity-50">{{ recorder.id }}</div>
+              </div>
+              <div class="badge {{ 'badge-success' if recorder.status == 'online' else 'badge-error' }} badge-sm gap-2">
+                {% if recorder.status == 'online' %}<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>{% endif %}
+                {{ recorder.status | capitalize }}
+              </div>
+            </div>
+            <div class="divider my-2"></div>
+            <div class="text-xs text-base-content/70 space-y-1 font-mono">
+              <div class="flex justify-between">
+                <span>IP:</span>
+                <span class="text-base-content">{{ recorder.ip }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Stream:</span>
+                <span class="{{ 'text-success' if recorder.status == 'online' else 'text-error' }}">TCP/8000</span>
+              </div>
+            </div>
+            <div class="card-actions justify-end mt-4">
+              <button class="btn btn-sm btn-primary w-full group-hover:btn-active"
+                      hx-get="/services/recorders/{{ recorder.id }}"
+                      hx-target="#main-view"
+                      hx-swap="innerHTML">View Details</button>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="hero bg-base-200/50 rounded-box p-12">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-3xl font-bold opacity-20">No Recorders Found</h1>
+          <p class="py-6 opacity-60">
+            No containers with image <code>silvasonic-recorder</code> are currently running.
+            Start one via Controller or manually using <code>podman-compose run recorder</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

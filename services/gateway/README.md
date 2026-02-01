@@ -36,6 +36,7 @@ Specific technical rules this service must obey (derived from code analysis or a
     *   `DOMAIN_NAME`: Hostname.
 *   **Volumes**:
     *   `./Caddyfile` -> `/etc/caddy/Caddyfile`.
+    *   `${SILVASONIC_WORKSPACE_PATH}/gateway/logs` -> `/var/log/caddy`.
     *   `caddy_data` -> For certificates.
 *   **Dependencies**:
     *   `web-interface` (Upstream).
@@ -50,10 +51,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** handle internal message brokering (Redis job).
 
 ## 7. Technology Stack
-*   **Base Image**: `caddy:alpine`.
+*   **Base Image**: `caddy:2-alpine`.
 *   **Key Libraries**:
     *   Caddy Web Server.
-*   **Build System**: Docker Hub Upstream.
+*   **Build System**: Use `services/gateway/Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Caddy is modern, automatic HTTPS capable (even locally), and simple config.

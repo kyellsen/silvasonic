@@ -3,8 +3,8 @@
 Run these commands on the host (as user `pi`) to prepare the environment:
 
 ```bash
-# 1. Add User to Hardware Groups (USB, GPIO, Video)
-sudo usermod -aG plugdev,dialout,video,gpio $USER
+# 1. Add User to Hardware Groups (USB, GPIO, Audio)
+sudo usermod -aG plugdev,dialout,audio,gpio $USER
 
 # 2. Allow Unprivileged Port Binding (for Caddy/HTTP)
 echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee /etc/sysctl.d/99-silvasonic.conf

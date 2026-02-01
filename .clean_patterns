@@ -1,0 +1,21 @@
+# Patterns for make clean / scripts/clean.sh
+# One pattern per line. Shell globbing is supported.
+# These patterns are applied to the root directory only.
+
+build.log
+coverage_report*.txt
+gateway*.log
+gateway_inspect.json
+inspect.json
+mount_test.txt
+ps*.log
+recorder*.log
+reset*.log
+site_packages*.txt
+sync_log.txt
+verify*.log
+*crash.log
+*success.log
+mypy_output*.txt
+pytest_output*.txt
+.coverage

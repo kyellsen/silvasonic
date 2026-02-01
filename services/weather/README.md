@@ -51,11 +51,10 @@ What does this container explicitly NOT do?
 *   **Does NOT** run high-frequency polling (Environmental data is slow-moving).
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11-slim`.
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   `smbus2`, `bme280`.
-    *   `requests` (OpenMeteo).
-*   **Build System**: `uv`.
+    *   None currently installed (Scaffolding).
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Hybrid approach (Local + API) fills data gaps (e.g. rain).
@@ -64,4 +63,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected.
+*   **Conflict:** **SCAFFOLDING ONLY**: The `pyproject.toml` is empty. Core libs like `smbus2` are NOT yet installed.

@@ -3,7 +3,16 @@ name = "silvasonic-controller"
 version = "0.1.0"
 description = "Silvasonic Controller Service"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "podman>=5.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.2.0",
+    "schedule>=1.2.0",
+    "redis>=5.0.0",
+    "silvasonic-core",
+    "structlog>=24.1.0",
+    "sqlalchemy>=2.0.0",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]

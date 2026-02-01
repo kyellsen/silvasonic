@@ -39,8 +39,9 @@ Specific technical rules this service must obey (derived from code analysis or a
     *   `DB_DSN`: Postgres.
     *   `REDIS_URL`: Redis.
 *   **Volumes**:
-    *   `/mnt/data` (Read Only): To serve static assets (spectrograms, images).
+    *   `${SILVASONIC_WORKSPACE_PATH}/recordings` (Read Only): To serve static assets (spectrograms, images).
 *   **Dependencies**:
+    *   `silvasonic-core`.
     *   `fastapi`, `uvicorn`, `jinja2`, `redis`.
 
 ## 6. Out of Scope (Abgrenzung)
@@ -52,12 +53,11 @@ What does this container explicitly NOT do?
 *   **Does NOT** handle SSL/Ingress directly (Gateway job).
 
 ## 7. Technology Stack
-*   **Base Image**: `python:3.11-slim`.
+*   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
     *   `fastapi`, `uvicorn`.
     *   `jinja2`, `htmx` (Frontend).
-    *   `plotly.js`, `wavesurfer.js` (Frontend).
-*   **Build System**: `uv` + `hatchling`.
+*   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Modern stack (FastAPI/HTMX) for low complexity but high interactivity.
@@ -66,4 +66,4 @@ What does this container explicitly NOT do?
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** None detected.
+*   **Conflict:** **CRITICAL**: This service is defined in `services/web-interface` but is **MISSING** from `podman-compose.yml`. It is currently not orchestrated to run.

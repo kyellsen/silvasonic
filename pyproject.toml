@@ -29,6 +29,7 @@ silvasonic-processor = { workspace = true }
 silvasonic-weather = { workspace = true }
 silvasonic-monitor = { workspace = true }
 silvasonic-template = { workspace = true }
+silvasonic-status-board = { workspace = true }
 
 # --- DEVELOPMENT DEPENDENCIES ---
 [dependency-groups]
@@ -40,36 +41,35 @@ dev = [
     "djlint>=1.36.4",    # HTML/Jinja formatter
     "yamlfix>=1.19.1",   # YAML formatter
     "pre-commit>=4.0.0",
-
     # -- Testing --
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-playwright>=0.5.0",
-
     # -- Type Stubs (Wichtig für Mypy strict) --
     "types-pyyaml",
     "types-requests",
     "types-aiofiles",
-
     # -- Documentation --
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
     "mkdocs-include-markdown-plugin>=6.0.0",
-
     # -- Local Packages (AKTIVIEREN, SOBALD IMPLEMENTIERT!) --
     "silvasonic-core",
-    # Kommentiere diese Zeilen ein, sobald du den jeweiligen Service-Ordner 
+    # Kommentiere diese Zeilen ein, sobald du den jeweiligen Service-Ordner
     # unter /services/ erstellt hast und dort eine pyproject.toml liegt.
-    # "silvasonic-controller",
+    "silvasonic-controller",
     # "silvasonic-monitor",
-    # "silvasonic-recorder",
+    "silvasonic-recorder",
     # "silvasonic-processor",
     # "silvasonic-uploader",
     # "silvasonic-web-interface",
-    # "silvasonic-birdnet", 
+    # "silvasonic-birdnet",
     # "silvasonic-weather",
     "silvasonic-template",
+    "silvasonic-status-board",
+    "pytest-mock>=3.15.1",
+    "httpx",
 ]
 
 # --- TOOLS CONFIGURATION ---
@@ -114,6 +114,7 @@ explicit_package_bases = true
 ignore_missing_imports = true
 # Verhindert Fehler, wenn Services noch fehlen
 warn_unused_ignores = false
+mypy_path = "packages/core/src:services/batdetect/src:services/birdnet/src:services/controller/src:services/monitor/src:services/processor/src:services/recorder/src:services/status-board/src:services/template/src:services/uploader/src:services/weather/src:services/web-interface/src"
 
 # Allow DB Models to subclass "Any" (DeclarativeBase issue)
 [[tool.mypy.overrides]]
@@ -149,6 +150,20 @@ addopts = "-v --cov --cov-report=term-missing"
 testpaths = ["tests", "services/*/tests", "packages/*/tests"]
 python_files = ["test_*.py"]
 # Ordner ignorieren, die keine Python-Tests sind
-norecursedirs = ["services/db", "services/gateway", "dist", "build"]
+norecursedirs = [
+    "services/db",
+    "services/gateway",
+    "dist",
+    "build",
+    "packages/core/migrations",
+]
 asyncio_mode = "auto"
 markers = ["integration: mark a test as an integration test."]
+
+[tool.coverage.run]
+omit = [
+    "packages/core/migrations/*",
+    "services/*/tests/*",
+    "packages/*/tests/*",
+    "tests/*",
+]

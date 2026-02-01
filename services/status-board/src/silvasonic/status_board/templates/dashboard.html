@@ -1,49 +1,92 @@
 <div class="flex-1 overflow-auto p-6" id="dashboard-content">
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <!-- Stats Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Card: Database -->
-    <div class="bg-gray-800 border {{ 'border-emerald-600' if tcp_db.status == 'connected' else 'border-red-600' }} rounded p-4 relative overflow-hidden">
-      <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">PostgreSQL</h3>
-      <div class="text-2xl font-bold text-white mb-1 capitalize">{{ tcp_db.status }}</div>
-      <div class="text-xs text-gray-500">Host: {{ tcp_db.host }}</div>
-      {% if tcp_db.status == 'connected' %}
-        <div class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
-      {% endif %}
+    <div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border border-base-200">
+      <div class="card-body p-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="card-title text-sm uppercase tracking-wider text-base-content/60 font-bold mb-1">PostgreSQL</h3>
+            <div class="text-2xl font-bold capitalize flex items-center gap-2"
+                 :class="'{{ tcp_db.status }}' === 'connected' ? 'text-success' : 'text-error'">
+              {{ tcp_db.status }}
+              {% if tcp_db.status == 'connected' %}
+                <div class="w-3 h-3 rounded-full bg-success shadow-[0_0_10px_theme(colors.success)] animate-pulse"></div>
+              {% endif %}
+            </div>
+            <div class="text-xs text-base-content/50 mt-1 font-mono">Host: {{ tcp_db.host }}</div>
+          </div>
+          <div class="p-2 rounded-lg bg-base-200/50">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 class="h-6 w-6 opacity-60"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- Card: Redis -->
-    <div class="bg-gray-800 border {{ 'border-emerald-600' if tcp_redis.status == 'connected' else 'border-red-600' }} rounded p-4 relative overflow-hidden">
-      <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Redis</h3>
-      <div class="text-2xl font-bold text-white mb-1 capitalize">{{ tcp_redis.status }}</div>
-      <div class="text-xs text-gray-500">Host: {{ tcp_redis.host }}</div>
-      {% if tcp_redis.status == 'connected' %}
-        <div class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
-      {% endif %}
+    <div class="card bg-base-100 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border border-base-200">
+      <div class="card-body p-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="card-title text-sm uppercase tracking-wider text-base-content/60 font-bold mb-1">Redis</h3>
+            <div class="text-2xl font-bold capitalize flex items-center gap-2"
+                 :class="'{{ tcp_redis.status }}' === 'connected' ? 'text-success' : 'text-error'">
+              {{ tcp_redis.status }}
+              {% if tcp_redis.status == 'connected' %}
+                <div class="w-3 h-3 rounded-full bg-success shadow-[0_0_10px_theme(colors.success)] animate-pulse"></div>
+              {% endif %}
+            </div>
+            <div class="text-xs text-base-content/50 mt-1 font-mono">Host: {{ tcp_redis.host }}</div>
+          </div>
+          <div class="p-2 rounded-lg bg-base-200/50">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 class="h-6 w-6 opacity-60"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <!-- Container List -->
-  <h3 class="text-sm font-semibold text-gray-400 uppercase mb-3">Service Containers</h3>
-  <div class="bg-gray-800 rounded border border-gray-700 overflow-hidden">
-    <table class="w-full text-left text-xs">
-      <thead class="bg-gray-700 text-gray-300">
+  <div class="flex items-center gap-2 mb-4">
+    <h3 class="text-lg font-heading font-bold text-base-content/80">Service Containers</h3>
+    <div class="badge badge-neutral badge-sm">{{ containers|length }} Active</div>
+  </div>
+  <div class="overflow-x-auto rounded-xl border border-base-200 shadow-lg bg-base-100">
+    <table class="table">
+      <!-- head -->
+      <thead class="bg-base-200/50 text-base-content/60 uppercase text-xs font-bold tracking-wider">
         <tr>
-          <th class="px-4 py-2">Name</th>
-          <th class="px-4 py-2">Image</th>
-          <th class="px-4 py-2">State</th>
-          <th class="px-4 py-2">Actions</th>
+          <th>Name</th>
+          <th>Image</th>
+          <th>State</th>
+          <th class="text-right">Actions</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-700">
+      <tbody class="divide-y divide-base-200">
         {% for container in containers %}
-          <tr class="hover:bg-gray-700/50">
-            <td class="px-4 py-2 font-mono text-emerald-400">{{ container.Names[0] | replace('/', '') }}</td>
-            <td class="px-4 py-2 text-gray-400">{{ container.Image }}</td>
-            <td class="px-4 py-2">
-              <span class="px-2 py-0.5 rounded-full {{ 'bg-green-900 text-green-300' if container.State == 'running' else 'bg-red-900 text-red-300' }}">
-                {{ container.State }}
-              </span>
+          <tr class="hover:bg-base-200/30 transition-colors">
+            <td>
+              <div class="font-mono font-bold text-primary">{{ container.Names[0] | replace('/', '') }}</div>
             </td>
-            <td class="px-4 py-2">
-              <button class="text-blue-400 hover:text-blue-300 underline"
-                      hx-get="/logs/{{ container.Id }}"
+            <td class="text-xs font-mono text-base-content/60">{{ container.Image }}</td>
+            <td>
+              <div class="badge {{ 'badge-success gap-2' if container.State == 'running' else 'badge-error gap-2' }} badge-sm">
+                {{ container.State }}
+              </div>
+            </td>
+            <td class="text-right">
+              <button class="btn btn-xs btn-ghost text-info hover:text-info-content"
+                      hx-get="/services/{{ container.Names[0] | replace('/', '') | replace('silvasonic-', '') }}/logs"
                       hx-target="#main-view"
                       hx-swap="innerHTML">View Logs</button>
             </td>

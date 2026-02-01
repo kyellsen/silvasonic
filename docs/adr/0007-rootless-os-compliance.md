@@ -28,7 +28,7 @@ To ensure the rootless architecture functions correctly, the host system (Raspbe
 1.  **User Groups:** The user `pi` (or service user) MUST be a member of:
     *   `plugdev` (USB access)
     *   `dialout` (Serial access)
-    *   `video` (Camera/V4L2 access)
+    *   `audio` (Sound card/ALSA access)
     *   `gpio` (GPIO access)
 2.  **Sysctl:** Allow unprivileged ports for Caddy (Gateway):
     *   `sysctl -w net.ipv4.ip_unprivileged_port_start=80`

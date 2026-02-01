@@ -1,5 +1,5 @@
 [project]
-name = "silvasonic-web_interface"
+name = "silvasonic-web-interface"
 version = "0.1.0"
 description = "Silvasonic Web_interface Service"
 requires-python = ">=3.11"
