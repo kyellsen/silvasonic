@@ -8,7 +8,7 @@ The system prioritizes **Data Capture Integrity** above all else. It is designed
 
 **Target Audience:** Researchers, conservationists, and bioacoustic enthusiasts requiring robust, unsupervised data collection.
 
-> **Status:** v0.1.0 (Initial Development / MVP)
+> **Status:** v0.2.0 (Initial Development / MVP)
 
 ---
 
@@ -39,7 +39,7 @@ Silvasonic is a modern Python monolith split into micro-services, managed via a 
 *   **Resilient Design:** "No-Data-Loss" guarantee prevents recording gaps during analysis heavy load.
 *   **Hardware Target:** Raspberry Pi 5 (RaspiOS Lite) + NVMe SSD.
 *   **Runtime:** Podman (Rootless Containers) & Podman Compose.
-*   **Build System:** hatchling.
+*   **Build System:** setuptools.
 *   **Language:** Python 3.11 (strictly `< 3.12`).
 *   **Frontend:** FastAPI (Jinja2) + HTMX + Alpine.js. Styled with Tailwind CSS & DaisyUI.
 *   **Visualization:** Wavesurfer.js (Spectrograms) & Plotly.js (Analytics).
@@ -90,11 +90,11 @@ We use a unified `Makefile` interface to abstract the scripts located in `script
 
 | Command | Underlying Script | Description |
 | :--- | :--- | :--- |
-| **make setup** | `scripts/init.sh` | Initializes the environment, creates folders, and installs `uv` dependencies. |
-| **make run** | `scripts/run.sh` | Builds and starts the full stack via Podman Compose. |
-| **make check** | `scripts/check.sh` | Runs the full CI suite: Formatting check, Linting, and Tests. |
-| **make fix** | `scripts/fix.sh` | Automatically fixes formatting (Ruff) and auto-fixable lint errors. |
-| **make clean** | `scripts/clean.sh` | Removes caches, logs, temporary artifacts, and the `.tmp/` directory. |
+| **make init** | `scripts/init.py` | Initializes the environment, creates folders, and installs `uv` dependencies. |
+| **make start** | `scripts/start.py` | Builds and starts the full stack via Podman Compose. |
+| **make check** | `scripts/check.py` | Runs the full CI suite: Formatting check, Linting, and Tests. |
+| **make fix** | `scripts/fix.py` | Automatically fixes formatting (Ruff) and auto-fixable lint errors. |
+| **make clean** | `scripts/clean.py` | Removes caches, logs, temporary artifacts, and the `.tmp/` directory. |
 
 ### Prerequisites
 

@@ -28,10 +28,10 @@ Managed by Podman Compose. Provides the runtime environment and extensive system
 | **services/database** | 🟢 ✅ | **High** (Indirect) | PostgreSQL + TimescaleDB (Docker). functionality verified via `core` integration tests. |
 | **services/redis** | 🟢 ✅ | **High** (Indirect) | Redis Cache/Queue (Docker). Connectivity verified via `core` integration tests. |
 | **services/gateway** | 🟢 ✅ | **Manual** | Caddy Reverse Proxy. Configured directly in `podman-compose.yml` via Caddyfile. Considered done. |
-| **services/controller** | 🟠 | None | Hardware/Container manager & orchestrator. |
+| **services/controller** | 🟡 | **Unit** (Partial) | Hardware/Container manager & orchestrator. Core logic implemented, tests exist. |
 | **services/monitor** | 🟠 | None | System Watchdog (CPU, Disk, Temp). |
-| **services/web-interface** | 🟠 | None | Local management console (FastAPI + HTMX). |
-| **services/status-board** | 🟡 | 🔴 None | New Status Board (Active Dev). FastAPI/HTMX management console. |
+| **services/web-interface** | 🟠 | None | **[Future Main UI]** Local management console (FastAPI + HTMX). Currently scaffolding. |
+| **services/status-board** | 🟡 | **Unit** (Partial) | **[Interim Dev Tool]** Lightweight dashboard for backend verification & service monitoring. |
 | **services/tailscale** | 🔴 | None | VPN mesh networking. |
 
 ---

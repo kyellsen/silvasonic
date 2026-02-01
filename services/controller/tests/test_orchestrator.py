@@ -3,14 +3,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from podman.errors import APIError, NotFound
 from silvasonic.controller.hardware import AudioDevice
-from silvasonic.controller.orchestrator import PodmanManager
+from silvasonic.controller.orchestrator import PodmanOrchestrator
 
 
 @pytest.fixture
 def manager():
-    """Fixture for PodmanManager with mocked client."""
+    """Fixture for PodmanOrchestrator with mocked client."""
     with patch("podman.PodmanClient") as mock_client:
-        pm = PodmanManager()
+        pm = PodmanOrchestrator()
         pm.client = mock_client.return_value  # Mock the client explicitly
         yield pm
 
@@ -34,11 +34,11 @@ def test_list_active_recorders_success(manager):
     c1.id = "123"
     c1.name = "c1"
     c1.status = "running"
-    c1.labels = {"device_serial": "SN1", "mic_name": "mic1"}
+    c1.labels = {"device_serial": "SN1", "mic_name": "mic1", "service": "recorder"}
 
     manager.client.containers.list.return_value = [c1]
 
-    res = manager.list_active_recorders()
+    res = manager.list_active_services()
     assert len(res) == 1
     assert res[0]["id"] == "123"
     assert res[0]["device_serial"] == "SN1"
@@ -47,7 +47,7 @@ def test_list_active_recorders_success(manager):
 def test_list_active_recorders_error(manager):
     """Test listing containers API error."""
     manager.client.containers.list.side_effect = APIError("Err")
-    res = manager.list_active_recorders()
+    res = manager.list_active_services()
     assert res == []
 
 
@@ -110,7 +110,7 @@ def test_stop_recorder_success(manager):
     c = MagicMock()
     manager.client.containers.get.return_value = c
 
-    success = manager.stop_recorder("123")
+    success = manager.stop_service("123")
     assert success is True
     c.stop.assert_called_once()
     c.remove.assert_called_once()
@@ -119,5 +119,5 @@ def test_stop_recorder_success(manager):
 def test_stop_recorder_error(manager):
     """Test stopping error."""
     manager.client.containers.get.side_effect = Exception("Boom")
-    success = manager.stop_recorder("123")
+    success = manager.stop_service("123")
     assert success is False

@@ -25,6 +25,7 @@ class FFmpegStreamer:
         segment_time_s: int = 60,
         input_format: str = "alsa",
         input_device: str | None = None,
+        on_segment_complete: Any | None = None,
     ) -> None:
         """Initialize the FFmpeg streamer."""
         self.profile = profile
@@ -34,9 +35,11 @@ class FFmpegStreamer:
         self.input_format = input_format
         # Default to hw:X for alsa if not provided
         self.input_device = input_device if input_device is not None else f"hw:{self.alsa_index}"
+        self.on_segment_complete = on_segment_complete
 
         self.process: subprocess.Popen[str] | None = None
         self.running = False
+        self.watchdog_thread: threading.Thread | None = None
 
     def build_command(self) -> list[str]:
         """Construct the FFmpeg command arguments."""
@@ -148,7 +151,7 @@ class FFmpegStreamer:
 
         # Combine
         # Add -y to force overwrite (prevent stuck on prompts)
-        cmd = ffmpeg.merge_outputs(*outputs).global_args("-y").compile()
+        cmd = ffmpeg.merge_outputs(*outputs).global_args("-y", "-loglevel", "info").compile()
         return list(cmd)
 
     def start(self) -> None:
@@ -183,20 +186,75 @@ class FFmpegStreamer:
                 self.process.kill()
 
     def _monitor_loop(self) -> None:
-        """Reads stderr from FFmpeg to log errors."""
+        """Reads stderr from FFmpeg to log errors and detect segment completion."""
+        # Detect: [segment @ 0x...] segment '...' starts
+        # This implies previous segment finished.
+
+        last_segment_file: str | None = None
+        last_segment_start_time = time.time()
+
         while self.running and self.process and self.process.poll() is None:
             if self.process.stderr:
                 line = self.process.stderr.readline()
                 if line:
-                    # FFmpeg logs a lot of stats, maybe filter only errors or periodic stats
-                    if "Error" in line:
-                        logger.error("ffmpeg_error", output=line.strip())
-            time.sleep(0.1)
+                    line_s = line.strip()
+
+                    # 1. Error Logging
+                    if "error" in line_s.lower():
+                        logger.error("ffmpeg_error", output=line_s)
+
+                    # 2. Segment Detection
+                    # Pattern 1: [segment @ ...] segment '/path/to/file.wav' starts
+                    # Pattern 2: [segment @ ...] Opening '/path/to/file.wav' for writing
+                    is_p1 = "segment" in line_s and "starts" in line_s and "'" in line_s
+                    is_p2 = (
+                        "segment" in line_s
+                        and "Opening" in line_s
+                        and "for writing" in line_s
+                        and "'" in line_s
+                    )
+
+                    if is_p1 or is_p2:
+                        try:
+                            # Parse filename
+                            # Split by ' and take 2nd item (index 1)
+                            parts = line_s.split("'")
+                            if len(parts) >= 2:
+                                current_file = parts[1]
+                                now = time.time()
+
+                                # If we had a previous file, it is now finished
+                                if (
+                                    last_segment_file
+                                    and last_segment_file != current_file
+                                    and self.on_segment_complete
+                                ):
+                                    # Rough duration calculation
+                                    duration = now - last_segment_start_time
+
+                                    # Trigger callback
+                                    try:
+                                        self.on_segment_complete(last_segment_file, duration)
+                                    except Exception as e:
+                                        logger.error("callback_failed", error=str(e))
+
+                                if last_segment_file != current_file:
+                                    last_segment_file = current_file
+                                    last_segment_start_time = now
+                        except Exception as e:
+                            logger.error("segment_parse_failed", error=str(e), line=line_s)
+
+            # Avoid tight loop if no output, but readline blocks so sleep might not be needed if not using non-blocking IO.
+            # Popen default is blocking read, so we are good.
+            # But if readline returns empty string (EOF) we break, handled by loop condition?
+            # Actually readline returns '' on EOF.
+            if not line:
+                # EOF or no data yet? If process is running, it might just be quiet.
+                # But universal_newlines=True makes it text mode.
+                time.sleep(0.1)
 
         if self.running:
             # Process died unexpectedly
             logger.critical(
                 "ffmpeg_process_died", exit_code=self.process.returncode if self.process else -1
             )
-            # In a real system, we'd trigger a restart or exit so the container restarts
-            # sys.exit(1)

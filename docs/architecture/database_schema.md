@@ -23,7 +23,7 @@ The central registry of all audio files recorded by the system.
 | `sample_rate` | `INTEGER` | Native Sample rate in Hz (of the Raw file). |
 | `filesize_raw` | `BIGINT` | Size of Raw file in bytes. |
 | `filesize_processed` | `BIGINT` | Size of Processed file in bytes. |
-| `uploaded` | `BOOLEAN` | Sync status (High-res archive). Default `false`. |
+| `uploaded` | `BOOLEAN` | Sync status (High-res archive). Default `false`. Indexed. |
 | `uploaded_at` | `TIMESTAMPTZ` | Timestamp of successful upload. Nullable. |
 | `analysis_state` | `JSONB` | flexible map of analysis status (e.g. `{"birdnet": true, "batdetect": false}`). |
 
@@ -32,13 +32,13 @@ Stores analysis results from various workers (BirdNET, etc.).
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `id` | `BIGSERIAL` | Primary Key. |
-| `time` | `TIMESTAMPTZ` | **Partition Key**. Detection start time. |
+| `id` | `BIGSERIAL` | Primary Key (Composite). |
+| `time` | `TIMESTAMPTZ` | **Partition Key** + Primary Key (Composite). Detection start time. |
 | `end_time` | `TIMESTAMPTZ` | Detection end time. Allows efficient duration/overlap queries. |
 | `recording_id` | `BIGINT` | Foreign Key to `recordings.id`. |
-| `worker` | `TEXT` | Name of the analysis worker (e.g., `birdnet`). |
+| `worker` | `TEXT` | Name of the analysis worker (e.g., `birdnet`). Indexed. |
 | `confidence` | `FLOAT` | Confidence score (0.0 - 1.0). **Core Metric**. |
-| `label` | `TEXT` | Normalized Label (Scientific Name or ID). Key for Taxonomy. |
+| `label` | `TEXT` | Normalized Label (Scientific Name or ID). Key for Taxonomy. Indexed. |
 | `common_name` | `TEXT` | Standard English Name (e.g. "Blackbird"). Fast search/display. |
 | `details` | `JSONB` | Raw metadata (e.g. `{"box": [...]}`). |
 
@@ -62,8 +62,8 @@ Hybrid environmental data from local sensors (BME280) and external APIs (OpenMet
 
 | Column | Type | Description |
 | :--- | :--- | :--- |
-| `time` | `TIMESTAMPTZ` | **Partition Key**. Measurement time. |
-| `source` | `TEXT` | Data source origin (e.g., `local_bme280`, `openmeteo`). |
+| `time` | `TIMESTAMPTZ` | **Partition Key** + Primary Key (Composite). Measurement time. |
+| `source` | `TEXT` | Primary Key (Composite). Data source origin (e.g., `local_bme280`, `openmeteo`). |
 | `station_code` | `TEXT` | External Station ID (e.g., DWD `10865` or ICAO `EDDM`). Null for local. |
 | `temp_c` | `FLOAT` | Temperature in °C. |
 | `humidity` | `FLOAT` | Relative Humidity in %. |
@@ -75,7 +75,7 @@ Hybrid environmental data from local sensors (BME280) and external APIs (OpenMet
 | `uv_index` | `FLOAT` | UV Index (0-11+). |
 | `sunshine_duration` | `FLOAT` | Duration of sunshine in seconds (per interval). |
 | `weather_code` | `INTEGER` | WMO Weather Code (e.g., 0=Clear, 61=Rain). |
-| `is_forecast` | `BOOLEAN` | `true` if this was a forecast, `false` if measured/historical. |
+| `is_forecast` | `BOOLEAN` | `true` if this was a forecast, `false` if measured/historical. Default `false`. |
 | `extra` | `JSONB` | **Overflow Buffer**. Stores unforeseen sensor metrics (e.g. Soil Moisture, Lux) without schema migration. |
 
 ## 2. Control Plane Tables
@@ -88,8 +88,8 @@ Registry of dynamic services managed by the Controller.
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `name` | `TEXT` | Primary Key. Service name (e.g., `birdnet`). |
-| `enabled` | `BOOLEAN` | Target state (Intent). |
-| `status` | `TEXT` | Current status (e.g., `running`, `stopped`). |
+| `enabled` | `BOOLEAN` | Target state (Intent). Default `true`. |
+| `status` | `TEXT` | Current status (e.g., `running`, `stopped`). Default `stopped`. |
 
 ### `system_config`
 Global Key-Value store for application settings.
@@ -107,9 +107,9 @@ Inventory of hardware devices (microphones, potential other sensors). Allows sta
 | `name` | `TEXT` | Primary Key. Hardware ID (e.g. `front`, `back`). Referenced by `recordings.sensor_id`. |
 | `serial_number` | `TEXT` | Unique hardware serial (e.g. `123456`). Used for binding. |
 | `model` | `TEXT` | Hardware model info (e.g. `Dodotronic Ultramic 384 EVO`). |
-| `status` | `TEXT` | Current state (e.g. `online`, `offline`, `error`). |
+| `status` | `TEXT` | Current state (e.g. `online`, `offline`, `error`). Default `offline`. |
 | `last_seen` | `TIMESTAMPTZ` | Timestamp of last heartbeat/connection. |
-| `enabled` | `BOOLEAN` | User-controllable switch to enable/disable this input. |
+| `enabled` | `BOOLEAN` | User-controllable switch to enable/disable this input. Default `true`. |
 | `config` | `JSONB` | Device-specific configuration (e.g., gain, sample rate targets). |
 
 ## 3. Audit Tables

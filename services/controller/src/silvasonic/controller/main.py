@@ -1,12 +1,16 @@
 import asyncio
+import os
 
 import structlog
 from silvasonic.controller.hardware import AudioDevice, DeviceScanner
 from silvasonic.controller.messaging import MessageBroker
-from silvasonic.controller.orchestrator import PodmanManager
+from silvasonic.controller.orchestrator import PodmanOrchestrator
+from silvasonic.controller.services import ServiceManager
 from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import AsyncSessionLocal
+from silvasonic.core.redis.subscriber import RedisSubscriber
+from silvasonic.core.schemas.control import ControlMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +24,10 @@ class ControllerService:
     def __init__(self) -> None:
         """Initialize dependencies (Scanner, Podman, Metadata broker)."""
         self.scanner = DeviceScanner()
-        self.podman = PodmanManager()
+        self.podman = PodmanOrchestrator()
+        self.service_manager = ServiceManager(self.podman)
         self.broker = MessageBroker()
+        self.subscriber = RedisSubscriber(service_name="controller")
         self.settings = settings
 
     async def _get_or_create_device(
@@ -81,7 +87,7 @@ class ControllerService:
 
             async with AsyncSessionLocal() as session:
                 try:
-                    # 2. Update DB State (Online/Offline)
+                    # 2. Update DB State (Hardware)
                     result = await session.execute(select(Device))
                     db_devices = result.scalars().all()
 
@@ -102,12 +108,20 @@ class ControllerService:
                         device.last_seen = datetime.utcnow()
                         active_db_devices.append((device, hw_dev))
 
+                    # 3. Reconcile Generic Services (Tier 2)
+                    await self.service_manager.reconcile_services(session)
+
                     await session.commit()
 
-                    # 3. Orchestrate Containers
-                    active_containers = self.podman.list_active_recorders()
+                    # 4. Orchestrate Recorders (Tier 2/Hardware)
+                    # We get ALL active services and filter
+                    all_containers = self.podman.list_active_services()
+                    active_recorder_containers = [
+                        c for c in all_containers if c.get("service") == "recorder"
+                    ]
+
                     running_map = {}
-                    for c in active_containers:
+                    for c in active_recorder_containers:
                         s = c.get("device_serial")
                         if s:
                             running_map[s] = c
@@ -149,7 +163,7 @@ class ControllerService:
                                 container=container_name,
                                 reason="device_lost_or_disabled",
                             )
-                            self.podman.stop_recorder(container["id"])
+                            self.podman.stop_service(container["id"])
 
                 except Exception as e:
                     logger.error("reconcile_error", error=str(e))
@@ -167,12 +181,47 @@ class ControllerService:
             logger.error("reconcile_critical_error", error=str(e))
             # Do not re-raise to keep loop alive
 
+    async def _handle_reload_config(self, msg: ControlMessage) -> None:
+        """Handle reload_config command."""
+        logger.info("reloading_configuration", initiator=msg.initiator)
+        # For now, just re-scan or log, as settings are env-var based mostly.
+        # But we could trigger a reconcile immediately.
+        logger.info("configuration_reloaded")
+        # Trigger immediate reconcile?
+        # Maybe await self.reconcile() -- but reconcile handles its own concurrency/state safe?
+        # Reconcile is async but linear. calling it here might race with the loop.
+        # Ideally set a flag or just wait for next loop.
+        # For this implementation, we just log.
+
     async def run(self) -> None:
         """Start the async scheduler loop."""
         logger.info("controller_service_started")
-        while True:
-            await self.reconcile()
-            await asyncio.sleep(self.settings.SYNC_INTERVAL_SECONDS)
+
+        # Start Subscriber
+        self.subscriber.register_handler("reload_config", self._handle_reload_config)
+        await self.subscriber.start()
+
+        # Publish Lifecycle: Started
+        await self.broker.publish_lifecycle(
+            event="started",
+            reason="startup",
+            pid=os.getpid(),
+        )
+
+        try:
+            while True:
+                await self.reconcile()
+                await asyncio.sleep(self.settings.SYNC_INTERVAL_SECONDS)
+        finally:
+            # Stop Subscriber
+            await self.subscriber.stop()
+
+            # Publish Lifecycle: Stopping
+            await self.broker.publish_lifecycle(
+                event="stopping",
+                reason="shutdown_signal",
+                pid=os.getpid(),
+            )
 
 
 def main() -> None:

@@ -119,6 +119,46 @@ services:
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:z
     networks: [silvasonic-net]
     depends_on: [database]
+  birdnet:
+    image: silvasonic-birdnet
+    build:
+      context: .
+      dockerfile: services/birdnet/Dockerfile
+    container_name: silvasonic-birdnet
+    entrypoint: [/bin/true]
+    restart: 'no'
+    userns_mode: keep-id
+    networks: [silvasonic-net]
+  weather:
+    image: silvasonic-weather
+    build:
+      context: .
+      dockerfile: services/weather/Dockerfile
+    container_name: silvasonic-weather
+    entrypoint: [/bin/true]
+    restart: 'no'
+    userns_mode: keep-id
+    networks: [silvasonic-net]
+  batdetect:
+    image: silvasonic-batdetect
+    build:
+      context: .
+      dockerfile: services/batdetect/Dockerfile
+    container_name: silvasonic-batdetect
+    entrypoint: [/bin/true]
+    restart: 'no'
+    userns_mode: keep-id
+    networks: [silvasonic-net]
+  uploader:
+    image: silvasonic-uploader
+    build:
+      context: .
+      dockerfile: services/uploader/Dockerfile
+    container_name: silvasonic-uploader
+    entrypoint: [/bin/true]
+    restart: 'no'
+    userns_mode: keep-id
+    networks: [silvasonic-net]
 networks:
   silvasonic-net:
     driver: bridge

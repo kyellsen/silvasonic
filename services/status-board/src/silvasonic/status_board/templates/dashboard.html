@@ -74,19 +74,22 @@
       </thead>
       <tbody class="divide-y divide-base-200">
         {% for container in containers %}
-          <tr class="hover:bg-base-200/30 transition-colors">
+          {% set service_id = container.Names[0] | replace('/', '') | replace('silvasonic-', '') %}
+          <tr id="service-row-{{ service_id }}"
+              class="hover:bg-base-200/30 transition-colors">
             <td>
               <div class="font-mono font-bold text-primary">{{ container.Names[0] | replace('/', '') }}</div>
             </td>
             <td class="text-xs font-mono text-base-content/60">{{ container.Image }}</td>
             <td>
-              <div class="badge {{ 'badge-success gap-2' if container.State == 'running' else 'badge-error gap-2' }} badge-sm">
+              <div id="status-badge-{{ service_id }}"
+                   class="badge {{ 'badge-success gap-2' if container.State == 'running' else 'badge-error gap-2' }} badge-sm">
                 {{ container.State }}
               </div>
             </td>
             <td class="text-right">
               <button class="btn btn-xs btn-ghost text-info hover:text-info-content"
-                      hx-get="/services/{{ container.Names[0] | replace('/', '') | replace('silvasonic-', '') }}/logs"
+                      hx-get="/services/{{ service_id }}/logs"
                       hx-target="#main-view"
                       hx-swap="innerHTML">View Logs</button>
             </td>
@@ -96,3 +99,45 @@
     </table>
   </div>
 </div>
+<script>
+  (function() {
+    const evtSource = new EventSource("/events");
+    
+    evtSource.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        // data structure: 
+        // { topic: 'status', service: 'recorder', instance_id: '...', payload: { health: 'healthy', activity: ' recording' ... } }
+        
+        if (data.service) {
+           const rowId = 'service-row-' + data.service;
+           const badgeId = 'status-badge-' + data.service;
+           const row = document.getElementById(rowId);
+           const badge = document.getElementById(badgeId);
+           
+           if (badge && data.payload) {
+             const health = data.payload.health; // 'healthy', 'degraded'
+             const activity = data.payload.activity;
+             
+             // Update Badge
+             badge.className = 'badge badge-sm gap-2 transition-all duration-300 ' + 
+               (health === 'healthy' ? 'badge-success' : 'badge-error');
+             
+             // Update text to show activity if available, else health
+             badge.innerText = activity ? activity : health;
+           }
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE event", e);
+      }
+    };
+    
+    // Clean up on page navigation (HTMX swap) if needed
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.target.id === 'main-view' || evt.detail.target.id === 'dashboard-content') {
+             evtSource.close();
+        }
+    });
+
+  })();
+</script>

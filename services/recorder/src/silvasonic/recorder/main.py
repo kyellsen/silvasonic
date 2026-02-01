@@ -9,6 +9,8 @@ import structlog
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import AsyncSessionLocal
 from silvasonic.core.redis.publisher import RedisPublisher
+from silvasonic.core.redis.subscriber import RedisSubscriber
+from silvasonic.core.schemas.control import ControlMessage
 from silvasonic.recorder.manager import ProfileManager
 from silvasonic.recorder.stream import FFmpegStreamer
 from sqlalchemy import select
@@ -58,11 +60,28 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
         sys.exit(1)
 
     # 2. Init FFmpeg Streamer
+    loop = asyncio.get_running_loop()
+
+    def on_segment_complete_sync(filename: str, duration: float) -> None:
+        """Callback to handle segment completion from streamer thread."""
+        logger.info("recorder_segment_finished", filename=filename, duration=duration)
+        asyncio.run_coroutine_threadsafe(
+            publisher.publish_audit(
+                event="recording.finished",
+                payload={
+                    "filename": Path(filename).name,
+                    "duration": duration,
+                },
+            ),
+            loop,
+        )
+
     streamer = FFmpegStreamer(
         profile=profile,
         output_dir=OUTPUT_DIR,
         alsa_card_index=ALSA_INDEX,
         segment_time_s=60,
+        on_segment_complete=on_segment_complete_sync,
     )
 
     # 3. Signals (Sync boilerplate for generic signal handling)
@@ -78,6 +97,18 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
 
     # 4. Run Loop
     await publisher.publish_lifecycle("started", reason="Service startup")
+
+    # Subscriber Setup
+    subscriber = RedisSubscriber(service_name="recorder", instance_id=MIC_NAME)
+
+    async def handle_reload_config(msg: ControlMessage) -> None:
+        logger.info("reloading_configuration", initiator=msg.initiator)
+        # TODO: Implement actual reload logic
+        # For now, just log it.
+        logger.info("configuration_reloaded")
+
+    subscriber.register_handler("reload_config", handle_reload_config)
+    await subscriber.start()
 
     try:
         streamer.start()
@@ -104,6 +135,7 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
         sys.exit(1)
     finally:
         logger.info("recorder_shutdown")
+        await subscriber.stop()
         await publisher.publish_lifecycle("stopping", reason="Shutdown signal")
         streamer.stop()
 

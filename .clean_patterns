@@ -19,3 +19,4 @@ verify*.log
 mypy_output*.txt
 pytest_output*.txt
 .coverage
+test_out_*.wav

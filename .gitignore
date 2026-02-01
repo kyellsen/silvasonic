@@ -64,3 +64,4 @@ site/
 z_old/*
 prompts/*
 COMMANDS.md
+test_out_*.wav

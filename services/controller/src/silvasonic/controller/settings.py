@@ -8,7 +8,7 @@ class ControllerSettings(BaseSettings):
 
     # Podman Configuration
     PODMAN_SOCKET_URL: str = "unix:///run/podman/podman.sock"
-    HOST_DATA_DIR: str = "/mnt/data/dev/apps/silvasonic"  # Workspace
+    HOST_DATA_DIR: str = "/tmp/silvasonic_fallback"  # Workspace (Safe Default)
     HOST_SOURCE_DIR: str = "/mnt/data/dev/apps/silvasonic"  # Repository Root (Fallback)
 
     # Loop Configuration

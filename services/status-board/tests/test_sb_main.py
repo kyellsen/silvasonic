@@ -19,9 +19,21 @@ def test_root_redirect() -> None:
 
 def test_lifespan_startup_success() -> None:
     """Test successful application startup."""
-    with patch("silvasonic.status_board.main.settings") as mock_settings:
+    with (
+        patch("silvasonic.status_board.main.settings") as mock_settings,
+        patch("silvasonic.status_board.main.RedisPublisher") as mock_pub,
+        patch("silvasonic.status_board.main.MessageSubscriber") as mock_sub,
+    ):
         mock_settings.DEV_MODE = True
         mock_settings.PORT = 8000
+
+        # Configure mocks to support await
+        from unittest.mock import AsyncMock
+
+        mock_pub.return_value.publish_lifecycle = AsyncMock()
+        mock_sub.return_value.start = AsyncMock()
+        mock_sub.return_value.stop = AsyncMock()
+
         with TestClient(app):
             # Context manager triggers startup
             pass

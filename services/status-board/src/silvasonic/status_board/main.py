@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.status_board.config import settings
 from silvasonic.status_board.routes import router
+from silvasonic.status_board.subscriber import MessageSubscriber
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +51,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     publisher = RedisPublisher(service_name="status-board", instance_id=socket.gethostname())
     await publisher.publish_lifecycle("started", reason="Service startup")
 
+    # Start Subscriber
+    subscriber = MessageSubscriber()
+    await subscriber.start()
+    app.state.subscriber = subscriber
+
     # Start Heartbeat
     heartbeat_task = asyncio.create_task(run_heartbeat(publisher))
 
@@ -62,6 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except asyncio.CancelledError:
         pass
 
+    await subscriber.stop()
     await publisher.publish_lifecycle("stopping", reason="Service shutdown")
 
 

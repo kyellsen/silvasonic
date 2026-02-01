@@ -37,8 +37,9 @@ The root of the Workspace must contain only folders matching the service names d
 *   **`database/`**: Exclusive for TimescaleDB/PostgreSQL data.
 *   **`redis/`**: Exclusive for Redis persistence (AOF/RDB).
 *   **`recorder/`**:
-    *   Must contain `recordings/raw` (Hardware Native, Variable Rate).
-    *   Must contain `recordings/processed` (48kHz Standardized).
+    *   Creates a subdirectory per microphone: `recorder/{MIC_NAME}/`
+    *   Must contain `recordings/raw` inside the mic folder.
+    *   Must contain `recordings/processed` inside the mic folder.
 *   **`processor/`**: Must contain `artifacts` (for generated images/spectrograms).
 *   **`uploader/`**: Must contain `buffer` (for temporary compression/conversions).
 *   **`gateway/`, `birdnet/`, `web-interface/`**: Dedicated folders for logs or runtime configs.

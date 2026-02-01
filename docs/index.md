@@ -25,16 +25,20 @@ Welcome to the **Silvasonic Bioacoustic Monitoring System** documentation.
 
 ### Services
 *   **[Template Service](services/template.md)**
-*   **[Controller](services/controller.md)**
-*   **[Recorder](services/recorder.md)**
-*   **[Processor](services/processor.md)**
-*   **[Web Interface](services/web-interface.md)**
-*   **[Monitor](services/monitor.md)**
-*   **[Uploader](services/uploader.md)**
-*   **[BirdNET](services/birdnet.md)**
-*   **[Status Board](services/status_board.md)**
 *   **[BatDetect](services/batdetect.md)**
+*   **[BirdNET](services/birdnet.md)**
+*   **[Controller](services/controller.md)**
+*   **[Database](services/database.md)**
+*   **[Gateway](services/gateway.md)**
+*   **[Monitor](services/monitor.md)**
+*   **[Processor](services/processor.md)**
+*   **[Recorder](services/recorder.md)**
+*   **[Redis](services/redis.md)**
+*   **[Status Board](services/status_board.md)**
+*   **[Tailscale](services/tailscale.md)**
+*   **[Uploader](services/uploader.md)**
 *   **[Weather](services/weather.md)**
+*   **[Web Interface](services/web-interface.md)**
 
 ### General
 *   [Hardware Specifications](hardware.md)

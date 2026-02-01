@@ -113,14 +113,40 @@ def main() -> None:
         # Let's keep it safe and just ensure dirs exist.
         pass
 
-    (output_dir / "raw").mkdir(parents=True, exist_ok=True)
-    (output_dir / "processed").mkdir(parents=True, exist_ok=True)
+    # Create structure matching silvasonic/recorder/main.py expectations:
+    # OUTPUT_DIR = /data/recorder / MIC_NAME / "recordings"
+    # MIC_NAME defaults to "default"
+    mic_name = "default"
+
+    # We mount output_dir -> /data/recorder
+    # So we need to create {output_dir}/{mic_name}/recordings/{raw|processed}
+    rec_root = output_dir / mic_name / "recordings"
+    (rec_root / "raw").mkdir(parents=True, exist_ok=True)
+    (rec_root / "processed").mkdir(parents=True, exist_ok=True)
 
     # 3. Build Container
     print("\nBuilding recorder image...")
     subprocess.check_call(
         ["podman", "build", "-t", IMAGE_NAME, "-f", "services/recorder/Dockerfile", "."],
         cwd=repo_root,
+    )
+
+    # 3.5 Debug: Check devices inside container
+    print("\n[DEBUG] Probing container audio devices (arecord -l)...")
+    subprocess.run(
+        [
+            "podman",
+            "run",
+            "--rm",
+            "--device",
+            "/dev/snd:/dev/snd",
+            # Add keep-groups to match the main run, in case permissions depend on it
+            "--group-add",
+            "keep-groups",
+            IMAGE_NAME,
+            "arecord",
+            "-l",
+        ]
     )
 
     # 4. Run Container

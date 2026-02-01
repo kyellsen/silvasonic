@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 import structlog
 from silvasonic.core.redis.client import get_redis_client
+from silvasonic.core.schemas.audit import AuditMessage
+from silvasonic.core.schemas.control import ControlMessage, ControlPayloadContent
 from silvasonic.core.schemas.status import (
     LifecycleMessage,
     LifecyclePayloadContent,
@@ -74,6 +76,38 @@ class RedisPublisher:
         )
 
         await self._publish("silvasonic.lifecycle", msg.model_dump_json())
+
+    async def publish_control(
+        self,
+        command: str,
+        initiator: str,
+        target_service: str,
+        target_instance: str = "*",
+        params: dict[str, Any] | None = None,
+    ) -> None:
+        """Publish a control command."""
+        msg = ControlMessage(
+            command=command,
+            initiator=initiator,
+            target_service=target_service,
+            target_instance=target_instance,
+            payload=ControlPayloadContent(params=params or {}),
+        )
+        await self._publish("silvasonic.control", msg.model_dump_json())
+
+    async def publish_audit(
+        self,
+        event: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Publish an audit event."""
+        msg = AuditMessage(
+            event=event,
+            service=self.service_name,
+            instance_id=self.instance_id,
+            payload=payload,
+        )
+        await self._publish("silvasonic.audit", msg.model_dump_json())
 
     async def _publish(self, channel: str, message: str) -> None:
         try:

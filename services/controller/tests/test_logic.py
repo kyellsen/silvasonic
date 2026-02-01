@@ -15,8 +15,8 @@ def mock_scanner():
 
 @pytest.fixture
 def mock_podman():
-    """Mock the PodmanManager."""
-    with patch("silvasonic.controller.main.PodmanManager") as mock:
+    """Mock the PodmanOrchestrator."""
+    with patch("silvasonic.controller.main.PodmanOrchestrator") as mock:
         yield mock.return_value
 
 
@@ -26,6 +26,8 @@ def mock_broker():
     with patch("silvasonic.controller.main.MessageBroker") as mock:
         instance = mock.return_value
         instance.publish_heartbeat = AsyncMock()
+        instance.publish_lifecycle = AsyncMock()
+        instance.publish_status = AsyncMock()
         yield instance
 
 
@@ -57,17 +59,32 @@ async def test_reconcile_spawn_new_device(
     mock_scanner.find_dodotronic_devices = MagicMock(return_value=[dev])
 
     # Podman has no active containers
-    mock_podman.list_active_recorders.return_value = []
+    mock_podman.list_active_services.return_value = []
     mock_podman.spawn_recorder.return_value = True
 
     # Configure Session Mock via Fixture
     mock_session = mock_session_cls
-    # Execute returns empty list (no existing devices) per call?
-    # We need to configure the return value of execute()
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_result.scalar_one_or_none.return_value = None
-    mock_session.execute.return_value = mock_result
+
+    # Helper for AsyncMock side_effect
+    async def async_return(val):
+        return val
+
+    # We need to sequence the returns for session.execute
+    # 1. select(Device) -> db_devices (Initial scan of DB) -> Returns []
+    # 2. select(Device).where(...) -> _get_or_create_device -> Returns None (Not found)
+    # 3. select(SystemService) -> ServiceManager -> Returns []
+
+    # Mock result objects
+    mock_result_empty = MagicMock()
+    mock_result_empty.scalars.return_value.all.return_value = []
+    mock_result_empty.scalar_one_or_none.return_value = None
+
+    mock_session.execute.side_effect = [
+        mock_result_empty,  # 1. All Devices
+        mock_result_empty,  # 2. Specific Device
+        mock_result_empty,  # 3. SystemServices (Init Defaults)
+        mock_result_empty,  # 4. SystemServices (Reconcile)
+    ]
     mock_session.add = MagicMock()
 
     # Run
@@ -76,10 +93,18 @@ async def test_reconcile_spawn_new_device(
     # Assertions
     # 2. DB: Should have added a new device
     assert mock_session.add.called
-    # Verify added device has correct details
-    args, _ = mock_session.add.call_args
-    new_device = args[0]
-    assert isinstance(new_device, Device)
+
+    # Find the call that added a Device
+    device_added = False
+    new_device = None
+    for call in mock_session.add.call_args_list:
+        obj = call.args[0]
+        if isinstance(obj, Device):
+            device_added = True
+            new_device = obj
+            break
+
+    assert device_added, "Device was not added to session"
     assert new_device.serial_number == "SN123"
     assert new_device.enabled is True
 
@@ -102,17 +127,40 @@ async def test_reconcile_stop_removed_device(
     service.scanner.find_dodotronic_devices = MagicMock(return_value=[])
 
     # Podman has ONE active container
-    mock_podman.list_active_recorders.return_value = [
-        {"id": "cid-1", "name": "silvasonic-recorder-front", "device_serial": "SN123"}
+    mock_podman.list_active_services.return_value = [
+        {
+            "id": "cid-1",
+            "name": "silvasonic-recorder-front",
+            "device_serial": "SN123",
+            "service": "recorder",
+        }
     ]
 
     # Configure Session
     mock_session = mock_session_cls
     mock_session.add = MagicMock()
     existing_device = Device(name="mic_SN123", serial_number="SN123", enabled=True, status="online")
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [existing_device]
-    mock_session.execute.return_value = mock_result
+
+    # Helper for AsyncMock side_effect
+    async def async_return(val):
+        return val
+
+    # Sequence:
+    # 1. select(Device) -> [existing_device]
+    # 2. select(SystemService) -> [] (so existing_device doesn't get messed up)
+
+    mock_result_devices = MagicMock()
+    mock_result_devices.scalars.return_value.all.return_value = [existing_device]
+
+    mock_result_services = MagicMock()
+    mock_result_services.scalars.return_value.all.return_value = []
+
+    # Use side_effect with awaitables
+    mock_session.execute.side_effect = [
+        mock_result_devices,  # 1. All Devices
+        mock_result_services,  # 2. SystemServices (Init Defaults)
+        mock_result_services,  # 3. SystemServices (Reconcile)
+    ]
 
     # Run
     await service.reconcile()
@@ -122,7 +170,7 @@ async def test_reconcile_stop_removed_device(
     assert existing_device.status == "offline"
 
     # Podman: Stop called?
-    mock_podman.stop_recorder.assert_called_with("cid-1")
+    mock_podman.stop_service.assert_called_with("cid-1")
 
 
 @pytest.mark.asyncio
@@ -161,7 +209,7 @@ async def test_reconcile_podman_disconnected(service, mock_podman):
 
     await service.reconcile()
 
-    mock_podman.list_active_recorders.assert_not_called()
+    mock_podman.list_active_services.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -179,7 +227,7 @@ async def test_reconcile_scan_error(service, mock_scanner, mock_podman):
 
     # Should log error and return (empty detected_devices?)
     # In my code: catch Exception -> return.
-    mock_podman.list_active_recorders.assert_not_called()
+    mock_podman.list_active_services.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -191,7 +239,7 @@ async def test_reconcile_spawn_fail(
 
     dev = AudioDevice(1, "Mic", "Desc", "SN1")
     mock_scanner.find_dodotronic_devices.return_value = [dev]
-    mock_podman.list_active_recorders.return_value = []
+    mock_podman.list_active_services.return_value = []
 
     # Spawn fails
     mock_podman.spawn_recorder.return_value = False
@@ -220,8 +268,8 @@ async def test_reconcile_stop_disabled(service, mock_scanner, mock_podman, mock_
     mock_scanner.find_dodotronic_devices.return_value = [dev]
 
     # Podman: Container is running
-    mock_podman.list_active_recorders.return_value = [
-        {"id": "cid-1", "name": "rec-1", "device_serial": "SN1"}
+    mock_podman.list_active_services.return_value = [
+        {"id": "cid-1", "name": "rec-1", "device_serial": "SN1", "service": "recorder"}
     ]
 
     # DB: Device exists but DISABLED
@@ -236,4 +284,4 @@ async def test_reconcile_stop_disabled(service, mock_scanner, mock_podman, mock_
 
     await service.reconcile()
 
-    mock_podman.stop_recorder.assert_called_with("cid-1")
+    mock_podman.stop_service.assert_called_with("cid-1")

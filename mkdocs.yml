@@ -2,7 +2,7 @@
 site_name: Silvasonic
 site_description: Bioacoustic Monitoring System Documentation
 site_author: Silvasonic Team
-repo_url: https://github.com/yourusername/silvasonic
+repo_url: https://github.com/kyellsen/silvasonic
 edit_uri: edit/main/docs/
 theme:
   name: readthedocs

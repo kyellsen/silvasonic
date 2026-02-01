@@ -52,6 +52,31 @@ def main() -> None:
     ensure_dir(workspace_dir)
     print_success(f"Workspace directory checked: {workspace_dir}")
 
+    # 3b. Create Service Subdirectories
+    print_step("Creating Domain-Driven Directory Structure...")
+    required_service_dirs = [
+        "database",
+        "redis",
+        "recorder",
+        "processor/artifacts",
+        "uploader/buffer",
+        "gateway/config",
+        "gateway/data",
+        "gateway/logs",
+        # Logs folders for services that don't have dedicated data folders yet
+        "controller/logs",
+        "recorder/logs",
+        "processor/logs",
+        "uploader/logs",
+        "monitor/logs",
+        "status-board/logs",
+    ]
+
+    for sub_dir in required_service_dirs:
+        full_path = os.path.join(workspace_dir, sub_dir)
+        ensure_dir(full_path)
+        print(f"   Created/Verified: {sub_dir}")
+
     # 4. Permissions
     print_step("Enforcing Workspace Permissions (755)...")
     try:

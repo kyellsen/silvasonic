@@ -149,6 +149,13 @@ async def stream_logs(container_id: str) -> StreamingResponse:
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
 
+@router.get("/events")  # type: ignore[untyped-decorator]
+async def events(request: Request) -> StreamingResponse:
+    """Stream status updates via SSE."""
+    subscriber = request.app.state.subscriber
+    return StreamingResponse(subscriber.stream_events(), media_type="text/event-stream")
+
+
 @router.get("/health", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def health_check(request: Request) -> str:
     """Simple HTMX partial for health status."""

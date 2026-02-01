@@ -17,7 +17,8 @@ ENV VIRTUAL_ENV=/app/.venv
 # 2. Create venv and install dependencies
 RUN uv venv
 RUN uv pip install /packages/core
-RUN uv pip install -r pyproject.toml
+# Removed invalid install command
+
 
 # 3. Copy source code
 COPY services/controller/src ./src
