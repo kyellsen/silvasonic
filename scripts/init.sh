@@ -62,20 +62,28 @@ chmod -R 755 "${WORKSPACE_DIR}"
 # 6. Hardware Access Verify (Controller & Micro)
 echo "🔍 Verifying Hardware Access Groups..."
 REQUIRED_GROUPS=("audio" "gpio" "spi" "i2c" "dialout")
-MISSING_GROUPS=()
+NOT_CONFIGURED_GROUPS=()
+PENDING_GROUPS=()
 
 for group in "${REQUIRED_GROUPS[@]}"; do
-  if groups | grep -q "\b$group\b"; then
-    echo "   ✅ User is in '$group'"
+  if id -Gn | grep -qw "$group"; then
+    echo "   ✅ User is in '$group' (active)"
+  elif id -Gn "$USER" | grep -qw "$group"; then
+    echo "   🔄 User is in '$group' (database) but NOT active in this shell."
+    PENDING_GROUPS+=("$group")
   else
-    echo "   ⚠️  WARNING: User is NOT in '$group' group. Hardware access (Mic/HATs) may fail."
-    MISSING_GROUPS+=("$group")
+    echo "   ⚠️  WARNING: User is NOT in '$group' group."
+    NOT_CONFIGURED_GROUPS+=("$group")
   fi
 done
 
-if [ ${#MISSING_GROUPS[@]} -ne 0 ]; then
-  echo "   ❌ PLEASE FIX: Create groups or add user: sudo usermod -aG ${MISSING_GROUPS[*]} \$USER"
-  # We don't exit 1 here to allow dev work without hardware, but typical install should have it.
+if [ ${#NOT_CONFIGURED_GROUPS[@]} -ne 0 ]; then
+  echo "   ❌ PLEASE FIX: Create groups or add user: sudo usermod -aG ${NOT_CONFIGURED_GROUPS[*]} \$USER"
+fi
+
+if [ ${#PENDING_GROUPS[@]} -ne 0 ]; then
+  echo "   ⏳ PENDING: Groups [${PENDING_GROUPS[*]}] are configured but not active."
+  echo "      PLEASE REBOOT or LOG OUT completely to apply these permissions."
 fi
 
 echo "✅ Initialization complete."
