@@ -9,19 +9,24 @@ dependencies = []
 
 [tool.uv.workspace]
 members = ["services/*"]
+exclude = [
+    "services/database",
+    "services/gateway",
+    "services/redis",
+    "services/tailscale",
+]
 
 # Diese Mapping-Tabelle sagt UV: "Wenn jemand 'silvasonic-controller' will,
 # schau im Workspace nach, ob es das Paket gibt."
 [tool.uv.sources]
 silvasonic-controller = { workspace = true }
 silvasonic-recorder = { workspace = true }
-silvasonic-dashboard = { workspace = true }
+silvasonic-web-interface = { workspace = true }
 silvasonic-birdnet = { workspace = true }
 silvasonic-uploader = { workspace = true }
 silvasonic-processor = { workspace = true }
 silvasonic-weather = { workspace = true }
-silvasonic-healthchecker = { workspace = true }
-silvasonic-livesound = { workspace = true }
+silvasonic-monitor = { workspace = true }
 silvasonic-template = { workspace = true }
 
 # --- DEVELOPMENT DEPENDENCIES ---

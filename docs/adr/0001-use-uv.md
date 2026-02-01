@@ -14,6 +14,12 @@ In a complex Python project setup, especially one moving towards a workspace/mon
 *   **Workspaces:** It offers native support for Python workspaces, allowing multiple packages to be developed together with shared dependencies, which fits our microservice/monorepo architecture.
 *   **Standards:** It uses standard `pyproject.toml` for configuration.
 
+### 2.1. Strict Locking Policy
+To ensure reproducibility, the following rules apply to all services:
+1.  **Lockfiles are Mandatory:** All services **MUST** commit their `uv.lock` file to the repository.
+2.  **Container Builds:** All Docker/Podman container builds **MUST** use the `uv.lock` file.
+3.  **Frozen Installation:** CI/CD pipelines and container build steps **MUST** use `uv sync --frozen` (or `uv install --frozen` where appropriate) to ensure the installed dependencies exactly match the lockfile. *Do not update dependencies during build time.*
+
 ## 3. Options Considered
 *   **Standard pip + venv**:
     *   *Rejected because*: Slower dependency resolution. No built-in lock file mechanism (requires `pip-tools` or manual `pip freeze`). Managing multiple packages in a workspace is manual and error-prone.

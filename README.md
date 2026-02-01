@@ -25,8 +25,9 @@ Please consult **[AGENTS.md](AGENTS.md)** immediately for strict architectural c
 
 ## Documentation Structure
 
-* **Project Documentation:** See the `docs/` directory for architecture decisions, hardware BOM, and glossaries.
-*   **Project Documentation:** See the `docs/` directory for architecture decisions, hardware BOM, and glossaries.
+*   **Project Documentation:** Start at **[docs/index.md](docs/index.md)** for the complete documentation index.
+    *   *Includes:* Architecture, Glossary, Hardware Specs, and ADRs.
+*   **Agent Rules:** See **[AGENTS.md](AGENTS.md)** for binding rules and constraints.
 *   **Service Documentation:** Each service contains its own `README.md` (e.g., `services/recorder/README.md`) detailing inputs, outputs, and configuration.
 
 ## Tech Stack
@@ -39,7 +40,7 @@ Silvasonic is a modern Python monolith split into micro-services, managed via a 
 *   **Hardware Target:** Raspberry Pi 5 (RaspiOS Lite) + NVMe SSD.
 *   **Runtime:** Podman (Rootless Containers) & Podman Compose.
 *   **Build System:** hatchling.
-*   **Language:** Python 3.11+ (managed by `uv`).
+*   **Language:** Python 3.11 (strictly `< 3.12`).
 *   **Frontend:** FastAPI (Jinja2) + HTMX + Alpine.js. Styled with Tailwind CSS & DaisyUI.
 *   **Visualization:** Wavesurfer.js (Spectrograms) & Plotly.js (Analytics).
 *   **UX Design:** IDE-inspired "Workspace" layout with Bento-Grid Dashboard. Dark-mode default, fully responsive.
@@ -49,18 +50,22 @@ Silvasonic is a modern Python monolith split into micro-services, managed via a 
 
 The system is composed of the following containerized services:
 
-* **controller**: Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles.
-* **monitor**: System Watchdog. Monitors service heartbeats/alerts and sends push notifications (via Apprise) in case of failure.
-* **recorder**: Critical path. Buffers audio in RAM and writes dual-stream RAW WAV files (384kHz & 48kHz) to NVMe to decouple recording from processing.
-* **processor**: Local data handler. Indexes files, generates spectrograms, and manages storage retention (Janitor).
-* **uploader**: Handles data exfiltration. Compresses raw data (FLAC 384kHz) and syncs to remote storage using rclone.
-* **web-interface**: Local management console. Provides status monitoring, configuration, and data exploration.
+### Tier 1: Infrastructure (Managed by Podman Compose)
 * **database**: Central state management (TimescaleDB / PostgreSQL).
 * **redis**: Message broker for live state, pub/sub events, and job queues.
 * **gateway**: Caddy Reverse Proxy handling HTTPS and authentication.
-* **birdnet**: (Optional) On-device inference for avian species classification.
-* **weather**: Correlates acoustic data with environmental measurements.
-* **tailscale**: Provides secure, zero-config remote access and VPN mesh networking.
+* **controller**: Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles.
+* **monitor**: (Life Support/Optional) System Watchdog. Monitors service heartbeats and alerts independent of the controller.
+* **web-interface**: (Life Support/Optional) Local management console. Provides status monitoring even if the core application is down.
+* **tailscale**: (Life Support/Optional) Provides secure, zero-config remote access and VPN mesh networking.
+
+### Tier 2: Application (Managed by Controller)
+* **recorder**: Critical path. Buffers audio in RAM and writes dual-stream usage (Raw Native & Processed 48kHz) to NVMe.
+* **processor**: Local data handler. Indexes files, generates spectrograms, and manages storage retention (Janitor).
+* **uploader**: Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage.
+* **birdnet**: (Optional feature) On-device inference for avian species classification.
+* **batdetect**: (Optional feature) On-device inference for bat species classification.
+* **weather**: (Optional feature) Correlates acoustic data with environmental measurements.
 
 ## Deployment & Fleet Management
 
@@ -76,7 +81,7 @@ We rely on a standardized set of modern Python tools:
 * **Core:** `uv`, `hatchling`, `pydantic`, `structlog`
 * **Data & Async:** `asyncpg`, `sqlalchemy`, `numpy`, `pandas`, `polars`
 * **System:** `psutil`, `soundfile`, `pyYAML`
-* **Quality & Test:** `ruff`, `mypy`, `pytest`, `playwright`, `pre-commit`
+* **Quality & Test:** `ruff`, `mypy`, `pytest`, `playwright`, `pre-commit`, `djlint`, `yamlfix`, `beautysh`
 
 ## Development Setup
 

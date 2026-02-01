@@ -11,28 +11,41 @@ Please read **[README.md](README.md)** for project context, installation guides,
 * **Localization Strategy (i18n):**
     * The Backend **MUST** deliver localized content (e.g. species names) as `JSONB` dictionaries: `{"en": "Blackbird", "de": "Amsel"}`.
     * The Frontend resolves these at runtime based on user preference. Hardcoding single-language strings for UI-facing content is **FORBIDDEN**.
-* **Domain Language:** Terms and definitions are defined exclusively in `docs/glossary.md`. Agents must strictly adhere to these definitions.
+* **Domain Language:** See the **Glossary** in `docs/index.md`. Agents must strictly adhere to these definitions.
 
-## 2. Core Directive: Data Capture Integrity
+## 2. Naming Conventions (Concise)
+Full details in **[ADR 0010](docs/adr/0010-naming-conventions.md)**.
+*   **PyPI Package:** `silvasonic-<service>` (e.g. `silvasonic-recorder`)
+*   **Python Import:** `silvasonic.<service>` (Namespace package)
+*   **Podman Service:** `<service>` (short name in compose file)
+*   **Container Name:** `silvasonic-<service>` (explicit name for host visibility)
+
+## 3. Core Directive: Data Capture Integrity
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe) designed for continuous, multi-year deployment.
 * **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 * **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
+* **Rootless Mandate:** The system **ALWAYS** runs as a non-root user (User: `pi`). See **[ADR 0007](docs/adr/0007-rootless-os-compliance.md)**.
 
-## 3. Filesystem Constraints
+
+## 4. Filesystem Constraints
 * **Persistence:** The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
+    *   **Normative Rules:** See **[docs/index.md](docs/index.md)** -> "Filesystem Governance" for strict ownership, SELinux, and folder structure rules.
 * **Temporary Artifacts:** Any temporary scripts, investigative logs, test artifacts, or debugging outputs **MUST** be placed in `.tmp/`.
     * The `.tmp/` directory is git-ignored and automatically cleaned by `make clean`.
     * Do NOT clutter root or source directories.
 * **Documentation:**
+    * **Index:** Start at **[docs/index.md](docs/index.md)** for a structured overview of the system.
+    * **Search Policy:** Agents **MUST** search recursively in the `docs/` directory to find relevant specifications before asking questions.
     * System-wide documentation resides in `docs/`.
     * Service-specific documentation resides in `services/<service_name>/README.md`.
 
-## 4. Technical Stack (Mandatory)
-* **Python:** `>= 3.11`
+## 5. Technical Stack (Mandatory)
+* **Python:** `>= 3.11, < 3.12`
 * **Dependency Manager:** `uv` (Required).
 * **Build System:** `hatchling`.
+* **Containerization:** Follow **[Docker Standards](docs/development/docker_standards.md)** (Multi-stage, `uv.lock`, optimized caching).
 * **Environment:** Native DevContainer (Cross-compile for Prod).
-* **Linter/Formatter:** `ruff` (Google Style docstrings).
+* **Linter/Formatter:** `ruff` (Google Style docstrings), `beautysh`, `djlint`, `yamlfix`.
 * **Type Checker:** `mypy` (Strict mode).
 * **Models:** `Pydantic v2`.
 * **Database Interaction:** Use **SQLAlchemy** (Core or ORM) instead of raw SQL strings whenever best practice allows. Raw SQL is reserved for complex TimescaleDB-specific optimizations.
@@ -42,19 +55,19 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
     * **Visualization:** Wavesurfer.js (Audio/Spectrograms), Plotly.js (Stats).
     * **Layout Concept:** IDE-inspired "Workspace" layout. Dashboard as "Bento-Box" grid. Mobile & Desktop optimized.
 
-## 5. Preferred Libraries & Packages
+## 6. Preferred Libraries & Packages
 Agents should prioritize the following libraries for their respective domains to maintain codebase consistency:
 
 * **Core/Config:** `pydantic`, `pyYAML`
 * **Logging:** `structlog`
-* **Database:** `sqlalchemy`, `asyncpg`
+* **Database:** `sqlalchemy`, `asyncpg`, `alembic`
 * **API/Web:** `fastapi`
 * **Data Processing:** `numpy`, `pandas`, `polars`
 * **System/Audio:** `psutil`, `soundfile`
 * **Testing:** `pytest`, `playwright`
 * **Tooling:** `pre-commit`, `ruff`, `mypy`
 
-## 6. Workflow & Scripts
+## 7. Workflow & Scripts
 Agents must use the provided `make` commands to ensure environmental consistency. Do not run the underlying shell scripts directly unless debugging the scripts themselves.
 
 * **Initialization:** `make setup` (calls `scripts/init.sh`)
@@ -63,21 +76,22 @@ Agents must use the provided `make` commands to ensure environmental consistency
 * **Validation:** `make check` (calls `scripts/check.sh`)
 * **Cleanup:** `make clean` (calls `scripts/clean.sh`)
 
-## 6. Architecture Constraints & Data Governance
+## 8. Architecture Constraints & Data Governance
 Agents must strictly adhere to the following data ownership rules to prevent race conditions:
 
 * **Database Ownership:**
-    * `recordings` table: Only writable by **processor**. Read-only for everyone else.
-    * `uploaded` flag: Only updatable by **uploader**.
+    * `recordings` table: Only writable by **processor** (Insert/Delete).
+    * `uploaded` column: Only updatable by **uploader**.
+    * `analysis_state` column: Updatable by **analysis workers** (e.g., birdnet).
 * **State Management:**
     * **MUST** use Redis for live status/heartbeats.
     * **BAN:** Do NOT use local JSON/SQLite files for state.
 * **File Handling:**
-    * **Recorder:** Creates dual streams (High-Res/Archive & Low-Res/Analysis).
+    * **Recorder:** Creates dual streams (Raw & Processed).
     * **Janitor:** Only the `processor` service is allowed to delete files from NVMe.
-    * **Monitor:** Read-only surveillance an notifcation service.
+    * **Monitor:** Read-only surveillance and notification service.
 
-## 7. Definition of Done (Quality Gates)
+## 9. Definition of Done (Quality Gates)
 Code is not "done" until it passes:
 1.  `make fix` (Apply auto-formatting)
 2.  `make check` (Must pass without error). This implies:

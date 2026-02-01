@@ -5,7 +5,16 @@ requires-python = "==3.11.*"
 [manifest]
 members = [
     "silvasonic",
+    "silvasonic-batdetect",
+    "silvasonic-birdnet",
+    "silvasonic-controller",
+    "silvasonic-monitor",
+    "silvasonic-processor",
+    "silvasonic-recorder",
     "silvasonic-template",
+    "silvasonic-uploader",
+    "silvasonic-weather",
+    "silvasonic-web-interface",
 ]
 
 [[package]]
@@ -989,9 +998,54 @@ dev = [
 ]
 
 [[package]]
+name = "silvasonic-batdetect"
+version = "0.1.0"
+source = { editable = "services/batdetect" }
+
+[[package]]
+name = "silvasonic-birdnet"
+version = "0.1.0"
+source = { editable = "services/birdnet" }
+
+[[package]]
+name = "silvasonic-controller"
+version = "0.1.0"
+source = { editable = "services/controller" }
+
+[[package]]
+name = "silvasonic-monitor"
+version = "0.1.0"
+source = { editable = "services/monitor" }
+
+[[package]]
+name = "silvasonic-processor"
+version = "0.1.0"
+source = { editable = "services/processor" }
+
+[[package]]
+name = "silvasonic-recorder"
+version = "0.1.0"
+source = { editable = "services/recorder" }
+
+[[package]]
 name = "silvasonic-template"
 version = "0.1.0"
 source = { editable = "services/template" }
+
+[[package]]
+name = "silvasonic-uploader"
+version = "0.1.0"
+source = { editable = "services/uploader" }
+
+[[package]]
+name = "silvasonic-weather"
+version = "0.1.0"
+source = { editable = "services/weather" }
+
+[[package]]
+name = "silvasonic-web-interface"
+version = "0.1.0"
+source = { editable = "services/web_interface" }
 
 [[package]]
 name = "six"

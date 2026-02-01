@@ -28,14 +28,46 @@ theme:
         name: Switch to light mode
 nav:
   - Home: index.md
+  - Project Readme: readme.md
+  - Agents: agents.md
   - Architecture:
-      - architecture/
-      - architecture/database_schema.md
+      - Database Schema: architecture/database_schema.md
+      - Filesystem Governance: architecture/filesystem_governance.md
+      - Service Lifecycle: architecture/service_lifecycle.md
+      - Messaging Patterns: architecture/messaging_patterns.md
   - Services:
       - Template Service: services/template.md
-  - ADRs: [adr/]
-  - Development: [development/]
-  - Deployment: [deployment/]
+      - Bat Detect Service: services/batdetect.md
+      - BirdNET Analysis: services/birdnet.md
+      - Controller Service: services/controller.md
+      - Database Service: services/database.md
+      - Gateway Service: services/gateway.md
+      - Monitor Service: services/monitor.md
+      - Processor Service: services/processor.md
+      - Recorder Service: services/recorder.md
+      - Redis Service: services/redis.md
+      - Tailscale Service: services/tailscale.md
+      - Uploader Service: services/uploader.md
+      - Weather Service: services/weather.md
+      - Web Interface: services/web_interface.md
+  - Deployment:
+      - Setup & Installation: deployment/setup.md
+  - ADRs:
+      - 0001 Use uv: adr/0001-use-uv.md
+      - 0002 Use pyproject.toml: adr/0002-use-pyproject-toml.md
+      - 0003 Frontend Architecture: adr/0003-frontend-architecture.md
+      - 0004 Use Podman: adr/0004-use-podman.md
+      - 0005 Two Worlds Separation: adr/0005-two-worlds-separation.md
+      - 0006 Host Bind Mounts: adr/0006-host-bind-mounts.md
+      - 0007 Rootless OS Compliance: adr/0007-rootless-os-compliance.md
+      - 0008 Domain Driven Isolation: adr/0008-domain-driven-isolation.md
+      - 0009 Zero Trust Data Sharing: adr/0009-zero-trust-data-sharing.md
+      - 0010 Naming Conventions: adr/0010-naming-conventions.md
+      - 0011 Audio Recording Strategy: adr/0011-audio-recording-strategy.md
+      - 0012 Use Pydantic: adr/0012-use-pydantic.md
+  - Development:
+      - Concept & Idea: development/idea.md
+      - Docker Standards: development/docker_standards.md
   - Hardware: hardware.md
   - Glossary: glossary.md
 plugins: [search, include-markdown]

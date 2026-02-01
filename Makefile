@@ -28,6 +28,9 @@ check:
 clean:
 	@./scripts/clean.sh
 
+clean-storage:
+	@./scripts/clean.sh --storage
+
 # 2. Runtime Control
 start:
 	@./scripts/start.sh

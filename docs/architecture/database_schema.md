@@ -16,16 +16,16 @@ The central registry of all audio files recorded by the system.
 | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | Primary Key. |
 | `time` | `TIMESTAMPTZ` | **Partition Key**. Recording start time. |
-| `filename_high` | `TEXT` | High-Res (384kHz) filename (Archive). |
-| `filename_low` | `TEXT` | Low-Res (48kHz) filename (Analysis/Proxy). |
+| `sensor_id` | `TEXT` | Microphone Identifier. Foreign Key to `devices.name`. |
+| `file_raw` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Raw/Native** (Variable Rate). |
+| `file_processed` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Processed/Standardized (48kHz)**. |
 | `duration` | `FLOAT` | Duration in seconds. |
-| `sample_rate` | `INTEGER` | Native Sample rate in Hz (High-Res). |
-| `filesize_high` | `BIGINT` | Size of High-Res file in bytes. |
-| `filesize_low` | `BIGINT` | Size of Low-Res file in bytes. |
+| `sample_rate` | `INTEGER` | Native Sample rate in Hz (of the Raw file). |
+| `filesize_raw` | `BIGINT` | Size of Raw file in bytes. |
+| `filesize_processed` | `BIGINT` | Size of Processed file in bytes. |
 | `uploaded` | `BOOLEAN` | Sync status (High-res archive). Default `false`. |
 | `uploaded_at` | `TIMESTAMPTZ` | Timestamp of successful upload. Nullable. |
-| `analyzed_bird` | `BOOLEAN` | BirdNET analysis status. Default `false`. |
-| `analyzed_bat` | `BOOLEAN` | Bat analysis status. Default `false`. |
+| `analysis_state` | `JSONB` | flexible map of analysis status (e.g. `{"birdnet": true, "batdetect": false}`). |
 
 ### `detections`
 Stores analysis results from various workers (BirdNET, etc.).
@@ -33,12 +33,14 @@ Stores analysis results from various workers (BirdNET, etc.).
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | Primary Key. |
-| `time` | `TIMESTAMPTZ` | **Partition Key**. Detection time (offset from recording start). |
+| `time` | `TIMESTAMPTZ` | **Partition Key**. Detection start time. |
+| `end_time` | `TIMESTAMPTZ` | Detection end time. Allows efficient duration/overlap queries. |
 | `recording_id` | `BIGINT` | Foreign Key to `recordings.id`. |
 | `worker` | `TEXT` | Name of the analysis worker (e.g., `birdnet`). |
-| `confidence` | `FLOAT` | Confidence score (0.0 - 1.0). |
-| `label` | `TEXT` | Species or event label. |
-| `details` | `JSONB` | Worker-specific metadata (e.g., frequency range). |
+| `confidence` | `FLOAT` | Confidence score (0.0 - 1.0). **Core Metric**. |
+| `label` | `TEXT` | Normalized Label (Scientific Name or ID). Key for Taxonomy. |
+| `common_name` | `TEXT` | Standard English Name (e.g. "Blackbird"). Fast search/display. |
+| `details` | `JSONB` | Raw metadata (e.g. `{"box": [...]}`). |
 
 ### `taxonomy`
 Metadata registry for all detection classes (Bio- & Anthropophony).
@@ -51,7 +53,8 @@ Maps raw labels to human-readable info ("Pokedex").
 | `scientific_name` | `TEXT` | Latin Name or System ID (e.g. *Stihl MS 500i* or *Turdus*). |
 | `common_names` | `JSONB` | Localized names (e.g. `{"de": "Amsel", "en": "Blackbird"}`). |
 | `description` | `JSONB` | Localized descriptions (e.g. `{"de": "...", "en": "..."}`). |
-| `image_url` | `TEXT` | Reference to a locally stored or remote image. |
+| `image_path` | `TEXT` | Path to local file (e.g. `/static/taxonomy/turdus_merula.jpg`). **Served by Nginx/FastAPI**. |
+| `image_source` | `TEXT` | Origin URL (Wikimedia) for attribution and refetching. |
 | `conservation_status` | `TEXT` | IUCN Red List status (e.g., `LC`, `EN`). |
 
 ### `weather`
@@ -96,6 +99,19 @@ Global Key-Value store for application settings.
 | `key` | `TEXT` | Primary Key. Configuration key. |
 | `value` | `JSONB` | Configuration value. |
 
+### `devices`
+Inventory of hardware devices (microphones, potential other sensors). Allows stateful management and frontend configuration.
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `name` | `TEXT` | Primary Key. Hardware ID (e.g. `front`, `back`). Referenced by `recordings.sensor_id`. |
+| `serial_number` | `TEXT` | Unique hardware serial (e.g. `123456`). Used for binding. |
+| `model` | `TEXT` | Hardware model info (e.g. `Dodotronic Ultramic 384 EVO`). |
+| `status` | `TEXT` | Current state (e.g. `online`, `offline`, `error`). |
+| `last_seen` | `TIMESTAMPTZ` | Timestamp of last heartbeat/connection. |
+| `enabled` | `BOOLEAN` | User-controllable switch to enable/disable this input. |
+| `config` | `JSONB` | Device-specific configuration (e.g., gain, sample rate targets). |
+
 ## 3. Audit Tables
 
 ### `uploads`
@@ -104,6 +120,7 @@ Immutable audit log of all upload attempts (successful or failed).
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | Primary Key. |
+| `recording_id` | `BIGINT` | Foreign Key to `recordings.id`. |
 | `attempt_at` | `TIMESTAMPTZ` | Time of the upload attempt. |
 | `filename` | `TEXT` | Name of the file. |
 | `size` | `BIGINT` | Bytes transferred. |
@@ -113,4 +130,42 @@ Immutable audit log of all upload attempts (successful or failed).
 ## 4. TimescaleDB Configuration
 
 - **Chunk Time Interval**: 24 hours (for `recordings`, `detections`, `weather`).
-- **Retention Policy**: Managed by `Janitor` service (default: 30 days for local recordings).
+- **Retention Policy**: Managed by `Janitor` service (see `filesystem_governance.md`).
+
+### Performance Tuning (Raspberry Pi 5 + NVMe)
+Optimized for write throughput on NVMe storage.
+
+- `synchronous_commit = off`: Speed > Safety (minor data loss risk on crash accepted).
+- `shared_buffers = 512MB`: ~12% of 4GB RAM.
+- `random_page_cost = 1.1`: Optimized for NVMe random access.
+
+## 5. Data Governance & Model Strategy
+
+> **Strategy:** Single Public Schema.
+> **Consistency:** All containers MUST import SQL models from the shared library **`packages/core`** (e.g., `silvasonic.core.database`). 
+> **Constraint:** Ad-hoc SQL tables defined within individual service code are **FORBIDDEN**.
+
+### Why this approach?
+See [ADR 0013: Shared Core Library](../adr/0013-shared-core-library.md).
+- **Single Source of Truth**: Ensures `recorder` and `dashboard` agree on data types.
+- **Migration Safety**: Centralized `alembic` migrations (in `core` or `infrastructure` container) prevent schema drift.
+- **Type Sharing**: Pydantic models in `core` allow typing to flow from DB to API to Frontend.
+
+## 6. Initialization Strategy
+
+To avoid "Chicken-and-Egg" problems, initialization is split into two phases:
+
+### Phase 1: Infrastructure (`docker-entrypoint-initdb.d/init.sql`)
+*   **When:** Runs ONLY when the database volume is first created.
+*   **Responsibility:** "God-Mode" setup that requires superuser privileges.
+*   **Content:**
+    ```sql
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    -- No tables defined here!
+    ```
+
+### Phase 2: Schema (`alembic upgrade head`)
+*   **When:** Runs on every container startup (via `controller` or `pre-start` hooks).
+*   **Responsibility:** Creating tables, modifying columns, managing indexes.
+*   **Mechanism:** Uses the `packages/core` Python definitions to apply changes incrementally.
+*   **Benefit:** Allows the schema to evolve (e.g., adding `devices` table) without wiping the database.

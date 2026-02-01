@@ -61,3 +61,5 @@ Thumbs.db
 /*.log
 site/
 
+z_old/*
+prompts/*
