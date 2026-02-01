@@ -1,1 +1,39 @@
-
+---
+version: '3.8'
+services:
+  database:
+    image: silvasonic-database
+    build:
+      context: services/database
+      dockerfile: Dockerfile
+    container_name: silvasonic-database
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+    volumes: [silvasonic-db-data:/var/lib/postgresql/data]
+    networks: [silvasonic-net]
+    shm_size: 512mb  # Matches shared_buffers recommendation
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:alpine
+    container_name: silvasonic-redis
+    restart: always
+    volumes: [./services/redis/redis.conf:/usr/local/etc/redis/redis.conf]
+    command: [redis-server, /usr/local/etc/redis/redis.conf]
+    networks: [silvasonic-net]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+volumes:
+  silvasonic-db-data:
+networks:
+  silvasonic-net:
+    driver: bridge
