@@ -2,7 +2,8 @@ import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from silvasonic.core.database.session import DatabaseSettings, get_db
+from silvasonic.core.database.session import get_db
+from silvasonic.core.settings import DatabaseSettings
 
 
 class TestDatabaseSettings:

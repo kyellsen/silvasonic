@@ -19,4 +19,4 @@ stream:
   raw_enabled: true
   processed_enabled: false  # Usually redundant if input is 48k
   live_stream_enabled: false
-  segment_duration_s: 60
+  segment_duration_s: 15

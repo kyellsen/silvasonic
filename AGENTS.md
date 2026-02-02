@@ -30,7 +30,7 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
 ## 4. Filesystem Constraints
 * **Persistence:** The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
     *   **Normative Rules:** See **[docs/index.md](docs/index.md)** -> "Filesystem Governance" for strict ownership, SELinux, and folder structure rules.
-    *   **SELinux:** Bind mounts in `podman-compose.yml` **MUST** use the `:Z` suffix (e.g., `./config:/etc/config:Z`) to allow container access.
+    *   **SELinux:** Bind mounts in `podman-compose.yml` **MUST** use the `:z` (shared) or `:Z` (isolated) suffix (e.g., `./config:/etc/config:z`) to allow container access. Use `:z` for shared resources.
 * **Temporary Artifacts:** Any temporary scripts, investigative logs, test artifacts, or debugging outputs **MUST** be placed in `.tmp/`.
     * The `.tmp/` directory is git-ignored and automatically cleaned by `make clean`.
     * Do NOT clutter root or source directories.
@@ -62,7 +62,7 @@ Agents should prioritize the following libraries for their respective domains to
 
 * **Core/Config:** `pydantic`, `pyYAML`
 * **Logging:** `structlog`
-* **Database:** `sqlalchemy`, `asyncpg`, `alembic`
+* **Database:** `sqlalchemy`, `asyncpg`
 * **API/Web:** `fastapi`
 * **Data Processing:** `numpy`, `pandas`, `polars`
 * **System/Audio:** `psutil`, `soundfile`
@@ -72,11 +72,11 @@ Agents should prioritize the following libraries for their respective domains to
 ## 7. Workflow & Scripts
 Agents must use the provided `make` commands to ensure environmental consistency. Do not run the underlying shell scripts directly unless debugging the scripts themselves.
 
-* **Initialization:** `make setup` (calls `scripts/init.sh`)
-* **Development:** `make run` (calls `scripts/run.sh`)
-* **Refactoring:** `make fix` (calls `scripts/fix.sh`)
-* **Validation:** `make check` (calls `scripts/check.sh`)
-* **Cleanup:** `make clean` (calls `scripts/clean.sh`)
+* **Initialization:** `make init` (calls `scripts/init.py`)
+* **Development:** `make start` (calls `scripts/start.py`)
+* **Refactoring:** `make fix` (calls `scripts/fix.py`)
+* **Validation:** `make check` (calls `scripts/check.py`)
+* **Cleanup:** `make clean` (calls `scripts/clean.py`)
 
 ## 8. Architecture Constraints & Data Governance
 Agents must strictly adhere to the following data ownership rules to prevent race conditions:
@@ -92,7 +92,9 @@ Agents must strictly adhere to the following data ownership rules to prevent rac
     * **Recorder:** Creates dual streams (Raw & Processed).
     * **Janitor:** Only the `processor` service is allowed to delete files from NVMe.
     * **Monitor:** Read-only surveillance and notification service.
-    * **Status Board:** STRICTLY READ-ONLY. No actuation, configuration changes, or state mutation allowed. purely for visualization.
+    * **Status Board:**
+        * **Frontend:** STRICTLY READ-ONLY. No actuation, configuration changes, or state mutation allowed in the UI (only GET).
+        * **Backend:** API endpoints for actuation (e.g., restart) are **ALLOWED** as a testbed for the future `web-interface` service, but must not be wired to the Status Board frontend.
 
 ## 9. Definition of Done (Quality Gates)
 Code is not "done" until it passes:

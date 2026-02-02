@@ -100,6 +100,7 @@ class DeviceScanner:
                     serial_number=serial,
                     device_index=int(m.group(4)),
                 )
+
                 devices.append(device)
 
         return devices

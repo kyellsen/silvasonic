@@ -13,6 +13,9 @@ Welcome to the **Silvasonic Bioacoustic Monitoring System** documentation.
 *   [Filesystem Governance](architecture/filesystem_governance.md)
 *   [Service Lifecycle & Orchestration](architecture/service_lifecycle.md)
 *   [Messaging Patterns](architecture/messaging_patterns.md)
+*   [Management API](architecture/management_api_specification.md)
+*   [Microphone Profiles](architecture/microphone_profiles.md)
+*   [API Design](architecture/api_design.md)
 *   [ADRs (Architecture Decision Records)](adr/index.md)
 
 ### Deployment

@@ -15,9 +15,15 @@ class Device(Base):  # type: ignore[misc]
     serial_number: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     model: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, default="offline", nullable=False)
+    enrollment_status: Mapped[str] = mapped_column(Text, default="pending", nullable=False)
 
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Link to the Microphone Profile
+    profile_slug: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("microphone_profiles.slug"), nullable=True
+    )
 
     config: Mapped[dict[str, Any]] = mapped_column(JSON, default={}, nullable=False)
 

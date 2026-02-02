@@ -7,11 +7,11 @@
 ## 1. The Problem / The Gap
 *   **Hardware Abstraction:** Different microphones (USB, I2S) have different sample rates and quirks. We need a unified way to capture audio.
 *   **Reliability:** Recording processes can hang or drift. We need a robust process manager that survives glitches.
-*   **Multi-Purpose Audio:** We need high-res raw data for science, normalized data for ML inference, and compressed data for live listening—simultaneously.
+*   **Multi-Purpose Audio:** We need high-res raw data for science, normalized data for ML inference, and **low-latency** compressed data for live listening—simultaneously.
 
 ## 2. User Benefit
 *   **Plug & Play:** Works with most ALSA devices.
-*   **Live Monitoring:** Listen to the microphone in real-time via the Web UI (MP3 stream) without stopping the scientific recording.
+*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping the scientific recording.
 *   **Data Quality:** "Raw" files are untouched (24-bit), ensuring no data loss for analysis.
 
 ## 3. Core Responsibilities
@@ -25,11 +25,11 @@ Derived strictly from the *Code Truth* (inputs/logic/outputs).
     *   **Stream Splitting**:
         1.  **Raw**: Preserves original sample rate/bit-depth (pcm_s24le).
         2.  **Processed**: Resamples to 48kHz (pcm_s16le) for consistent ML input.
-        3.  **Live**: Encodes to MP3 (128k) for browser streaming.
+        3.  **Live (Opus)**: Encodes to Ogg/Opus (64k) and pushes to Icecast.
     *   **Watchdog**: Monitors the FFmpeg subprocess via `stderr` for errors/death.
 *   **Outputs**:
     *   **Filesystem**: Segmented WAV files in `raw/` and `processed/` directories.
-    *   **TCP Stream**: Live MP3 stream on Port 8000.
+    *   **Icecast Stream**: Pushes directly to an Icecast server (url configurable).
     *   **Logs**: Structured JSON logs via `structlog`.
 
 ## 4. Operational Constraints & Rules
@@ -38,11 +38,13 @@ Specific technical rules this service must obey (derived from code analysis or a
 *   **Concurrency**: **Process-Based**. The main work happens in the FFmpeg subprocess. The Python wrapper is threaded (Watchdog).
 *   **State**: **Critical**. Must manage file handles and ALSA locks carefully.
 *   **Privileges**: **Hardware Access**. Requires access to `/dev/snd` (Device Mapping or `--device`).
-*   **Resources**: CPU intensive during MP3 encoding. Low Memory.
+*   **Dependencies**: Requires a running **Icecast Server** reachable via network.
+*   **Resources**: CPU intensive during Opus encoding. Low Memory (monitored via `psutil`).
 
 ## 5. Configuration & Environment
 *   **Environment Variables**:
     *   Calculated at runtime via `MicrophoneProfile`.
+    *   **Icecast**: `ICECAST_HOST`, `ICECAST_PORT`, `ICECAST_USER`, `ICECAST_PASSWORD`, `ICECAST_MOUNT`.
 *   **Volumes**:
     *   `${SILVASONIC_WORKSPACE_PATH}/recorder` -> Output directory for WAV files.
 *   **Dependencies**:

@@ -3,6 +3,7 @@
     # Binds to internal ports 8080/8443 for rootless compatibility
     http_port 8080
     https_port 8443
+    skip_install_trust
 }
 
 {$DOMAIN_NAME:localhost} {

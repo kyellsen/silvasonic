@@ -49,8 +49,8 @@ services:
       PYTHONUNBUFFERED: '1'
       PODMAN_SOCKET_URL: unix:///run/podman/podman.sock
       HOST_DATA_DIR: ${SILVASONIC_WORKSPACE_PATH:-./workspace}
-      POSTGRES_HOST: database
-      REDIS_HOST: redis
+      POSTGRES_HOST: silvasonic-database
+      SILVASONIC_REDIS_HOST: silvasonic-redis
       HOST_SOURCE_DIR: ${PWD}  # Root of the repository on the host
       LOG_DIR: /var/log/silvasonic
     volumes:
@@ -65,11 +65,30 @@ services:
       - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
       - /proc/asound:/proc/asound:ro  # Read-only access to ALSA info
       - /sys:/sys:ro  # Read-only access to sysfs for serial numbers
+      - /dev/snd:/dev/snd  # Bind mount for dynamic hardware detection
     security_opt: [label=disable]
     networks: [silvasonic-net]
-    devices:
-      - /dev/snd:/dev/snd  # Required for hardware scanning (hardware.py)
-    depends_on: [redis, database]
+    privileged: true
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      icecast:
+        condition: service_started
+  icecast:
+    image: infiniteproject/icecast:latest
+    container_name: silvasonic-icecast
+    restart: always
+    userns_mode: keep-id
+    networks: [silvasonic-net]
+    ports: [8000:8000]
+    environment:
+      # Default credentials used by recorder
+      ICECAST_SOURCE_PASSWORD: hackme
+      ICECAST_ADMIN_PASSWORD: hackme
+      ICECAST_PASSWORD: hackme
+      ICECAST_RELAY_PASSWORD: hackme
   gateway:
     image: silvasonic-gateway
     build:
@@ -87,7 +106,6 @@ services:
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/data:/data:z
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/gateway/config:/config:z
     networks: [silvasonic-net]
-    depends_on: [redis, database]
   status-board:
     image: silvasonic-status-board
     build:
@@ -98,24 +116,28 @@ services:
     userns_mode: keep-id
     environment:
       DEV_MODE: 'true'
-      POSTGRES_HOST: database
-      REDIS_HOST: redis
+      POSTGRES_HOST: silvasonic-database
+      SILVASONIC_REDIS_HOST: silvasonic-redis
       LOG_DIR: /var/log/silvasonic
     networks: [silvasonic-net]
-    depends_on: [redis, database]
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/status-board/logs:/var/log/silvasonic:z
     security_opt: [label=disable]
     ports: [8001:8000]
   recorder:
-    image: silvasonic-recorder
+    image: localhost/silvasonic-recorder
     build:
       context: .
       dockerfile: services/recorder/Dockerfile
-    container_name: silvasonic-recorder
-    # Template only - do not start automatically
-    profiles: [manual]
+    container_name: silvasonic-recorder-template
+    # Template only - do not start automatically, but BUILD automatically
+    # profiles: [manual]  <-- REMOVED to allow auto-build
     entrypoint: [/bin/true]
     restart: 'no'
     userns_mode: keep-id
@@ -128,11 +150,11 @@ services:
       LOG_DIR: /var/log/silvasonic
     volumes:
       - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
-      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/${MIC_NAME:-default}:/data/recorder/${MIC_NAME:-default}:z
+      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/default:/data/recorder/default:z
       # Log Compliance: Mount Log Directory
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/logs:/var/log/silvasonic:z
     networks: [silvasonic-net]
-    depends_on: [database]
+
   #   birdnet:
   #     image: silvasonic-birdnet
   #     build:
@@ -142,7 +164,11 @@ services:
   #     entrypoint: [/bin/true]
   #     restart: "no"
   #     userns_mode: keep-id
-  #     networks: [silvasonic-net]
+  #     depends_on:
+  #       controller:
+  #         condition: service_started
+  #       database:
+  #         condition: service_healthy
   #   weather:
   #     image: silvasonic-weather
   #     build:
@@ -152,7 +178,11 @@ services:
   #     entrypoint: [/bin/true]
   #     restart: "no"
   #     userns_mode: keep-id
-  #     networks: [silvasonic-net]
+  #     depends_on:
+  #       controller:
+  #         condition: service_started
+  #       database:
+  #         condition: service_healthy
   #   batdetect:
   #     image: silvasonic-batdetect
   #     build:
@@ -163,25 +193,32 @@ services:
   #     restart: "no"
   #     userns_mode: keep-id
   #     networks: [silvasonic-net]
-  uploader:
-    image: silvasonic-uploader
-    build:
-      context: .
-      dockerfile: services/uploader/Dockerfile
-    container_name: silvasonic-uploader
-    entrypoint: [/bin/true]
-    restart: 'no'
-    userns_mode: keep-id
-    environment:
-      LOG_DIR: /var/log/silvasonic
-    volumes:
-      # Governance: Buffer (RW)
-      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/buffer:/data/uploader/buffer:z
-      # Governance: Logs (RW)
-      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/logs:/var/log/silvasonic:z
-      # Governance: Source Data (RO) - Access to recorder artifacts
-      - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:ro,z
-    networks: [silvasonic-net]
+  #     depends_on:
+  #       controller:
+  #         condition: service_started
+  #       database:
+  #         condition: service_healthy
+  # uploader:
+  #   image: silvasonic-uploader
+  #   build:
+  #     context: .
+  #     dockerfile: services/uploader/Dockerfile
+  #   container_name: silvasonic-uploader
+  #   entrypoint: [/bin/true]
+  #   restart: 'no'
+  #   userns_mode: keep-id
+  #   environment:
+  #     LOG_DIR: /var/log/silvasonic
+  #   volumes:
+  #  # Governance: Buffer (RW)
+  #     - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/buffer:/data/uploader/buffer:z
+  #  # Governance: Logs (RW)
+  #     - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/uploader/logs:/var/log/silvasonic:z
+  #  # Governance: Source Data (RO) - Access to recorder artifacts
+  #     - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder:/data/recorder:ro,z
+  #   networks: [silvasonic-net]
 networks:
   silvasonic-net:
     driver: bridge
+x-podman:
+  in_pod: false

@@ -45,4 +45,8 @@ COPY --from=builder /app/.venv /app/.venv
 # Update PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
+COPY services/recorder/src/silvasonic/recorder/healthcheck.py /app/healthcheck.py
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["python", "/app/healthcheck.py"]
+
 CMD ["python", "-m", "silvasonic.recorder.main"]

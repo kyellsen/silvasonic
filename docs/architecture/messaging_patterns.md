@@ -34,7 +34,7 @@ To satisfy the **"Data Capture Integrity"** directive (Section 3 in AGENTS.md), 
 | :--- | :--- | :--- |
 | **Recorder Write** | IO Stream | NVMe (`file_raw`) |
 | **Indexing** | FS Polling | Filesystem structure |
-| **Analysis Job** | DB Polling | `recordings` table (`analyzed_bird=false`) |
+| **Analysis Job** | DB Polling | `recordings` table (`analysis_state` JSON check) |
 | **Upload Job** | DB Polling | `recordings` table (`uploaded=false`) |
 | **UI Updates** | Pub/Sub | Redis Channel (Optimization) |
 

@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator, Awaitable
+from contextlib import asynccontextmanager
 from typing import Any, cast
 
 import aiohttp
 from silvasonic.core.database.session import engine
 from silvasonic.core.redis.client import get_redis_client
+from silvasonic.status_board.config import settings
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
@@ -42,14 +44,33 @@ class StatusService:
 class ContainerService:
     """Service to interact with the Docker/Podman engine via Unix socket."""
 
-    SOCKET_PATH = "unix:///run/podman/podman.sock"
+    # Docker Log Header Constants
+    # [stream_type 1b] [padding 3b] [length 4b]
+    LOG_HEADER_SIZE = 8
+    STREAM_TYPE_INDEX = 0
+    PAYLOAD_LEN_START = 4
+    PAYLOAD_LEN_END = 8
+
+    @classmethod
+    @asynccontextmanager
+    async def _get_session(cls) -> AsyncGenerator[aiohttp.ClientSession, None]:
+        """Provides an aiohttp session configured for the Podman socket."""
+        # Check if the socket path is a unix path or http url (though usually unix for podman)
+        # For aiohttp, 'unix://' prefix usually needs stripped for UnixConnector if using path argument,
+        # but modern aiohttp handles URLs well. However, UnixConnector takes 'path' arg.
+        socket_path = settings.PODMAN_SOCKET_PATH
+        if socket_path.startswith("unix://"):
+            socket_path = socket_path.replace("unix://", "")
+
+        connector = aiohttp.UnixConnector(path=socket_path)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            yield session
 
     @classmethod
     async def get_containers(cls) -> list[dict[str, Any]]:
         """List all containers."""
         try:
-            connector = aiohttp.UnixConnector(path="/run/podman/podman.sock")
-            async with aiohttp.ClientSession(connector=connector) as session:
+            async with cls._get_session() as session:
                 async with session.get("http://localhost/containers/json?all=true") as resp:
                     if resp.status == 200:
                         return cast(list[dict[str, Any]], await resp.json())
@@ -61,37 +82,35 @@ class ContainerService:
             return []
 
     @classmethod
+    async def _check_recorder_online(cls, ip: str, port: int = 8000) -> bool:
+        """Check if a recorder is reachable via TCP."""
+        try:
+            reader, writer = await asyncio.open_connection(ip, port)
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except Exception:
+            return False
+
+    @classmethod
     async def get_recorders(cls) -> list[dict[str, Any]]:
         """Find and check all running recorder containers."""
         containers = await cls.get_containers()
         recorders = []
         for c in containers:
-            # Check if image name contains 'recorder'
             image = c.get("Image", "")
             state = c.get("State", "")
 
-            # Filter for running recorders
             if "silvasonic-recorder" in image and state == "running":
-                # Extract IP from NetworkSettings
-                # structure: NetworkSettings -> Networks -> <network_name> -> IPAddress
-                ip = "127.0.0.1"  # Fallback
+                # Extract IP
+                ip = "127.0.0.1"
                 networks = c.get("NetworkSettings", {}).get("Networks", {})
                 for _, net_info in networks.items():
                     if net_info.get("IPAddress"):
                         ip = net_info.get("IPAddress")
                         break
 
-                # Check port 8000 connectivity
-                is_online = False
-                try:
-                    # Simple TCP check to the container IP:8000
-                    # Since we are in the same network (silvasonic-net), we can reach it by IP
-                    reader, writer = await asyncio.open_connection(ip, 8000)
-                    writer.close()
-                    await writer.wait_closed()
-                    is_online = True
-                except Exception:
-                    is_online = False
+                is_online = await cls._check_recorder_online(ip)
 
                 container_id = c.get("Id")
                 short_id = container_id[:12] if container_id else "unknown"
@@ -112,26 +131,22 @@ class ContainerService:
     async def stream_logs(cls, container_id: str) -> AsyncGenerator[str, None]:
         """Stream logs from a specific container."""
         try:
-            connector = aiohttp.UnixConnector(path="/run/podman/podman.sock")
-            # we remove tail limit to get full logs from start
+            # We remove tail limit to get full logs from start
             url = f"http://localhost/containers/{container_id}/logs?stdout=true&stderr=true&follow=true"
 
-            async with aiohttp.ClientSession(connector=connector) as session:
+            async with cls._get_session() as session:
                 async with session.get(url) as resp:
-                    # Docker log stream format: [8 bytes header] [content]
-                    # Header:
-                    #   Byte 0: stream type (1=stdout, 2=stderr)
-                    #   Byte 1-3: padding
-                    #   Byte 4-7: payload length (big endian)
                     while True:
                         try:
-                            header = await resp.content.readexactly(8)
+                            # Read the Docker multiplexing header
+                            header = await resp.content.readexactly(cls.LOG_HEADER_SIZE)
                         except asyncio.IncompleteReadError:
                             break
 
-                        # Parse length
-                        # The header is: [stream_type 1b] [padding 3b] [length 4b]
-                        payload_len = int.from_bytes(header[4:8], byteorder="big")
+                        # data_type = header[cls.STREAM_TYPE_INDEX] # 1=stdout, 2=stderr (unused here)
+                        payload_len = int.from_bytes(
+                            header[cls.PAYLOAD_LEN_START : cls.PAYLOAD_LEN_END], byteorder="big"
+                        )
 
                         if payload_len > 0:
                             try:
@@ -139,13 +154,44 @@ class ContainerService:
                             except asyncio.IncompleteReadError:
                                 break
 
-                            # Clean up the payload - it might contain multiple lines
                             # We decode and split by lines to yield them properly to SSE
                             chunk_text = payload.decode("utf-8", errors="replace")
-
-                            # We might want to yield line by line for SSE
                             for line in chunk_text.splitlines():
                                 yield line
 
         except Exception as e:
             yield f"Error streaming logs: {e}\n"
+
+    @classmethod
+    async def _control_container(cls, container_id: str, action: str) -> bool:
+        """Execute start/stop/restart on a container."""
+        try:
+            url = f"http://localhost/containers/{container_id}/{action}"
+            async with cls._get_session() as session:
+                async with session.post(url) as resp:
+                    if resp.status == 204 or resp.status == 304:
+                        return True
+                    else:
+                        error_text = await resp.text()
+                        logger.error(
+                            f"Container control {action} failed: {resp.status} - {error_text}"
+                        )
+                        return False
+        except Exception as e:
+            logger.error(f"Container control error: {e}")
+            return False
+
+    @classmethod
+    async def restart_container(cls, container_id: str) -> bool:
+        """Restart a container by ID."""
+        return await cls._control_container(container_id, "restart")
+
+    @classmethod
+    async def stop_container(cls, container_id: str) -> bool:
+        """Stop a container by ID."""
+        return await cls._control_container(container_id, "stop")
+
+    @classmethod
+    async def start_container(cls, container_id: str) -> bool:
+        """Start a container by ID."""
+        return await cls._control_container(container_id, "start")

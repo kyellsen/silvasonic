@@ -61,7 +61,7 @@ class RedisPublisher:
     ) -> None:
         """Publish a lifecycle event."""
         if event not in ["started", "stopping", "crashed"]:
-            logger.warning("invalid_lifecycle_event", event=event)
+            logger.warning("invalid_lifecycle_event", lifecycle_event=event)
             event = "crashed"  # Fallback to reported error
 
         msg = LifecycleMessage(

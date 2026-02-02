@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch
 
 from silvasonic.controller.hardware import AudioDevice
 from silvasonic.controller.profiles import ProfileManager, RecorderProfile
@@ -14,12 +13,11 @@ class TestProfileManager(unittest.TestCase):
         # But for unit tests, we can mock the loader or the file system.
         pass
 
-    @patch("silvasonic.controller.profiles.Path")
-    def test_load_profiles(self, mock_path):
+    def test_load_profiles(self):
         """Test that profiles are correctly matched to audio devices."""
         # Mocking file operations is tedious, let's test the matching logic primarily
         # by manually populating self.profiles
-        manager = ProfileManager(profiles_dir="/tmp/dummy")
+        manager = ProfileManager()
         # Clear any failed loads
         manager.profiles = []
 

@@ -82,7 +82,7 @@ def main() -> None:
         "gateway/logs",
         # Logging Directories (Mandatory for all services)
         "controller/logs",
-        "recorder/logs",  # Shared/Fallback log dir (individual mics use subdirs via Orchestrator)
+        # "recorder/logs",  # Shared/Fallback log dir (individual mics use subdirs via Orchestrator)
         "processor/logs",
         "uploader/logs",
         "monitor/logs",

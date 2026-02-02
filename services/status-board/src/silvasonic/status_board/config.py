@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,11 +14,14 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "silvasonic"
-    POSTGRES_HOST: str = "database"
+    POSTGRES_HOST: str = "silvasonic-database"
     POSTGRES_PORT: int = 5432
 
-    REDIS_HOST: str = "redis"
+    REDIS_HOST: str = Field(default="silvasonic-redis", validation_alias="SILVASONIC_REDIS_HOST")
     REDIS_PORT: int = 6379
+
+    # Container Engine
+    PODMAN_SOCKET_PATH: str = "unix:///run/podman/podman.sock"
 
     @property
     def database_url(self) -> str:

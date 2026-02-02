@@ -14,6 +14,7 @@ from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.status_board.config import settings
 from silvasonic.status_board.routes import router
+from silvasonic.status_board.routes.v1 import router as api_router
 from silvasonic.status_board.subscriber import MessageSubscriber
 
 # Setup logging
@@ -95,6 +96,7 @@ except Exception:
         app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 app.include_router(router)
+app.include_router(api_router)
 
 
 @app.get("/")  # type: ignore[untyped-decorator]

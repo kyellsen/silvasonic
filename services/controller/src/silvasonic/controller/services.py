@@ -10,11 +10,11 @@ settings = ControllerSettings()
 
 # Default Service Registry (Baseline Configuration)
 # These defaults are used to populate the database on first run.
-REGISTRY = {
+REGISTRY: dict[str, dict[str, bool]] = {
     #     "birdnet": {"enabled": True},
     #     "weather": {"enabled": False},  # Requires hardware
     #     "batdetect": {"enabled": False},  # Specialized
-    "uploader": {"enabled": True},  # Core functionality usually
+    # "uploader": {"enabled": True},  # Core functionality usually
 }
 
 
@@ -106,8 +106,8 @@ class ServiceManager:
             "PYTHONUNBUFFERED": "1",
             # Inject Postgres/Redis connection info if needed?
             # Usually handled by default env or docker network links standard names
-            "POSTGRES_HOST": "database",
-            "REDIS_HOST": "redis",
+            "POSTGRES_HOST": "silvasonic-database",
+            "REDIS_HOST": "silvasonic-redis",
             # Inject Host Data Dir for internal mapping
             "HOST_SILVASONIC_DATA_DIR": settings.HOST_DATA_DIR,
         }
@@ -123,18 +123,18 @@ class ServiceManager:
 
         # Specific Volume Logic for Uploader
         # It needs access to its buffer (RW) and Recorder data (RO)
-        if service_name == "uploader":
-            # 1. Buffer (RW)
-            # Host: <HOST_DATA_DIR>/uploader/buffer -> Container: /data/uploader/buffer
-            host_buffer = f"{settings.HOST_DATA_DIR}/uploader/buffer"
-            volumes.append(f"{host_buffer}:/data/uploader/buffer:z")
+        # if service_name == "uploader":
+        #     # 1. Buffer (RW)
+        #     # Host: <HOST_DATA_DIR>/uploader/buffer -> Container: /data/uploader/buffer
+        #     host_buffer = f"{settings.HOST_DATA_DIR}/uploader/buffer"
+        #     volumes.append(f"{host_buffer}:/data/uploader/buffer:z")
 
-            # 2. Recordings (RO) - To read files for upload
-            # Host: <HOST_DATA_DIR>/recorder -> Container: /data/recorder
-            # Note: Controller manages recorder subdirs, but uploader might need to scan all?
-            # Governance says: "If a service needs data from another... must be mounted Read-Only."
-            host_recordings = f"{settings.HOST_DATA_DIR}/recorder"
-            volumes.append(f"{host_recordings}:/data/recorder:ro,z")
+        #     # 2. Recordings (RO) - To read files for upload
+        #     # Host: <HOST_DATA_DIR>/recorder -> Container: /data/recorder
+        #     # Note: Controller manages recorder subdirs, but uploader might need to scan all?
+        #     # Governance says: "If a service needs data from another... must be mounted Read-Only."
+        #     host_recordings = f"{settings.HOST_DATA_DIR}/recorder"
+        #     volumes.append(f"{host_recordings}:/data/recorder:ro,z")
 
         success = self.orchestrator.spawn_service(
             service_name=service_name, image=image, env=env, volumes=volumes

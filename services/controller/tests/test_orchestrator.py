@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from podman.errors import APIError, NotFound
@@ -34,7 +34,12 @@ def test_list_active_recorders_success(manager):
     c1.id = "123"
     c1.name = "c1"
     c1.status = "running"
-    c1.labels = {"device_serial": "SN1", "mic_name": "mic1", "service": "recorder"}
+    c1.labels = {
+        "device_serial": "SN1",
+        "mic_name": "mic1",
+        "service": "recorder",
+        "managed_by": "silvasonic-controller",
+    }
 
     manager.client.containers.list.return_value = [c1]
 
@@ -42,6 +47,29 @@ def test_list_active_recorders_success(manager):
     assert len(res) == 1
     assert res[0]["id"] == "123"
     assert res[0]["device_serial"] == "SN1"
+
+
+def test_list_active_recorders_success_string_state(manager):
+    """Test compatibility with Podman versions returning string State."""
+    c2 = MagicMock()
+    c2.id = "456"
+    c2.name = "c2"
+    # property access raises TypeError when State is a string
+    type(c2).status = PropertyMock(side_effect=TypeError("string indices must be integers"))
+    # The attribute causing the crash:
+    c2.attrs = {"State": "running"}
+    c2.labels = {
+        "device_serial": "SN2",
+        "service": "recorder",
+        "managed_by": "silvasonic-controller",
+    }
+
+    manager.client.containers.list.return_value = [c2]
+
+    res = manager.list_active_services()
+    assert len(res) == 1
+    assert res[0]["id"] == "456"
+    assert res[0]["status"] == "running"
 
 
 def test_list_active_recorders_error(manager):
@@ -62,8 +90,8 @@ def test_spawn_recorder_success_new(manager):
     assert success is True
     manager.client.containers.run.assert_called_once()
     kwargs = manager.client.containers.run.call_args.kwargs
-    assert kwargs["image"] == "silvasonic-recorder"
-    assert kwargs["name"] == "silvasonic-recorder-mic1"
+    assert kwargs["image"] == "localhost/silvasonic-recorder"
+    assert kwargs["name"] == "silvasonic-recorder-prof-sn1"
     # Verify mounts are used instead of volumes
     assert "mounts" in kwargs
     mounts = kwargs["mounts"]
@@ -73,10 +101,11 @@ def test_spawn_recorder_success_new(manager):
     assert all(m["Type"] == "bind" for m in mounts)
 
     # Verify one key mount target to be sure
-    assert any(m["Target"] == "/data/recorder/mic1" for m in mounts)
+    # Updated to expect friendly_name "prof-sn1" instead of "mic1"
+    assert any(m["Target"] == "/data/recorder/prof-sn1" for m in mounts)
 
     # Verify security options (SELinux disabled)
-    assert kwargs["security_opt"] == ["label=disable"]
+    assert kwargs["security_opt"] == []
 
 
 def test_spawn_recorder_already_running(manager):

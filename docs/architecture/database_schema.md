@@ -1,171 +1,165 @@
-# Database Schema
+# Static Database Schema Specification (Feb 2026)
 
-This document defines the database schema for the Silvasonic Bioacoustic Monitoring System.
-The system uses **PostgreSQL** with the **TimescaleDB** extension for time-series optimization.
+Following the removal of the Alembic migration framework, the database schema is now defined statically and initialized via `scripts/db/init.sql`.
 
-> **Note:** All tables reside in the `public` schema.
+## 1. Schema Initialization Strategy
+- **Single Phase**: Initialization is handled entirely by the database container's startup scripts.
+- **Source of Truth**: 
+    - **Logic**: SQLAlchemy models in `packages/core/src/silvasonic/core/database/models/`.
+    - **Deployment**: `services/database/init/01-init-schema.sql`.
 
-## 1. Core Data Tables
+## 2. Core Tables
 
-These tables store the primary bioacoustic data. `detections` and `weather` are optimized as TimescaleDB hypertables.
-
-### `recordings`
-The central registry of all audio files recorded by the system.
-
-| Column | Type | Description |
+### System Tables
+| Table | Primary Key | Description |
 | :--- | :--- | :--- |
-| `id` | `BIGSERIAL` | Primary Key. |
-| `time` | `TIMESTAMPTZ` | Recording start time. Indexed. |
-| `sensor_id` | `TEXT` | Microphone Identifier. Foreign Key to `devices.name`. |
-| `file_raw` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Raw/Native** (Variable Rate). |
-| `file_processed` | `TEXT` | Relative path (e.g. `front/2024...wav`). **Processed/Standardized (48kHz)**. |
-| `duration` | `FLOAT` | Duration in seconds. |
-| `sample_rate` | `INTEGER` | Native Sample rate in Hz (of the Raw file). |
-| `filesize_raw` | `BIGINT` | Size of Raw file in bytes. |
-| `filesize_processed` | `BIGINT` | Size of Processed file in bytes. |
-| `uploaded` | `BOOLEAN` | Sync status (High-res archive). Default `false`. Indexed. |
-| `uploaded_at` | `TIMESTAMPTZ` | Timestamp of successful upload. Nullable. |
-| `analysis_state` | `JSONB` | flexible map of analysis status (e.g. `{"birdnet": true, "batdetect": false}`). |
+| `devices` | `name` | Inventory of hardware microphones. Linked to `microphone_profiles`. |
+| `microphone_profiles` | `slug` | Configuration templates for microphone types (bootstrapped from YAML). |
+| `system_services` | `name` | Registry of dynamic services (recorder, workers). |
+| `system_config` | `key` | Global key-value store. |
+| `taxonomy` | `(worker, label)` | Metadata registry for detection classes (Scientific names, common names). |
 
-### `detections`
-Stores analysis results from various workers (BirdNET, etc.).
-
-| Column | Type | Description |
+### Data Tables
+| Table | Primary Key | Description |
 | :--- | :--- | :--- |
-| `id` | `BIGSERIAL` | Primary Key (Composite). |
-| `time` | `TIMESTAMPTZ` | **Partition Key** + Primary Key (Composite). Detection start time. |
-| `end_time` | `TIMESTAMPTZ` | Detection end time. Allows efficient duration/overlap queries. |
-| `recording_id` | `BIGINT` | Foreign Key to `recordings.id`. |
-| `worker` | `TEXT` | Name of the analysis worker (e.g., `birdnet`). Indexed. |
-| `confidence` | `FLOAT` | Confidence score (0.0 - 1.0). **Core Metric**. |
-| `label` | `TEXT` | Normalized Label (Scientific Name or ID). Key for Taxonomy. Indexed. |
-| `common_name` | `TEXT` | Standard English Name (e.g. "Blackbird"). Fast search/display. |
-| `details` | `JSONB` | Raw metadata (e.g. `{"box": [...]}`). |
+| `recordings` | `id` | Registry of all audio files. Standard table (not hypertable) to allow FKs. |
+| `uploads` | `id` | Audit log of high-res archive syncs. |
 
-### `taxonomy`
-Metadata registry for all detection classes (Bio- & Anthropophony).
-Maps raw labels to human-readable info ("Pokedex").
-
-| Column | Type | Description |
+### Hypertables (TimescaleDB)
+| Table | Partition Key | Description |
 | :--- | :--- | :--- |
-| `worker` | `TEXT` | Primary Key (Composite). e.g., `birdnet`. |
-| `label` | `TEXT` | Primary Key (Composite). The raw label from detections. |
-| `scientific_name` | `TEXT` | Latin Name or System ID (e.g. *Stihl MS 500i* or *Turdus*). |
-| `common_names` | `JSONB` | Localized names (e.g. `{"de": "Amsel", "en": "Blackbird"}`). |
-| `description` | `JSONB` | Localized descriptions (e.g. `{"de": "...", "en": "..."}`). |
-| `image_path` | `TEXT` | Path to local file (e.g. `/static/taxonomy/turdus_merula.jpg`). **Served by Nginx/FastAPI**. |
-| `image_source` | `TEXT` | Origin URL (Wikimedia) for attribution and refetching. |
-| `conservation_status` | `TEXT` | IUCN Red List status (e.g., `LC`, `EN`). |
+| `detections` | `time` | AI model results (BirdNET, etc.). Composite PK `(time, id)`. |
+| `weather` | `time` | Environmental data. Composite PK `(time, source)`. |
 
-### `weather`
-Hybrid environmental data from local sensors (BME280) and external APIs (OpenMeteo).
+## 3. Reference SQL (DDL)
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `time` | `TIMESTAMPTZ` | **Partition Key** + Primary Key (Composite). Measurement time. |
-| `source` | `TEXT` | Primary Key (Composite). Data source origin (e.g., `local_bme280`, `openmeteo`). |
-| `station_code` | `TEXT` | External Station ID (e.g., DWD `10865` or ICAO `EDDM`). Null for local. |
-| `temp_c` | `FLOAT` | Temperature in °C. |
-| `humidity` | `FLOAT` | Relative Humidity in %. |
-| `pressure_hpa` | `FLOAT` | Pressure in hPa. |
-| `wind_speed_kmh` | `FLOAT` | Wind speed (usually from API). |
-| `wind_gusts_kmh` | `FLOAT` | Max gust speed. |
-| `precipitation_mm` | `FLOAT` | Rain/Precipitation volume. |
-| `cloud_cover` | `INTEGER` | Cloud coverage percentage (0-100). |
-| `uv_index` | `FLOAT` | UV Index (0-11+). |
-| `sunshine_duration` | `FLOAT` | Duration of sunshine in seconds (per interval). |
-| `weather_code` | `INTEGER` | WMO Weather Code (e.g., 0=Clear, 61=Rain). |
-| `is_forecast` | `BOOLEAN` | `true` if this was a forecast, `false` if measured/historical. Default `false`. |
-| `extra` | `JSONB` | **Overflow Buffer**. Stores unforeseen sensor metrics (e.g. Soil Moisture, Lux) without schema migration. |
+> **Note:** This SQL is for reference. The authoritative initialization script is located at [`services/database/init/01-init-schema.sql`](../../services/database/init/01-init-schema.sql).
 
-## 2. Control Plane Tables
+```sql
+-- Enable TimescaleDB extension
+CREATE EXTENSION IF NOT EXISTS timescaledb;
 
-These tables manage the system state and configuration. They are standard PostgreSQL tables.
+-- System Tables
+CREATE TABLE IF NOT EXISTS microphone_profiles (
+    slug TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    match_pattern TEXT,
+    config JSON NOT NULL DEFAULT '{}',
+    is_system BOOLEAN NOT NULL DEFAULT FALSE
+);
 
-### `system_services`
-Registry of dynamic services managed by the Controller.
+CREATE TABLE IF NOT EXISTS devices (
+    name TEXT PRIMARY KEY,
+    serial_number TEXT UNIQUE NOT NULL,
+    model TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'offline',
+    enrollment_status TEXT NOT NULL DEFAULT 'pending', -- 'enrolled' (start), 'pending' (ignore but visible), 'ignored' (suppress)
+    last_seen TIMESTAMPTZ,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    profile_slug TEXT REFERENCES microphone_profiles(slug),
+    config JSON NOT NULL DEFAULT '{}'
+);
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `name` | `TEXT` | Primary Key. Service name (e.g., `birdnet`). |
-| `enabled` | `BOOLEAN` | Target state (Intent). Default `true`. |
-| `status` | `TEXT` | Current status (e.g., `running`, `stopped`). Default `stopped`. |
+CREATE TABLE IF NOT EXISTS system_services (
+    name TEXT PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    status TEXT NOT NULL DEFAULT 'stopped'
+);
 
-### `system_config`
-Global Key-Value store for application settings.
+CREATE TABLE IF NOT EXISTS taxonomy (
+    worker TEXT NOT NULL,
+    label TEXT NOT NULL,
+    scientific_name TEXT NOT NULL,
+    common_names JSON NOT NULL,
+    description JSON NOT NULL,
+    image_path TEXT,
+    image_source TEXT,
+    conservation_status TEXT,
+    PRIMARY KEY (worker, label)
+);
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `key` | `TEXT` | Primary Key. Configuration key. |
-| `value` | `JSONB` | Configuration value. |
+CREATE TABLE IF NOT EXISTS system_config (
+    key TEXT PRIMARY KEY,
+    value JSON NOT NULL
+);
 
-### `devices`
-Inventory of hardware devices (microphones, potential other sensors). Allows stateful management and frontend configuration.
+-- Data Tables
+CREATE TABLE IF NOT EXISTS recordings (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    time TIMESTAMPTZ NOT NULL,
+    sensor_id TEXT NOT NULL REFERENCES devices(name),
+    file_raw TEXT NOT NULL,
+    file_processed TEXT NOT NULL,
+    duration FLOAT NOT NULL,
+    sample_rate INTEGER NOT NULL,
+    filesize_raw BIGINT NOT NULL,
+    filesize_processed BIGINT NOT NULL,
+    uploaded BOOLEAN NOT NULL DEFAULT FALSE,
+    uploaded_at TIMESTAMPTZ,
+    analysis_state JSON NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS ix_recordings_time ON recordings (time);
+CREATE INDEX IF NOT EXISTS ix_recordings_sensor_id ON recordings (sensor_id);
+CREATE INDEX IF NOT EXISTS ix_recordings_uploaded ON recordings (uploaded);
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `name` | `TEXT` | Primary Key. Hardware ID (e.g. `front`, `back`). Referenced by `recordings.sensor_id`. |
-| `serial_number` | `TEXT` | Unique hardware serial (e.g. `123456`). Used for binding. |
-| `model` | `TEXT` | Hardware model info (e.g. `Dodotronic Ultramic 384 EVO`). |
-| `status` | `TEXT` | Current state (e.g. `online`, `offline`, `error`). Default `offline`. |
-| `last_seen` | `TIMESTAMPTZ` | Timestamp of last heartbeat/connection. |
-| `enabled` | `BOOLEAN` | User-controllable switch to enable/disable this input. Default `true`. |
-| `config` | `JSONB` | Device-specific configuration (e.g., gain, sample rate targets). |
+CREATE TABLE IF NOT EXISTS uploads (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    recording_id BIGINT NOT NULL REFERENCES recordings(id),
+    attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    filename TEXT NOT NULL,
+    size BIGINT NOT NULL,
+    success BOOLEAN NOT NULL,
+    error_message TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_uploads_recording_id ON uploads (recording_id);
 
-## 3. Audit Tables
+-- Hypertables (TimescaleDB)
 
-### `uploads`
-Immutable audit log of all upload attempts (successful or failed).
+-- Detections
+CREATE TABLE IF NOT EXISTS detections (
+    time TIMESTAMPTZ NOT NULL,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY,
+    end_time TIMESTAMPTZ NOT NULL,
+    recording_id BIGINT NOT NULL REFERENCES recordings(id),
+    worker TEXT NOT NULL,
+    confidence FLOAT NOT NULL,
+    label TEXT NOT NULL,
+    common_name TEXT,
+    details JSON NOT NULL DEFAULT '{}',
+    PRIMARY KEY (time, id)
+);
+CREATE INDEX IF NOT EXISTS ix_detections_worker ON detections (worker);
+CREATE INDEX IF NOT EXISTS ix_detections_label ON detections (label);
+CREATE INDEX IF NOT EXISTS ix_detections_recording_id ON detections (recording_id);
 
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `BIGSERIAL` | Primary Key. |
-| `recording_id` | `BIGINT` | Foreign Key to `recordings.id`. |
-| `attempt_at` | `TIMESTAMPTZ` | Time of the upload attempt. |
-| `filename` | `TEXT` | Name of the file. |
-| `size` | `BIGINT` | Bytes transferred. |
-| `success` | `BOOLEAN` | Outcome of the attempt. |
-| `error_message` | `TEXT` | Error details if failed. |
+SELECT create_hypertable('detections', 'time', if_not_exists => TRUE);
 
-## 4. TimescaleDB Configuration
+-- Weather
+CREATE TABLE IF NOT EXISTS weather (
+    time TIMESTAMPTZ NOT NULL,
+    source TEXT NOT NULL,
+    station_code TEXT,
+    temp_c FLOAT,
+    humidity FLOAT,
+    pressure_hpa FLOAT,
+    wind_speed_kmh FLOAT,
+    wind_gusts_kmh FLOAT,
+    precipitation_mm FLOAT,
+    cloud_cover INTEGER,
+    uv_index FLOAT,
+    sunshine_duration FLOAT,
+    weather_code INTEGER,
+    is_forecast BOOLEAN NOT NULL DEFAULT FALSE,
+    extra JSON DEFAULT '{}',
+    PRIMARY KEY (time, source)
+);
 
-- **Chunk Time Interval**: 24 hours (for `detections`, `weather`).
-- **Retention Policy**: Managed by `Janitor` service (see `filesystem_governance.md`).
+SELECT create_hypertable('weather', 'time', if_not_exists => TRUE);
+```
 
-### Performance Tuning (Raspberry Pi 5 + NVMe)
-Optimized for write throughput on NVMe storage.
-
-- `synchronous_commit = off`: Speed > Safety (minor data loss risk on crash accepted).
-- `shared_buffers = 512MB`: ~12% of 4GB RAM.
-- `random_page_cost = 1.1`: Optimized for NVMe random access.
-
-## 5. Data Governance & Model Strategy
-
-> **Strategy:** Single Public Schema.
-> **Consistency:** All containers MUST import SQL models from the shared library **`packages/core`** (e.g., `silvasonic.core.database`). 
-> **Constraint:** Ad-hoc SQL tables defined within individual service code are **FORBIDDEN**.
-
-### Why this approach?
-See [ADR 0013: Shared Core Library](../adr/0013-shared-core-library.md).
-- **Single Source of Truth**: Ensures `recorder` and `dashboard` agree on data types.
-- **Migration Safety**: Centralized `alembic` migrations (in `core` or `infrastructure` container) prevent schema drift.
-- **Type Sharing**: Pydantic models in `core` allow typing to flow from DB to API to Frontend.
-
-## 6. Initialization Strategy
-
-To avoid "Chicken-and-Egg" problems, initialization is split into two phases:
-
-### Phase 1: Infrastructure (`docker-entrypoint-initdb.d/init.sql`)
-*   **When:** Runs ONLY when the database volume is first created.
-*   **Responsibility:** "God-Mode" setup that requires superuser privileges.
-*   **Content:**
-    ```sql
-    CREATE EXTENSION IF NOT EXISTS timescaledb;
-    -- No tables defined here!
-    ```
-
-### Phase 2: Schema (`alembic upgrade head`)
-*   **When:** Runs on every container startup (via `controller` or `pre-start` hooks).
-*   **Responsibility:** Creating tables, modifying columns, managing indexes.
-*   **Mechanism:** Uses the `packages/core` Python definitions to apply changes incrementally.
-*   **Benefit:** Allows the schema to evolve (e.g., adding `devices` table) without wiping the database.
+## 4. Maintenance Principles
+- **Schema Drift**: Since `alembic --autogenerate` is no longer available, changes to `packages/core` models must be manually synchronized with the SQL DDL in this document and the `init.sql` file.
+- **Migration Path**: Future version jumps will be handled by incremental DDL scripts (e.g., `02-update.sql`) placed in the database initialization volume.
+- **Type Consistency**: Keep `BIGINT` for IDs and `TIMESTAMPTZ` for time to ensure compatibility with TimescaleDB hypertables.
+- **Foreign Keys**: `recordings` must remain a standard table because TimescaleDB does not support Foreign Keys referencing hypertables, but hypertables *can* reference standard tables.

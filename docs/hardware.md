@@ -47,7 +47,8 @@ Silvasonic follows a strict firmware-like appliance model:
 
 ## Audio Inputs (Tested Devices)
 
-The following USB Class Compliant interfaces have been validated for stability and quality:
+The following USB Class Compliant interfaces have been validated for stability and quality.
+for technical details on how these devices are configured, see [Microphone Profiles](../architecture/microphone_profiles.md).
 
 ### Ultrasonic (Bat Monitoring)
 *   **Dodotronic Ultramic 384 EVO**

@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,10 @@ class ControllerSettings(BaseSettings):
     HOST_DATA_DIR: str = "/tmp/silvasonic_fallback"  # Workspace (Safe Default)
     HOST_SOURCE_DIR: str = "/mnt/data/dev/apps/silvasonic"  # Repository Root (Fallback)
 
+    # Infrastructure
+    REDIS_HOST: str = Field(default="silvasonic-redis", validation_alias="SILVASONIC_REDIS_HOST")
+    ICECAST_HOST: str = "silvasonic-icecast"
+
     # Loop Configuration
 
-    SYNC_INTERVAL_SECONDS: int = 10
+    SYNC_INTERVAL_SECONDS: int = 2

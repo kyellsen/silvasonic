@@ -15,6 +15,9 @@ nav:
       - Filesystem Governance: architecture/filesystem_governance.md
       - Service Lifecycle: architecture/service_lifecycle.md
       - Messaging Patterns: architecture/messaging_patterns.md
+      - Management API: architecture/management_api_specification.md
+      - Microphone Profiles: architecture/microphone_profiles.md
+      - API Reference: api_reference.md
   - Services:
       - Template Service: services/template.md
       - Bat Detect Service: services/batdetect.md
@@ -52,7 +55,7 @@ nav:
       - Docker Standards: development/docker_standards.md
   - Hardware: hardware.md
   - Glossary: glossary.md
-plugins: [search, include-markdown]
+plugins: [search, include-markdown, swagger-ui-tag]
 markdown_extensions:
   - admonition
   - pymdownx.details

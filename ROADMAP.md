@@ -3,8 +3,7 @@
 This roadmap tracks the implementation status of all services, organized by Architectural Tiers (as defined in `README.md`) and Dataflow dependency.
 
 **Legend:**
-- 🔴 **Missing**: Service placeholder exists but is empty or missing content.
-- 🟠 **Template**: Scaffolding exists (folder structure, config), but core logic offers only a template/skeleton.
+- 🔴 **Missing/Template**: Service placeholder exists but is empty or offers only a template/skeleton.
 - 🟡 **Partially Implemented**: Core features exist but are incomplete.
 - 🟢 **Fully Implemented**: Feature-complete according to specification.
 - ✅ **Verified**: Fully implemented (or stable partials) and verified by automated tests.
@@ -29,8 +28,8 @@ Managed by Podman Compose. Provides the runtime environment and extensive system
 | **services/redis** | 🟢 ✅ | **High** (Indirect) | Redis Cache/Queue (Docker). Connectivity verified via `core` integration tests. |
 | **services/gateway** | 🟢 ✅ | **Manual** | Caddy Reverse Proxy. Configured directly in `podman-compose.yml` via Caddyfile. Considered done. |
 | **services/controller** | 🟡 | **Unit** (Partial) | Hardware/Container manager & orchestrator. Core logic implemented, tests exist. |
-| **services/monitor** | 🟠 | None | System Watchdog (CPU, Disk, Temp). |
-| **services/web-interface** | 🟠 | None | **[Future Main UI]** Local management console (FastAPI + HTMX). Currently scaffolding. |
+| **services/monitor** | 🔴 | None | System Watchdog (CPU, Disk, Temp). |
+| **services/web-interface** | 🔴 | None | **[Future Main UI]** Local management console (FastAPI + HTMX). Currently scaffolding. |
 | **services/status-board** | 🟡 | **Unit** (Partial) | **[Interim Dev Tool]** Lightweight dashboard for backend verification & service monitoring. |
 | **services/tailscale** | 🔴 | None | VPN mesh networking. |
 
@@ -42,15 +41,15 @@ Managed by Controller. Implements the core bioacoustic pipeline (Dataflow logic)
 | Service | Status | Test Coverage | Description |
 | :--- | :--- | :--- | :--- |
 | **services/recorder** | 🟡 | **Unit** (Passing) | **[Input]** Capable of recording dual-stream (Raw/Processed) + Live Stream (MP3). Verified via unit tests. |
-| **services/processor** | 🟠 | None | **[Process]** Indexes files, creates spectrograms, manages retention. |
-| **services/batdetect** | 🟠 | None | **[Analyze]** On-device inference for bats. |
-| **services/birdnet** | 🟠 | None | **[Analyze]** On-device inference for birds. |
-| **services/weather** | 🟠 | None | **[Context]** Environmental sensor data collection. |
-| **services/uploader** | 🟠 | None | **[Output]** Exfiltrates data to remote storage/API. |
+| **services/processor** | 🔴 | None | **[Process]** Indexes files, creates spectrograms, manages retention. |
+| **services/batdetect** | 🔴 | None | **[Analyze]** On-device inference for bats. |
+| **services/birdnet** | 🔴 | None | **[Analyze]** On-device inference for birds. |
+| **services/weather** | 🔴 | None | **[Context]** Environmental sensor data collection. |
+| **services/uploader** | 🔴 | None | **[Output]** Exfiltrates data to remote storage/API. |
 
 ---
 
 ## 3. Reference
 | Service | Status | Test Coverage | Description |
 | :--- | :--- | :--- | :--- |
-| **services/template** | 🟠 ✅ | **Low** (Smoke) | Reference implementation/Scaffolding. Contains basic smoke tests. |
+| **services/template** | 🔴 ✅ | **Low** (Smoke) | Reference implementation/Scaffolding. Contains basic smoke tests. |

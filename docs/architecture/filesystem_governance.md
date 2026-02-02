@@ -61,6 +61,7 @@ Containers are not granted blanket access to the entire Workspace. The Principle
 *   A service is the **Owner** of its own directory.
 *   Only the Owner is granted **Read-Write** access.
 *   *Example:* Only the `recorder` container may write to `/mnt/.../recorder/`.
+*   *Exception:* The **Controller** service is explicitly granted **Read-Write** access to `recorder/` and potentially other service directories for orchestration purposes (e.g. managing profiles, creating initial folder structures).
 
 ### The Consumer Principle (Read)
 *   If a service needs data from another (e.g., Processor needs Recordings), that folder must be mounted **Read-Only**.
@@ -93,7 +94,7 @@ As the host is Fedora with SELinux, all container definitions must adhere to the
 The filesystem state must not be left to chance ("Docker creating folders as root").
 
 ### Init Process
-*   An initialization script (`scripts/init.sh`) must run before containers start.
+*   An initialization script (`scripts/init.py`) must run before containers start.
 *   This script acts as the source of truth for the folder structure.
 *   It must ensure all folders are owned by the host user and have `755` (`rwxr-xr-x`) permissions.
 

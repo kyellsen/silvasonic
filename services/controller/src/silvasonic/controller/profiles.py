@@ -1,11 +1,12 @@
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import structlog
-import yaml
 from silvasonic.controller.hardware import AudioDevice
+from silvasonic.core.database.models.profiles import MicrophoneProfile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -23,44 +24,32 @@ class RecorderProfile:
 class ProfileManager:
     """Manages loading and matching of hardware profiles."""
 
-    def __init__(self, profiles_dir: str = "/app/profiles") -> None:
+    def __init__(self) -> None:
         """Initialize ProfileManager."""
-        self.profiles_dir = Path(profiles_dir)
         self.profiles: list[RecorderProfile] = []
-        self._load_profiles()
 
-    def _load_profiles(self) -> None:
-        """Load all YAML profiles from the profiles directory."""
-        if not self.profiles_dir.exists():
-            logger.warning("profiles_directory_not_found", path=str(self.profiles_dir))
-            return
+    async def load_profiles(self, session: AsyncSession) -> None:
+        """Load all profiles from the database."""
+        try:
+            stmt = select(MicrophoneProfile)
+            result = await session.execute(stmt)
+            db_profiles = result.scalars().all()
 
-        for p_file in self.profiles_dir.glob("*.yml"):
-            try:
-                with open(p_file) as f:
-                    data = yaml.safe_load(f)
-
-                # Basic validation
-                if not data or "slug" not in data:
-                    logger.warning("invalid_profile_skipped", file=p_file.name)
-                    continue
-
-                # Extract match pattern from audio section
-                match_pattern = data.get("audio", {}).get("match_pattern")
-
+            self.profiles = []
+            for db_p in db_profiles:
                 profile = RecorderProfile(
-                    slug=data["slug"],
-                    name=data.get("name", "Unknown"),
-                    match_pattern=match_pattern,
-                    raw_config=data,
+                    slug=db_p.slug,
+                    name=db_p.name,
+                    match_pattern=db_p.match_pattern,
+                    raw_config=db_p.config,
                 )
                 self.profiles.append(profile)
-                logger.debug("profile_loaded", slug=profile.slug)
+                logger.debug("profile_loaded_from_db", slug=profile.slug)
 
-            except Exception as e:
-                logger.error("failed_to_load_profile", file=p_file.name, error=str(e))
+            logger.info("profiles_loaded", count=len(self.profiles))
 
-        logger.info("profiles_loaded", count=len(self.profiles))
+        except Exception as e:
+            logger.error("failed_to_load_profiles_from_db", error=str(e))
 
     def find_profile_for_device(self, device: AudioDevice) -> str | None:
         """Find a matching profile slug for the given hardware device."""

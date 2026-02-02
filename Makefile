@@ -52,6 +52,10 @@ docs:
 	@echo "📚 Starting documentation server at http://localhost:8085..."
 	@(sleep 2 && xdg-open http://localhost:8085) & uv run mkdocs serve -a localhost:8085
 
+
 build-docs:
 	@uv run mkdocs build
+
+openapi:
+	@uv run python3 scripts/generate_openapi.py
 

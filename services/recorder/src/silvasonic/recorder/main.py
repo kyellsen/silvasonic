@@ -1,31 +1,38 @@
 import asyncio
-import os
 import signal
 import sys
 from pathlib import Path
 
+import psutil
 import structlog
 from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.core.redis.subscriber import RedisSubscriber
 from silvasonic.core.schemas.control import ControlMessage
 from silvasonic.recorder.manager import ProfileManager
+from silvasonic.recorder.settings import settings
 from silvasonic.recorder.stream import FFmpegStreamer
 
 logger = structlog.get_logger()
 
-# Configuration
-MIC_NAME = os.getenv("MIC_NAME", "default")
-MIC_PROFILE_NAME = os.getenv("MIC_PROFILE", "ultramic_384_evo")
-ALSA_INDEX_STR = os.getenv("ALSA_DEVICE_INDEX")
-ALSA_INDEX = int(ALSA_INDEX_STR) if ALSA_INDEX_STR and ALSA_INDEX_STR.strip() else None
-
 # Paths
 # In-container path for recordings
-OUTPUT_DIR = Path("/data/recorder") / MIC_NAME / "recordings"
+OUTPUT_DIR = Path("/data/recorder") / settings.MIC_NAME / "recordings"
 
 
-async def run_recorder_loop(publisher: RedisPublisher) -> None:
+def get_resource_usage() -> dict[str, float]:
+    """Get current process CPU and Memory usage."""
+    try:
+        proc = psutil.Process()
+        return {
+            "cpu_percent": proc.cpu_percent(interval=None),
+            "memory_mb": proc.memory_info().rss / 1024 / 1024,
+        }
+    except Exception:
+        return {}
+
+
+async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
     """Main async loop for the recorder service."""
     # 1. Load Configuration
     profile_manager = ProfileManager()
@@ -34,11 +41,15 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
 
     try:
         # Pass empty config dict as overrides, or rely purely on profile + env vars
-        profile = profile_manager.load_profile(MIC_PROFILE_NAME, {})
+        profile = profile_manager.load_profile(settings.MIC_PROFILE, {})
         logger.info("profile_loaded", profile=profile.model_dump())
     except Exception as e:
         logger.critical("profile_load_failed", error=str(e))
-        await publisher.publish_lifecycle("crashed", reason=f"Profile load failed: {e}")
+        try:
+            if publisher:
+                await publisher.publish_lifecycle("crashed", reason=f"Profile load failed: {e}")
+        except Exception:
+            pass  # Fail safe if redis is down, we are crashing anyway
         sys.exit(1)
 
     # 2. Init FFmpeg Streamer
@@ -47,22 +58,27 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
     def on_segment_complete_sync(filename: str, duration: float) -> None:
         """Callback to handle segment completion from streamer thread."""
         logger.info("recorder_segment_finished", filename=filename, duration=duration)
-        asyncio.run_coroutine_threadsafe(
-            publisher.publish_audit(
-                event="recording.finished",
-                payload={
-                    "filename": Path(filename).name,
-                    "duration": duration,
-                },
-            ),
-            loop,
-        )
+        try:
+            if publisher:
+                asyncio.run_coroutine_threadsafe(
+                    publisher.publish_audit(
+                        event="recording.finished",
+                        payload={
+                            "filename": Path(filename).name,
+                            "duration": duration,
+                        },
+                    ),
+                    loop,
+                )
+        except Exception as e:
+            logger.warning("audit_publish_failed", error=str(e))
 
     streamer = FFmpegStreamer(
         profile=profile,
         output_dir=OUTPUT_DIR,
-        alsa_card_index=ALSA_INDEX,
+        alsa_card_index=settings.ALSA_DEVICE_INDEX,
         on_segment_complete=on_segment_complete_sync,
+        live_stream_url=settings.live_stream_url,
     )
 
     # 3. Signals (Sync boilerplate for generic signal handling)
@@ -77,10 +93,14 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     # 4. Run Loop
-    await publisher.publish_lifecycle("started", reason="Service startup")
+    try:
+        if publisher:
+            await publisher.publish_lifecycle("started", reason="Service startup")
+    except Exception as e:
+        logger.warning("lifecycle_startup_failed", error=str(e))
 
     # Subscriber Setup
-    subscriber = RedisSubscriber(service_name="recorder", instance_id=MIC_NAME)
+    subscriber = RedisSubscriber(service_name="recorder", instance_id=settings.MIC_NAME)
 
     async def handle_reload_config(msg: ControlMessage) -> None:
         logger.info("reloading_configuration", initiator=msg.initiator)
@@ -88,47 +108,69 @@ async def run_recorder_loop(publisher: RedisPublisher) -> None:
         # For now, just log it.
         logger.info("configuration_reloaded")
 
-    subscriber.register_handler("reload_config", handle_reload_config)
-    await subscriber.start()
+    try:
+        subscriber.register_handler("reload_config", handle_reload_config)
+        await subscriber.start()
+    except Exception as e:
+        logger.warning("subscriber_start_failed", error=str(e))
 
     try:
         streamer.start()
 
         while True:
             # Heartbeat Loop
-            await publisher.publish_status(
-                status="online",
-                activity="recording",
-                message=f"Recording {MIC_NAME}",
-                meta={
-                    "profile": MIC_PROFILE_NAME,
-                    "alsa_index": ALSA_INDEX,
-                },
-            )
+            if publisher:
+                await publisher.publish_status(
+                    status="online",
+                    activity="recording",
+                    message=f"Recording {settings.MIC_NAME}",
+                    meta={
+                        "profile": settings.MIC_PROFILE,
+                        "alsa_index": settings.ALSA_DEVICE_INDEX,
+                        "resources": get_resource_usage(),
+                        "stream_url": settings.live_stream_url,
+                    },
+                )
             await asyncio.sleep(5)
 
     except KeyboardInterrupt:
         logger.info("recorder_stopped_by_user")
     except Exception as e:
         logger.critical("recorder_crashed", error=str(e))
-        await publisher.publish_lifecycle("crashed", reason=str(e))
+        try:
+            if publisher:
+                await publisher.publish_lifecycle("crashed", reason=str(e))
+        except Exception:
+            pass
         streamer.stop()
         sys.exit(1)
     finally:
         logger.info("recorder_shutdown")
-        await subscriber.stop()
-        await publisher.publish_lifecycle("stopping", reason="Shutdown signal")
+        if publisher:
+            try:
+                await publisher.publish_lifecycle("stopping", reason="Shutdown signal")
+            except Exception as e:
+                logger.warning("lifecycle_stopping_failed", error=str(e))
+
+            try:
+                # subscriber is defined in scope above
+                if "subscriber" in locals():
+                    await subscriber.stop()
+            except Exception as e:
+                logger.warning("subscriber_stop_failed", error=str(e))
         streamer.stop()
 
 
 def main() -> None:
     """Execute the main recorder loop."""
     # Configure logging (Dual Config: Stdout + File)
-    configure_logging(service_name="recorder", log_dir=os.getenv("LOG_DIR", None))
+    log_dir = str(settings.LOG_DIR) if settings.LOG_DIR else None
+    configure_logging(service_name="recorder", log_dir=log_dir)
 
-    logger.info("service_startup", service="recorder", mic_name=MIC_NAME)
+    logger.info("service_startup", service="recorder", mic_name=settings.MIC_NAME)
 
-    publisher = RedisPublisher(service_name="recorder", instance_id=MIC_NAME)
+    publisher = RedisPublisher(service_name="recorder", instance_id=settings.MIC_NAME)
+    # publisher = None
 
     try:
         asyncio.run(run_recorder_loop(publisher))

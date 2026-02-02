@@ -47,3 +47,19 @@ def test_profile_not_found(profile_dir):
     manager = ProfileManager(profile_dir=profile_dir)
     with pytest.raises(FileNotFoundError):
         manager.load_profile("non_existent")
+
+
+def test_init_checks_global_profile_dir(mocker, tmp_path):
+    """Test that init checks the global PROFILE_DIR."""
+    # Mock the global PROFILE_DIR path
+    mock_path = mocker.patch("silvasonic.recorder.manager.PROFILE_DIR")
+    mock_path.exists.return_value = True
+
+    # Init manager without explicit dir
+    from silvasonic.recorder.manager import ProfileManager
+
+    manager = ProfileManager()
+
+    # Should use the mocked global dir
+    assert manager.profile_dir == mock_path
+    mock_path.exists.assert_called()

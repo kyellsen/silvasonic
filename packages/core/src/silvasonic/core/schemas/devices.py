@@ -36,7 +36,7 @@ class StreamConfig(BaseModel):
     processed_enabled: bool = Field(default=True, description="Save Processed (48kHz) stream?")
     live_stream_enabled: bool = Field(default=False, description="Enable Icecast MP3 stream?")
     segment_duration_s: PositiveInt = Field(
-        default=60, description="File rotation interval in seconds"
+        default=15, description="File rotation interval in seconds"
     )
 
 

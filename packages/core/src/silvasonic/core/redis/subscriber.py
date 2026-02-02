@@ -52,12 +52,16 @@ class RedisSubscriber:
         """Internal loop to listen to Redis channels."""
         channel_name = "silvasonic.control"
 
+        backoff_delay = 1.0
+
         while self._running:
             try:
                 async with get_redis_client() as redis:
+                    backoff_delay = 1.0
+
                     pubsub = redis.pubsub()
                     await pubsub.subscribe(channel_name)
-                    logger.debug("subscribed_to_channel", channel=channel_name)
+                    logger.info("subscribed_to_channel", channel=channel_name)
 
                     while self._running:
                         try:
@@ -79,8 +83,11 @@ class RedisSubscriber:
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                logger.error("redis_connection_error", error=str(e))
-                await asyncio.sleep(5)  # Wait before reconnecting
+                logger.error("redis_connection_error", error=str(e), retry_in=backoff_delay)
+                await asyncio.sleep(backoff_delay)
+
+                # Exponential Backoff (max 60s)
+                backoff_delay = min(60.0, backoff_delay * 2)
 
     async def _process_message(self, raw_data: str) -> None:
         """Process an incoming message."""

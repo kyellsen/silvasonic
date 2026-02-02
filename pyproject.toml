@@ -54,6 +54,7 @@ dev = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
     "mkdocs-include-markdown-plugin>=6.0.0",
+    "mkdocs-swagger-ui-tag>=0.4.0",
     # -- Local Packages (AKTIVIEREN, SOBALD IMPLEMENTIERT!) --
     "silvasonic-core",
     # Kommentiere diese Zeilen ein, sobald du den jeweiligen Service-Ordner

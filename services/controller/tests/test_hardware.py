@@ -17,14 +17,17 @@ def test_device_scanner_properties(scanner):
     assert dev.display_name == "TestMic (Desc)"
 
 
-def test_get_serial_success(scanner):
+@patch("os.path.exists")
+def test_get_serial_success(mock_exists, scanner):
     """Test successful serial retrieval from primary path."""
+    mock_exists.return_value = True
     with patch("builtins.open", mock_open(read_data="SERIAL123\n")):
         serial = scanner._get_serial(1)
         assert serial == "SERIAL123"
 
 
-def test_get_serial_fallback(scanner):
+@patch("os.path.exists")
+def test_get_serial_fallback(mock_exists, scanner):
     """Test serial retrieval from fallback path (parent)."""
     # Mock open to raise FileNotFoundError on first call, return data on second
     # Side effect: First open fails, second succeeds
@@ -36,6 +39,16 @@ def test_get_serial_fallback(scanner):
         if "device/../serial" in file:
             return mock_open(read_data="FALLBACK123").return_value
         raise FileNotFoundError()
+
+    # Simulate primary missing, fallback present
+    def exists_side_effect(path):
+        if "device/serial" in path:
+            return False
+        if "device/../serial" in path:
+            return True
+        return False
+
+    mock_exists.side_effect = exists_side_effect
 
     with patch("builtins.open", side_effect=side_effect):
         serial = scanner._get_serial(1)

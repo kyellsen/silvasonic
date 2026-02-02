@@ -29,8 +29,7 @@ COPY services/controller/README.md ./
 # But uv pip install /packages/core should install it into site-packages.
 # Let's match the recorder pattern exactly to be safe.
 COPY packages/core/src ./packages/core/src
-COPY packages/core/alembic.ini ./
-COPY packages/core/migrations ./migrations
+
 
 # 4. Install the project
 RUN uv pip install .
@@ -48,8 +47,7 @@ WORKDIR /app
 
 # Copy the environment from builder
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/alembic.ini /app/alembic.ini
-COPY --from=builder /app/migrations /app/migrations
+
 COPY services/recorder/config/profiles /app/profiles
 
 # Update PATH

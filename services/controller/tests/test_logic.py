@@ -146,6 +146,9 @@ async def test_reconcile_stop_removed_device(
         }
     ]
 
+    # Force Intelligent Polling to trigger (Change state from something to nothing)
+    service.last_hardware_hash = "SN123"
+
     # Configure Session
     mock_session = mock_session_cls
     mock_session.add = MagicMock()
@@ -200,11 +203,19 @@ async def test_run_loop(service):
     # We mock reconcile to raise a special exception to break the infinite loop
     # or rely on side_effect iteration?
 
+    # Setup Mocks for Run Loop
     service.reconcile = AsyncMock()
-    service.run_db_migrations = MagicMock()
+    # We remove run_db_migrations mock as it's no longer called in run()
 
-    # We want run() to call reconcile once then exit?
-    # run() has 'while True'. We can mock asyncio.sleep to raise InterruptedError?
+    # We need to mock _wait_for_database to avoid real DB waits
+    service._wait_for_database = AsyncMock()
+
+    # Mock subscriber to prevent actual Redis connections
+    service.subscriber = MagicMock()
+    service.subscriber.start = AsyncMock()
+    service.subscriber.stop = AsyncMock()
+    service.broker = MagicMock()
+    service.broker.publish_lifecycle = AsyncMock()
 
     with patch("asyncio.sleep", side_effect=InterruptedError):
         with pytest.raises(InterruptedError):
@@ -255,13 +266,27 @@ async def test_reconcile_spawn_fail(
     # Spawn fails
     mock_podman.spawn_recorder.return_value = False
 
+    # Force auto-enrollment to 'enrolled' by mocking profile find
+    mock_profiles.find_profile_for_device.return_value = "custom-profile"
+
     # Session
     mock_session = mock_session_cls
     mock_session.add = MagicMock()
-    # Mock execute result for existing devices (none)
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
+    # Mock execute result for:
+    # 1. select(Device) -> first call returns [] (no devices in DB)
+    # 2. select(Device).where(...) -> returns None (new device)
+    # 3. select(SystemService) -> returns []
+
+    mock_result_empty = MagicMock()
+    mock_result_empty.scalars.return_value.all.return_value = []
+    mock_result_empty.scalar_one_or_none.return_value = None
+
+    mock_session.execute.side_effect = [
+        mock_result_empty,  # 1. All devices
+        mock_result_empty,  # 2. Specific device
+        mock_result_empty,  # 3. Services
+        mock_result_empty,  # 4. Services
+    ]
 
     await service.reconcile()
 
