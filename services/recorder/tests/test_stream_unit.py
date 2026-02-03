@@ -22,6 +22,12 @@ def unit_profile():
     )
 
 
+@pytest.fixture(autouse=True)
+def mock_logger(mocker):
+    """Mock the module-level logger to suppress output."""
+    return mocker.patch("silvasonic.recorder.stream.logger")
+
+
 def test_monitor_loop_segment_detection(unit_profile, tmp_path, mocker):
     """Test that segment completion lines trigger the callback."""
     # Mock callback

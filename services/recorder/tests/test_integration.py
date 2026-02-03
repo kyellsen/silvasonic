@@ -134,11 +134,17 @@ def test_end_to_end_recording(integration_profile, tmp_path):
     print(f"ffmpeg version output: {ret.stdout[:200]}")
 
     # Use lavfi sine wave generator (infinite)
-    with mock_icecast_server(port=8000):
+    # Find a free port dynamically to avoid collisions
+    sock = socket.socket()
+    sock.bind(("", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+
+    with mock_icecast_server(port=port):
         streamer = FFmpegStreamer(
             integration_profile,
             tmp_path,
-            live_stream_url="icecast://source:hackme@localhost:8000/live",
+            live_stream_url=f"icecast://source:hackme@localhost:{port}/live",
             input_format="lavfi",
             input_device="sine=frequency=1000",
         )
@@ -154,9 +160,9 @@ def test_end_to_end_recording(integration_profile, tmp_path):
         # 1. Check Network Socket (Live Stream)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(2)
-        result = sock.connect_ex(("127.0.0.1", 8000))
+        result = sock.connect_ex(("127.0.0.1", port))
         sock.close()
-        assert result == 0, "Port 8000 should be open"
+        assert result == 0, f"Port {port} should be open"
 
         streamer.stop()
 

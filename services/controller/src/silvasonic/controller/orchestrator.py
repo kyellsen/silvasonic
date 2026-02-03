@@ -138,8 +138,7 @@ class PodmanOrchestrator:
                 "device_serial": serial_number,
             },
             security_opt=[],
-            privileged=True,
-            network="silvasonic_silvasonic-net",
+            # network defaults to settings.PODMAN_NETWORK_NAME
         )
 
     def spawn_service(
@@ -201,9 +200,10 @@ class PodmanOrchestrator:
         group_add: list[str] | None = None,
         security_opt: list[str] | None = None,
         privileged: bool = False,
-        network: str = "silvasonic_silvasonic-net",
+        network: str | None = None,
     ) -> bool:
         """Internal helper to spawn containers safely."""
+        network = network or settings.PODMAN_NETWORK_NAME
         try:
             # Check if exists and remove if stopped
             try:

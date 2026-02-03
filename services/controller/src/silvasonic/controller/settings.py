@@ -16,6 +16,9 @@ class ControllerSettings(BaseSettings):
     REDIS_HOST: str = Field(default="silvasonic-redis", validation_alias="SILVASONIC_REDIS_HOST")
     ICECAST_HOST: str = "silvasonic-icecast"
 
+    # Orchestration
+    PODMAN_NETWORK_NAME: str = "silvasonic_silvasonic-net"  # Default for 'silvasonic' dir
+
     # Loop Configuration
 
     SYNC_INTERVAL_SECONDS: int = 2

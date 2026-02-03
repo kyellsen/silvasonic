@@ -107,6 +107,9 @@ def test_spawn_recorder_success_new(manager):
     # Verify security options (SELinux disabled)
     assert kwargs["security_opt"] == []
 
+    # Verify Network
+    assert kwargs["network"] == "silvasonic_silvasonic-net"
+
 
 def test_spawn_recorder_already_running(manager):
     """Test skipping if already running."""

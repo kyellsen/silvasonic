@@ -104,7 +104,8 @@ class ContainerService:
             if "silvasonic-recorder" in image and state == "running":
                 # Extract IP
                 ip = "127.0.0.1"
-                networks = c.get("NetworkSettings", {}).get("Networks", {})
+                network_settings = c.get("NetworkSettings") or {}
+                networks = network_settings.get("Networks") or {}
                 for _, net_info in networks.items():
                     if net_info.get("IPAddress"):
                         ip = net_info.get("IPAddress")

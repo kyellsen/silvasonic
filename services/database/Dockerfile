@@ -2,6 +2,11 @@
 # Base: TimescaleDB (Postgres 17)
 FROM timescale/timescaledb:latest-pg17
 
+# Fix: Add missing locales for Alpine
+USER root
+RUN apk add --no-cache musl-locales
+
+
 LABEL maintainer="Silvasonic Project"
 LABEL service="database"
 LABEL description="TimescaleDB optimized for NVMe"
