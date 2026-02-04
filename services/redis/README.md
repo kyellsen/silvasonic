@@ -15,20 +15,18 @@
 ## 3. Core Responsibilities
 Derived strictly from the *Code Truth* (inputs/logic/outputs).
 
-*   **Inputs**:
-    *   **Pub/Sub Messages**: From `recorder`, `processor`, `controller`.
-*   **Processing**:
-    *   **Message Brokering**: routing messages to subscribers.
-    *   **Transient State**: Storing short-lived keys (e.g., `status:recorder:front` TTL 10s).
-    *   **Memory Management**: Max memory 64mb, LRU eviction policy.
-*   **Outputs**:
-    *   **Message Delivery**: To `web-interface` (via Websocket proxy) and other services.
+*   **Message Broker**: Hosting Pub/Sub channels and Streams for inter-service communication.
+    *   *See [Messaging Patterns](../../docs/architecture/messaging_patterns.md) for full protocol definitions.*
+*   **Transient State**: Storing short-lived keys (e.g., `status:recorder:front` TTL 10s).
+*   **Memory Management**: Max memory 64mb, LRU eviction policy.
 
 ## 4. Operational Constraints & Rules
 Specific technical rules this service must obey (derived from code analysis or architectural mandates).
 
 *   **Concurrency**: **High**. Single-threaded but extremely fast Event Loop.
-*   **State**: **Ephemeral**. Persistence is explicitly DISABLED (`save ""`, `appendonly no`) in `redis.conf`.
+*   **State**: **Mixed**.
+    *   **Persistence**: Explicitly **DISABLED** (`save ""`, `appendonly no`).
+    *   **Streams**: Runtime persistence only. Pruned by `MAXLEN` or memory cap.
 *   **Privileges**: **Rootless**.
 *   **Resources**: Very Low RAM (Capped at 64MB).
 

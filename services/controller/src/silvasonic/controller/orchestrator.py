@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any, cast
 
@@ -66,6 +67,7 @@ class PodmanOrchestrator:
                         "service": labels.get("service"),
                         "device_serial": labels.get("device_serial"),
                         "mic_name": labels.get("mic_name"),
+                        "config_hash": labels.get("silvasonic.config_hash"),
                         "created": c.attrs.get("Created")
                         if hasattr(c, "attrs")
                         else None,  # Timestamp
@@ -77,7 +79,14 @@ class PodmanOrchestrator:
             return []
 
     def spawn_recorder(
-        self, device: AudioDevice, mic_profile: str, mic_name: str, serial_number: str
+        self,
+        device: AudioDevice,
+        mic_profile: str,
+        mic_name: str,
+        serial_number: str,
+        config: dict[str, Any],
+        config_hash: str,
+        extra_env: dict[str, str] | None = None,
     ) -> bool:
         """Spawn a new recorder container for a specific device."""
         short_serial = serial_number[-4:].lower() if serial_number else "xxxx"
@@ -92,7 +101,7 @@ class PodmanOrchestrator:
         try:
             # /host_data maps to settings.HOST_DATA_DIR
             # WE NOW USE friendly_name HERE INSTEAD OF mic_name
-            internal_log_path = f"/host_data/recorder/{friendly_name}/logs"
+            internal_log_path = f"{settings.HOST_DATA_DIR}/recorder/{friendly_name}/logs"
             os.makedirs(internal_log_path, exist_ok=True)
             # Ensure permissions? Rootless inside container might own it as root (mapped to user outside)
             # which is fine.
@@ -103,12 +112,16 @@ class PodmanOrchestrator:
         env_vars = {
             "MIC_NAME": friendly_name,  # Updated to match directory
             "MIC_PROFILE": mic_profile,
+            "MIC_CONFIG_JSON": json.dumps(config),
             "ALSA_DEVICE_INDEX": str(device.card_index),
             "PYTHONUNBUFFERED": "1",
             "LOG_DIR": "/var/log/silvasonic",
             "SILVASONIC_REDIS_HOST": settings.REDIS_HOST,  # Required by silvasonic.core
             "ICECAST_HOST": settings.ICECAST_HOST,
         }
+
+        if extra_env:
+            env_vars.update(extra_env)
 
         # Volumes
         # We must inject the bindings relative to the host view.
@@ -136,6 +149,7 @@ class PodmanOrchestrator:
                 "service": "recorder",
                 "mic_name": mic_name,  # Keep original Logical Name in labels for DB reconciliation
                 "device_serial": serial_number,
+                "silvasonic.config_hash": config_hash,
             },
             security_opt=[],
             # network defaults to settings.PODMAN_NETWORK_NAME

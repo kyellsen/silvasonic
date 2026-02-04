@@ -86,3 +86,14 @@ To ensure system state survives power cycles without host-level intervention:
     - **Mounts**: It MUST mount `${HOST_SILVASONIC_DATA_DIR}/{service}//logs:/var/log/silvasonic:z`.
     - **Result**: Even if a container restarts, the logs are preserved on the host NVMe.
 - **Recovery**: This mechanism ensures that default services (like Weather and BirdNET) start automatically on a clean database install without requiring manual activation via the Dashboard.
+
+## 3. Service Events & Messaging
+
+Services broadcast their state changes and respond to commands using the Redis messaging infrastructure.
+
+*   **Lifecycle Events**: Services emit `started`, `stopping`, and `crashed` events.
+*   **Heartbeats**: Services periodically emit `status` updates.
+*   **Commands**: The Controller sends specific instructions (e.g., "Reload") via Control messages.
+
+> [!TIP]
+> **Protocol & Schemas**: For technical details on the Redis usage (Streams vs. Pub/Sub), Payload Schemas, and Topic names, refer to the **[Messaging Patterns](messaging_patterns.md)** document. This document solely describes *when* and *why* events occur, while the Messaging Patterns document describes *how* they are transmitted.

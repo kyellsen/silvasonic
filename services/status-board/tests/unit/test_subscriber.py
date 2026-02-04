@@ -9,12 +9,21 @@ from silvasonic.status_board.subscriber import MessageSubscriber
 @pytest.mark.asyncio
 async def test_subscriber_flow() -> None:
     """Test the subscriber flow including cache and broadcasting."""
+    from collections.abc import AsyncGenerator
+    from typing import Any
     from unittest.mock import MagicMock
 
     # Mock Redis
     mock_redis = AsyncMock()
     mock_pubsub = AsyncMock()
     mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
+
+    # Prevent busy loop in _run_stream_listener
+    async def mock_xread(*args: Any, **kwargs: Any) -> list[Any]:
+        await asyncio.sleep(0.1)
+        return []
+
+    mock_redis.xread.side_effect = mock_xread
 
     # Mock pubsub listen
     msg_data = {
@@ -23,9 +32,6 @@ async def test_subscriber_flow() -> None:
         "health": "healthy",
         "activity": "testing",
     }
-
-    from collections.abc import AsyncGenerator
-    from typing import Any
 
     # We need an async iterator that yields one message then waits
     async def mock_listen() -> AsyncGenerator[dict[str, Any], None]:
@@ -50,7 +56,7 @@ async def test_subscriber_flow() -> None:
         await subscriber.start()
 
         # Verify subscription
-        mock_pubsub.subscribe.assert_called_with("silvasonic.status", "silvasonic.lifecycle")
+        mock_pubsub.subscribe.assert_called_with("silvasonic.status")
 
         # Wait a bit for processing
         await asyncio.sleep(0.1)

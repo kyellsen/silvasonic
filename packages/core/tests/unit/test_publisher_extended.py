@@ -27,16 +27,19 @@ async def test_publish_control(mock_redis: AsyncMock) -> None:
             params={"threshold": 0.8},
         )
 
-        mock_redis.publish.assert_called_once()
-        args = mock_redis.publish.call_args[0]
-        assert args[0] == "silvasonic.control"
+        mock_redis.xadd.assert_called_once()
+        args = mock_redis.xadd.call_args[0]
+        stream_name = args[0]
+        payload = args[1]
 
-        payload = json.loads(args[1])
-        assert payload["topic"] == "control"
-        assert payload["command"] == "reload_config"
-        assert payload["initiator"] == "admin"
-        assert payload["target_service"] == "birdnet"
-        assert payload["payload"]["params"] == {"threshold": 0.8}
+        assert stream_name == "stream:control"
+        assert "json" in payload
+
+        msg_data = json.loads(payload["json"])
+        assert msg_data["command"] == "reload_config"
+        assert msg_data["initiator"] == "admin"
+        assert msg_data["target_service"] == "birdnet"
+        assert msg_data["payload"]["params"] == {"threshold": 0.8}
 
 
 @pytest.mark.asyncio
@@ -49,12 +52,14 @@ async def test_publish_audit(mock_redis: AsyncMock) -> None:
             payload={"filename": "test.wav", "size": 1024},
         )
 
-        mock_redis.publish.assert_called_once()
-        args = mock_redis.publish.call_args[0]
-        assert args[0] == "silvasonic.audit"
+        mock_redis.xadd.assert_called_once()
+        args = mock_redis.xadd.call_args[0]
+        stream_name = args[0]
+        payload = args[1]
 
-        payload = json.loads(args[1])
-        assert payload["topic"] == "audit"
-        assert payload["event"] == "file_uploaded"
-        assert payload["service"] == "test-service"
-        assert payload["payload"] == {"filename": "test.wav", "size": 1024}
+        assert stream_name == "stream:audit"
+
+        msg_data = json.loads(payload["json"])
+        assert msg_data["event"] == "file_uploaded"
+        assert msg_data["service"] == "test-service"
+        assert msg_data["payload"] == {"filename": "test.wav", "size": 1024}

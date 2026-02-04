@@ -16,11 +16,15 @@ class RecorderSettings(BaseSettings):
     # ALSA Device index can be explicitly set. If None, auto-detection logic (not implemented here) or default is used.
     ALSA_DEVICE_INDEX: int | None = None
 
+    # Input Configuration (For Testing/Simulation)
+    INPUT_FORMAT: str = "alsa"
+    INPUT_DEVICE_OVERRIDE: str | None = None
+
     # Icecast Configuration
     ICECAST_HOST: str = "silvasonic-icecast"
     ICECAST_PORT: int = 8000
     ICECAST_USER: str = "source"
-    ICECAST_PASSWORD: str = "hackme"
+    ICECAST_PASSWORD: str
     ICECAST_MOUNT: str | None = None  # If None, defaults to /live/{MIC_NAME}.opus
 
     # Infrastructure
@@ -46,4 +50,4 @@ class RecorderSettings(BaseSettings):
         )
 
 
-settings = RecorderSettings()
+settings = RecorderSettings()  # type: ignore[call-arg]

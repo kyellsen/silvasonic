@@ -15,8 +15,20 @@ def main() -> None:
     run_command(["uv", "run", "mypy", "."])
 
     # 3. Unit Tests
-    print_step("Running Tests...")
-    run_command(["uv", "run", "pytest", "--cov=.", "--cov-report=term-missing"])
+    print_step("Running Unit Tests (Fast)...")
+    run_command(
+        [
+            "uv",
+            "run",
+            "pytest",
+            "-m",
+            "not integration",
+            "--ignore=tests/e2e",
+            "--ignore-glob=**/integration/**",
+            "--cov=.",
+            "--cov-report=term-missing",
+        ]
+    )
 
     print_success("All checks passed! Ready to push.")
 

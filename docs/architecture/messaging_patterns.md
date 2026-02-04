@@ -19,15 +19,16 @@ To satisfy the **"Data Capture Integrity"** directive (Section 3 in AGENTS.md), 
     *   *Mechanism*: Workers use `SELECT ... FOR UPDATE SKIP LOCKED` (or simple state flags) to claim jobs.
     *   *Robustness*: Prevents race conditions where two Analyzers grab the same file. Implicitly handles backpressure (if DB is slow, workers just wait).
 
-### 1.2. The Interactive Path (Pub/Sub)
+### 1.2. The Interactive Path (Hybrid Pub/Sub & Streams)
 **Philosophy**: Responsiveness for the User Interface. Events are "Notifications", not "Work Orders".
 *   **Processor -> UI (Status)**: **Redis Pub/Sub**.
-    *   *Channel*: `silvasonic.audit` or `silvasonic.status`
+    *   *Channel*: `silvasonic.status`
     *   *Use Case*: "New file indexed!" -> UI updates the timeline immediately without waiting for a refresh interval.
     *   *Failure Mode*: If the UI misses the message, the user just sees the data 5 seconds later (via standard polling). **Acceptable**.
-*   **Control/Maintenance**: **Redis Pub/Sub**.
-    *   *Channel*: `silvasonic.control`
+*   **Control/Maintenance**: **Redis Streams**.
+    *   *Key*: `stream:control`
     *   *Use Case*: "Restart BirdNET" or "Re-read Config".
+    *   *Reliability*: Application ensures at-least-once delivery via Consumer Groups.
 
 ### 1.3 Summary Table
 | Interaction | Pattern | Source of Truth |
@@ -37,19 +38,26 @@ To satisfy the **"Data Capture Integrity"** directive (Section 3 in AGENTS.md), 
 | **Analysis Job** | DB Polling | `recordings` table (`analysis_state` JSON check) |
 | **Upload Job** | DB Polling | `recordings` table (`uploaded=false`) |
 | **UI Updates** | Pub/Sub | Redis Channel (Optimization) |
+| **Control Commands** | Redis Stream | Redis Stream (Transient Persistence) |
 
 ---
 
 ## 2. Redis Channel Namespace
 
-All events use the prefix `silvasonic`.
+The system uses a mix of **Pub/Sub** (for ephemeral broadcasts) and **Streams** (for reliable/persisted messaging).
 
-| Channel | Pattern | Purpose | Payload Schema |
-| :--- | :--- | :--- | :--- |
-| **Status** | `silvasonic.status` | **Firehose** of all service heartbeats. UI listens here. | [Status Schema](#31-status-schema) |
-| **Lifecycle** | `silvasonic.lifecycle` | Service startup, shutdown, and error events. | [Lifecycle Schema](#32-lifecycle-schema) |
-| **Control** | `silvasonic.control` | Commands targeted at specific services (e.g., "Reload Config"). | [Control Schema](#33-control-schema) |
-| **Audit** | `silvasonic.audit` | High-level business events (e.g., "Recording Finished", "Upload Success"). | [Audit Schema](#34-audit-schema) |
+| Type | Key / Channel | Purpose | Persistence | Schema |
+| :--- | :--- | :--- | :--- | :--- |
+| **Status** | `silvasonic.status` (Pub/Sub) | **Firehose** of all service heartbeats. UI listens here. | None (Fire & Forget) | [Status Schema](#31-status-schema) |
+| **Lifecycle** | `stream:lifecycle` (Stream) | Service startup, shutdown, and error events. | Ephemeral (Stream History) | [Lifecycle Schema](#32-lifecycle-schema) |
+| **Control** | `stream:control` (Stream) | Commands targeted at specific services (e.g., "Reload Config"). | Ephemeral (Stream History + ACK) | [Control Schema](#33-control-schema) |
+| **Audit** | `stream:audit` (Stream) | High-level business events (e.g., "Recording Finished", "Upload Success"). | Ephemeral (Stream History) | [Audit Schema](#34-audit-schema) |
+
+> [!NOTE]
+> **Stream Usage**: Streams are used to allow services to restart without losing messages (via Consumer Groups) and to allow the Status Board to "replay" recent history on startup. Redis itself handles the stream pruning (e.g., capped memory).
+
+> [!TIP]
+> For service lifecycle definitions (what constitutes a "started" or "crashed" event), see [Service Lifecycle & Orchestration](service_lifecycle.md).
 
 ## 3. Payload Schemas
 
@@ -87,7 +95,7 @@ Services **MUST** report their state using the "Traffic Light" pattern.
 > **Red (Offline)**: Inferred by **absence** of record (TTL Expired).
 
 ### 3.2 Lifecycle Schema
-*Channel:* `silvasonic.lifecycle`
+*Key:* `stream:lifecycle`
 
 Emitted on startup, clean shutdown, or unhandled exceptions.
 
@@ -107,9 +115,9 @@ Emitted on startup, clean shutdown, or unhandled exceptions.
 ```
 
 ### 3.3 Control Schema
-*Channel:* `silvasonic.control`
+*Key:* `stream:control`
 
-Targeted commands. Services MUST filter by `target_service` and `target_instance`.
+Targeted commands. Services **MUST** join their dedicated Consumer Group (usually `{service_name}`) and filter messages by `target_service`.
 
 ```json
 {
@@ -126,7 +134,7 @@ Targeted commands. Services MUST filter by `target_service` and `target_instance
 ```
 
 ### 3.4 Audit Schema
-*Channel:* `silvasonic.audit`
+*Key:* `stream:audit`
 
 Business-level events for the "Activity Log".
 

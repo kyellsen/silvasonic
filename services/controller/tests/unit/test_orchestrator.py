@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -85,11 +86,29 @@ def test_spawn_recorder_success_new(manager):
     manager.client.containers.get.side_effect = NotFound("Gone")
 
     dev = AudioDevice(1, "ID", "Desc", "SN1")
-    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1")
+    config = {"slug": "prof"}
+    config_hash = "hash123"
+
+    success = manager.spawn_recorder(
+        device=dev,
+        mic_profile="prof",
+        mic_name="mic1",
+        serial_number="SN1",
+        config=config,
+        config_hash=config_hash,
+    )
 
     assert success is True
     manager.client.containers.run.assert_called_once()
     kwargs = manager.client.containers.run.call_args.kwargs
+
+    # Check Env Injection
+    assert "MIC_CONFIG_JSON" in kwargs["environment"]
+    assert kwargs["environment"]["MIC_CONFIG_JSON"] == json.dumps(config)
+
+    # Check Hash Label
+    assert kwargs["labels"]["silvasonic.config_hash"] == config_hash
+
     assert kwargs["image"] == "localhost/silvasonic-recorder"
     assert kwargs["name"] == "silvasonic-recorder-prof-sn1"
     # Verify mounts are used instead of volumes
@@ -118,7 +137,8 @@ def test_spawn_recorder_already_running(manager):
     manager.client.containers.get.return_value = c
 
     dev = AudioDevice(1, "ID", "Desc", "SN1")
-    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1")
+    # Provide defaults strictly for call signature matching
+    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1", {}, "hash")
 
     assert success is True
     manager.client.containers.run.assert_not_called()
@@ -131,7 +151,7 @@ def test_spawn_recorder_remove_stale(manager):
     manager.client.containers.get.return_value = c
 
     dev = AudioDevice(1, "ID", "Desc", "SN1")
-    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1")
+    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1", {}, "hash")
 
     assert success is True
     c.remove.assert_called_once()
@@ -143,7 +163,7 @@ def test_spawn_recorder_error(manager):
     manager.client.containers.get.side_effect = Exception("Boom")
 
     dev = AudioDevice(1, "ID", "Desc", "SN1")
-    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1")
+    success = manager.spawn_recorder(dev, "prof", "mic1", "SN1", {}, "hash")
 
     assert success is False
 

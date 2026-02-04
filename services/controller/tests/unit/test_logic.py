@@ -83,16 +83,24 @@ async def test_reconcile_spawn_new_device(
     # 2. select(Device).where(...) -> _get_or_create_device -> Returns None (Not found)
     # 3. select(SystemService) -> ServiceManager -> Returns []
 
+    # Mock Profile with serializable config
+    mock_profile = MagicMock()
+    mock_profile.raw_config = {}
+    mock_profiles.get_profile.return_value = mock_profile
+
     # Mock result objects
     mock_result_empty = MagicMock()
     mock_result_empty.scalars.return_value.all.return_value = []
     mock_result_empty.scalar_one_or_none.return_value = None
 
+    # We provide more side effects than needed to prevent StopIteration
     mock_session.execute.side_effect = [
         mock_result_empty,  # 1. All Devices
         mock_result_empty,  # 2. Specific Device
         mock_result_empty,  # 3. SystemServices (Init Defaults)
         mock_result_empty,  # 4. SystemServices (Reconcile)
+        mock_result_empty,  # 5. Safety
+        mock_result_empty,  # 6. Safety
     ]
     mock_session.add = MagicMock()
 
@@ -269,6 +277,11 @@ async def test_reconcile_spawn_fail(
     # Force auto-enrollment to 'enrolled' by mocking profile find
     mock_profiles.find_profile_for_device.return_value = "custom-profile"
 
+    # Mock Profile with serializable config
+    mock_profile = MagicMock()
+    mock_profile.raw_config = {}
+    mock_profiles.get_profile.return_value = mock_profile
+
     # Session
     mock_session = mock_session_cls
     mock_session.add = MagicMock()
@@ -286,6 +299,7 @@ async def test_reconcile_spawn_fail(
         mock_result_empty,  # 2. Specific device
         mock_result_empty,  # 3. Services
         mock_result_empty,  # 4. Services
+        mock_result_empty,  # 5. Safety
     ]
 
     await service.reconcile()

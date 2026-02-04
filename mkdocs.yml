@@ -53,6 +53,7 @@ nav:
   - Development:
       - Concept & Idea: development/idea.md
       - Docker Standards: development/docker_standards.md
+      - Testing Guide: development/testing.md
   - Hardware: hardware.md
   - Glossary: glossary.md
 plugins: [search, include-markdown, swagger-ui-tag]

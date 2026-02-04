@@ -1,66 +1,43 @@
-from pathlib import Path
+import json
+import os
 from typing import Any
 
 import structlog
-import yaml
 from silvasonic.core.schemas.devices import MicrophoneProfile
 
 logger = structlog.get_logger()
 
-# In-container path (mounted)
-PROFILE_DIR = Path("/etc/silvasonic/profiles")
-# Fallback for local development
-DEV_PROFILE_DIR = Path(__file__).parents[4] / "config/profiles"
-
 
 class ProfileManager:
-    """Manages loading and merging of Microphone Profiles."""
-
-    def __init__(self, profile_dir: Path | None = None) -> None:
-        """Initialize the manager with a specific profile directory."""
-        # Debugging path detection
-        logger.info("checking_profile_dir", path=str(PROFILE_DIR), exists=PROFILE_DIR.exists())
-        if PROFILE_DIR.exists():
-            logger.info("profile_dir_contents", contents=[p.name for p in PROFILE_DIR.iterdir()])
-
-        self.profile_dir = profile_dir or (PROFILE_DIR if PROFILE_DIR.exists() else DEV_PROFILE_DIR)
-        logger.info("selected_profile_dir", path=str(self.profile_dir))
-
-    def _recursive_update(self, base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
-        """Recursively update a dictionary."""
-        for key, value in overrides.items():
-            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-                self._recursive_update(base[key], value)
-            else:
-                base[key] = value
-        return base
+    """Manages loading of Microphone Profiles via Environment Injection."""
 
     def load_profile(
         self, profile_name: str, db_config: dict[str, Any] | None = None
     ) -> MicrophoneProfile:
-        """Load a profile by name from YAML and optionally merge with DB config.
+        """Load a profile strictly from the MIC_CONFIG_JSON environment variable.
 
         Args:
-            profile_name: The base filename (without .yml) of the system profile.
-            db_config: Optional dictionary from the database 'devices.config' column.
+            profile_name: Name of the profile (for logging).
+            db_config: Ignored in strict injection mode, as config comes fully formed.
 
         Returns:
             Validated MicrophoneProfile object.
+
+        Raises:
+            ValueError: If MIC_CONFIG_JSON is missing.
         """
-        logger.info("loading_profile", profile=profile_name)
+        raw_config = os.environ.get("MIC_CONFIG_JSON")
 
-        # 1. Load YAML System Profile
-        yaml_path = self.profile_dir / f"{profile_name}.yml"
-        if not yaml_path.exists():
-            raise FileNotFoundError(f"Profile {profile_name} not found at {yaml_path}")
+        if raw_config:
+            logger.info("loading_profile_from_env", profile=profile_name)
+            try:
+                config_data = json.loads(raw_config)
+                return MicrophoneProfile(**config_data)
+            except json.JSONDecodeError as e:
+                logger.error("invalid_mic_config_json", error=str(e))
+                raise ValueError(f"Invalid JSON in MIC_CONFIG_JSON: {e}") from e
 
-        with open(yaml_path) as f:
-            base_config = yaml.safe_load(f)
-
-        # 2. Merge DB Config (User Overrides)
-        if db_config:
-            logger.info("applying_user_overrides", overrides=db_config.keys())
-            base_config = self._recursive_update(base_config, db_config)
-
-        # 3. Validate via Pydantic
-        return MicrophoneProfile(**base_config)
+        # Strict Mode: No Fallback
+        error_msg = f"Strict Mode: MIC_CONFIG_JSON not set for profile '{profile_name}'"
+        logger.critical("missing_mic_config_env", profile=profile_name)
+        raise ValueError(error_msg)

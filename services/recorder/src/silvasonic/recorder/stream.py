@@ -66,6 +66,11 @@ class FFmpegStreamer:
             )
 
         input_args["f"] = self.input_format
+
+        if self.input_format == "lavfi":
+            # crucial: read at native frame rate to avoid infinite loop / resource exhaustion
+            input_args["re"] = None
+
         stream = ffmpeg.input(self.input_device, **input_args)
 
         needs_raw = self.profile.stream.raw_enabled

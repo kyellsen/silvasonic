@@ -57,14 +57,17 @@ What does this container explicitly NOT do?
 ## 7. Technology Stack
 *   **Base Image**: `python:3.11-slim-bookworm` (Dockerfile).
 *   **Key Libraries**:
-    *   None currently installed (Scaffolding).
+    *   `sqlalchemy` + `asyncpg`: Asynchronous Database Access.
+    *   `redis`: Pub/Sub Messaging for Lifecycle & Status events.
+    *   `structlog`: Structured JSON logging.
+    *   `psutil`: Process management.
 *   **Build System**: `uv` + `Dockerfile`.
 
 ## 8. Critical Analysis & Future Improvements
 *   **Best Practice Check**: Complies with "Infrastructure as Code" by reconciling against DB state. Rootless execution supported via user-mode Podman socket.
-*   **Alternatives**: Could use Systemd, but Container-based orchestration allows easier updates and isolation.
+*   **Architecture Evolution**: Adopted **Profile Injection via Middleware (Environment Variables)** instead of Template Spawning. This keeps containers immutable and strengthens the Database as the single source of truth.
 
 ## 9. Discrepancy Report (Code vs. Rules)
 *Only populate if conflicts exist. If the code perfectly matches the architecture docs, state "None detected."*
 
-*   **Conflict:** **SCAFFOLDING ONLY**: The `pyproject.toml` currently has NO dependencies, but the design calls for `podman` bindings, `requests`, `pyudev`, etc. Code is currently empty/template.
+*   **None detected.** The implementation (v0.2.x) fully aligns with the architectural pillars (Stateless, Reconcile Loop, Rootless Podman).

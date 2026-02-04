@@ -1,5 +1,4 @@
 import asyncio
-from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -41,29 +40,28 @@ async def test_subscriber_filtering() -> None:
         payload=ControlPayloadContent(params={}),
     )
 
-    # Setup PubSub yield
-    # We simulate a stream of messages
-    async def msg_generator() -> AsyncGenerator[dict[str, Any], None]:
-        yield {"type": "message", "data": msg1.model_dump_json()}
-        yield {"type": "message", "data": msg2.model_dump_json()}
-        yield {"type": "message", "data": msg3.model_dump_json()}
-        # Then we make it wait so we can cancel
-        while True:
-            await asyncio.sleep(0.1)
+    # Mock Redis XREADGROUP response
+    # Format: [[stream_name, [[msg_id, fields]]]]
 
-    messages = [
-        {"type": "message", "data": msg1.model_dump_json()},
-        {"type": "message", "data": msg2.model_dump_json()},
-        {"type": "message", "data": msg3.model_dump_json()},
+    # helper to format message for stream
+    def format_stream_msg(msg_id: str, data: ControlMessage) -> list[Any]:
+        return ["stream:control", [(msg_id, {"json": data.model_dump_json()})]]
+
+    # We use a mutable list to pop messages
+    stream_responses = [
+        format_stream_msg("1-0", msg1),
+        format_stream_msg("2-0", msg2),
+        format_stream_msg("3-0", msg3),
     ]
 
-    async def mock_get_message(*args: Any, **kwargs: Any) -> dict[str, Any] | None:
-        if messages:
-            return messages.pop(0)
-        await asyncio.sleep(10)  # Simulate waiting for next message
-        return None
+    async def mock_xreadgroup(*args: Any, **kwargs: Any) -> list[Any]:
+        if stream_responses:
+            return [stream_responses.pop(0)]
+        await asyncio.sleep(0.1)  # Simulate wait
+        return []
 
-    mock_pubsub.get_message.side_effect = mock_get_message
+    mock_redis.xreadgroup.side_effect = mock_xreadgroup
+    mock_redis.xgroup_create = AsyncMock()
 
     # Patch get_redis_client to return our mock
     # Since get_redis_client is a context manager, we need to mock __aenter__
@@ -80,17 +78,10 @@ async def test_subscriber_filtering() -> None:
         subscriber.register_handler("cmd3", handler3)
 
         # Start Subscriber
-        # We need to run it for a bit then stop
         await subscriber.start()
 
-        # Give it time to process
+        # Give it time to process (3 messages)
         await asyncio.sleep(0.2)
-
-        # Since we mocked get_message to return values then None, the loop will spin on None (TimeoutError in real code, but here?)
-        # Logic in code: await pubsub.get_message(..., timeout=1.0)
-        # If we mock it to return None, code continues?
-        # Code: if message and type=message: process.
-        # It handles None implicitly by doing nothing.
 
         await subscriber.stop()
 
@@ -102,8 +93,6 @@ async def test_subscriber_filtering() -> None:
         # Handler 3 should be called (Target: *)
         assert handler3.called
         assert handler3.call_count == 1
-
-        # Msg 1 was for other_service, should NOT call any handler (we didn't register cmd1 anyway, but logic filters first)
 
 
 if __name__ == "__main__":

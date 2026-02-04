@@ -21,4 +21,6 @@ class ControllerSettings(BaseSettings):
 
     # Loop Configuration
 
+    # Loop Configuration
+    PROFILES_DIR: str = "/etc/silvasonic/profiles"
     SYNC_INTERVAL_SECONDS: int = 2

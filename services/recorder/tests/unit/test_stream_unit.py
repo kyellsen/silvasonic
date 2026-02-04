@@ -289,28 +289,17 @@ def test_monitor_segment_parse_error(unit_profile, tmp_path, mocker):
     streamer.process = mocker.Mock()
     streamer.process.poll.return_value = None
 
+    # Explicitly yield the bad line, then empty string (EOF) to trigger sleep -> stop
     streamer.process.stderr.readline.side_effect = [
         "segment 'malformed checking",
-        "",  # End
+        "",  # End of stream (EOF)
     ]
 
-    def se_readline():
-        val = (
-            streamer.process.stderr.readline.side_effect.pop(0)
-            if isinstance(streamer.process.stderr.readline.side_effect, list)
-            else ""
-        )
-        if not val:
-            streamer.running = False
-        return val
-
-    # Re-mock properly because list pop is tricky with side_effect iterables
-
-    # Simpler: yield bad line then stop
-    streamer.process.stderr.readline.side_effect = [
-        "segment 'bad",  # Will fail verification or split
-    ]
+    # When sleep is called (due to empty line), stop the loop
     mocker.patch("time.sleep", side_effect=lambda x: setattr(streamer, "running", False))
 
-    # Capture logs?
     streamer._monitor_loop()
+
+    # If we reached here, it didn't hang.
+    # Verify readline was called (at least once)
+    assert streamer.process.stderr.readline.call_count >= 1

@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from silvasonic.core.redis.publisher import RedisPublisher
@@ -23,12 +23,16 @@ async def test_publish_lifecycle_invalid_event() -> None:
         # Pass invalid event "exploded"
         await publisher.publish_lifecycle(event="exploded", reason="Boom")
 
-        # Verify it published "crashed" instead
-        mock_redis.publish.assert_called_once()
-        args = mock_redis.publish.call_args[0]
-        payload = json.loads(args[1])
-        assert payload["event"] == "crashed"
-        assert payload["payload"]["reason"] == "Boom"
+        # Verify it published "crashed" instead using XADD
+        mock_redis.xadd.assert_called_once()
+        args = mock_redis.xadd.call_args[0]
+        stream_name = args[0]
+        payload = args[1]
+
+        assert stream_name == "stream:lifecycle"
+        actual_msg = json.loads(payload["json"])
+        assert actual_msg["event"] == "crashed"
+        assert actual_msg["payload"]["reason"] == "Boom"
 
 
 @pytest.mark.asyncio
@@ -40,7 +44,7 @@ async def test_publish_redis_exception() -> None:
     with patch("silvasonic.core.redis.publisher.get_redis_client", return_value=mock_ctx):
         publisher = RedisPublisher("test-service")
 
-        # This should NOT raise an exception, but log an error
+        # This will use _publish -> logger
         await publisher.publish_status("online", "idle", "Ready")
 
 
@@ -110,8 +114,8 @@ async def test_subscriber_target_instance_mismatch() -> None:
     callback = AsyncMock()
     subscriber.register_handler("cmd", callback)
 
-    # Directly process message
-    await subscriber._process_message(msg.model_dump_json())
+    # Directly process logic
+    await subscriber._process_message_logic(msg.model_dump_json())
 
     callback.assert_not_called()
 
@@ -135,16 +139,29 @@ async def test_subscriber_callback_exception() -> None:
         payload=ControlPayloadContent(params={}),
     )
 
-    # Should not raise
-    await subscriber._process_message(msg.model_dump_json())
+    # Should raise because _process_message_logic re-raises
+    with pytest.raises(ValueError):
+        await subscriber._process_message_logic(msg.model_dump_json())
 
 
 @pytest.mark.asyncio
 async def test_subscriber_invalid_json() -> None:
-    """Test handling of invalid JSON."""
+    """Test handling of invalid JSON in _process_message_logic."""
     subscriber = RedisSubscriber("service")
-    # Should log warning but not crash
-    await subscriber._process_message("{invalid_json")
+    # This will raise JSONDecodeError if passed directly to json.loads,
+    # but _process_stream_message handles the try/except block usually.
+    # _process_message_logic expects valid json string usually, or raises.
+    # The subscriber loop calls _process_stream_message which calls _process_message_logic
+
+    # Let's test _process_stream_message to cover the JSON parsing error handling
+    mock_redis = AsyncMock()
+    fields = {"json": "{invalid"}
+
+    # Should not raise
+    await subscriber._process_stream_message(mock_redis, "stream", "group", "msgid", fields)
+
+    # Should NOT ACK on exception (current behavior)
+    mock_redis.xack.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -161,120 +178,49 @@ async def test_subscriber_unknown_command() -> None:
     )
 
     # Verify it logs debug but doesn't crash
-    await subscriber._process_message(msg.model_dump_json())
-
-
-@pytest.mark.asyncio
-async def test_subscriber_loop_timeout_and_errors() -> None:
-    """Test subscriber loop handles TimeoutError and generic exceptions."""
-    mock_redis = AsyncMock()
-    mock_pubsub = AsyncMock()
-    mock_redis.pubsub.return_value = mock_pubsub
-
-    mock_ctx = AsyncMock()
-    mock_ctx.__aenter__.return_value = mock_redis
-
-    # We want to simulate:
-    # 1. TimeoutError (should continue)
-    # 2. Exception (should break inner loop)
-    # 3. Stop running to exit outer loop
-
-    call_count = 0
-    subscriber = RedisSubscriber("test")
-
-    async def side_effect(*args: Any, **kwargs: Any) -> None:
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            raise TimeoutError()
-        if call_count == 2:
-            raise Exception("Inner Loop Error")
-        # Should not be reached if inner loop breaks,
-        # but we need to stop subscriber to exit outer loop eventually
-        subscriber._running = False
-        return None
-
-    mock_pubsub.get_message.side_effect = side_effect
-
-    with patch("silvasonic.core.redis.subscriber.get_redis_client", return_value=mock_ctx):
-        with patch("asyncio.sleep", return_value=None):  # Skip sleeps
-            subscriber._running = True
-            # We run it directly (not as task) but we need to ensure it exits
-            # The inner loop breaks on Exception.
-            # The outer loop continues.
-            # We mock get_redis_client to NOT fail, so it re-enters inner loop.
-            # We need a way to stop it.
-            # Let's mock get_redis_client to fail the SECOND time to test outer loop backoff?
-
-            # Revised Plan:
-            # 1. First ctx: OK. Inner Loop: Timeout -> Exception -> Break.
-            # 2. Outer Loop: Re-enters ctx.
-            # We need side_effect on get_redis_client.
-            pass
+    await subscriber._process_message_logic(msg.model_dump_json())
 
 
 @pytest.mark.asyncio
 async def test_subscriber_loop_flow() -> None:
-    """Test complete subscriber loop flow with errors."""
-    subscriber = RedisSubscriber("test")
+    """Test complete subscriber loop flow with xreadgroup."""
+    subscriber = RedisSubscriber("test", "inst")
 
-    # Mock Redis client and PubSub
     mock_redis = AsyncMock()
-    mock_pubsub = AsyncMock()
-    # redis.pubsub() is synchronous!
-    mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__.return_value = mock_redis
 
-    # Control loop execution
-    # Iteration 1: Connection OK.
-    #   Inner 1: TimeoutError -> Continue
-    #   Inner 2: Exception -> Log Error & Break Inner
-    # Iteration 2: Connection Error -> Log Error & Backoff & Sleep
-    # Iteration 3: Stop
+    # Setup XREADGROUP response
+    # format: [[stream_name, [[msg_id, fields]]]]
+    msg_fields = {
+        "json": json.dumps(
+            {
+                "command": "test_cmd",
+                "initiator": "test",
+                "target_service": "test",
+                "target_instance": "inst",
+                "payload": {},
+            }
+        )
+    }
 
-    # Mock get_redis_client context manager factory
-    ctx_1 = AsyncMock()
-    ctx_1.__aenter__.return_value = mock_redis
+    valid_resp = [[b"stream:control", [[b"1-0", msg_fields]]]]
 
-    ctx_2 = AsyncMock()
-    ctx_2.__aenter__.side_effect = Exception("Connection Failed")
+    # We want the loop to run once with data, then stop
+    # mocking xreadgroup
+    async def xread_side_effect(*args: Any, **kwargs: Any) -> Any:
+        subscriber._running = False  # Stop after first call
+        return valid_resp
 
-    # We patch the function itself.
-    # Since it's an asynccontextmanager, it returns a context manager.
+    mock_redis.xreadgroup.side_effect = xread_side_effect
 
-    attempt = 0
+    mock_handler = AsyncMock()
+    subscriber.register_handler("test_cmd", mock_handler)
 
-    def get_client_side_effect() -> AsyncMock:
-        nonlocal attempt
-        attempt += 1
-        if attempt == 1:
-            return ctx_1
-        if attempt == 2:
-            return ctx_2
-        subscriber._running = False  # Stop after attempt 2 failure handling
-        return ctx_2  # Should not be used
+    with patch("silvasonic.core.redis.subscriber.get_redis_client", return_value=mock_ctx):
+        subscriber._running = True
+        await subscriber._stream_loop()
 
-    # Mock pubsub.get_message for the first successful connection
-    msg_attempt = 0
-
-    async def get_message_side_effect(**kwargs: Any) -> None:
-        nonlocal msg_attempt
-        msg_attempt += 1
-        if msg_attempt == 1:
-            raise TimeoutError()
-        if msg_attempt == 2:
-            raise ValueError("Bad Message Processing")
-        return None
-
-    mock_pubsub.get_message.side_effect = get_message_side_effect
-
-    with patch(
-        "silvasonic.core.redis.subscriber.get_redis_client", side_effect=get_client_side_effect
-    ):
-        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-            subscriber._running = True
-            await subscriber._subscribe_loop()
-
-            # Verify flow
-            assert msg_attempt == 2  # Timeout then Error
-            # Should have slept once due to connection error
-            mock_sleep.assert_called()
+    # Verify processing
+    mock_handler.assert_called_once()
+    mock_redis.xack.assert_called_once()

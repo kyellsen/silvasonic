@@ -6,7 +6,17 @@ def main() -> None:
     """Run unit tests (excluding integration tests)."""
     print_header("Running Unit Tests (Skipping Integration)...")
     run_command(
-        ["uv", "run", "pytest", "-m", "not integration", "--cov=.", "--cov-report=term-missing"]
+        [
+            "uv",
+            "run",
+            "pytest",
+            "-m",
+            "not integration",
+            "--ignore=tests/e2e",
+            "--ignore-glob=**/integration/**",
+            "--cov=.",
+            "--cov-report=term-missing",
+        ]
     )
     print_success("Unit tests passed.")
 

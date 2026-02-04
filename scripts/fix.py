@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 
 from common import print_header, print_step, print_success, run_command
 
@@ -35,27 +36,49 @@ def main() -> None:
     """Run auto-fixers for Python, Shell, YAML, and HTML."""
     print_header("Running Auto-Fixes...")
 
+    # Determine files to process
+    # If args provided (e.g. from pre-commit), use those. Otherwise find all.
+    explicit_files = sys.argv[1:] if len(sys.argv) > 1 else None
+
     # 1. Python (Ruff)
-    print_step("Formatting Python (Ruff)...")
-    run_command(["uv", "run", "ruff", "format", "."])
-    run_command(["uv", "run", "ruff", "check", "--fix", "."])
+    # Filter if explicit files given, else use "."
+    if explicit_files is not None:
+        python_files = [f for f in explicit_files if f.endswith(".py")]
+    else:
+        python_files = ["."]  # "." tells ruff to search everything
+
+    if python_files:
+        print_step("Formatting Python (Ruff)...")
+        # extend command with file list
+        run_command(["uv", "run", "ruff", "format"] + python_files)
+        run_command(["uv", "run", "ruff", "check", "--fix"] + python_files)
 
     # 2. Shell Scripts (Beautysh)
-    # Only if shell scripts exist (we are deleting them, but user might add some)
-    sh_files = find_files([".sh"])
+    if explicit_files is not None:
+        sh_files = [f for f in explicit_files if f.endswith(".sh")]
+    else:
+        sh_files = find_files([".sh"])
+
     if sh_files:
         print_step("Formatting Shell Scripts (Beautysh)...")
         run_command(["uv", "run", "beautysh", "-i", "2"] + sh_files)
 
     # 3. YAML (yamlfix)
-    yaml_files = find_files([".yaml", ".yml"])
+    if explicit_files is not None:
+        yaml_files = [f for f in explicit_files if f.endswith(".yaml") or f.endswith(".yml")]
+    else:
+        yaml_files = find_files([".yaml", ".yml"])
+
     if yaml_files:
         print_step("Formatting YAML (yamlfix)...")
-        # Run in chunks if too many? For now all at once.
         run_command(["uv", "run", "yamlfix"] + yaml_files)
 
     # 4. HTML / Jinja (djLint)
-    html_files = find_files([".html"])
+    if explicit_files is not None:
+        html_files = [f for f in explicit_files if f.endswith(".html")]
+    else:
+        html_files = find_files([".html"])
+
     if html_files:
         print_step("Formatting HTML/Jinja (djLint)...")
         run_command(["uv", "run", "djlint", "--reformat", "--indent", "2"] + html_files)

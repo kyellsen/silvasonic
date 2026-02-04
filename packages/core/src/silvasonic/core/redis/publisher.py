@@ -22,6 +22,8 @@ class RedisPublisher:
         """Initialize the publisher with service identity."""
         self.service_name = service_name
         self.instance_id = instance_id or socket.gethostname()
+        self._last_error_time = 0.0
+        self._error_throttle_interval = 60.0  # Seconds
 
     async def publish_status(
         self,
@@ -75,7 +77,7 @@ class RedisPublisher:
             ),
         )
 
-        await self._publish("silvasonic.lifecycle", msg.model_dump_json())
+        await self._publish_stream("stream:lifecycle", msg.model_dump_json())
 
     async def publish_control(
         self,
@@ -93,7 +95,8 @@ class RedisPublisher:
             target_instance=target_instance,
             payload=ControlPayloadContent(params=params or {}),
         )
-        await self._publish("silvasonic.control", msg.model_dump_json())
+        # Use Stream for reliability
+        await self._publish_stream("stream:control", msg.model_dump_json())
 
     async def publish_audit(
         self,
@@ -107,18 +110,48 @@ class RedisPublisher:
             instance_id=self.instance_id,
             payload=payload,
         )
-        await self._publish("silvasonic.audit", msg.model_dump_json())
+        # Use Stream for persistence/replay
+        await self._publish_stream("stream:audit", msg.model_dump_json())
 
     async def _publish(self, channel: str, message: str) -> None:
         try:
             async with get_redis_client() as redis:
                 await redis.publish(channel, message)
+            self._reset_error_state()
         except Exception as e:
-            logger.error("redis_publish_failed", channel=channel, error=str(e))
+            self._log_error_throttled("redis_publish_failed", error=str(e), channel=channel)
+
+    async def _publish_stream(self, stream: str, message: str) -> None:
+        """Publish a message to a Redis Stream."""
+        try:
+            async with get_redis_client() as redis:
+                # XADD stream * data value
+                # We store the JSON payload under the key "json"
+                await redis.xadd(stream, {"json": message})
+            self._reset_error_state()
+        except Exception as e:
+            self._log_error_throttled("redis_stream_publish_failed", error=str(e), stream=stream)
 
     async def _set_with_ttl(self, key: str, value: str, ttl: int) -> None:
         try:
             async with get_redis_client() as redis:
                 await redis.set(key, value, ex=ttl)
+            self._reset_error_state()
         except Exception as e:
-            logger.error("redis_set_failed", key=key, error=str(e))
+            self._log_error_throttled("redis_set_failed", error=str(e), key=key)
+
+    def _log_error_throttled(self, event: str, **kwargs: Any) -> None:
+        """Log error with throttling to prevent log pollution."""
+        now = __import__("time").time()
+        if now - self._last_error_time > self._error_throttle_interval:
+            logger.error(event, **kwargs)
+            self._last_error_time = now
+        else:
+            # Log as debug to keep trace but reduce noise level
+            logger.debug(f"{event} (throttled)", **kwargs)
+
+    def _reset_error_state(self) -> None:
+        """Reset error state on successful operation."""
+        if self._last_error_time > 0:
+            logger.info("redis_connection_restored", service=self.service_name)
+            self._last_error_time = 0.0

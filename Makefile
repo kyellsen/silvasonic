@@ -7,13 +7,18 @@ help:
 	@echo "Targets:"
 	@echo "  init      🛠️  Initialize development environment (install deps, hooks)"
 	@echo "  fix       🔧 Run auto-fixers (Ruff, Beautysh, YAML, Jinja)"
-	@echo "  check     🔍 Run deep verification (Lint, Types, Tests)"
+	@echo "  check     🔍 Run deep verification (Lint, Types, Unit Tests)"
+	@echo "  check-full 🐢 Run ALL checks (Lint, Types, Unit, Integration, E2E)"
+	@echo "  test      🧪 Run Unit Tests only"
+	@echo "  test-int  🐢 Run Integration Tests only (requires Docker)"
+	@echo "  test-e2e  🕸️  Run E2E Tests only (requires Browser/Stack)"
 	@echo "  start     🚀 Start Silvasonic stack (Rootless podman-compose)"
 	@echo "  stop      🛑 Stop Silvasonic stack"
 	@echo "  restart   🔄 Restart stack (stop && start)"
 	@echo "  reset     🧨 Stop, Clean Storage, Init, and Start (Factory Reset)"
 	@echo "  logs      📜 View container logs (follow)"
-	@echo "  clean     🧹 Cleanup artifacts (caches, pyc, coverage)"
+	@echo "  clean     🧹 Cleanup artifacts AND virtual environment (.venv)"
+	@echo "  clear     ✨ Cleanup artifacts only (keep .venv, caches, etc.)"
 	@echo ""
 
 # 1. Setup & Maintenance
@@ -27,7 +32,25 @@ fix:
 check:
 	@python3 scripts/check.py
 
+check-full:
+	@python3 scripts/check.py
+	@python3 scripts/test_int.py
+	@python3 scripts/test_e2e.py
+
+# 2. Testing
+test:
+	@python3 scripts/test_unit.py
+
+test-int:
+	@python3 scripts/test_int.py
+
+test-e2e:
+	@python3 scripts/test_e2e.py
+
 clean:
+	@python3 scripts/clean.py --venv
+
+clear:
 	@python3 scripts/clean.py
 
 clean-storage:

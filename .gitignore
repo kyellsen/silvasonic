@@ -66,3 +66,6 @@ prompts/*
 COMMANDS.md
 test_out_*.wav
 .directory 
+# Test Runtime Data
+tests/e2e/runtime_data/
+services/controller/tests/integration/runtime_data/

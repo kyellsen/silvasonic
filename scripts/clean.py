@@ -3,8 +3,9 @@ import argparse
 import glob
 import os
 import shutil
+import subprocess
 
-from common import print_header, print_step, print_success, print_warning
+from common import print_error, print_header, print_step, print_success, print_warning
 
 
 def clean_artifacts() -> None:
@@ -62,6 +63,20 @@ def clean_storage() -> None:
         try:
             shutil.rmtree(workspace_path)
             print_success(f"Workspace deleted: {workspace_path}")
+        except PermissionError:
+            print_warning("Permission denied. Attempting force cleanup via `podman unshare`...")
+            try:
+                subprocess.run(
+                    ["podman", "unshare", "rm", "-rf", workspace_path],
+                    check=True,
+                    capture_output=True,
+                )
+                print_success(f"Workspace deleted (via podman unshare): {workspace_path}")
+            except Exception as e2:
+                print_error(f"Failed to force delete workspace: {e2}")
+                print_warning(
+                    "Tip: You may need to run: podman unshare rm -rf /mnt/data/dev_workspaces/silvasonic"
+                )
         except Exception as e:
             print_warning(f"Failed to delete workspace {workspace_path}: {e}")
     else:
@@ -70,15 +85,32 @@ def clean_storage() -> None:
     print_step("Run 'make init' to restore structure.")
 
 
+def clean_venv() -> None:
+    """Delete the virtual environment."""
+    print_header("Cleaning virtual environment...")
+    if os.path.exists(".venv"):
+        try:
+            shutil.rmtree(".venv")
+            print_success("Virtual environment (.venv) deleted.")
+        except Exception as e:
+            print_warning(f"Failed to delete .venv: {e}")
+    else:
+        print_step(".venv does not exist, nothing to delete.")
+
+
 def main() -> None:
     """Parse arguments and clean artifacts or storage."""
     parser = argparse.ArgumentParser(description="Clean Silvasonic artifacts")
     parser.add_argument(
         "--storage", action="store_true", help="Delete persistent workspace data (Factory Reset)"
     )
+    parser.add_argument("--venv", action="store_true", help="Delete virtual environment (.venv)")
     args = parser.parse_args()
 
     clean_artifacts()
+
+    if args.venv:
+        clean_venv()
 
     if args.storage:
         clean_storage()

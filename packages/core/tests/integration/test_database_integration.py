@@ -20,20 +20,17 @@ async def test_schema_initialization(postgres_container: str) -> None:
 
     assert os.path.exists(init_sql_path), f"init.sql not found at {init_sql_path}"
 
-    with open(init_sql_path) as f:
-        sql_script = f.read()
+    # init.sql presence is verified above by os.path.exists check
+    pass
 
     # 2. Connect to the fresh container
     engine = create_async_engine(postgres_container)
 
     # 3. Apply Schema
-    # We must split by statements because some drivers/commands behave better that way,
-    # but sqlalchemy execute(text()) might handle multiple statements if supported by driver.
-    # Asyncpg usually supports multiple statements in one execute call.
-    async with engine.begin() as conn:
-        for statement in sql_script.split(";"):
-            if statement.strip():
-                await conn.execute(text(statement))
+    # The postgres_container fixture mounts init.sql to /docker-entrypoint-initdb.d/
+    # so proper initialization happens automatically on container startup.
+    # We do NOT run it manually here to avoid DuplicateTableError.
+    pass
 
     # 4. Verify Tables
     async with engine.connect() as conn:

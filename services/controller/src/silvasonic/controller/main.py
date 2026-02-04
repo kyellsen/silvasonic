@@ -1,4 +1,7 @@
 import asyncio
+import copy
+import hashlib
+import json
 import os
 import traceback
 from datetime import datetime
@@ -15,6 +18,7 @@ from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import AsyncSessionLocal
 from silvasonic.core.logging import configure_logging
+from silvasonic.core.monitoring import ResourceMonitor
 from silvasonic.core.redis.subscriber import RedisSubscriber
 from silvasonic.core.schemas.control import ControlMessage
 from sqlalchemy import select, text
@@ -33,7 +37,8 @@ class ControllerService:
         self.podman = PodmanOrchestrator()
         self.service_manager = ServiceManager(self.podman)
         self.broker = MessageBroker()
-        self.subscriber = RedisSubscriber(service_name="controller")
+        self.subscriber = RedisSubscriber(service_name="controller", instance_id="main")
+        self.monitor = ResourceMonitor()
         self.settings = settings
         self.profiles = ProfileManager()
         self.profiles = ProfileManager()
@@ -41,6 +46,31 @@ class ControllerService:
         self.backoff_state: dict[str, dict[str, Any]] = {}
         # Hashing state for Intelligent Polling
         self.last_hardware_hash: str = ""
+
+    def _recursive_update(self, base: dict[str, Any], overrides: dict[str, Any]) -> None:
+        """Recursively update a dictionary."""
+        for key, value in overrides.items():
+            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+                self._recursive_update(base[key], value)
+            else:
+                base[key] = value
+
+    def _get_device_config(self, device: Device) -> tuple[dict[str, Any], str]:
+        """Compute final config and its hash for a device."""
+        profile = self.profiles.get_profile(device.profile_slug) if device.profile_slug else None
+        # Deep copy to avoid mutating cached profile
+        base_config = copy.deepcopy(profile.raw_config) if profile else {}
+
+        # Merge Overrides
+        if device.config:
+            self._recursive_update(base_config, device.config)
+
+        # Calculate Hash (Unique Identifier for this config state)
+        # Sort keys to ensure deterministic JSON representation
+        config_str = json.dumps(base_config, sort_keys=True)
+        config_hash = hashlib.md5(config_str.encode()).hexdigest()
+
+        return base_config, config_hash
 
     def _is_stable(self, created_ts: Any, now: datetime) -> bool:
         """Check if container has been running > 5 mins."""
@@ -292,6 +322,34 @@ class ControllerService:
                                 logger.info("service_stable_resetting_backoff", serial=s)
                                 self.backoff_state.pop(s)
 
+                    # 4b. Config Consistency Check (Infrastructure as Code / Immutable Containers)
+                    # We check if the running container's config hash matches the DB's target state.
+                    for s, container in list(
+                        running_map.items()
+                    ):  # Iterate copy as we might modify running_map
+                        # Find DB Device
+                        target_device = next(
+                            (d for d, _ in active_db_devices if d.serial_number == s), None
+                        )
+                        if not target_device:
+                            continue
+
+                        # Compute Expected Hash
+                        _, expected_hash = self._get_device_config(target_device)
+                        running_hash = container.get("config_hash")
+
+                        if running_hash != expected_hash:
+                            logger.info(
+                                "config_mismatch_restarting",
+                                device=target_device.name,
+                                old_hash=running_hash,
+                                new_hash=expected_hash,
+                            )
+                            self.podman.stop_service(container["id"])
+                            # Remove from running_map so "Start Missing" picks it up immediately
+                            if s in running_map:
+                                del running_map[s]
+
                     # A. Start missing
                     for device, hw_dev in active_db_devices:
                         if device.enabled and device.status == "online":
@@ -349,11 +407,16 @@ class ControllerService:
                                     )
                                     continue
 
+                                # Compute Final Config
+                                final_config, config_hash = self._get_device_config(device)
+
                                 success = self.podman.spawn_recorder(
                                     device=hw_dev,
                                     mic_profile=profile_slug,
                                     mic_name=device.name,
                                     serial_number=device.serial_number,
+                                    config=final_config,
+                                    config_hash=config_hash,
                                 )
                                 if not success:
                                     logger.error("failed_to_start_recorder", device=device.name)
@@ -391,7 +454,10 @@ class ControllerService:
                 status="online",
                 activity="monitoring",
                 message="Controller active",
-                meta={"detected_devices": len(detected_devices)},
+                meta={
+                    "detected_devices": len(detected_devices),
+                    "resources": self.monitor.get_usage(),
+                },
             )
 
         except Exception as e:
@@ -399,24 +465,73 @@ class ControllerService:
             logger.error(traceback.format_exc())
             # Do not re-raise to keep loop alive
 
-    async def _handle_reload_config(self, msg: ControlMessage) -> None:
-        """Handle reload_config command."""
-        logger.info("reloading_configuration", initiator=msg.initiator)
-        # For now, just re-scan or log, as settings are env-var based mostly.
-        # But we could trigger a reconcile immediately.
-        logger.info("configuration_reloaded")
-        # Trigger immediate reconcile?
-        # Maybe await self.reconcile() -- but reconcile handles its own concurrency/state safe?
-        # Reconcile is async but linear. calling it here might race with the loop.
-        # Ideally set a flag or just wait for next loop.
-        # For this implementation, we just log.
+    async def _handle_reload_mic_profiles_from_db(self, msg: ControlMessage) -> None:
+        """Command: reload_mic_profiles_from_db.
+
+        Action: Load current DB state into RAM.
+        Use Case: User updated a profile in the UI.
+        """
+        logger.info("reloading_mic_profiles_from_db", initiator=msg.initiator)
+        try:
+            async with AsyncSessionLocal() as session:
+                await self.profiles.load_profiles(session)
+
+            # Force Reconcile (Bypassing Intelligent Polling optimization)
+            self.last_hardware_hash = ""
+
+            logger.info("mic_profiles_reloaded")
+        except Exception as e:
+            logger.error("mic_profile_reload_failed", error=str(e))
+
+    async def _handle_reset_mic_profiles_to_defaults(self, msg: ControlMessage) -> None:
+        """Command: reset_mic_profiles_to_defaults.
+
+        Action: Sync YAML -> DB, then Load DB -> RAM.
+        Use Case: Admin reset or Container Update.
+        """
+        logger.info("resetting_mic_profiles_to_defaults", initiator=msg.initiator)
+        try:
+            # 1. Sync Disk -> DB
+            bootstrapper = ProfileBootstrapper(profiles_dir=settings.PROFILES_DIR)
+            await bootstrapper.sync()
+
+            # 2. Load DB -> RAM
+            async with AsyncSessionLocal() as session:
+                await self.profiles.load_profiles(session)
+
+            # Force Reconcile
+            self.last_hardware_hash = ""
+
+            logger.info("mic_profiles_reset_complete")
+        except Exception as e:
+            logger.error("mic_profile_reset_failed", error=str(e))
 
     async def run(self) -> None:
         """Start the async scheduler loop."""
         logger.info("controller_service_started")
 
+        # 1. Startup: Sync & Load State
+        try:
+            # Sync Defaults
+            bootstrapper = ProfileBootstrapper(profiles_dir=settings.PROFILES_DIR)
+            await bootstrapper.sync()
+
+            # Load State from DB
+            async with AsyncSessionLocal() as session:
+                await self.profiles.load_profiles(session)
+
+        except Exception as e:
+            logger.error("startup_state_load_failed", error=str(e))
+            # Continue? Or crash?
+            # Controller can run without profiles (maybe waits for reload), but logging error is key.
+
         # Start Subscriber
-        self.subscriber.register_handler("reload_config", self._handle_reload_config)
+        self.subscriber.register_handler(
+            "reload_mic_profiles_from_db", self._handle_reload_mic_profiles_from_db
+        )
+        self.subscriber.register_handler(
+            "reset_mic_profiles_to_defaults", self._handle_reset_mic_profiles_to_defaults
+        )
         await self.subscriber.start()
 
         # Publish Lifecycle: Started

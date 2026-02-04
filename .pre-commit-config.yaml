@@ -8,21 +8,21 @@ repos:
         entry: uv run scripts/fix.py
         language: system
         types: [python]
-        pass_filenames: false
+        pass_filenames: true
         stages: [pre-commit, pre-push]
 
-      # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit & Push)
+      # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit)
       - id: test-unit
         name: Unit Tests
         entry: uv run scripts/test_unit.py
         language: system
         types: [python]
         pass_filenames: false
-        stages: [pre-commit, pre-push]
+        stages: [pre-commit]
 
-      # 3. CHECK: Strikte Tests (Integration) & Checks (Läuft nur vor Push)
+      # 3. CHECK: Statische Analyse & Unit Tests (Läuft nur vor Push)
       - id: check-local
-        name: Check (Deep Verification & Integration)
+        name: Check (Lint, Types, Unit)
         entry: uv run scripts/check.py
         language: system
         types: [python]

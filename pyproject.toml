@@ -71,6 +71,8 @@ dev = [
     "silvasonic-status-board",
     "pytest-mock>=3.15.1",
     "httpx",
+    "testcontainers[postgres,redis]>=4.14.1",
+    "pytest-xdist>=3.5.0",
 ]
 
 # --- TOOLS CONFIGURATION ---
@@ -106,6 +108,10 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "packages/core/migrations/versions/*.py" = ["D", "E501"]
 "packages/core/migrations/env.py" = ["D"]
+# Tests weniger strikt (keine Docstrings, Asserts erlaubt)
+"tests/**/*.py" = ["D", "S101"]
+"services/*/tests/**/*.py" = ["D", "S101"]
+"packages/*/tests/**/*.py" = ["D", "S101"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -146,7 +152,7 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-v --cov --cov-report=term-missing"
+addopts = "-v --cov --cov-report=term-missing -n 4 --dist loadscope" # Delete "-n 4 --dist loadscope" to disable parallelization
 # Pfad angepasst auf services/
 testpaths = ["tests", "services/*/tests", "packages/*/tests"]
 python_files = ["test_*.py"]
@@ -159,7 +165,10 @@ norecursedirs = [
     "packages/core/migrations",
 ]
 asyncio_mode = "auto"
-markers = ["integration: mark a test as an integration test."]
+markers = [
+    "integration: mark a test as an integration test.",
+    "e2e: mark a test as an E2E browser test.",
+]
 
 [tool.coverage.run]
 omit = [

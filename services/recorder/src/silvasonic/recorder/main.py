@@ -1,11 +1,12 @@
 import asyncio
+import os
 import signal
 import sys
 from pathlib import Path
 
-import psutil
 import structlog
 from silvasonic.core.logging import configure_logging
+from silvasonic.core.monitoring import ResourceMonitor
 from silvasonic.core.redis.publisher import RedisPublisher
 from silvasonic.core.redis.subscriber import RedisSubscriber
 from silvasonic.core.schemas.control import ControlMessage
@@ -19,17 +20,8 @@ logger = structlog.get_logger()
 # In-container path for recordings
 OUTPUT_DIR = Path("/data/recorder") / settings.MIC_NAME / "recordings"
 
-
-def get_resource_usage() -> dict[str, float]:
-    """Get current process CPU and Memory usage."""
-    try:
-        proc = psutil.Process()
-        return {
-            "cpu_percent": proc.cpu_percent(interval=None),
-            "memory_mb": proc.memory_info().rss / 1024 / 1024,
-        }
-    except Exception:
-        return {}
+# Resource Monitor (watches storage at output path)
+monitor = ResourceMonitor(storage_path=OUTPUT_DIR)
 
 
 async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
@@ -79,6 +71,8 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
         alsa_card_index=settings.ALSA_DEVICE_INDEX,
         on_segment_complete=on_segment_complete_sync,
         live_stream_url=settings.live_stream_url,
+        input_format=settings.INPUT_FORMAT,
+        input_device=settings.INPUT_DEVICE_OVERRIDE,
     )
 
     # 3. Signals (Sync boilerplate for generic signal handling)
@@ -95,7 +89,7 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
     # 4. Run Loop
     try:
         if publisher:
-            await publisher.publish_lifecycle("started", reason="Service startup")
+            await publisher.publish_lifecycle("started", reason="Service startup", pid=os.getpid())
     except Exception as e:
         logger.warning("lifecycle_startup_failed", error=str(e))
 
@@ -127,7 +121,7 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
                     meta={
                         "profile": settings.MIC_PROFILE,
                         "alsa_index": settings.ALSA_DEVICE_INDEX,
-                        "resources": get_resource_usage(),
+                        "resources": monitor.get_usage(),
                         "stream_url": settings.live_stream_url,
                     },
                 )
@@ -139,7 +133,7 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
         logger.critical("recorder_crashed", error=str(e))
         try:
             if publisher:
-                await publisher.publish_lifecycle("crashed", reason=str(e))
+                await publisher.publish_lifecycle("crashed", reason=str(e), pid=os.getpid())
         except Exception:
             pass
         streamer.stop()
@@ -148,7 +142,9 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
         logger.info("recorder_shutdown")
         if publisher:
             try:
-                await publisher.publish_lifecycle("stopping", reason="Shutdown signal")
+                await publisher.publish_lifecycle(
+                    "stopping", reason="Shutdown signal", pid=os.getpid()
+                )
             except Exception as e:
                 logger.warning("lifecycle_stopping_failed", error=str(e))
 

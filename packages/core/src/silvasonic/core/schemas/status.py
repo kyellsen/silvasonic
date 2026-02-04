@@ -13,6 +13,17 @@ class StatusHeader(BaseModel):
     timestamp: float = Field(default_factory=time.time)
 
 
+class SystemResources(BaseModel):
+    """System resource usage metrics."""
+
+    cpu_percent: float = Field(..., description="System-wide CPU usage percentage")
+    memory_mb: float = Field(..., description="RSS memory usage in MB")
+    storage_gb: float | None = Field(None, description="Used storage in GB (if applicable)")
+    storage_path: str | None = Field(None, description="Path being monitored for storage")
+    num_fds: int | None = Field(None, description="Number of open file descriptors")
+    num_threads: int | None = Field(None, description="Number of active threads")
+
+
 class StatusPayloadContent(BaseModel):
     """Content payload for status messages."""
 
@@ -20,6 +31,8 @@ class StatusPayloadContent(BaseModel):
     activity: str
     progress: float | None = None
     message: str
+    # New standardized resources field
+    resources: SystemResources | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
 
 

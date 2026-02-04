@@ -77,3 +77,10 @@ class ProfileManager:
                 )
 
         return None
+
+    def get_profile(self, slug: str) -> RecorderProfile | None:
+        """Retrieve a profile by its slug."""
+        for profile in self.profiles:
+            if profile.slug == slug:
+                return profile
+        return None
