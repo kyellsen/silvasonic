@@ -1,8 +1,10 @@
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import structlog
+from silvasonic.controller.bootstrap import ProfileReader
 from silvasonic.controller.hardware import AudioDevice
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from sqlalchemy import select
@@ -50,6 +52,33 @@ class ProfileManager:
 
         except Exception as e:
             logger.error("failed_to_load_profiles_from_db", error=str(e))
+
+    def load_profiles_from_yaml(self, profiles_dir: Path) -> None:
+        """Load all profiles directly from YAML (Emergency Mode)."""
+        try:
+            reader = ProfileReader(str(profiles_dir))
+            raw_profiles = reader.read_all()
+
+            self.profiles = []
+            for p_dict in raw_profiles:
+                # Construct RecorderProfile from Dict
+                slug = p_dict.get("slug")
+                if not slug:
+                    continue
+
+                profile = RecorderProfile(
+                    slug=slug,
+                    name=p_dict.get("name", "Unknown"),
+                    match_pattern=p_dict.get("audio", {}).get("match_pattern"),
+                    raw_config=p_dict,
+                )
+                self.profiles.append(profile)
+                logger.debug("profile_loaded_from_yaml", slug=profile.slug)
+
+            logger.info("profiles_loaded_from_yaml", count=len(self.profiles))
+
+        except Exception as e:
+            logger.error("failed_to_load_profiles_from_yaml", error=str(e))
 
     def find_profile_for_device(self, device: AudioDevice) -> str | None:
         """Find a matching profile slug for the given hardware device."""

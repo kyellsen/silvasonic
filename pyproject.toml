@@ -73,7 +73,15 @@ dev = [
     "httpx",
     "testcontainers[postgres,redis]>=4.14.1",
     "pytest-xdist>=3.5.0",
+    "pytest-env>=1.0.0",
 ]
+
+[tool.pytest_env]
+POSTGRES_PASSWORD = "secret"
+PODMAN_SOCKET_URL = "unix:///run/podman/podman.sock"
+HOST_DATA_DIR = "/tmp/silvasonic_data"
+HOST_SOURCE_DIR = "/tmp/silvasonic_src"
+ICECAST_PASSWORD = "hackme"
 
 # --- TOOLS CONFIGURATION ---
 
@@ -152,7 +160,7 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-v --cov --cov-report=term-missing -n 4 --dist loadscope" # Delete "-n 4 --dist loadscope" to disable parallelization
+addopts = "-v --cov --cov-report=term-missing -n 6 --dist loadscope" # Delete "-n 4 --dist loadscope" to disable parallelization
 # Pfad angepasst auf services/
 testpaths = ["tests", "services/*/tests", "packages/*/tests"]
 python_files = ["test_*.py"]

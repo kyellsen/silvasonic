@@ -1,6 +1,4 @@
 import json
-import os
-from unittest import mock
 
 import pytest
 from silvasonic.recorder.manager import ProfileManager
@@ -12,7 +10,7 @@ def manager():
     return ProfileManager()
 
 
-def test_load_profile_from_env_success(manager):
+def test_load_profile_from_env_success(manager, monkeypatch):
     """Test loading a profile strictly from environment variable."""
     config = {
         "slug": "test_mic",
@@ -20,24 +18,33 @@ def test_load_profile_from_env_success(manager):
         "audio": {"sample_rate": 48000, "channels": 1, "format": "S16LE"},
     }
 
-    with mock.patch.dict(os.environ, {"MIC_CONFIG_JSON": json.dumps(config)}):
-        profile = manager.load_profile("test_mic")
+    from silvasonic.recorder.settings import settings
 
-        assert profile.slug == "test_mic"
-        assert profile.name == "Test Mic"
-        assert profile.audio.sample_rate == 48000
+    monkeypatch.setattr(settings, "MIC_CONFIG_JSON", json.dumps(config))
+
+    profile = manager.load_profile("test_mic")
+
+    assert profile.slug == "test_mic"
+    assert profile.name == "Test Mic"
+    assert profile.audio.sample_rate == 48000
 
 
-def test_load_profile_missing_env(manager):
+def test_load_profile_missing_env(manager, monkeypatch):
     """Test that missing environment variable raises ValueError."""
-    # Ensure env var is not present
-    with mock.patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError, match="Strict Mode: MIC_CONFIG_JSON not set"):
-            manager.load_profile("test_mic")
+    from silvasonic.recorder.settings import settings
+
+    # Ensure it's None
+    monkeypatch.setattr(settings, "MIC_CONFIG_JSON", None)
+
+    with pytest.raises(ValueError, match="Strict Mode: MIC_CONFIG_JSON not set"):
+        manager.load_profile("test_mic")
 
 
-def test_load_profile_invalid_json(manager):
+def test_load_profile_invalid_json(manager, monkeypatch):
     """Test that invalid JSON raises ValueError."""
-    with mock.patch.dict(os.environ, {"MIC_CONFIG_JSON": "{invalid_json"}):
-        with pytest.raises(ValueError, match="Invalid JSON"):
-            manager.load_profile("test_mic")
+    from silvasonic.recorder.settings import settings
+
+    monkeypatch.setattr(settings, "MIC_CONFIG_JSON", "{invalid_json")
+
+    with pytest.raises(ValueError, match="Invalid JSON"):
+        manager.load_profile("test_mic")

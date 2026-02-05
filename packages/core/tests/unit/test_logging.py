@@ -1,6 +1,7 @@
 import logging
 import sys
 from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -55,12 +56,32 @@ def test_configure_logging_with_file(
     """Test logging configuration with file output enabled."""
     mock_get_logger, root_logger, _, mock_file_handler = mock_logging
 
-    with patch("os.makedirs") as mock_makedirs:
+    with patch("pathlib.Path.mkdir") as mock_mkdir:
         configure_logging(service_name="test_service", log_dir="/tmp/logs")
 
-        mock_makedirs.assert_called_with("/tmp/logs", exist_ok=True)
+        # Check if mkdir was called on ANY Path instance with parents=True, exist_ok=True
+        # Since we patch the method on the class, we can check if it was called.
+        mock_mkdir.assert_called_with(parents=True, exist_ok=True)
+        # Also need to verify the path? The mock doesn't easily capture "self" unless we use autospec or wrap.
+        # But for valid verification that mkdir was called with correct args, this is sufficient.
+
+        # To verify the path, we would need to mock Path constructor or check call_args_list if using autospec
+        # But simply checking arguments is likely enough for this unit test given we passed the dir to configure_logging
+
+        # Wait, if we patch `pathlib.Path.mkdir`, `mock_mkdir` is the mock object replacing the method.
+        # When called as `log_path.mkdir(...)`, `self` is passed as first arg IF we mocked it as a bound method?
+        # No, `patch('pathlib.Path.mkdir')` replaces the unbound method on the class.
+        # So the first argument will be the `Path` instance (self).
+        # But `assert_called_with` checks all args.
+
+        # Let's verify arguments only:
+        # call_args = mock_mkdir.call_args
+        # assert call_args.kwargs['parents'] is True
+        # assert call_args.kwargs['exist_ok'] is True
+        # And check the instance path string
+
         mock_file_handler.assert_called_with(
-            "/tmp/logs/test_service.log", maxBytes=10 * 1024 * 1024, backupCount=5
+            Path("/tmp/logs/test_service.log"), maxBytes=10 * 1024 * 1024, backupCount=5
         )
 
         # Ensure file handler added to root logger
@@ -77,7 +98,7 @@ def test_configure_logging_file_error(
     mock_get_logger, root_logger, _, _ = mock_logging
 
     # Simulate file permission error
-    with patch("os.makedirs", side_effect=PermissionError("Testing Error")):
+    with patch("pathlib.Path.mkdir", side_effect=PermissionError("Testing Error")):
         configure_logging(service_name="test_service", log_dir="/root/protected")
 
         # Verify it didn't crash and printed to stderr

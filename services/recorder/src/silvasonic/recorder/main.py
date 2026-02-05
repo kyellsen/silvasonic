@@ -112,19 +112,25 @@ async def run_recorder_loop(publisher: RedisPublisher | None = None) -> None:
         streamer.start()
 
         while True:
-            # Heartbeat Loop
-            if publisher:
-                await publisher.publish_status(
-                    status="online",
-                    activity="recording",
-                    message=f"Recording {settings.MIC_NAME}",
-                    meta={
-                        "profile": settings.MIC_PROFILE,
-                        "alsa_index": settings.ALSA_DEVICE_INDEX,
-                        "resources": monitor.get_usage(),
-                        "stream_url": settings.live_stream_url,
-                    },
-                )
+            try:
+                # Heartbeat Loop
+                if publisher:
+                    await publisher.publish_status(
+                        status="online",
+                        activity="recording",
+                        message=f"Recording {settings.MIC_NAME}",
+                        meta={
+                            "profile": settings.MIC_PROFILE,
+                            "alsa_index": settings.ALSA_DEVICE_INDEX,
+                            "resources": monitor.get_usage(),
+                            "stream_url": settings.live_stream_url,
+                        },
+                    )
+            except Exception as e:
+                # Resilience: Do not crash on temporary infrastructure failures (Redis)
+                # We log it and continue recording.
+                logger.error("heartbeat_failed_continuing", error=str(e))
+
             await asyncio.sleep(5)
 
     except KeyboardInterrupt:

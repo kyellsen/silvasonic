@@ -1,21 +1,15 @@
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+from silvasonic.core.settings import DatabaseSettings
 
 
-class Settings(BaseSettings):
+class Settings(DatabaseSettings):
     """Configuration settings for the Status Board service."""
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     DEV_MODE: bool = False
     PORT: int = 8000
-
-    # Database and Redis (defaults match compose)
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "password"
-    POSTGRES_DB: str = "silvasonic"
-    POSTGRES_HOST: str = "silvasonic-database"
-    POSTGRES_PORT: int = 5432
 
     REDIS_HOST: str = Field(default="silvasonic-redis", validation_alias="SILVASONIC_REDIS_HOST")
     REDIS_PORT: int = 6379
@@ -25,8 +19,12 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Construct the PostgreSQL connection URL."""
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        """Construct the PostgreSQL connection URL (Override or use parent)."""
+        # Parent DatabaseSettings already has database_url property, but let's check if we need to override.
+        # Parent uses self.POSTGRES_USER etc.
+        # So we can simply inherit it!
+        # Deleting this method to use parent's implementation if identical.
+        return super().database_url
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

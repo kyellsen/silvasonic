@@ -1,9 +1,9 @@
 import json
-import os
 from typing import Any
 
 import structlog
 from silvasonic.core.schemas.devices import MicrophoneProfile
+from silvasonic.recorder.settings import settings
 
 logger = structlog.get_logger()
 
@@ -26,12 +26,19 @@ class ProfileManager:
         Raises:
             ValueError: If MIC_CONFIG_JSON is missing.
         """
-        raw_config = os.environ.get("MIC_CONFIG_JSON")
+        raw_config = settings.MIC_CONFIG_JSON
 
         if raw_config:
             logger.info("loading_profile_from_env", profile=profile_name)
             try:
                 config_data = json.loads(raw_config)
+
+                # Robustness: Inject metadata if missing (e.g. from Controller overrides)
+                if "slug" not in config_data:
+                    config_data["slug"] = profile_name
+                if "name" not in config_data:
+                    config_data["name"] = profile_name
+
                 return MicrophoneProfile(**config_data)
             except json.JSONDecodeError as e:
                 logger.error("invalid_mic_config_json", error=str(e))

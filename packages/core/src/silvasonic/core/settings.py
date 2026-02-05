@@ -5,7 +5,7 @@ class DatabaseSettings(BaseSettings):  # type: ignore[misc]
     """Configuration settings for the database connection."""
 
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "password"
+    POSTGRES_PASSWORD: str
     POSTGRES_DB: str = "silvasonic"
     POSTGRES_HOST: str = "database"  # Docker service name
     POSTGRES_PORT: int = 5432

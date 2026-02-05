@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from silvasonic.core.settings import DatabaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-settings = DatabaseSettings()
+settings = DatabaseSettings()  # type: ignore[call-arg]
 
 # Create Async Engine
 # echo=True can be enabled via env var if needed for debugging, keeping loose for now

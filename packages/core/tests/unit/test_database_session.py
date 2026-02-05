@@ -11,14 +11,14 @@ class TestDatabaseSettings:
 
     def test_default_settings(self) -> None:
         """Verify default configuration values."""
-        settings = DatabaseSettings()
+        settings = DatabaseSettings(POSTGRES_PASSWORD="secret")
         assert settings.POSTGRES_USER == "postgres"
-        assert settings.POSTGRES_PASSWORD == "password"
+        assert settings.POSTGRES_PASSWORD == "secret"
         assert settings.POSTGRES_HOST == "database"
         assert settings.POSTGRES_PORT == 5432
         assert settings.POSTGRES_DB == "silvasonic"
 
-        expected_url = "postgresql+asyncpg://postgres:password@database:5432/silvasonic"
+        expected_url = "postgresql+asyncpg://postgres:secret@database:5432/silvasonic"
         assert settings.database_url == expected_url
 
     def test_settings_override(self) -> None:
@@ -27,7 +27,7 @@ class TestDatabaseSettings:
         os.environ["POSTGRES_HOST"] = "localhost"
 
         try:
-            settings = DatabaseSettings()
+            settings = DatabaseSettings(POSTGRES_PASSWORD="secret")
             assert settings.POSTGRES_USER == "testuser"
             assert settings.POSTGRES_HOST == "localhost"
             assert "testuser" in settings.database_url

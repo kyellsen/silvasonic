@@ -105,6 +105,8 @@ def test_spawn_recorder_success_new(manager):
     # Check Env Injection
     assert "MIC_CONFIG_JSON" in kwargs["environment"]
     assert kwargs["environment"]["MIC_CONFIG_JSON"] == json.dumps(config)
+    # Check Log Format Propagation
+    assert "SILVASONIC_LOG_FORMAT" in kwargs["environment"]
 
     # Check Hash Label
     assert kwargs["labels"]["silvasonic.config_hash"] == config_hash

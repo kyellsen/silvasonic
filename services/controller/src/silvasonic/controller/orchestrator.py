@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Any, cast
 
 import podman
@@ -9,7 +10,7 @@ from silvasonic.controller.hardware import AudioDevice
 from silvasonic.controller.settings import ControllerSettings
 
 logger = structlog.get_logger()
-settings = ControllerSettings()
+settings = ControllerSettings()  # type: ignore[call-arg]
 
 
 class PodmanOrchestrator:
@@ -99,10 +100,12 @@ class PodmanOrchestrator:
 
         # Pre-Spawn: Ensure Log Directory exists on Host (via /host_data mount)
         try:
-            # /host_data maps to settings.HOST_DATA_DIR
+            # /host_data maps to settings.HOST_DATA_DIR (externally) but implies settings.LOCAL_DATA_DIR (internally)
             # WE NOW USE friendly_name HERE INSTEAD OF mic_name
-            internal_log_path = f"{settings.HOST_DATA_DIR}/recorder/{friendly_name}/logs"
-            os.makedirs(internal_log_path, exist_ok=True)
+            data_root = settings.LOCAL_DATA_DIR or settings.HOST_DATA_DIR
+            internal_log_path_str = f"{data_root}/recorder/{friendly_name}/logs"
+            internal_log_path = Path(internal_log_path_str)
+            internal_log_path.mkdir(parents=True, exist_ok=True)
             # Ensure permissions? Rootless inside container might own it as root (mapped to user outside)
             # which is fine.
         except Exception as e:
@@ -118,6 +121,8 @@ class PodmanOrchestrator:
             "LOG_DIR": "/var/log/silvasonic",
             "SILVASONIC_REDIS_HOST": settings.REDIS_HOST,  # Required by silvasonic.core
             "ICECAST_HOST": settings.ICECAST_HOST,
+            "ICECAST_PASSWORD": settings.ICECAST_PASSWORD,
+            "SILVASONIC_LOG_FORMAT": os.getenv("SILVASONIC_LOG_FORMAT", "json"),
         }
 
         if extra_env:
@@ -215,18 +220,22 @@ class PodmanOrchestrator:
         security_opt: list[str] | None = None,
         privileged: bool = False,
         network: str | None = None,
+        **kwargs: Any,
     ) -> bool:
-        """Internal helper to spawn containers safely."""
+        """Helper to spawn a generic container."""
         network = network or settings.PODMAN_NETWORK_NAME
         try:
             # Check if exists and remove if stopped
             try:
                 old_c = self.client.containers.get(name)
+                # If it exists, we check status
                 if old_c.status != "running":
                     logger.info("removing_stale_container", container=name)
                     old_c.remove()
                 else:
                     logger.warning("container_already_running", container=name)
+                    # If it's already running, we assume it's fine.
+                    # In a real orchestrator, we might check hash/config and restart if needed.
                     return True
             except podman.errors.NotFound:
                 pass
@@ -248,6 +257,7 @@ class PodmanOrchestrator:
                 labels=labels,
                 security_opt=security_opt or [],
                 privileged=privileged,
+                **kwargs,
             )
             logger.info("container_started", container=name)
             return True

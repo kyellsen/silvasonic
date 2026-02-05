@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
-settings = ControllerSettings()
+settings = ControllerSettings()  # type: ignore[call-arg]
 
 # Default Service Registry (Baseline Configuration)
 # These defaults are used to populate the database on first run.

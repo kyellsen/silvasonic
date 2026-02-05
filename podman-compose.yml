@@ -11,7 +11,7 @@ services:
     # userns_mode: keep-id
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/database:/var/lib/postgresql/data:z
@@ -47,13 +47,19 @@ services:
     userns_mode: keep-id
     environment:
       PYTHONUNBUFFERED: '1'
-      PODMAN_SOCKET_URL: unix:///run/podman/podman.sock
+      PODMAN_SOCKET_URL: ${PODMAN_SOCKET_URL:-unix:///run/podman/podman.sock}
       HOST_DATA_DIR: ${SILVASONIC_WORKSPACE_PATH:-./workspace}
+      LOCAL_DATA_DIR: /host_data
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
       POSTGRES_HOST: silvasonic-database
       SILVASONIC_REDIS_HOST: silvasonic-redis
-      HOST_SOURCE_DIR: ${PWD}  # Root of the repository on the host
+      HOST_SOURCE_DIR: ${SILVASONIC_SOURCE_DIR}  # Root of the repository on the host
       LOG_DIR: /var/log/silvasonic
       PODMAN_NETWORK_NAME: silvasonic_silvasonic-net
+      SILVASONIC_LOG_FORMAT: ${SILVASONIC_LOG_FORMAT:-json}
+      ICECAST_PASSWORD: ${ICECAST_SOURCE_PASSWORD:-hackme}
     volumes:
       - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:rw,z
       # Log Persistence
@@ -91,7 +97,7 @@ services:
       ICECAST_RELAY_PASSWORD: ${ICECAST_RELAY_PASSWORD:-hackme}
       ICECAST_HOSTNAME: ${ICECAST_HOSTNAME:-silvasonic}
       ICECAST_LOCATION: ${ICECAST_LOCATION:-"Silvasonic Station"}
-      ICECAST_ADMIN: ${ICECAST_ADMIN:-admin@silvasonic.local}
+      ICECAST_ADMIN_EMAIL: ${ICECAST_ADMIN_EMAIL:-admin@silvasonic.local}
   gateway:
     image: silvasonic-gateway
     build:
@@ -119,9 +125,13 @@ services:
     userns_mode: keep-id
     environment:
       DEV_MODE: ${DEV_MODE:-true}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
       POSTGRES_HOST: silvasonic-database
       SILVASONIC_REDIS_HOST: silvasonic-redis
       LOG_DIR: /var/log/silvasonic
+      SILVASONIC_LOG_FORMAT: ${SILVASONIC_LOG_FORMAT:-json}
     networks: [silvasonic-net]
     depends_on:
       database:
@@ -151,6 +161,8 @@ services:
       MIC_PROFILE: ${MIC_PROFILE:-ultramic_384_evo}
       ALSA_DEVICE_INDEX: '' # Auto-detect or set specific index
       LOG_DIR: /var/log/silvasonic
+      SILVASONIC_LOG_FORMAT: ${SILVASONIC_LOG_FORMAT:-json}
+      ICECAST_PASSWORD: ${ICECAST_SOURCE_PASSWORD:-hackme}
     volumes:
       - ./services/recorder/config/profiles:/etc/silvasonic/profiles:ro,z
       - ${SILVASONIC_WORKSPACE_PATH:-./workspace}/recorder/default:/data/recorder/default:z

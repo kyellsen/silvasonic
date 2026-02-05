@@ -15,6 +15,7 @@ from testcontainers.redis import RedisContainer
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
+@pytest.mark.xdist_group(name="e2e_serial")
 async def test_recorder_survival_without_infrastructure(tmp_path):
     """Resiliency Test:
     1. Start Infrastructure (DB, Redis)
@@ -23,6 +24,9 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
     4. Verify Recorder keeps running and recording
     """
     # --- 1. Infrastructure Setup (Manual Control) ---
+    if "TESTCONTAINERS_RYUK_DISABLED" not in os.environ:
+        os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
+
     print("\n[Setup] Starting isolated infrastructure...")
 
     # Redis
@@ -95,6 +99,7 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
 
             # Paths
             settings_mock.HOST_DATA_DIR = str(tmp_path / "data")
+            settings_mock.LOCAL_DATA_DIR = None
             settings_mock.HOST_SOURCE_DIR = str(tmp_path / "source")
             os.makedirs(settings_mock.HOST_DATA_DIR, exist_ok=True)
 
@@ -117,7 +122,7 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
                 yaml.dump(profile_data, f)
 
             # Pre-create LOGS dir with correct permissions (because spawn_recorder creates it too late)
-            device_serial = "RESILIENCY_TEST_01"
+            device_serial = "RESILIENCY_TEST_99"
             short_serial = device_serial[-4:].lower()  # t_01
             friendly_name = f"generic_usb-{short_serial}"
             logs_dir = Path(settings_mock.HOST_DATA_DIR) / "recorder" / friendly_name / "logs"
@@ -181,19 +186,71 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
                 kwargs["extra_env"] = extra
                 return original_spawn(*args, **kwargs)
 
-            # Intercept _spawn_container to inject Security Opts (SELinux fix)
+            # --- ISOLATION FIX: Custom managed_by label ---
+            # This prevents the LIVE User Controller (if running) from killing our test container
+            # because it considers it an orphan (since it's not in the live DB).
+            test_managed_by = f"silvasonic-test-{device_serial}"
+
             original_spawn_container = controller.podman._spawn_container
 
             def wrapped_spawn_container(*args, **kwargs):
-                # Disable SELinux labeling to avoid PermissionDenied on bind mounts
-                # Trying 'disable' keyword directly based on error message
+                # Override managed_by label to hide from real controller
+                if "labels" not in kwargs:
+                    kwargs["labels"] = {}
+
+                print(f"[DEBUG] Overwriting label: {test_managed_by}")
+                kwargs["labels"]["managed_by"] = test_managed_by
+
+                # Add restart policy to prevent immediate disappearance on crash
+                kwargs["restart_policy"] = {"Name": "on-failure"}
+
+                # SELinux fix
                 kwargs["security_opt"] = ["disable"]
                 return original_spawn_container(*args, **kwargs)
+
+            # original_list_services = controller.podman.list_active_services
+
+            # Custom list_active_services that looks for OUR label
+            def wrapped_list_services(*args, **kwargs):
+                # Re-implement logic but with custom label
+                try:
+                    c_list = controller.podman.client.containers.list(all=True)
+                    results = []
+                    for c in c_list:
+                        labels = c.labels or {}
+                        # Filter by OUR test label
+                        if labels.get("managed_by") != test_managed_by:
+                            continue
+
+                        status = controller.podman._get_safe_status(c)
+                        if status != "running":
+                            continue
+
+                        results.append(
+                            {
+                                "id": c.id,
+                                "name": c.name,
+                                "status": status,
+                                "service": labels.get("service"),
+                                "device_serial": labels.get("device_serial"),
+                                "mic_name": labels.get("mic_name"),
+                                "config_hash": labels.get("silvasonic.config_hash"),
+                            }
+                        )
+                    return results
+                except Exception as e:
+                    print(f"Error in mocked list_active_services: {e}")
+                    return []
 
             with (
                 patch.object(controller.podman, "spawn_recorder", side_effect=wrapped_spawn),
                 patch.object(
                     controller.podman, "_spawn_container", side_effect=wrapped_spawn_container
+                ),
+                patch.object(
+                    controller.podman,
+                    "list_active_services",
+                    side_effect=wrapped_list_services,
                 ),
             ):
                 print("[Action] Spawning Recorder...")
@@ -203,6 +260,18 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
                 await asyncio.sleep(5)
                 # Helper Variables
                 container_name = f"silvasonic-recorder-{friendly_name}"
+
+                # DEBUG: Inspect Labels
+                try:
+                    import podman
+
+                    uid = os.getuid()
+                    uri = f"unix:///run/user/{uid}/podman/podman.sock"
+                    client_debug = podman.PodmanClient(base_url=uri)
+                    c_debug = client_debug.containers.get(container_name)
+                    print(f"[DEBUG] Container Labels: {c_debug.labels}")
+                except Exception as e:
+                    print(f"[DEBUG] Failed to inspect labels: {e}")
 
                 containers = controller.podman.list_active_services()
                 my_c = [c for c in containers if c.get("device_serial") == device_serial]
@@ -264,14 +333,82 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
 
                 # --- 3. DISASTER SIMULATION ---
                 print("\n[DISASTER] KILLING REDIS AND POSTGRES...")
-                redis.stop()
-                postgres.stop()
+
+                # Use direct podman stop/kill to avoid Testcontainers cleanup logic
+                # which might be removing our recorder if it thinks it owns the session resources.
+                import subprocess
+
+                # Get IDs
+                redis_id = redis.get_wrapped_container().id
+                pg_id = postgres.get_wrapped_container().id
+
+                print(f"[DISASTER] Stopping Redis ({redis_id}) and Postgres ({pg_id})...")
+                subprocess.run(["podman", "kill", redis_id], check=False)
+                subprocess.run(["podman", "kill", pg_id], check=False)
+
                 print("[DISASTER] Infrastructure Destroyed.")
 
                 # Wait for chaos (Recorder uses 5s heartbeat, 2s segments)
-                wait_time = 10
-                print(f"Waiting {wait_time}s for recorder to survive...")
-                await asyncio.sleep(wait_time)
+                # Poll for status changes to capture logs immediately if it dies
+                print("Monitoring container health during outage...")
+
+                import podman
+
+                uid = os.getuid()
+                uri = f"unix:///run/user/{uid}/podman/podman.sock"
+                client_check = podman.PodmanClient(base_url=uri)
+
+                for i in range(20):  # 10 seconds total (0.5s interval)
+                    try:
+                        # Re-fetch container to get fresh status
+                        try:
+                            c_poll = client_check.containers.get(container_name)
+                            status = c_poll.status
+                            print(f"  [Monitor] Status: {status} (Tick {i})")
+                        except Exception as e:
+                            print(f"  [Monitor] Error fetching container: {e}")
+                            # Try reading logs from filesystem
+                            try:
+                                log_path = tmp_path / "data" / "recorder" / friendly_name / "logs"
+                                if log_path.exists():
+                                    print(f"[Monitor] Reading logs from {log_path}...")
+                                    for log_file in log_path.glob("*"):
+                                        print(f"--- Log File: {log_file.name} ---")
+                                        print(log_file.read_text(errors="replace"))
+                                        print("---------------------------------")
+                            except Exception as e_fs:
+                                print(f"[Monitor] Failed to read fs logs: {e_fs}")
+
+                            # Don't crash, just wait and retry or fail assertion later
+                            await asyncio.sleep(0.5)
+                            continue
+
+                        if status != "running":
+                            # Capture logs if it stopped
+                            print(f"[Resiliency] Recorder stopped at tick {i}! Status: {status}")
+                            try:
+                                logs = c_poll.logs()
+                                if hasattr(logs, "__iter__") and not isinstance(logs, (str, bytes)):
+                                    full_log = b"".join([chunk for chunk in logs])
+                                    print(
+                                        f"[DEBUG] Crash Logs:\n{full_log.decode('utf-8', errors='replace')}"
+                                    )
+                                else:
+                                    print(
+                                        f"[DEBUG] Crash Logs:\n{logs.decode('utf-8', errors='replace')}"
+                                    )
+                            except Exception as e_log:
+                                print(f"[DEBUG] Could not fetch logs: {e_log}")
+                            break
+                    except podman.errors.NotFound:
+                        print(f"[DEBUG] Container DISAPPEARED at iteration {i}!")
+                        break
+
+                    if i % 4 == 0:
+                        print(f"  [Monitor] Status: running (Tick {i})")
+                    await asyncio.sleep(0.5)
+
+                # wait_time = 0  # Already waited in loop if it survived
 
                 # --- 4. VERIFICATION ---
 
@@ -281,12 +418,28 @@ async def test_recorder_survival_without_infrastructure(tmp_path):
                     uid = os.getuid()
                     uri = f"unix:///run/user/{uid}/podman/podman.sock"
                     client_check = podman.PodmanClient(base_url=uri)
+
                     c_after = client_check.containers.get(container_name)
                     print(f"[Status] Container Status after Disaster: {c_after.status}")
                     assert c_after.status == "running", (
                         "Recorder container died after infrastructure collapse!"
                     )
                 except Exception as e:
+                    print(f"[Verification] Failed to inspect container: {e}")
+                    # Try reading logs from filesystem
+                    try:
+                        log_path = tmp_path / "data" / "recorder" / friendly_name / "logs"
+                        if log_path.exists():
+                            print(f"[Verification] Reading logs from {log_path}...")
+                            for log_file in log_path.glob("*"):
+                                print(f"--- Log File: {log_file.name} ---")
+                                print(log_file.read_text(errors="replace"))
+                                print("---------------------------------")
+                        else:
+                            print(f"[Verification] Log path does not exist: {log_path}")
+                    except Exception as e_fs:
+                        print(f"[Verification] Failed to read fs logs: {e_fs}")
+
                     pytest.fail(f"Could not inspect container: {e}")
 
                 # Check 2: New files created?

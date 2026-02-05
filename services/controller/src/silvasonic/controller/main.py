@@ -5,6 +5,7 @@ import json
 import os
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -25,7 +26,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
-settings = ControllerSettings()
+settings = ControllerSettings()  # type: ignore[call-arg]
 
 
 class ControllerService:
@@ -46,6 +47,9 @@ class ControllerService:
         self.backoff_state: dict[str, dict[str, Any]] = {}
         # Hashing state for Intelligent Polling
         self.last_hardware_hash: str = ""
+        # Emergency Mode Flags
+        self.emergency_mode_db: bool = False
+        self.redis_available: bool = True
 
     def _recursive_update(self, base: dict[str, Any], overrides: dict[str, Any]) -> None:
         """Recursively update a dictionary."""
@@ -96,7 +100,7 @@ class ControllerService:
             return False
             return False
 
-    async def _wait_for_database(self) -> None:
+    async def _wait_for_database(self) -> bool:
         """Wait until the database is ready to accept connections."""
         logger.info("waiting_for_database")
         retries = 30
@@ -106,7 +110,7 @@ class ControllerService:
                 async with AsyncSessionLocal() as session:
                     await session.execute(text("SELECT 1"))
                 logger.info("database_is_ready")
-                return
+                return True
             except Exception as e:
                 wait_time = 2.0
                 logger.info(
@@ -118,8 +122,8 @@ class ControllerService:
                 await asyncio.sleep(wait_time)
 
         # If we get here, we failed
-        logger.critical("database_wait_timeout_exceeded")
-        raise RuntimeError("Database unavailable after startup wait.")
+        logger.critical("database_wait_timeout_exceeded_entering_emergency_mode")
+        return False
 
     async def _get_or_create_device(
         self, session: AsyncSession, audio_device: AudioDevice
@@ -166,6 +170,66 @@ class ControllerService:
 
         return device
 
+    async def _reconcile_emergency(self, detected_devices: list[AudioDevice]) -> None:
+        """Stateless Reconcile Loop for Emergency Mode (No DB)."""
+        logger.warning(
+            "running_emergency_reconcile",
+            detected_count=len(detected_devices),
+        )
+
+        detected_map = {d.serial_number: d for d in detected_devices}
+
+        # 1. Orchestrate Recorders (Stateless)
+        all_containers = self.podman.list_active_services()
+        active_recorder_containers = [c for c in all_containers if c.get("service") == "recorder"]
+        running_map = {}
+        for c in active_recorder_containers:
+            s = c.get("device_serial")
+            if s:
+                running_map[s] = c
+
+        # 2. Start Missing (Auto-Match Policy)
+        for hw_dev in detected_devices:
+            if hw_dev.serial_number in running_map:
+                continue
+
+            # Stateless Match
+            profile_slug = self.profiles.find_profile_for_device(hw_dev)
+            if profile_slug:
+                logger.info(
+                    "emergency_auto_starting_recorder",
+                    serial=hw_dev.serial_number,
+                    profile=profile_slug,
+                )
+                profile = self.profiles.get_profile(profile_slug)
+                # No DB overrides, use raw config from YAML
+                base_config = copy.deepcopy(profile.raw_config) if profile else {}
+                config_str = json.dumps(base_config, sort_keys=True)
+                config_hash = hashlib.md5(config_str.encode()).hexdigest()
+
+                self.podman.spawn_recorder(
+                    device=hw_dev,
+                    mic_profile=profile_slug,
+                    mic_name=f"mic_{hw_dev.serial_number}",
+                    serial_number=hw_dev.serial_number,
+                    config=base_config,
+                    config_hash=config_hash,
+                )
+            else:
+                logger.debug(
+                    "emergency_no_profile_match",
+                    serial=hw_dev.serial_number,
+                    desc=hw_dev.description,
+                )
+
+        # 3. Stop Lost Devices
+        for serial, container in running_map.items():
+            if serial not in detected_map:
+                logger.info("emergency_stopping_lost_device", serial=serial)
+                self.podman.stop_service(container["id"])
+
+        return
+
     async def reconcile(self) -> None:
         """Main logic loop: Sync Hardware -> DB -> Containers."""
         # logger.info("reconciliation_start")  # REMOVED: Log Hygiene
@@ -189,6 +253,26 @@ class ControllerService:
                 return
 
             detected_map = {d.serial_number: d for d in detected_devices}
+
+            # --- EMERGENCY MODE BRANCH ---
+            if self.emergency_mode_db:
+                await self._reconcile_emergency(detected_devices)
+                # In emergency mode, we might still want to publish status if Redis is up
+                # But generic services reconcile? Probably skip or simple version?
+                # For now just return to skip the complex DB logic below.
+                if self.redis_available:
+                    await self.broker.publish_status(
+                        status="degraded",
+                        activity="emergency_monitoring",
+                        message="Controller active (Emergency Mode: DB Unavailable)",
+                        meta={
+                            "detected_devices": len(detected_devices),
+                            "resources": self.monitor.get_usage(),
+                            "mode": "emergency_no_db",
+                        },
+                    )
+                return
+            # -----------------------------
 
             # Intelligent Polling: Compute Hash of Current Hardware State
             # We sort by serial to ensure deterministic order
@@ -450,15 +534,16 @@ class ControllerService:
                     await session.rollback()
 
             # Publish Heartbeat
-            await self.broker.publish_status(
-                status="online",
-                activity="monitoring",
-                message="Controller active",
-                meta={
-                    "detected_devices": len(detected_devices),
-                    "resources": self.monitor.get_usage(),
-                },
-            )
+            if self.redis_available:
+                await self.broker.publish_status(
+                    status="online",
+                    activity="monitoring",
+                    message="Controller active",
+                    meta={
+                        "detected_devices": len(detected_devices),
+                        "resources": self.monitor.get_usage(),
+                    },
+                )
 
         except Exception as e:
             logger.error("reconcile_critical_error", error=str(e))
@@ -525,43 +610,62 @@ class ControllerService:
             # Continue? Or crash?
             # Controller can run without profiles (maybe waits for reload), but logging error is key.
 
-        # Start Subscriber
-        self.subscriber.register_handler(
-            "reload_mic_profiles_from_db", self._handle_reload_mic_profiles_from_db
-        )
-        self.subscriber.register_handler(
-            "reset_mic_profiles_to_defaults", self._handle_reset_mic_profiles_to_defaults
-        )
-        await self.subscriber.start()
+        # Start Subscriber (Resilient)
+        try:
+            # We start the subscriber task. Ideally we'd verify connection, but async loop makes it tricky.
+            # If redis is totally down, _ensure_group inside `start` (via task) will fail/retry.
+            # But `broker.publish_lifecycle` below needs resilience.
+            self.subscriber.register_handler(
+                "reload_mic_profiles_from_db", self._handle_reload_mic_profiles_from_db
+            )
+            self.subscriber.register_handler(
+                "reset_mic_profiles_to_defaults", self._handle_reset_mic_profiles_to_defaults
+            )
+            await self.subscriber.start()
+        except Exception as e:
+            logger.warning("redis_subscriber_start_failed", error=str(e))
+            self.redis_available = False
 
         # Publish Lifecycle: Started
-        await self.broker.publish_lifecycle(
-            event="started",
-            reason="startup",
-            pid=os.getpid(),
-        )
+        if self.redis_available:
+            try:
+                await self.broker.publish_lifecycle(
+                    event="started",
+                    reason="startup",
+                    pid=os.getpid(),
+                )
+            except Exception as e:
+                logger.error("redis_publish_lifecycle_failed", error=str(e))
+                self.redis_available = False
 
         # Pre-flight Check: Wait for Database
-        await self._wait_for_database()
+        db_ready = await self._wait_for_database()
+        if not db_ready:
+            self.emergency_mode_db = True
 
-        # Run Database Migrations
-        # DISABLED: Schema is now initialized via 01-init-schema.sql in database container
-        # Old migration call removed.
+            try:
+                if not Path(self.settings.PROFILES_DIR).exists():
+                    logger.critical(
+                        "profiles_dir_missing_in_emergency_mode",
+                        path=str(self.settings.PROFILES_DIR),
+                    )
+                else:
+                    self.profiles.load_profiles_from_yaml(Path(self.settings.PROFILES_DIR))
+            except Exception as e:
+                logger.critical("failed_to_load_yaml_profiles_in_emergency", error=str(e))
+        else:
+            # Standard Startup if DB is ready
+            try:
+                # Sync Defaults
+                bootstrapper = ProfileBootstrapper(profiles_dir=self.settings.PROFILES_DIR)
+                await bootstrapper.sync()
 
-        # Bootstrap Profiles
-        try:
-            bootstrapper = ProfileBootstrapper()
-            await bootstrapper.sync()
+                # Load State from DB
+                async with AsyncSessionLocal() as session:
+                    await self.profiles.load_profiles(session)
 
-            # Load Profiles into Memory
-            async with AsyncSessionLocal() as session:
-                await self.profiles.load_profiles(session)
-
-        except Exception as e:
-            logger.critical("profile_bootstrap_failed", error=str(e))
-            # Continue? Or crash?
-            # If we fail to load profiles, we can't spawn recorders effectively.
-            # But maybe we should retry. For now, we log and proceed (empty profiles list).
+            except Exception as e:
+                logger.error("startup_state_load_failed", error=str(e))
 
         try:
             while True:
@@ -572,11 +676,15 @@ class ControllerService:
             await self.subscriber.stop()
 
             # Publish Lifecycle: Stopping
-            await self.broker.publish_lifecycle(
-                event="stopping",
-                reason="shutdown_signal",
-                pid=os.getpid(),
-            )
+            if self.redis_available:
+                try:
+                    await self.broker.publish_lifecycle(
+                        event="stopping",
+                        reason="shutdown_signal",
+                        pid=os.getpid(),
+                    )
+                except Exception:
+                    pass
 
 
 def main() -> None:

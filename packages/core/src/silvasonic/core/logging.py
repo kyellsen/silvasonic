@@ -2,6 +2,7 @@ import logging
 import logging.handlers
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -67,20 +68,32 @@ def configure_logging(service_name: str, log_dir: str | None = None) -> None:
     root_logger.setLevel(logging.INFO)
     root_logger.handlers = []  # Clear existing
 
-    # 1. Stdout: JSON
+    # Determine log format from environment (default: json)
+    # Options: 'json', 'dev', 'human'
+    log_format = os.environ.get("SILVASONIC_LOG_FORMAT", "json").lower()
+    renderer: Any
+
+    if log_format in ("dev", "human"):
+        # Use ConsoleRenderer for human-readable logs
+        # Note: This might emit ANSI colors which could look raw in web UIs that don't support Xterm.js
+        renderer = structlog.dev.ConsoleRenderer(colors=True)
+    else:
+        # Default to JSON for machine parsing (Podman, Status Board, etc.)
+        renderer = structlog.processors.JSONRenderer()
+
+    # 1. Stdout
     # Let's use structlog.stdlib.ProcessorFormatter, it is the modern way.
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
-    ch.setFormatter(
-        structlog.stdlib.ProcessorFormatter(processor=structlog.processors.JSONRenderer())
-    )
+    ch.setFormatter(structlog.stdlib.ProcessorFormatter(processor=renderer))
     root_logger.addHandler(ch)
 
     # 2. File: Human Readable (if dir exists/provided)
     if log_dir:
         try:
-            os.makedirs(log_dir, exist_ok=True)
-            log_file = os.path.join(log_dir, f"{service_name}.log")
+            log_path = Path(log_dir)
+            log_path.mkdir(parents=True, exist_ok=True)
+            log_file = log_path / f"{service_name}.log"
 
             fh = logging.handlers.RotatingFileHandler(
                 log_file,
@@ -88,14 +101,8 @@ def configure_logging(service_name: str, log_dir: str | None = None) -> None:
                 backupCount=5,  # 10MB x 5
             )
             fh.setLevel(logging.INFO)
-            # Use ConsoleRenderer for file (Human readable) or JSON?
-            # "Archival" implies maybe JSON is safer, but ConsoleRenderer is nicer for quick reading.
-            # Let's stick to JSON for consistency, or maybe Logfmt.
-            # Let's use Logfmt (KeyValue) or ConsoleRenderer (colored, bad for files).
-            # Let's use JSON for file too for now to be safe, easier to grep/jq.
-            fh.setFormatter(
-                structlog.stdlib.ProcessorFormatter(processor=structlog.processors.JSONRenderer())
-            )
+            # Use the same renderer for file consistency
+            fh.setFormatter(structlog.stdlib.ProcessorFormatter(processor=renderer))
             root_logger.addHandler(fh)
         except Exception as e:
             # Fallback if file IO fails

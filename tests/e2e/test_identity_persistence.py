@@ -15,6 +15,7 @@ from testcontainers.redis import RedisContainer
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
+@pytest.mark.xdist_group(name="e2e_serial")
 async def test_identity_persistence_replug(tmp_path):
     """Identity Persistence Test:
     1. Start Infrastructure.
@@ -91,6 +92,7 @@ async def test_identity_persistence_replug(tmp_path):
 
             # Paths
             settings_mock.HOST_DATA_DIR = str(tmp_path / "data")
+            settings_mock.LOCAL_DATA_DIR = None
             settings_mock.HOST_SOURCE_DIR = str(tmp_path / "source")
             os.makedirs(settings_mock.HOST_DATA_DIR, exist_ok=True)
 
@@ -144,6 +146,7 @@ async def test_identity_persistence_replug(tmp_path):
             # We use the real PodmanOrchestrator but we MOCK the internal _spawn_container to handle SELinux
             # AND we intercept spawn_recorder to inject test-specific env vars (lavfi)
 
+            device_serial = "PERSIST_TEST_88"
             original_spawn = controller.podman.spawn_recorder
 
             def wrapped_spawn(*args, **kwargs):
@@ -158,22 +161,67 @@ async def test_identity_persistence_replug(tmp_path):
                 kwargs["extra_env"] = extra
                 return original_spawn(*args, **kwargs)
 
+            # --- ISOLATION FIX: Custom managed_by label ---
+            test_managed_by = f"silvasonic-test-{device_serial}"
+
             original_spawn_container = controller.podman._spawn_container
 
             def wrapped_spawn_container(*args, **kwargs):
+                if "labels" not in kwargs:
+                    kwargs["labels"] = {}
+                kwargs["labels"]["managed_by"] = test_managed_by
                 kwargs["security_opt"] = ["disable"]  # SELinux fix
                 return original_spawn_container(*args, **kwargs)
+
+            # --- ISOLATION FIX: Patch list_active_services to ONLY see THIS test's container ---
+            # original_list_services = controller.podman.list_active_services
+
+            def wrapped_list_services(*args, **kwargs):
+                # Re-implement logic but with custom label
+                try:
+                    c_list = controller.podman.client.containers.list(all=True)
+                    results = []
+                    for c in c_list:
+                        labels = c.labels or {}
+                        # Filter by OUR test label
+                        if labels.get("managed_by") != test_managed_by:
+                            continue
+
+                        status = controller.podman._get_safe_status(c)
+                        if status != "running":
+                            continue
+
+                        results.append(
+                            {
+                                "id": c.id,
+                                "name": c.name,
+                                "status": status,
+                                "service": labels.get("service"),
+                                "device_serial": labels.get("device_serial"),
+                                "mic_name": labels.get("mic_name"),
+                                "config_hash": labels.get("silvasonic.config_hash"),
+                            }
+                        )
+                    return results
+                except Exception as e:
+                    print(f"Error in mocked list_active_services: {e}")
+                    return []
 
             with (
                 patch.object(controller.podman, "spawn_recorder", side_effect=wrapped_spawn),
                 patch.object(
                     controller.podman, "_spawn_container", side_effect=wrapped_spawn_container
                 ),
+                patch.object(
+                    controller.podman,
+                    "list_active_services",
+                    side_effect=wrapped_list_services,
+                ),
             ):
                 # --- SCENARIO START ---
 
                 # Define Device Identity
-                device_serial = "PERSIST_TEST_01"
+                device_serial = "PERSIST_TEST_88"
                 short_serial = device_serial[-4:].lower()  # t_01
                 # Expected folder name: generic_usb-<short_serial>
                 # (Assuming logic in Controller uses Profile Slug + Short Serial)

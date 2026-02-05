@@ -3,7 +3,7 @@ from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.redis.publisher import RedisPublisher
 
 logger = structlog.get_logger()
-settings = ControllerSettings()
+settings = ControllerSettings()  # type: ignore[call-arg]
 
 
 class MessageBroker(RedisPublisher):
