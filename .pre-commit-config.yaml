@@ -1,0 +1,30 @@
+---
+repos:
+  - repo: local
+    hooks:
+      # 1. FIX: Formatierung & Autofix (Läuft vor Commit & Push)
+      - id: fix-local
+        name: Fix (Format & Lint)
+        entry: make fix
+        language: system
+        types: [python]
+        pass_filenames: true
+        stages: [pre-commit, pre-push]
+
+      # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit)
+      - id: test-unit
+        name: Unit Tests
+        entry: make test-unit
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # 3. CHECK: Statische Analyse & Unit Tests (Läuft nur vor Push)
+      - id: check-local
+        name: Full Check (Lint, Types, Unit Tests)
+        entry: make check
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
