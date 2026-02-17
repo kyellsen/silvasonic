@@ -1,0 +1,11 @@
+# Architecture Decision Records
+- [ADR-0001: Use uv as Python Package and Project Manager](0001-use-uv.md)
+- [ADR-0002: Use pyproject.toml for Configuration and Dependencies](0002-use-pyproject-toml.md)
+- [ADR-0003: Frontend Architecture ("The Modern Monolith")](0003-frontend-architecture.md)
+- [ADR-0004: Use Podman instead of Docker](0004-use-podman.md)
+- [ADR-0007: Rootless Podman & OS Compliance](0007-rootless-os-compliance.md)
+- [ADR-0008: Domain-Driven Workspace Isolation](0008-domain-driven-isolation.md)
+- [ADR-0009: Zero-Trust Data Sharing policy](0009-zero-trust-data-sharing.md)
+- [ADR-0010: Naming Conventions](0010-naming-conventions.md)
+- [11. Audio Recording Strategy (Raw vs Processed)](0011-audio-recording-strategy.md)
+- [ADR-0012: Use Pydantic for Data Validation](0012-use-pydantic.md)
