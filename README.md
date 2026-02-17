@@ -8,7 +8,7 @@
 
 ## What is Silvasonic?
 
-Silvasonic is a professional-grade, containerized recording system designed for long-term bioacoustic monitoring in the field. It transforms a Raspberry Pi 5 into a resilient recording station capable of capturing the entire soundscape — from avian vocalizations to ultrasonic bat calls.
+Silvasonic is a professional-grade, containerized recording system designed for long-term bioacoustic monitoring in the field. The goal for **v1.0.0** is to transform a Raspberry Pi 5 into a resilient recording station capable of capturing the entire soundscape — from avian vocalizations to ultrasonic bat calls.
 
 **Target Audience:** Researchers, conservationists, and bioacoustic enthusiasts requiring robust, unsupervised data collection.
 
@@ -20,9 +20,9 @@ For the long-term vision, design philosophy, and roadmap see **[VISION.md](VISIO
 
 ### Prerequisites
 
-- Raspberry Pi 5 with NVMe storage
-- Container engine: **Podman** (default) or Docker — configured via `.env`
-- Python ≥ 3.13, managed with **uv**
+- Linux (e.g., Debian or Fedora)
+- **uv** installed
+- **Podman** & **podman-compose** installed — or Docker & docker-compose (not tested!)
 
 ### Setup
 
@@ -55,12 +55,26 @@ silvasonic/
 
 ---
 
+## Current Services
+
+The architecture is organized into **Tier 1** (Infrastructure, managed by Podman Compose) and **Tier 2** (Application, managed by Controller, **immutable**). Currently implemented:
+
+| Service        | Tier | Role                                                                      | Status     |
+| -------------- | ---- | ------------------------------------------------------------------------- | ---------- |
+| **database**   | 1    | TimescaleDB / PostgreSQL — central state management                       | ✅ Running  |
+| **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration | ✅ Scaffold |
+| **recorder**   | 2    | Audio Capture — health monitoring, placeholder recording loop             | ✅ Scaffold |
+
+> For the full target architecture (13 services across two tiers) see **[VISION.md](VISION.md)**.
+
+---
+
 ## Key Documentation
 
 | Document                           | Audience    | Purpose                                                           |
 | ---------------------------------- | ----------- | ----------------------------------------------------------------- |
 | **[README.md](README.md)**         | 👤 Humans    | Project overview, quick start, structure                          |
-| **[VISION.md](VISION.md)**         | 👤 Humans    | Long-term vision, design philosophy, roadmap                      |
+| **[VISION.md](VISION.md)**         | 👤 + 🤖       | Vision, services architecture, design philosophy, roadmap         |
 | **[AGENTS.md](AGENTS.md)**         | 🤖 AI Agents | Binding rules, constraints & conventions for AI coding assistants |
 | **[docs/index.md](docs/index.md)** | 👤 + 🤖       | Full technical documentation (architecture, ADRs, specs)          |
 

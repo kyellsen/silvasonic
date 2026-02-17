@@ -17,6 +17,7 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
 *   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically; Docker runs as host-root (acceptable for edge device). See **[ADR 0007 (superseded)](docs/adr/0007-rootless-os-compliance.md)**.
+*   **Services Architecture:** The system is organized into **Tier 1** (Infrastructure, managed by Podman Compose) and **Tier 2** (Application, managed by Controller). The **recorder** is the highest-priority service but lives in Tier 2 because it is managed by the Controller. **All Tier 2 containers are IMMUTABLE** — they receive configuration via Profile Injection. **Database access for Tier 2 services is FORBIDDEN.** See **[VISION.md](VISION.md)** for the full services architecture.
 
 ## 2. Language & Domain Policy
 *   **Repository Content:** **ENGLISH ONLY** (Code, Docs, Commits, Configs).
@@ -41,28 +42,25 @@ Full details in **[ADR 0010](docs/adr/0010-naming-conventions.md)**.
     *   **Temporary Artifacts:** MUST use `.tmp/` (git-ignored, auto-cleaned). Do NOT clutter root.
 *   **⚠️ Root-Level Files & `.keep`:** Every new file or directory added to the **project root** **MUST** also be registered in `.keep`. `make clear` deletes everything in the root that is **not** listed there. Forgetting an entry means **irreversible data loss**.
 
-## 5. Technical Constraints
 
-
-
-## 6. Preferred Libraries & Packages
+## 5. Preferred Libraries & Packages
 Agents should prioritize the following libraries for their respective domains to maintain codebase consistency:
 
 * **Core/Config:** `pydantic` (V2), `pyYAML` (strictly `safe_load`)
 * **Logging:** `structlog` (Output JSON for container aggregation) / `logging` + `rich` (for human)
 * **Database:** `sqlalchemy` (2.0+ async mode), `asyncpg`
-* **API/Web:** `fastapi`
+* **API/Web:** `fastapi` (for web-interface and status-board frontends, not for backend-only services like controller)
 * **Data Processing:** `numpy` (Audio matrices), `polars` (Tabular data, strictly avoid `pandas` for memory efficiency)
 * **System/Audio:** `psutil`, `soundfile`
 * **Testing:** `pytest`, `playwright`
 * **Tooling:** `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit`
 
-## 7. Testing Rules
+## 6. Testing Rules
 1. **Explicit Markers:** Every test file, class, or function MUST have an explicit pytest marker (`@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e`, or `@pytest.mark.smoke`).
 2. **Directory Structure:** Tests must be placed in the corresponding directory (`tests/unit/`, `tests/integration/`, etc.) matching their marker.
 3. **Location Strategy:** Tests specific to a service or package MUST reside within that package. Only cross-cutting tests reside in the root `tests/` directory.
 
-## 8. Environment Variable Naming
+## 7. Environment Variable Naming
 *   **Prefix Rule:** Every project-specific environment variable **MUST** carry the `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`, `SILVASONIC_CONTROLLER_PORT`).
 *   **Exceptions:** Variables whose names are **dictated by a third-party image or tooling standard** keep their original name. Currently allowed exceptions:
     *   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — required by the TimescaleDB / PostgreSQL image.
@@ -74,5 +72,5 @@ Agents should prioritize the following libraries for their respective domains to
 ## See Also
 
 - **[README.md](README.md)** — Project overview, quick start, structure (human-facing)
-- **[VISION.md](VISION.md)** — Long-term vision, design philosophy, roadmap
+- **[VISION.md](VISION.md)** — Long-term vision, design philosophy, services architecture, roadmap (normative for AI agents when designing new services)
 - **[docs/index.md](docs/index.md)** — Full technical documentation

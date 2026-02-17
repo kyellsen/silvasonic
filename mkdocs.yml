@@ -1,0 +1,58 @@
+site_name: Silvasonic
+site_description: Bioacoustic Monitoring System Documentation
+site_author: Silvasonic Team
+repo_url: https://github.com/kyellsen/silvasonic
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Project Readme: readme.md
+  - Agents: agents.md
+  - Architecture:
+      - Overview: arch/README.md
+      - Filesystem Governance: arch/filesystem_governance.md
+      - Port Allocation: arch/port_allocation.md
+  - Services:
+      - Overview: services/README.md
+      - Controller Service: services/controller.md
+      - Database Service: services/database.md
+      - Recorder Service: services/recorder.md
+  - Deployment:
+      - Setup & Initialization: deployment/setup.md
+  - ADRs:
+      - Overview: adr/README.md
+      - "ADR-0001: Use uv": adr/0001-use-uv.md
+      - "ADR-0002: Use pyproject.toml": adr/0002-use-pyproject-toml.md
+      - "ADR-0003: Frontend Architecture": adr/0003-frontend-architecture.md
+      - "ADR-0004: Use Podman": adr/0004-use-podman.md
+      - "ADR-0007: Rootless OS Compliance": adr/0007-rootless-os-compliance.md
+      - "ADR-0008: Domain-Driven Isolation": adr/0008-domain-driven-isolation.md
+      - "ADR-0009: Zero-Trust Data Sharing": adr/0009-zero-trust-data-sharing.md
+      - "ADR-0010: Naming Conventions": adr/0010-naming-conventions.md
+      - "ADR-0011: Audio Recording Strategy": adr/0011-audio-recording-strategy.md
+      - "ADR-0012: Use Pydantic": adr/0012-use-pydantic.md
+  - Development:
+      - Overview: development/README.md
+      - Service Blueprint: development/service_blueprint.md
+      - Testing Guide: development/testing.md
+  - Hardware: hardware.md
+  - Glossary: glossary.md
+
+plugins:
+  - search
+  - include-markdown
+  - swagger-ui-tag
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true

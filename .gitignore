@@ -26,6 +26,7 @@ MANIFEST
 compose.override.yml
 .env
 .venv
+.trash
 env/
 venv/
 ENV/

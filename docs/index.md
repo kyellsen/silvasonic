@@ -8,6 +8,7 @@
 
 ## Development
 - [Development Guide](development/README.md)
+- [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 
 ## Deployment
 - [Deployment Guide](deployment/README.md)

@@ -16,6 +16,7 @@ uv.lock
 compose.yml
 compose.override.yml
 Makefile
+mkdocs.yml
 
 # === Documentation ===
 AGENTS.md
@@ -42,4 +43,5 @@ prompts/
 
 # === Runtime (managed separately by clean/nuke) ===
 .venv/
+.trash/
 .keep
