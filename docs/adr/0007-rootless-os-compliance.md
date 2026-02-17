@@ -1,45 +1,44 @@
 # ADR-0007: Rootless Podman & OS Compliance
 
-> **Status:** Accepted • **Date:** 2026-01-31
+> **Status:** Superseded • **Date:** 2026-01-31 • **Superseded:** 2026-02-17
 
 ## 1. Context & Problem
 Running containers as `root` is a security risk and on modern generic Linux systems (like Fedora), it complicates file ownership. Files created by a root-container often end up owned by `root` on the host, modifying them requires `sudo`, leading to "Permission Hell" for the developer. Furthermore, Fedora enforces SELinux strictly, which blocks containers from accessing arbitrary host paths unless correctly labeled.
 
-## 2. Decision
-**We chose:** 
+## 2. Original Decision (Superseded)
 1.  **Rootless Podman:** Executed as the user `pi` (or current dev user).
 2.  **User Namespace ID Mapping:** `userns_mode: keep-id`.
 3.  **SELinux Labeling:** Use of `:z` (shared) suffix on mounts.
 
-**Reasoning:**
-This configuration ensures that files created by the application inside the container appear as owned by the standard user (`pi`) on the host. This allows the user to access, delete, or move these files via SCP, SMB, or the shell without needing `sudo`. The `:z` label correctly instructs SELinux that these files are safe to be shared between the container workspace and the host.
+## 3. Revised Decision (2026-02-17)
+The strict `USER pi` + `keep-id` approach was replaced with a pragmatic cross-platform strategy:
 
-## 3. Options Considered
-*   **Rootful Docker:** 
-    *   *Rejected because:* Security risk, files owned by root on host.
-*   **Privileged Mode:**
-    *   *Rejected because:* Breaks isolation, bad practice.
-*   **Disabling SELinux:**
-    *   *Rejected because:* Weakens host security posture significantly.
+1.  **No `USER` directive in Dockerfiles** — containers run as root inside.
+2.  **No `userns_mode: keep-id`** — this is Podman-only and breaks Docker compatibility.
+3.  **SELinux Labeling:** `:z` suffix on bind mounts is retained.
 
-## 4. Host Configuration (Mandatory)
-To ensure the rootless architecture functions correctly, the host system (Raspberry Pi OS / Fedora) **MUST** be configured as follows:
+**Why this works:**
+*   **Podman rootless:** Automatically maps container-root to the host user via user namespaces. Files on bind mounts appear owned by the calling user — no `keep-id` needed.
+*   **Docker:** Container-root equals host-root. Acceptable for Silvasonic as an edge device with no security-critical data or network exposure.
+*   **Cross-platform:** Works identically on Raspberry Pi, Fedora Workstation, and any other Linux system with either container engine.
+*   **Hardware access:** Root inside the container has automatic access to mounted devices (`/dev/snd`, GPIO) without UID conflicts.
 
-1.  **User Groups:** The user `pi` (or service user) MUST be a member of:
+## 4. Host Configuration (Still Recommended)
+The following host configuration remains useful for optimal operation:
+
+1.  **User Groups:** The user `pi` (or service user) SHOULD be a member of:
+    *   `audio` (Sound card/ALSA access)
     *   `plugdev` (USB access)
     *   `dialout` (Serial access)
-    *   `audio` (Sound card/ALSA access)
-    *   `gpio` (GPIO access)
-2.  **Sysctl:** Allow unprivileged ports for Caddy (Gateway):
-    *   `sysctl -w net.ipv4.ip_unprivileged_port_start=80`
-3.  **Linger:** Ensure user services run without an active session:
+    *   `gpio` (GPIO access, Raspberry Pi only)
+2.  **Linger:** Ensure user services run without an active session:
     *   `loginctl enable-linger pi`
 
 ## 5. Consequences
 *   **Positive:**
-    *   Seamless file access for the user (No `sudo rm` needed).
-    *   High security posture (unprivileged containers).
-    *   Full compatibility with Enterprise Linux standards.
+    *   Works with both Podman and Docker without configuration changes.
+    *   No UID/GID conflicts between different Linux systems.
+    *   Simpler Dockerfiles (no user creation logic).
+    *   Seamless file ownership on bind mounts (Podman rootless).
 *   **Negative:**
-    *   Requires explicit configuration in `podman-compose.yml`.
-    *   Ports < 1024 cannot be bound without `sysctl` modification (addressed in config).
+    *   Docker users run as host-root inside containers (acceptable trade-off for edge device).

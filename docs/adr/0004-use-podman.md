@@ -14,6 +14,7 @@ We need a container runtime environment for developing, testing, and running the
 *   **Daemonless Architecture:** Unlike Docker, Podman does not rely on a central daemon (dockerd) running in the background. This eliminates a single point of failure and reduces idle resource consumption.
 *   **Reliable Edge Deployment (Systemd):** Podman is designed to work closely with systemd. It can generate systemd unit files (`podman generate systemd`) or purely Quadlet files. This is critical for our edge device use case, ensuring all containers automatically and securely restart after a power failure without needing a complex orchestration layer.
 *   **Docker Compatibility:** Podman offers a CLI that is identical to Docker's for most commands. `alias docker=podman` works for the vast majority of workflows, lowering the barrier to entry.
+    *   *Update (2026-02-17):* While Podman is the default, we allow developers to use Docker by setting `SILVASONIC_CONTAINER_ENGINE=docker` in their `.env` file. The `Makefile` adapts the commands accordingly.
 
 ## 3. Options Considered
 *   **Docker (Docker CE / Docker Desktop):** Rejected. While it is the industry standard, the requirement for a root-privileged daemon creates security concerns. Docker Desktop also introduces licensing complexities for some use cases, and Docker CE's integration with systemd is less native than Podman's.

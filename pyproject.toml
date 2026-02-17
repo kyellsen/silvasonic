@@ -1,18 +1,26 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "silvasonic"
 version = "0.2.0"
 description = "Silvasonic Autonomous Bioacoustic Monitoring System"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
-dependencies = ["silvasonic-core"]
+dependencies = [
+    "silvasonic-core",
+    "silvasonic-controller",
+    "silvasonic-recorder",
+]
 
 [tool.uv.workspace]
 # UV findet automatisch alle Python-Pakete in diesen Ordnern
 members = ["services/*", "packages/*"]
+exclude = ["services/database", "packages/tests", "packages/test-utils"]
+
+[tool.uv.sources]
+# Workspace dependencies must be explicitly declared here
+silvasonic-core = { workspace = true }
+silvasonic-controller = { workspace = true }
+silvasonic-recorder = { workspace = true }
+silvasonic-test-utils = { workspace = true }
 
 
 # --- DEVELOPMENT ENVIRONMENT ---
@@ -79,7 +87,7 @@ ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D106", # Missing docstring in public nested class
-    "B008", # Do not perform function call in argument defaults (Required for FastAPI Depends)
+    "B008", # Do not perform function call in argument defaults
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -91,6 +99,12 @@ python_version = "3.11"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
+mypy_path = "scripts"
+exclude = ["^packages/", "^services/"]
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
 
 
 [tool.pytest.ini_options]
@@ -107,7 +121,7 @@ env_files = [
 ] # Teilt pytest-dotenv mit, wo deine einzige Source of Truth liegt
 markers = [
     "unit: fast, isolated tests without external dependencies.",
-    "integration: requires external services (DB, Redis) to run.",
+    "integration: requires external services (DB) to run.",
     "e2e: browser tests via playwright running against a full stack.",
     "smoke: quick health checks on built images or deployments.",
 ]

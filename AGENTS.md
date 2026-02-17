@@ -1,15 +1,22 @@
 # AGENTS.md
 
+> **CRITICAL BUG WORKAROUND (VS Code Shell Integration):**
+> You suffer from a known VS Code shell integration bug where reading stdout directly from the terminal hangs indefinitely.
+>
+> **RULE:** Whenever you run a terminal command, you **MUST** pipe the output to a unique named file in `/tmp` (including a datetime stamp) and then read that file to get the results.
+>
+> **Example:** `ls -la > /tmp/out_20241025_120000.txt` (then read `/tmp/out_20241025_120000.txt`)
+
 > **AUTHORITY:** This document defines the **binding rules** for AI agents working on this repository. It is the single and only AGENTS.md in the project. All scope, responsibilities, and constraints must be derived from this document and the linked normative documentation (`docs/`).
 
 👤 **Are you a Human?**
-Please read **[README.md](README.md)** for project context, installation guides, and high-level architecture.
+Please read **[README.md](README.md)** for project overview and quick start, and **[VISION.md](VISION.md)** for the long-term vision and roadmap.
 
 ## 1. Core Directive: Data Capture Integrity
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
-*   **Rootless Mandate:** The system **ALWAYS** runs as a non-root user (User: `pi`). See **[ADR 0007](requirements/adr/0007-rootless-os-compliance.md)**.
+*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically; Docker runs as host-root (acceptable for edge device). See **[ADR 0007 (superseded)](docs/adr/0007-rootless-os-compliance.md)**.
 
 ## 2. Language & Domain Policy
 *   **Repository Content:** **ENGLISH ONLY** (Code, Docs, Commits, Configs).
@@ -18,7 +25,7 @@ Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5
 *   **Domain Language:** Strict adherence to **Glossary** in `docs/index.md`.
 
 ## 3. Naming Conventions (Concise)
-Full details in **[ADR 0010](requirements/adr/0010-naming-conventions.md)**.
+Full details in **[ADR 0010](docs/adr/0010-naming-conventions.md)**.
 *   **PyPI Package:** `silvasonic-<service>` (e.g. `silvasonic-recorder`)
 *   **Python Import:** `silvasonic.<service>` (Namespace package)
 *   **Podman Service:** `<service>` (short name in compose file)
@@ -30,17 +37,13 @@ Full details in **[ADR 0010](requirements/adr/0010-naming-conventions.md)**.
     *   **Index:** Start at **[docs/index.md](docs/index.md)**.
 *   **Filesystem Constraints (`/mnt/data`):**
     *   **Persistence:** Strict governance rules apply (see `docs/index.md`).
-    *   **Volumes:** Use Bind Mounts with `:z` (shared) suffix. Named Volumes **ONLY** for `database` and `redis`.
+    *   **Volumes:** Use Bind Mounts with `:z` (shared) suffix. Named Volumes **ONLY** for `database`.
     *   **Temporary Artifacts:** MUST use `.tmp/` (git-ignored, auto-cleaned). Do NOT clutter root.
+*   **⚠️ Root-Level Files & `.keep`:** Every new file or directory added to the **project root** **MUST** also be registered in `.keep`. `make clear` deletes everything in the root that is **not** listed there. Forgetting an entry means **irreversible data loss**.
 
 ## 5. Technical Constraints
 
-> **CRITICAL BUG WORKAROUND (VS Code Shell Integration):**
-> You suffer from a known VS Code shell integration bug where reading stdout directly from the terminal hangs indefinitely.
->
-> **RULE:** Whenever you run a terminal command, you **MUST** pipe the output to a unique named file in `/tmp` (including a datetime stamp) and then read that file to get the results.
->
-> **Example:** `ls -la > /tmp/out_20241025_120000.txt` (then read `/tmp/out_20241025_120000.txt`)
+
 
 ## 6. Preferred Libraries & Packages
 Agents should prioritize the following libraries for their respective domains to maintain codebase consistency:
@@ -58,3 +61,18 @@ Agents should prioritize the following libraries for their respective domains to
 1. **Explicit Markers:** Every test file, class, or function MUST have an explicit pytest marker (`@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e`, or `@pytest.mark.smoke`).
 2. **Directory Structure:** Tests must be placed in the corresponding directory (`tests/unit/`, `tests/integration/`, etc.) matching their marker.
 3. **Location Strategy:** Tests specific to a service or package MUST reside within that package. Only cross-cutting tests reside in the root `tests/` directory.
+
+## 8. Environment Variable Naming
+*   **Prefix Rule:** Every project-specific environment variable **MUST** carry the `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`, `SILVASONIC_CONTROLLER_PORT`).
+*   **Exceptions:** Variables whose names are **dictated by a third-party image or tooling standard** keep their original name. Currently allowed exceptions:
+    *   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — required by the TimescaleDB / PostgreSQL image.
+    *   `DOCKER_HOST` — standard socket path consumed by Docker/Podman clients and Testcontainers.
+*   **Rationale:** A consistent prefix prevents collisions with system or third-party variables and makes Silvasonic configuration instantly identifiable in any environment.
+
+---
+
+## See Also
+
+- **[README.md](README.md)** — Project overview, quick start, structure (human-facing)
+- **[VISION.md](VISION.md)** — Long-term vision, design philosophy, roadmap
+- **[docs/index.md](docs/index.md)** — Full technical documentation

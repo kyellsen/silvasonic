@@ -1,0 +1,42 @@
+# .keep – Whitelist for `make clear`
+# Everything in the project root NOT listed here will be deleted.
+# One entry per line. Comments (#) and blank lines are ignored.
+# Update this file when new permanent files/dirs appear in root!
+
+# === Project Configuration ===
+.env
+.env.example
+.gitignore
+.cursorrules
+.pre-commit-config.yaml
+.python-version
+pyproject.toml
+uv.lock
+compose.yml
+Makefile
+
+# === Documentation ===
+AGENTS.md
+CLAUDE.md
+LICENCE
+README.md
+VISION.md
+
+# === Project Directories ===
+docs/
+packages/
+scripts/
+services/
+tests/
+
+# === VCS & IDE (hidden, always kept) ===
+.agent/
+.gemini/
+.git/
+.github/
+.vscode/
+.workspace/
+
+# === Runtime (managed separately by clean/nuke) ===
+.venv/
+.keep

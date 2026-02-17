@@ -1,0 +1,96 @@
+# ==============================================================================
+# Silvasonic Compose Configuration
+# Works with both: podman-compose and docker compose
+# ==============================================================================
+
+services:
+
+  # --- Database (TimescaleDB) ---
+  database:
+    container_name: silvasonic-database
+    build:
+      context: .
+      dockerfile: services/database/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+    ports:
+      - "${SILVASONIC_DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-silvasonic}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Controller (API / Orchestration) ---
+  controller:
+    container_name: silvasonic-controller
+    build:
+      context: .
+      dockerfile: services/controller/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
+    volumes:
+      - ./services/controller/src:/app/src/silvasonic/controller:z
+      - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
+      - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    # Hardware access (same privilege level as recorder for consistency)
+    privileged: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- Recorder (Audio Capture) ---
+  recorder:
+    container_name: silvasonic-recorder
+    build:
+      context: .
+      dockerfile: services/recorder/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./services/recorder/src:/app/src/silvasonic/recorder:z
+      - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9500/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Hardware access (audio devices, GPIO)
+    privileged: true
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+
+# --- Volumes (Named volumes only for database, per AGENTS.md) ---
+volumes:
+  db-data:
+
+# --- Networks ---
+networks:
+  silvasonic-net:
+    driver: bridge

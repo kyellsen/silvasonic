@@ -1,0 +1,11 @@
+# Workspace directory structure for Silvasonic
+# Paths are relative to the workspace root (SILVASONIC_WORKSPACE_PATH).
+# Managed centrally – used by init.py and compose.yml bind mounts.
+# Each service has its own isolated subdirectory (zero trust).
+# Internal structure within each service dir is created dynamically at runtime.
+
+# --- Controller ---
+controller
+
+# --- Recorder ---
+recorder

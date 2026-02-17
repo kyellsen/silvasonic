@@ -2,6 +2,8 @@
 
 > **Status:** Accepted • **Date:** 2026-01-31
 
+> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services (planned for v0.3.0+). Currently, only `recorder` and `controller` exist.
+
 ## 1. Context & Problem
 In an audio pipeline, "downstream" services (like Analyzers or Uploaders) need to access data produced by "upstream" services (Recorder). If downstream services are granted write access, a bug or misconfiguration in an experimental analyzer could involve deleting or corrupting the original master recordings. We need to protect the "Source of Truth".
 

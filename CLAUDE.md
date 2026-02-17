@@ -1,0 +1,16 @@
+# Claude Code Instructions
+
+> [!CAUTION]
+> **CRITICAL BUG WORKAROUND (VS Code Shell Integration):**
+> You suffer from a known VS Code shell integration bug where reading stdout directly from the terminal hangs indefinitely.
+>
+> **RULE:** Whenever you run a terminal command, you **MUST** pipe the output to a unique named file in `/tmp` (including a datetime stamp) and then read that file to get the results.
+>
+> **Example:** `ls -la > /tmp/out_20241025_120000.txt 2>&1` (then read `/tmp/out_20241025_120000.txt`)
+
+> **All rules and instructions for AI agents are defined in [`AGENTS.md`](AGENTS.md).**
+>
+> Read `AGENTS.md` in full before doing any work on this repository.
+> It contains binding directives on language policy, naming conventions, project structure, technical constraints, and testing rules.
+>
+> For project context see [`README.md`](README.md). For long-term vision see [`VISION.md`](VISION.md).

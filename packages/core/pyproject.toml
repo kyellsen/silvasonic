@@ -5,11 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "silvasonic-core"
 description = "Core utilities and shared components for Silvasonic"
-readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["silvasonic", "core", "audio", "monitoring"]
 classifiers = []
-dependencies = ["structlog>=24.0.0", "pydantic>=2.0.0"]
+dependencies = [
+    "structlog>=24.0.0",
+    "pydantic>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+]
 dynamic = ["version"]
 
 [tool.hatch.version]
