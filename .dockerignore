@@ -1,0 +1,52 @@
+# .dockerignore
+# Exclude files from the build context to improve performance and security.
+
+# Version Control
+.git/
+.gitignore
+
+# Python / Virtual Environment
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+develop-eggs/
+eggs/
+.eggs/
+parts/
+var/
+sdist/
+wheels/
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment Variables (Secrets)
+.env
+.env.*
+
+# Documentation (Not needed in runtime containers)
+docs/
+site/
+README.md
+AGENTS.md
+VISION.md
+CLAUDE.md
+LICENCE
+
+# Deployment / Temporary
+.gemini/
+.agent/
+tmp/

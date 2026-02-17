@@ -12,6 +12,7 @@
 .python-version
 pyproject.toml
 uv.lock
+.dockerignore
 compose.yml
 compose.override.yml
 Makefile
