@@ -1,6 +1,6 @@
 # ==============================================================================
 # Silvasonic Compose Configuration
-# Works with both: podman-compose and docker compose
+# Podman-only (see ADR-0004, ADR-0013)
 # ==============================================================================
 
 services:
@@ -10,7 +10,7 @@ services:
     container_name: silvasonic-database
     build:
       context: .
-      dockerfile: services/database/Dockerfile
+      dockerfile: services/database/Containerfile
     restart: unless-stopped
     env_file: .env
     environment:
@@ -34,7 +34,7 @@ services:
     container_name: silvasonic-controller
     build:
       context: .
-      dockerfile: services/controller/Dockerfile
+      dockerfile: services/controller/Containerfile
     restart: unless-stopped
     env_file: .env
     environment:
@@ -59,21 +59,18 @@ services:
       start_period: 15s
 
   # --- Recorder (Audio Capture) ---
+  # Immutable Tier 2 service. Managed by Controller, NOT auto-started.
+  # Multiple instances may run concurrently. No database access.
   recorder:
-    container_name: silvasonic-recorder
     build:
       context: .
-      dockerfile: services/recorder/Dockerfile
+      dockerfile: services/recorder/Containerfile
     restart: unless-stopped
-    environment:
-      POSTGRES_HOST: database
+    profiles: ["managed"]
     ports:
       - "${SILVASONIC_RECORDER_PORT:-9500}:9500"
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z
-    depends_on:
-      database:
-        condition: service_healthy
     networks:
       - silvasonic-net
     healthcheck:

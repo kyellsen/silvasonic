@@ -12,6 +12,7 @@ LABEL org.opencontainers.image.description="TimescaleDB instance for Silvasonic 
 COPY services/database/postgresql.conf /etc/postgresql/postgresql.conf
 
 # Install locales to prevent "sh: locale: not found" warnings during init
+# hadolint ignore=DL3018
 RUN apk add --no-cache musl-locales
 
 # --- Custom init scripts (executed once on first start, alphabetical order) ---

@@ -8,7 +8,7 @@ from silvasonic.core.health import HealthMonitor, start_health_server
 from silvasonic.core.logging import configure_logging
 
 CONTROLLER_HEALTH_PORT = int(os.environ.get("SILVASONIC_CONTROLLER_PORT", "9100"))
-background_tasks = set()
+background_tasks: set[asyncio.Task[NoReturn]] = set()
 
 
 async def monitor_database() -> NoReturn:
@@ -68,7 +68,7 @@ async def main() -> None:
     # For now, just keep the loop running until a signal is received.
     stop_event = asyncio.Event()
 
-    def handle_signal():
+    def handle_signal() -> None:
         stop_event.set()
 
     loop = asyncio.get_running_loop()

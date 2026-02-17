@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Taxonomy(Base):  # type: ignore[misc]
+class Taxonomy(Base):
     """Metadata registry for all detection classes (Bio- & Anthropophony).
 
     Maps raw labels to human-readable info.

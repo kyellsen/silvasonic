@@ -50,7 +50,7 @@ The root of the Workspace must contain only folders matching the service names d
 
 ### Logging Policy
 *   Services must output structured JSON logs to `stdout`.
-*   The container runtime (Podman/Docker) is responsible for capturing, rotating, and persisting logs.
+*   The container runtime (Podman) is responsible for capturing, rotating, and persisting logs.
 *   There are **no** file-based log directories in the Workspace.
 
 ---
@@ -92,7 +92,7 @@ As the host is Fedora with SELinux, all container definitions must adhere to the
 
 ## 5. Lifecycle & Initialization
 
-The filesystem state must not be left to chance ("Docker creating folders as root").
+The filesystem state must not be left to chance ("container runtime creating folders as root").
 
 ### Init Process
 *   An initialization script (`scripts/init.py`) must run before containers start.

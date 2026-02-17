@@ -21,7 +21,7 @@ The recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Lifecycle
 
-- **Not auto-started.** The recorder uses the `managed` Compose profile and does not start with `make start`.
+- **Not auto-started.** The recorder uses the `managed` Compose profile and does not start with `just start`.
 - **Started by Controller.** The Controller spawns recorder instances as needed, injecting the appropriate profile (device, sample rate, channel config).
 - **Graceful shutdown.** The recorder handles `SIGTERM` and `SIGINT` for clean shutdown.
 

@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Weather(Base):  # type: ignore[misc]
+class Weather(Base):
     """Hybrid environmental data from local sensors (BME280) and external APIs.
 
     Designed to be a TimescaleDB hypertable partitioned by `time`.

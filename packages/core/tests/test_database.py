@@ -1,7 +1,7 @@
 """Integration tests for silvasonic-core database connectivity.
 
 Uses Testcontainers to spin up a real TimescaleDB instance.
-Requires Docker/Podman to be available on the host.
+Requires Podman to be available on the host.
 """
 
 import pytest

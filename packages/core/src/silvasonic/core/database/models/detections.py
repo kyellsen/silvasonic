@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Detection(Base):  # type: ignore[misc]
+class Detection(Base):
     """Stores analysis results from various workers (BirdNET, BatDetect, etc.).
 
     Designed to be a TimescaleDB hypertable partitioned by `time`.

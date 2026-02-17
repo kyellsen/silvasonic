@@ -6,7 +6,7 @@ from silvasonic.core.settings import DatabaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # In production, compose env vars provide the necessary POSTGRES_* values.
-settings = DatabaseSettings()  # type: ignore[call-arg]
+settings = DatabaseSettings()
 
 # Create Async Engine
 # echo=True can be enabled via env var if needed for debugging, keeping loose for now

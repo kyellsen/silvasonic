@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 
-class StorageRemote(Base):  # type: ignore[misc]
+class StorageRemote(Base):
     """Configuration for a remote storage provider (e.g. S3, Nextcloud).
 
     Used by the Uploader service to configure Rclone.

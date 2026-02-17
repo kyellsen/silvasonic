@@ -16,7 +16,7 @@ Please read **[README.md](README.md)** for project overview and quick start, and
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
-*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically; Docker runs as host-root (acceptable for edge device). See **[ADR 0007 (superseded)](docs/adr/0007-rootless-os-compliance.md)**.
+*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically (see ADR-0004, ADR-0007).
 *   **Services Architecture:** The system is organized into **Tier 1** (Infrastructure, managed by Podman Compose) and **Tier 2** (Application, managed by Controller). The **recorder** is the highest-priority service but lives in Tier 2 because it is managed by the Controller. **All Tier 2 containers are IMMUTABLE** — they receive configuration via Profile Injection. **Database access for Tier 2 services is FORBIDDEN.** See **[VISION.md](VISION.md)** for the full services architecture.
 
 ## 2. Language & Domain Policy
@@ -40,7 +40,7 @@ Full details in **[ADR 0010](docs/adr/0010-naming-conventions.md)**.
     *   **Persistence:** Strict governance rules apply (see `docs/index.md`).
     *   **Volumes:** Use Bind Mounts with `:z` (shared) suffix. Named Volumes **ONLY** for `database`.
     *   **Temporary Artifacts:** MUST use `.tmp/` (git-ignored, auto-cleaned). Do NOT clutter root.
-*   **⚠️ Root-Level Files & `.keep`:** Every new file or directory added to the **project root** **MUST** also be registered in `.keep`. `make clear` deletes everything in the root that is **not** listed there. Forgetting an entry means **irreversible data loss**.
+*   **⚠️ Root-Level Files & `.keep`:** Every new file or directory added to the **project root** **MUST** also be registered in `.keep`. `just clear` deletes everything in the root that is **not** listed there. Forgetting an entry means **irreversible data loss**.
 
 
 ## 5. Preferred Libraries & Packages
@@ -64,7 +64,7 @@ Agents should prioritize the following libraries for their respective domains to
 *   **Prefix Rule:** Every project-specific environment variable **MUST** carry the `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`, `SILVASONIC_CONTROLLER_PORT`).
 *   **Exceptions:** Variables whose names are **dictated by a third-party image or tooling standard** keep their original name. Currently allowed exceptions:
     *   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — required by the TimescaleDB / PostgreSQL image.
-    *   `DOCKER_HOST` — standard socket path consumed by Docker/Podman clients and Testcontainers.
+    *   `DOCKER_HOST` — required by the Testcontainers library (connects to the Podman socket, not Docker).
 *   **Rationale:** A consistent prefix prevents collisions with system or third-party variables and makes Silvasonic configuration instantly identifiable in any environment.
 
 ---

@@ -32,6 +32,7 @@ dev = [
     "djlint>=1.36.4",
     "mypy>=1.14.0",
     "pre-commit>=4.0.0",
+    "pip-audit>=2.7.0",
     "ruff>=0.8.0",
     "yamlfix>=1.19.1",
 
@@ -99,8 +100,7 @@ python_version = "3.11"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts"
-exclude = ["^packages/", "^services/"]
+mypy_path = "scripts:packages/core/src:services/controller/src:services/recorder/src"
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*"]

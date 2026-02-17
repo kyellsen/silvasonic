@@ -13,7 +13,7 @@ Every service lives in `services/<name>/` and **must** follow this exact tree:
 
 ```
 services/<name>/
-├── Dockerfile
+├── Containerfile
 ├── README.md
 ├── pyproject.toml
 ├── src/
@@ -31,7 +31,7 @@ services/<name>/
 | `__init__.py`          | Package docstring only: `"""Silvasonic <Name> Service Package."""` |
 | `__main__.py`          | Service entry point — async lifecycle (see §3)                     |
 | `py.typed`             | PEP 561 marker — enables downstream type checking                  |
-| `Dockerfile`           | Container build recipe (see §5)                                    |
+| `Containerfile`        | Container build recipe (see §5)                                    |
 | `README.md`            | Service-specific documentation                                     |
 | `tests/test_<name>.py` | Unit tests with 100% coverage target (see §7)                      |
 
@@ -132,9 +132,9 @@ from `silvasonic.core`:
 | Models   | `silvasonic.core.database.models.*`                        | Shared SQLAlchemy ORM models                   |
 
 
-## 5. Dockerfile
+## 5. Containerfile
 
-All Python service Dockerfiles follow this **identical** structure:
+All Python service Containerfiles follow this **identical** structure:
 
 ```dockerfile
 FROM python:3.11-slim-bookworm
@@ -170,7 +170,7 @@ CMD ["silvasonic.<name>"]
 ```
 
 > [!WARNING]
-> **UV version** (`0.10.3`) **must** match across all Dockerfiles. When upgrading,
+> **UV version** (`0.10.3`) **must** match across all Containerfiles. When upgrading,
 > update all services at once.
 
 ### Mandatory Rules
@@ -182,7 +182,7 @@ CMD ["silvasonic.<name>"]
 - `PYTHONUNBUFFERED=1` and `PYTHONDONTWRITEBYTECODE=1` are always set
 
 
-## 6. Docker Compose Integration
+## 6. Compose Integration
 
 ### `compose.yml`
 
@@ -193,7 +193,7 @@ Add a new service block following the established pattern:
     container_name: silvasonic-<name>
     build:
       context: .
-      dockerfile: services/<name>/Dockerfile
+      dockerfile: services/<name>/Containerfile
     restart: unless-stopped
     env_file: .env
     environment:
@@ -283,10 +283,10 @@ class TestMain:
 ### Running Tests
 
 ```bash
-make test-unit     # Fast, mocked, parallel (4 workers)
-make test-int      # Integration (Testcontainers, needs Docker)
-make test-smoke    # Against running stack (make start first)
-make test-all      # Unit + Integration
+just test-unit     # Fast, mocked, parallel (4 workers)
+just test-int      # Integration (Testcontainers, needs Podman)
+just test-smoke    # Against running stack (just start first)
+just test-all      # Unit + Integration
 ```
 
 
@@ -313,11 +313,11 @@ Use this checklist when adding a new service:
 - [ ] Root `pyproject.toml` updated (dependency + source) (§2)
 - [ ] `__main__.py` follows lifecycle pattern (§3)
 - [ ] Uses **only** shared `silvasonic.core` modules (§4)
-- [ ] `Dockerfile` follows template exactly (§5)
+- [ ] `Containerfile` follows template exactly (§5)
 - [ ] `compose.yml` service block added (§6)
 - [ ] `compose.override.yml` dev mounts added (§6)
 - [ ] `.env.example` port variable added (§6)
 - [ ] `docs/arch/port_allocation.md` updated (§6)
 - [ ] Unit tests at 100% coverage (§7)
-- [ ] `make check` passes (lint + type + tests)
-- [ ] `make check-full` passes (full CI pipeline incl. build + smoke)
+- [ ] `just check` passes (lint + type + tests)
+- [ ] `just check-all` passes (full CI pipeline incl. build + smoke)

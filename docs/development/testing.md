@@ -14,10 +14,10 @@
 ## Tests ausführen
 
 ```bash
-make test-unit       # Unit-Tests
-make test-int        # Integrationstests
-make test-smoke      # Smoke-Tests (Stack muss laufen)
-make test-all        # Unit + Integration
+just test-unit       # Unit-Tests
+just test-int        # Integrationstests
+just test-smoke      # Smoke-Tests (Stack muss laufen)
+just test-all        # Unit + Integration
 ```
 
 ## Coverage

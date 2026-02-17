@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class MicrophoneProfile(Base):  # type: ignore[misc]
+class MicrophoneProfile(Base):
     """Configuration profile for a specific microphone type."""
 
     __tablename__ = "microphone_profiles"

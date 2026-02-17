@@ -2,22 +2,10 @@ import asyncio
 import signal
 from typing import NoReturn
 
-from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.health import HealthMonitor, start_health_server
 from silvasonic.core.logging import configure_logging
 
-background_tasks = set()
-
-
-async def monitor_database() -> NoReturn:
-    """Periodically check database connectivity and update health status."""
-    monitor = HealthMonitor()
-    while True:
-        is_connected = await check_database_connection()
-        monitor.update_status(
-            "database", is_connected, "Connected" if is_connected else "Connection failed"
-        )
-        await asyncio.sleep(10)
+background_tasks: set[asyncio.Task[NoReturn]] = set()
 
 
 # TODO(placeholder): Replace with actual recording-health detection logic.
@@ -43,19 +31,20 @@ async def monitor_recording() -> NoReturn:
 
 
 async def main() -> None:
-    """Start the recorder service."""
+    """Start the recorder service.
+
+    The recorder is an immutable Tier 2 service. It has NO database access
+    and receives all configuration via environment variables (Profile Injection)
+    from the Controller. Multiple recorder instances may run concurrently.
+    """
     configure_logging("recorder")
 
     # Start health server in a separate thread (default port 9500)
     start_health_server()
 
     # Start background health checks
-    # Create a strong reference to the task to avoid garbage collection
-    _health_task_db = asyncio.create_task(monitor_database())
     _health_task_rec = asyncio.create_task(monitor_recording())
-    background_tasks.add(_health_task_db)
     background_tasks.add(_health_task_rec)
-    _health_task_db.add_done_callback(background_tasks.discard)
     _health_task_rec.add_done_callback(background_tasks.discard)
 
     # TODO(placeholder): Replace with the actual recording loop
@@ -63,7 +52,7 @@ async def main() -> None:
     # For now, just keep the loop running until a signal is received.
     stop_event = asyncio.Event()
 
-    def handle_signal():
+    def handle_signal() -> None:
         stop_event.set()
 
     loop = asyncio.get_running_loop()

@@ -3,7 +3,7 @@
 import asyncio
 import os
 import signal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,66 +20,6 @@ class TestRecorderPackage:
         import silvasonic.recorder
 
         assert silvasonic.recorder is not None
-
-
-# ---------------------------------------------------------------------------
-# monitor_database
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestMonitorDatabase:
-    """Tests for the monitor_database coroutine."""
-
-    async def test_monitor_database_connected(self) -> None:
-        """Updates HealthMonitor with 'Connected' when DB is reachable."""
-        mock_monitor = MagicMock()
-        with (
-            patch(
-                "silvasonic.recorder.__main__.check_database_connection",
-                new_callable=AsyncMock,
-                return_value=True,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
-            ),
-        ):
-            from silvasonic.recorder.__main__ import monitor_database
-
-            with pytest.raises(asyncio.CancelledError):
-                await monitor_database()
-
-        mock_monitor.update_status.assert_called_once_with("database", True, "Connected")
-
-    async def test_monitor_database_failed(self) -> None:
-        """Updates HealthMonitor with 'Connection failed' when DB is down."""
-        mock_monitor = MagicMock()
-        with (
-            patch(
-                "silvasonic.recorder.__main__.check_database_connection",
-                new_callable=AsyncMock,
-                return_value=False,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
-            ),
-        ):
-            from silvasonic.recorder.__main__ import monitor_database
-
-            with pytest.raises(asyncio.CancelledError):
-                await monitor_database()
-
-        mock_monitor.update_status.assert_called_once_with("database", False, "Connection failed")
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +43,6 @@ class TestMonitorRecording:
             ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
             ),
         ):
@@ -128,7 +67,6 @@ class TestMonitorRecording:
             ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
             ),
         ):
@@ -164,10 +102,6 @@ class TestMain:
             patch(
                 "silvasonic.recorder.__main__.start_health_server",
                 mock_health,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.monitor_database",
-                side_effect=noop,
             ),
             patch(
                 "silvasonic.recorder.__main__.monitor_recording",

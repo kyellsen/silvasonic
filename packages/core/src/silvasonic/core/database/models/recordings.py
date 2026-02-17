@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Recording(Base):  # type: ignore[misc]
+class Recording(Base):
     """Registry of all audio files recorded by the system.
 
     Designed to be a TimescaleDB hypertable partitioned by `time`.

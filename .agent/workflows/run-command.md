@@ -29,12 +29,12 @@ cat /tmp/<description>_<datetime>.txt
 # ✅ CORRECT examples:
 uv sync > /tmp/uv_sync_20260217_120000.txt 2>&1
 pytest -v > /tmp/pytest_20260217_120100.txt 2>&1
-make build > /tmp/make_build_20260217_120200.txt 2>&1
+just build > /tmp/just_build_20260217_120200.txt 2>&1
 
 # ❌ WRONG — never do this:
 uv sync
 pytest -v
-make build
+just build
 ```
 
 ## Why This Matters

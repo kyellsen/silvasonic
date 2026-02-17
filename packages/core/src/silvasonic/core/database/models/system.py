@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Device(Base):  # type: ignore[misc]
+class Device(Base):
     """Inventory of hardware devices (microphones)."""
 
     __tablename__ = "devices"
@@ -29,7 +29,7 @@ class Device(Base):  # type: ignore[misc]
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, default={}, nullable=False)
 
 
-class SystemService(Base):  # type: ignore[misc]
+class SystemService(Base):
     """Registry of dynamic services managed by the Controller."""
 
     __tablename__ = "system_services"
@@ -39,7 +39,7 @@ class SystemService(Base):  # type: ignore[misc]
     status: Mapped[str] = mapped_column(Text, default="stopped", nullable=False)
 
 
-class SystemConfig(Base):  # type: ignore[misc]
+class SystemConfig(Base):
     """Global Key-Value store for application settings."""
 
     __tablename__ = "system_config"
@@ -48,7 +48,7 @@ class SystemConfig(Base):  # type: ignore[misc]
     value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
 
-class Upload(Base):  # type: ignore[misc]
+class Upload(Base):
     """Immutable audit log of all upload attempts."""
 
     __tablename__ = "uploads"

@@ -9,7 +9,7 @@ import structlog
 def configure_logging(service_name: str) -> None:
     """Configures modern, container-first structured logging for Silvasonic.
 
-    Logs are strictly emitted to STDOUT. The container runtime (Podman/Docker)
+    Logs are strictly emitted to STDOUT. The container runtime (Podman)
     is responsible for capturing, rotating, and persisting these logs.
 
     Args:

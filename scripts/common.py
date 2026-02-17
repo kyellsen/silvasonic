@@ -182,6 +182,42 @@ def get_workspace_path() -> Path:
     return path.resolve()
 
 
+def ensure_initialized() -> None:
+    """Auto-run init.py if the project is not fully initialized.
+
+    Checks for two markers:
+      1. .venv/ directory exists (dependency sync done)
+      2. .git/hooks/pre-commit exists (git hooks installed)
+
+    If either is missing, init.py is executed transparently.
+    Safe to call repeatedly — skips instantly when everything is in place.
+    """
+    venv_ok = (_PROJECT_ROOT / ".venv").is_dir()
+    hooks_ok = (_PROJECT_ROOT / ".git" / "hooks" / "pre-commit").is_file()
+
+    if venv_ok and hooks_ok:
+        return
+
+    missing: list[str] = []
+    if not venv_ok:
+        missing.append(".venv")
+    if not hooks_ok:
+        missing.append("git hooks")
+
+    print_warning(
+        f"Project not fully initialized (missing: {', '.join(missing)}). "
+        f"Running init automatically ..."
+    )
+
+    init_script = Path(__file__).resolve().parent / "init.py"
+    result = subprocess.run([sys.executable, str(init_script)], cwd=_PROJECT_ROOT)
+    if result.returncode != 0:
+        print_error("Auto-init failed! Please run 'just init' manually.")
+        sys.exit(result.returncode)
+
+    print_success("Auto-init completed successfully.\n")
+
+
 def fmt_duration(seconds: float) -> str:
     """Format seconds into a human-readable string (e.g. '1.2s' or '2m 3.4s')."""
     if seconds < 60:
@@ -189,6 +225,49 @@ def fmt_duration(seconds: float) -> str:
     minutes = int(seconds // 60)
     secs = seconds % 60
     return f"{minutes}m {secs:.1f}s"
+
+
+def discover_cov_args() -> list[str]:
+    """Dynamically discover all measurable packages for pytest --cov flags.
+
+    Scans services/*/src/ and packages/*/src/ for Python packages.
+    Handles namespace packages (e.g. src/silvasonic/controller/) where
+    the intermediate `silvasonic/` directory has no __init__.py.
+
+    Returns a flat list like:
+        ["--cov", "path/to/pkg1", "--cov", "path/to/pkg2", ...]
+    """
+    cov_args: list[str] = []
+
+    for parent_dir in ("services", "packages"):
+        parent = _PROJECT_ROOT / parent_dir
+        if not parent.is_dir():
+            continue
+        for member in sorted(parent.iterdir()):
+            src = member / "src"
+            if not src.is_dir():
+                continue
+            # BFS: find the shallowest directories that contain __init__.py
+            _find_shallowest_packages(src, cov_args)
+
+    return cov_args
+
+
+def _find_shallowest_packages(directory: Path, result: list[str]) -> None:
+    """Recursively find the shallowest packages (dirs with __init__.py).
+
+    Once a package is found, its subtree is not further scanned
+    (pytest-cov already measures sub-packages automatically).
+    """
+    for child in sorted(directory.iterdir()):
+        if not child.is_dir():
+            continue
+        if (child / "__init__.py").exists():
+            # This is a package — add it, don't recurse deeper
+            result.extend(["--cov", str(child)])
+        else:
+            # Namespace package dir (no __init__.py) — recurse to find real packages
+            _find_shallowest_packages(child, result)
 
 
 def print_banner() -> None:

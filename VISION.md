@@ -28,7 +28,7 @@ The system is designed to run autonomously for **years** without human intervent
 Silvasonic captures the **entire soundscape** — from low-frequency avian vocalizations to ultrasonic bat echolocation calls. The system is not limited to a single species or frequency band.
 
 ### Containerized
-All services run in **containers** (Podman/Docker). Processes run as root inside the container for simplicity; Podman's rootless mode maps container-root to an unprivileged host user automatically. This maximizes security and isolation while simplifying deployment and updates on remote devices.
+All services run in **Podman containers** (see ADR-0004). Processes run as root inside the container for simplicity; Podman's rootless mode maps container-root to an unprivileged host user automatically. This maximizes security and isolation while simplifying deployment and updates on remote devices.
 
 ### Store & Forward
 Recordings are written to local NVMe storage first. Synchronization to central infrastructure happens opportunistically — the station never depends on network connectivity for its primary mission.
@@ -39,7 +39,7 @@ Recordings are written to local NVMe storage first. Synchronization to central i
 
 The system is composed of containerized services organized into two tiers.
 
-### Tier 1: Infrastructure (Managed by Podman Compose)
+### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
 | Service           | Role                                                                                                                     | Criticality             |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
@@ -87,16 +87,16 @@ Silvasonic supports two deployment models:
 
 ## Roadmap
 
-| Version    | Milestone                                               | Status        |
-| ---------- | ------------------------------------------------------- | ------------- |
-| **v0.1.0** | MVP — Health scaffolds, build pipeline, basic lifecycle | 🔨 In Progress |
-| v0.2.0     | Controller manages Recorder lifecycle (start/stop)      | ⏳ Planned     |
-| v0.2.5     | Recorder writes .wav files, HotPlug USB mic support     | ⏳ Planned     |
-| v0.3.0     | Processor service (Ingestion, Indexing, Janitor)        | ⏳ Planned     |
-| v0.4.0     | Uploader (immutable Tier 2, Controller-managed)         | ⏳ Planned     |
-| v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                    | ⏳ Planned     |
-| v0.6.0     | Redis convenience layer (pub/sub, job queues)           | ⏳ Planned     |
-| v1.0.0     | Production-ready field deployment                       | ⏳ Planned     |
+| Version    | Milestone                                                    | Status        |
+| ---------- | ------------------------------------------------------------ | ------------- |
+| **v0.1.0** | MVP — Health scaffolds, build pipeline, basic lifecycle      | 🔨 In Progress |
+| v0.2.0     | Controller manages Recorder lifecycle (start/stop)           | ⏳ Planned     |
+| v0.2.5     | Recorder writes .wav files, HotPlug USB mic support          | ⏳ Planned     |
+| v0.3.0     | Processor service (Ingestion, Indexing, Janitor)             | ⏳ Planned     |
+| v0.4.0     | Uploader (immutable Tier 2, Controller-managed)              | ⏳ Planned     |
+| v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                         | ⏳ Planned     |
+| v0.6.0     | Redis convenience layer (pub/sub, job queues)                | ⏳ Planned     |
+| v1.0.0     | Production-ready field deployment (Podman Quadlets, Ansible) | ⏳ Planned     |
 
 ---
 

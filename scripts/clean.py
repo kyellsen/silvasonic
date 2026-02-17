@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Medium cleanup: clear + container volumes + workspace wipe.
+"""Medium cleanup: clear + empty trash + container volumes + workspace wipe.
 
-The .venv directory is preserved (use 'make nuke' to remove it).
+The .venv directory is preserved (use 'just nuke' to remove it).
 
 Usage:
     python scripts/clean.py              # normal run
@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 # Re-use clear logic
+from clear import empty_trash
 from clear import main as clear_main
 from common import get_workspace_path, print_header, print_step, print_success, print_warning
 from compose import compose
@@ -40,11 +41,15 @@ def main() -> None:
     """Run the full clean pipeline."""
     dry_run = "--dry-run" in sys.argv
 
-    # --- Stage 1: clear (root cleanup + caches) ---
-    # Pass through --dry-run to clear_main via sys.argv (already present)
-    clear_main()
+    # --- Stage 1: clear (root quarantine + caches) ---
+    clear_main(dry_run=dry_run)
 
-    # --- Stage 2: Container storage ---
+    # --- Stage 2: Empty trash ---
+    print_header("Clean - Empty Trash" + (" (DRY-RUN)" if dry_run else ""))
+    print_step("Emptying .trash/ directory...")
+    empty_trash(dry_run=dry_run)
+
+    # --- Stage 3: Container storage ---
     print_header("Clean - Storage Reset" + (" (DRY-RUN)" if dry_run else ""))
 
     print_step("Stopping containers and removing volumes...")
@@ -53,7 +58,7 @@ def main() -> None:
     else:
         compose("down", "-v", check=False, quiet=True)
 
-    # --- Stage 3: Workspace ---
+    # --- Stage 4: Workspace ---
     print_step("Removing workspace directory...")
     remove_workspace(dry_run=dry_run)
 

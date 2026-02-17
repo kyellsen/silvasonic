@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build all Silvasonic container images via compose build.
 
-Each Python service has a self-contained multi-stage Dockerfile,
+Each Python service has a self-contained multi-stage Containerfile,
 so no manual build ordering is needed.
 Includes per-service timing to identify bottlenecks.
 """
@@ -9,11 +9,21 @@ Includes per-service timing to identify bottlenecks.
 import subprocess
 import time
 
-from common import fmt_duration, print_header, print_step, print_success, print_warning
-from compose import compose, get_container_engine
+from common import (
+    ensure_initialized,
+    fmt_duration,
+    print_header,
+    print_step,
+    print_success,
+    print_warning,
+)
+from compose import compose
 
-# Services in the order they appear in compose.yml
-SERVICES = ["database", "controller", "recorder"]
+# Default services (no profile needed)
+SERVICES = ["database", "controller"]
+
+# Managed-profile services (require --profile managed to be visible)
+MANAGED_SERVICES = ["recorder"]
 
 
 def _check_dangling_images() -> None:
@@ -22,8 +32,7 @@ def _check_dangling_images() -> None:
     Auto-pruning would destroy intermediate builder layers that
     Podman/Buildah uses for its build cache — so we only warn here.
     """
-    engine = get_container_engine()
-    binary = "podman" if engine != "docker" else "docker"
+    binary = "podman"
 
     result = subprocess.run(
         [binary, "images", "--filter", "dangling=true", "-q"],
@@ -40,6 +49,7 @@ def _check_dangling_images() -> None:
 
 def main() -> None:
     """Build all images via compose with per-service timing."""
+    ensure_initialized()
     print_header("Building Silvasonic Container Images")
 
     timings: list[tuple[str, float]] = []
@@ -49,6 +59,14 @@ def main() -> None:
         print_step(f"Building {service}...")
         start = time.monotonic()
         compose("build", service)
+        elapsed = time.monotonic() - start
+        timings.append((service, elapsed))
+
+    # Build managed-profile services (e.g. recorder template)
+    for service in MANAGED_SERVICES:
+        print_step(f"Building {service} (managed profile)...")
+        start = time.monotonic()
+        compose("--profile", "managed", "build", service)
         elapsed = time.monotonic() - start
         timings.append((service, elapsed))
 

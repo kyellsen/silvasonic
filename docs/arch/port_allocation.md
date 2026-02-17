@@ -30,5 +30,5 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 
 ## Production vs. Development
 
-- **Production**: Only Caddy exposes ports (80/443). All other services communicate via the internal `silvasonic-net` Docker network.
+- **Production**: Only Caddy exposes ports (80/443). All other services communicate via the internal `silvasonic-net` Podman network.
 - **Development**: Controller exposed on localhost:9100 for debugging. Recorder has no host port.

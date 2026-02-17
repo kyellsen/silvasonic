@@ -66,23 +66,15 @@ def ensure_env_file() -> None:
 
 
 def check_container_engine() -> None:
-    """Verify that the configured container engine is available. Abort if not.
-
-    Uses compose.py's get_container_engine() which reads .env as fallback,
-    so the engine setting works even when the var isn't exported in the shell.
-    """
-    from compose import get_container_engine
-
-    engine = get_container_engine()
-
-    if shutil.which(engine):
-        print_success(f"Container engine '{engine}' found.")
+    """Verify that Podman is available. Abort if not."""
+    if shutil.which("podman"):
+        print_success("Container engine 'podman' found.")
         return
 
     print_error(
-        f"Container engine '{engine}' not found in PATH!\n"
-        f"   Install '{engine}' or set SILVASONIC_CONTAINER_ENGINE in .env.\n"
-        f"   Container commands (make build/start/stop) require a working engine."
+        "Container engine 'podman' not found in PATH!\n"
+        "   Install podman: https://podman.io/docs/installation\n"
+        "   Container commands (just build/start/stop) require a working engine."
     )
     sys.exit(1)
 
@@ -106,7 +98,7 @@ def main() -> None:
         print_error(
             "'uv' is not installed!\n"
             "   Install via:  curl -LsSf https://astral.sh/uv/install.sh | sh\n"
-            "   Then restart your shell and re-run:  make init"
+            "   Then restart your shell and re-run:  just init"
         )
         sys.exit(1)
 

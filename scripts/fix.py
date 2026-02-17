@@ -1,15 +1,15 @@
 """Auto-fix code quality issues (formatting + lint fixes).
 
 Usage:
-    uv run python scripts/fix.py          # Fix entire repo
-    uv run python scripts/fix.py file.py  # Fix specific files (pre-commit mode)
+    python3 scripts/fix.py               # Fix entire repo
+    python3 scripts/fix.py file.py       # Fix specific files (pre-commit mode)
 """
 
 import subprocess
 import sys
 from pathlib import Path
 
-from common import print_error, print_header, print_step, print_success
+from common import ensure_initialized, print_error, print_header, print_step, print_success
 
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +29,7 @@ def _run(label: str, cmd: list[str], *, must_pass: bool = True) -> bool:
 
 def main() -> None:
     """Run ruff format and ruff lint --fix."""
+    ensure_initialized()
     print_header("Auto-fixing Code Quality Issues")
 
     # If pre-commit passes filenames, use them; otherwise fix the whole repo.
@@ -38,7 +39,7 @@ def main() -> None:
     if not _run("Ruff Format", ["uv", "run", "ruff", "format", *targets]):
         sys.exit(1)
 
-    # 2. Lint auto-fix (best-effort — unfixable issues are reported by `make check`)
+    # 2. Lint auto-fix (best-effort — unfixable issues are reported by `just check`)
     _run(
         "Ruff Fix",
         ["uv", "run", "ruff", "check", "--fix", *targets],

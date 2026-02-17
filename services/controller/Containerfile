@@ -2,12 +2,10 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# 1. System-Abhängigkeiten installieren
+# 1. System-Abhängigkeiten installieren (hier nur curl für den Healthcheck)
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    libasound2 \
-    alsa-utils \
-    libgpiod2 \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Das Tool 'uv' direkt reinholen
@@ -16,17 +14,17 @@ COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
 # 3. Einfach alles an Code und Config auf einmal kopieren
 COPY pyproject.toml uv.lock ./
 COPY packages/ packages/
-COPY services/recorder/ services/recorder/
+COPY services/controller/ services/controller/
 
 # 4. Abhängigkeiten und Code in einem Rutsch installieren
-RUN uv sync --frozen --no-dev --no-editable --package silvasonic-recorder
+RUN uv sync --frozen --no-dev --no-editable --package silvasonic-controller
 
 # 5. Virtual Environment in den Pfad aufnehmen
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-EXPOSE 9500
+EXPOSE 9100
 
 ENTRYPOINT ["python", "-m"]
-CMD ["silvasonic.recorder"]
+CMD ["silvasonic.controller"]

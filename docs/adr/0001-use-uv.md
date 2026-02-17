@@ -17,7 +17,7 @@ In a complex Python project setup, especially one moving towards a workspace/mon
 ### 2.1. Strict Locking Policy
 To ensure reproducibility, the following rules apply to all services:
 1.  **Lockfiles are Mandatory:** All services **MUST** commit their `uv.lock` file to the repository.
-2.  **Container Builds:** All Docker/Podman container builds **MUST** use the `uv.lock` file.
+2.  **Container Builds:** All Podman container builds **MUST** use the `uv.lock` file.
 3.  **Frozen Installation:** CI/CD pipelines and container build steps **MUST** use `uv sync --frozen` (or `uv install --frozen` where appropriate) to ensure the installed dependencies exactly match the lockfile. *Do not update dependencies during build time.*
 
 ## 3. Options Considered

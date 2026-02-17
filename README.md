@@ -22,7 +22,8 @@ For the long-term vision, design philosophy, and roadmap see **[VISION.md](VISIO
 
 - Linux (e.g., Debian or Fedora)
 - **uv** installed
-- **Podman** & **podman-compose** installed — or Docker & docker-compose (not tested!)
+- **just** installed — command runner ([Installation](https://github.com/casey/just#installation))
+- **Podman** & **podman-compose** installed
 
 ### Setup
 
@@ -30,9 +31,9 @@ For the long-term vision, design philosophy, and roadmap see **[VISION.md](VISIO
 git clone https://github.com/kyellsen/silvasonic.git
 cd silvasonic
 cp .env.example .env   # adjust settings as needed
-make init               # create workspace directories & pull images
-make build              # build all container images
-make start              # start all services
+just init               # create workspace directories & pull images
+just build              # build all container images
+just start              # start all services
 ```
 
 ---
@@ -44,11 +45,11 @@ silvasonic/
 ├── AGENTS.md            # AI agent rules (binding for all AI tools)
 ├── VISION.md            # Long-term vision & roadmap
 ├── compose.yml          # Container orchestration
-├── Makefile             # Developer commands (init, build, start, stop, clean, nuke)
+├── justfile             # Developer commands (init, build, start, stop, clean, nuke)
 ├── docs/                # Single Source of Truth — architecture, ADRs, specs
 │   └── index.md         # Documentation entry point
 ├── packages/            # Shared Python packages (namespace: silvasonic.*)
-├── services/            # Container service definitions & Dockerfiles
+├── services/            # Container service definitions & Containerfiles
 ├── scripts/             # Build & lifecycle scripts
 └── tests/               # Cross-cutting tests
 ```
@@ -79,6 +80,13 @@ The architecture is organized into **Tier 1** (Infrastructure, managed by Podman
 | **[docs/index.md](docs/index.md)** | 👤 + 🤖       | Full technical documentation (architecture, ADRs, specs)          |
 
 > **🤖 AI Agents:** Your instructions are in **[AGENTS.md](AGENTS.md)**. Read it first before doing any work on this repository.
+
+---
+
+## Contact
+
+- 🌐 Website: [silvasonic.de](https://silvasonic.de/)
+- 📧 E-Mail: [io@silvasonic.de](mailto:io@silvasonic.de)
 
 ---
 

@@ -1,68 +1,39 @@
-"""Shared compose-command resolver for Silvasonic developer scripts.
+"""Shared compose-command helper for Silvasonic developer scripts.
 
-Reads SILVASONIC_CONTAINER_ENGINE from .env / environment and returns
-the matching compose command as a list suitable for subprocess calls.
+Podman-only (see ADR-0004, ADR-0013).
+Provides a single `compose()` function that runs podman-compose
+with the correct compose files and error handling.
 
 Strictly relies on the Python Standard Library (no .venv required).
 """
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-from common import load_env_value, print_error
+from common import load_env_value, print_error, run_command
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def get_container_engine() -> str:
-    """Resolve the container engine name (podman | docker).
-
-    Priority: environment variable > .env file > default 'podman'.
-    """
-    return (
-        os.environ.get("SILVASONIC_CONTAINER_ENGINE")
-        or load_env_value("SILVASONIC_CONTAINER_ENGINE")
-        or "podman"
-    )
-
-
-def get_compose_cmd() -> list[str]:
-    """Return the compose command as a list for subprocess calls.
-
-    - podman  → ["podman-compose"]
-    - docker  → ["docker", "compose"]
-    """
-    engine = get_container_engine()
-
-    if engine == "docker":
-        cmd = ["docker", "compose"]
-        binary = "docker"
-    else:
-        cmd = ["podman-compose"]
-        binary = "podman-compose"
-
-    if not shutil.which(binary):
-        print_error(
-            f"Container tool '{binary}' not found in PATH.\n"
-            f"   Install it or set SILVASONIC_CONTAINER_ENGINE in .env."
-        )
-        sys.exit(1)
-
-    return cmd
-
-
 def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
-    """Run a compose command with the detected engine.
+    """Run a podman-compose command.
 
     Args:
-        *args: Arguments to pass to the compose command.
+        *args: Arguments to pass to podman-compose.
         check: If True, exit on failure.
         quiet: If True, suppress stderr (useful for cleanup where
                'no container found' errors are expected and harmless).
     """
-    from common import run_command
+    binary = "podman-compose"
+    if not shutil.which(binary):
+        print_error(
+            f"'{binary}' not found in PATH.\n"
+            f"   Install it: https://github.com/containers/podman-compose"
+        )
+        sys.exit(1)
 
     # Determine compose files based on Development Mode
     env_dev_mode = os.environ.get("SILVASONIC_DEVELOPMENT_MODE")
@@ -77,13 +48,9 @@ def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
         )
         compose_files.extend(["-f", "compose.override.yml"])
 
-    base_cmd = get_compose_cmd()
-    cmd = base_cmd + compose_files + list(args)
+    cmd = [binary, *compose_files, *args]
 
     if quiet:
-        # Suppress stderr (e.g. podman "no container found" noise)
-        import subprocess
-
         subprocess.run(
             cmd,
             cwd=PROJECT_ROOT,

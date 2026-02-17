@@ -1,21 +1,37 @@
 #!/usr/bin/env python3
-"""Full reset: remove all Silvasonic container images.
+"""Full nuclear reset: clean + destroy .venv + remove all Silvasonic images.
 
-Called by 'make nuke' after clean + .venv removal.
+Consolidates all cleanup into a single script:
+  1. clean (clear + trash + volumes + workspace)
+  2. Remove .venv
+  3. Remove all Silvasonic container images
 
-Uses compose.py's get_container_engine() to stay consistent
-with the single engine-detection logic.
+Podman-only (see ADR-0004, ADR-0013).
 """
 
+import shutil
 import sys
+from pathlib import Path
 
 from common import print_error, print_header, print_step, print_success, run_command
-from compose import get_container_engine
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def remove_venv() -> None:
+    """Remove the virtual environment directory."""
+    venv_dir = PROJECT_ROOT / ".venv"
+    if not venv_dir.exists():
+        print_success(".venv does not exist — nothing to remove.")
+        return
+
+    shutil.rmtree(venv_dir, ignore_errors=True)
+    print_success("☢️  .venv destroyed.")
 
 
 def remove_silvasonic_images() -> None:
     """Remove all container images whose repository name contains 'silvasonic'."""
-    engine = get_container_engine()
+    engine = "podman"
 
     print_step("Searching for Silvasonic container images...")
 
@@ -50,9 +66,24 @@ def remove_silvasonic_images() -> None:
 
 
 def main() -> None:
-    """Run the full nuke pipeline."""
-    print_header("Nuclear Reset — Removing Silvasonic Images")
+    """Run the full nuclear reset pipeline."""
+    print_header("☢️  Nuclear Reset")
+
+    # 1. Full clean (clear + trash + volumes + workspace)
+    print_step("Running clean pipeline...")
+    import clean
+
+    clean.main()
+
+    # 2. Destroy virtual environment
+    print_step("Removing virtual environment...")
+    remove_venv()
+
+    # 3. Remove container images
+    print_step("Removing Silvasonic container images...")
     remove_silvasonic_images()
+
+    print_success("☢️  Full nuclear reset done. Run 'just init' to rebuild.")
 
 
 if __name__ == "__main__":

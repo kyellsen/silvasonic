@@ -5,25 +5,25 @@ repos:
       # 1. FIX: Formatierung & Autofix (Läuft vor Commit & Push)
       - id: fix-local
         name: Fix (Format & Lint)
-        entry: make fix
+        entry: just fix
         language: system
         types: [python]
-        pass_filenames: true
+        pass_filenames: false
         stages: [pre-commit, pre-push]
 
       # 2. CHECK: Fast Check (Lint, Types, Unit Tests) - Runs on Commit
       - id: check-local
         name: Check (Lint, Types, Unit)
-        entry: make check
+        entry: just check
         language: system
         types: [python]
         pass_filenames: false
         stages: [pre-commit]
 
       # 3. FULL CHECK: Full CI Pipeline (Build, Clean) - Runs on Push
-      - id: check-full-local
+      - id: check-all-local
         name: Full Check (Build, Run)
-        entry: make check-full
+        entry: just check-all
         language: system
         types: [python]
         pass_filenames: false

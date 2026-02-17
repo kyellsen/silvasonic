@@ -1,4 +1,4 @@
-# .keep – Whitelist for `make clear`
+# .keep – Whitelist for `just clear`
 # Everything in the project root NOT listed here will be deleted.
 # One entry per line. Comments (#) and blank lines are ignored.
 # Update this file when new permanent files/dirs appear in root!
@@ -15,7 +15,7 @@ uv.lock
 .dockerignore
 compose.yml
 compose.override.yml
-Makefile
+justfile
 mkdocs.yml
 
 # === Documentation ===
