@@ -13,7 +13,7 @@ COPY services/database/postgresql.conf /etc/postgresql/postgresql.conf
 
 # --- Custom init scripts (executed once on first start, alphabetical order) ---
 # Place .sql or .sh files here:
-# COPY services/database/initdb/ /docker-entrypoint-initdb.d/
+COPY services/database/init/ /docker-entrypoint-initdb.d/
 
 EXPOSE 5432
 

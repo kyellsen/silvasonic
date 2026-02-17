@@ -31,6 +31,7 @@ def _get_env(key: str, default: str) -> str:
 
 
 CONTROLLER_PORT = _get_env("SILVASONIC_CONTROLLER_PORT", "9100")
+RECORDER_PORT = _get_env("SILVASONIC_RECORDER_PORT", "9500")
 DB_PORT = _get_env("SILVASONIC_DB_PORT", "5432")
 
 
@@ -41,6 +42,13 @@ class TestServiceHealth:
     def test_controller_healthy(self) -> None:
         """Controller /healthy returns 200."""
         url = f"http://localhost:{CONTROLLER_PORT}/healthy"
+        resp = httpx.get(url, timeout=5)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_recorder_healthy(self) -> None:
+        """Recorder /healthy returns 200."""
+        url = f"http://localhost:{RECORDER_PORT}/healthy"
         resp = httpx.get(url, timeout=5)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"

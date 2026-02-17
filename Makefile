@@ -66,7 +66,7 @@ fix: ## 🔧 Führt Auto-Fixer aus (Ruff Format, Lint Fixes)
 check: ## 🔍 Code Quality: Ruff, Mypy, Unit & Integration Tests (Fast)
 	@$(VENV_PYTHON) scripts/check.py
 
-check-full: check build clean ## 🧬 Full CI Pipeline: Code Checks -> Build -> Clean
+check-full: check clean build start stop clean ## 🧬 Full CI Pipeline: Code Checks -> Build -> Clean
 
 
 # ==============================================================================
