@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silvasonic-core"
+description = "Core utilities and shared components for Silvasonic"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["silvasonic", "core", "audio", "monitoring"]
+classifiers = []
+dependencies = ["structlog>=24.0.0", "pydantic>=2.0.0"]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/silvasonic/core/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silvasonic"]

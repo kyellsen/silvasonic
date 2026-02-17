@@ -1,0 +1,116 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silvasonic"
+version = "0.2.0"
+description = "Silvasonic Autonomous Bioacoustic Monitoring System"
+readme = "README.md"
+requires-python = ">=3.11, <3.12"
+dependencies = ["silvasonic-core"]
+
+[tool.uv.workspace]
+# UV findet automatisch alle Python-Pakete in diesen Ordnern
+members = ["services/*", "packages/*"]
+
+
+# --- DEVELOPMENT ENVIRONMENT ---
+
+[dependency-groups]
+dev = [
+    # -- Code Quality & Formatting --
+    "beautysh>=6.4.2",
+    "djlint>=1.36.4",
+    "mypy>=1.14.0",
+    "pre-commit>=4.0.0",
+    "ruff>=0.8.0",
+    "yamlfix>=1.19.1",
+
+    # -- Testing Core --
+    "httpx>=0.27.0",            # Moderner async HTTP Client (ersetzt requests)
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=6.0.0",
+    "pytest-dotenv>=0.5.2",     # Lädt automatisch die .env Datei
+    "pytest-mock>=3.15.1",
+    "pytest-playwright>=0.5.0", # Für E2E Frontend Tests
+    "pytest-timeout>=2.3.1",    # Verhindert endlos hängende Tests
+    "pytest-xdist>=3.5.0",      # Erlaubt paralleles Testen via 'pytest -n auto'
+
+    # -- Testing Utilities (Mocking & Integration) --
+    "faker>=23.0.0",          # Generiert realistische Dummy-Daten (Namen, IPs, etc.)
+    "polyfactory>=2.14.0",    # State-of-the-Art Factory für Pydantic/SQLAlchemy Mocks
+    "structlog>=24.1.0",
+    "tenacity>=9.1.2",        # Für Retry-Logik in Flaky E2E/Integration Tests
+    "testcontainers>=4.14.1", # Generisch, ohne hardcodierte Datenbank-Plugins
+
+    # -- Type Stubs --
+    "types-aiofiles",
+    "types-pyyaml",
+
+    # -- Documentation --
+    "mkdocs>=1.5.0",
+    "mkdocs-include-markdown-plugin>=6.0.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-swagger-ui-tag>=0.4.0",
+]
+
+
+# --- TOOLING CONFIGURATION ---
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D106", # Missing docstring in public nested class
+    "B008", # Do not perform function call in argument defaults (Required for FastAPI Depends)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+timeout = 300
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# testpaths durchsucht diese Ordner rekursiv nach test_*.py
+testpaths = ["tests", "services", "packages"]
+python_files = ["test_*.py"]
+addopts = "-v --cov --cov-report=term-missing"
+env_files = [
+    ".env",
+] # Teilt pytest-dotenv mit, wo deine einzige Source of Truth liegt
+markers = [
+    "unit: fast, isolated tests without external dependencies.",
+    "integration: requires external services (DB, Redis) to run.",
+    "e2e: browser tests via playwright running against a full stack.",
+    "smoke: quick health checks on built images or deployments.",
+]
+
+[tool.coverage.run]
+omit = ["*/tests/*", "tests/*"]
