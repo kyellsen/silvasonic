@@ -136,7 +136,7 @@ from `silvasonic.core`:
 
 All Python service Containerfiles follow this **identical** structure:
 
-```dockerfile
+```containerfile
 FROM python:3.11-slim-bookworm
 
 WORKDIR /app

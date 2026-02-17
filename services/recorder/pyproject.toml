@@ -4,11 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silvasonic-recorder"
-version = "0.1.0"
 description = "Core recording service for Silvasonic"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["silvasonic-core"]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/silvasonic/recorder/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]

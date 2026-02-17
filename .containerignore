@@ -1,4 +1,4 @@
-# .dockerignore
+# .containerignore
 # Exclude files from the build context to improve performance and security.
 
 # Version Control

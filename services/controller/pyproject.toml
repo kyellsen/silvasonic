@@ -4,11 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silvasonic-controller"
-version = "0.1.0"
 description = "Control logic and orchestration service for Silvasonic"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["silvasonic-core"]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/silvasonic/controller/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]

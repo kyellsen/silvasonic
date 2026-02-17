@@ -1,6 +1,6 @@
 [project]
 name = "silvasonic"
-version = "0.2.0"
+version = "0.1.0"
 description = "Silvasonic Autonomous Bioacoustic Monitoring System"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [tool.uv.workspace]
-# UV findet automatisch alle Python-Pakete in diesen Ordnern
+# UV automatically discovers all Python packages in these directories
 members = ["services/*", "packages/*"]
 exclude = ["services/database", "packages/tests", "packages/test-utils"]
 
@@ -37,22 +37,22 @@ dev = [
     "yamlfix>=1.19.1",
 
     # -- Testing Core --
-    "httpx>=0.27.0",            # Moderner async HTTP Client (ersetzt requests)
+    "httpx>=0.27.0",            # Modern async HTTP client (replaces requests)
     "pytest>=8.3.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=6.0.0",
-    "pytest-dotenv>=0.5.2",     # Lädt automatisch die .env Datei
+    "pytest-dotenv>=0.5.2",     # Automatically loads the .env file
     "pytest-mock>=3.15.1",
-    "pytest-playwright>=0.5.0", # Für E2E Frontend Tests
-    "pytest-timeout>=2.3.1",    # Verhindert endlos hängende Tests
-    "pytest-xdist>=3.5.0",      # Erlaubt paralleles Testen via 'pytest -n auto'
+    "pytest-playwright>=0.5.0", # For E2E frontend tests
+    "pytest-timeout>=2.3.1",    # Prevents tests from hanging indefinitely
+    "pytest-xdist>=3.5.0",      # Enables parallel testing via 'pytest -n auto'
 
     # -- Testing Utilities (Mocking & Integration) --
-    "faker>=23.0.0",          # Generiert realistische Dummy-Daten (Namen, IPs, etc.)
-    "polyfactory>=2.14.0",    # State-of-the-Art Factory für Pydantic/SQLAlchemy Mocks
+    "faker>=23.0.0",          # Generates realistic dummy data (names, IPs, etc.)
+    "polyfactory>=2.14.0",    # State-of-the-art factory for Pydantic/SQLAlchemy mocks
     "structlog>=24.1.0",
-    "tenacity>=9.1.2",        # Für Retry-Logik in Flaky E2E/Integration Tests
-    "testcontainers>=4.14.1", # Generisch, ohne hardcodierte Datenbank-Plugins
+    "tenacity>=9.1.2",        # Retry logic for flaky E2E/integration tests
+    "testcontainers>=4.14.1", # Generic, without hardcoded database plugins
 
     # -- Type Stubs --
     "types-aiofiles",
@@ -112,13 +112,11 @@ minversion = "8.0"
 timeout = 30
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-# testpaths durchsucht diese Ordner rekursiv nach test_*.py
+# testpaths searches these directories recursively for test_*.py
 testpaths = ["tests", "services", "packages"]
 python_files = ["test_*.py"]
 addopts = "-v"
-env_files = [
-    ".env",
-] # Teilt pytest-dotenv mit, wo deine einzige Source of Truth liegt
+env_files = [".env"] # Tells pytest-dotenv where the single source of truth is
 markers = [
     "unit: fast, isolated tests without external dependencies.",
     "integration: requires external services (DB) to run.",

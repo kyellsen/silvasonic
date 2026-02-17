@@ -7,7 +7,7 @@
 - [ADR-0008: Domain-Driven Workspace Isolation](0008-domain-driven-isolation.md)
 - [ADR-0009: Zero-Trust Data Sharing policy](0009-zero-trust-data-sharing.md)
 - [ADR-0010: Naming Conventions](0010-naming-conventions.md)
-- [11. Audio Recording Strategy (Raw vs Processed)](0011-audio-recording-strategy.md)
+- [ADR-0011: Audio Recording Strategy (Raw vs Processed)](0011-audio-recording-strategy.md)
 - [ADR-0012: Use Pydantic for Data Validation](0012-use-pydantic.md)
 - [ADR-0013: Tier 2 Container Management — Podman-Only with podman-py](0013-tier2-container-management.md)
 - [ADR-0014: Dual Deployment Strategy — Compose (Dev) / Quadlets (Prod)](0014-dual-deployment-strategy.md)

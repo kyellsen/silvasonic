@@ -12,7 +12,7 @@
 .python-version
 pyproject.toml
 uv.lock
-.dockerignore
+.containerignore
 compose.yml
 compose.override.yml
 justfile

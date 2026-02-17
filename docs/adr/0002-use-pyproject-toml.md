@@ -20,6 +20,12 @@ We need a consistent and modern way to manage project metadata, dependencies, an
     *   Tool configurations (e.g., `ruff`, `mypy`, `pytest`) in a single file.
 *   **Integration:** It is natively supported by modern tooling, including our chosen package manager `uv`, which uses it as the source of truth for workspace and dependency management.
 
+### 2.1. Workspace Root Exception
+The **root** `pyproject.toml` intentionally has **no `[build-system]`** section. It serves as the `uv` workspace root (defining members, dev-dependencies, and shared tool configuration) but is not itself an installable Python package. Only the individual sub-packages (`packages/*`, `services/*`) declare `hatchling` as their build backend.
+
+### 2.2. Dynamic Versioning
+All sub-packages use **dynamic versioning** (`dynamic = ["version"]`) with `hatchling` reading the version from each package's `__init__.py` (`__version__ = "x.y.z"`). This ensures a single source of truth for each package version.
+
 ## 3. Options Considered
 *   **requirements.txt**:
     *   *Rejected because*: It is limited to listing dependencies. It cannot handle project metadata or tool configuration. Using it would still require other files for those needs, preventing consolidation.

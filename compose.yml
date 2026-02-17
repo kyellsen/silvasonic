@@ -39,11 +39,14 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: database
+      CONTAINER_SOCKET: /var/run/container.sock
+      SILVASONIC_NETWORK: silvasonic-net
     ports:
       - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
+      - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
     depends_on:
       database:
         condition: service_healthy
@@ -59,16 +62,17 @@ services:
       start_period: 15s
 
   # --- Recorder (Audio Capture) ---
-  # Immutable Tier 2 service. Managed by Controller, NOT auto-started.
-  # Multiple instances may run concurrently. No database access.
+  # Immutable Tier 2 service. Managed by Controller via podman-py, NOT auto-started.
+  # Multiple instances may run concurrently. No database access. No host ports.
+  # This profile serves as documentation/template only (see ADR-0013).
   recorder:
     build:
       context: .
       dockerfile: services/recorder/Containerfile
     restart: unless-stopped
     profiles: ["managed"]
-    ports:
-      - "${SILVASONIC_RECORDER_PORT:-9500}:9500"
+    # No host port exposure — Controller reaches Recorder via container-internal IP.
+    # Health endpoint (port 9500) is accessible within silvasonic-net only.
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z
     networks:
@@ -94,3 +98,6 @@ volumes:
 networks:
   silvasonic-net:
     driver: bridge
+    # Explicit name prevents Compose project-prefix ambiguity (e.g. "myproject_silvasonic-net").
+    # Controller uses SILVASONIC_NETWORK env var to join Tier 2 containers to this network.
+    name: silvasonic-net
