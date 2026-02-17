@@ -14,6 +14,7 @@ from common import (
     check_group_membership,
     ensure_dir,
     get_workspace_path,
+    print_banner,
     print_error,
     print_header,
     print_step,
@@ -88,6 +89,7 @@ def check_container_engine() -> None:
 
 def main() -> None:
     """Main initialization routine."""
+    print_banner()
     print_header("Initializing Silvasonic Development Environment")
 
     # 1. Environment File
@@ -171,6 +173,7 @@ def main() -> None:
         print_success("Hardware group verification passed.")
 
     print_header("Initialization Complete! 🎉")
+    print_banner()
 
 
 if __name__ == "__main__":

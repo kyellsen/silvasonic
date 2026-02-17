@@ -22,11 +22,17 @@ async def monitor_database() -> NoReturn:
         await asyncio.sleep(10)
 
 
+# TODO(placeholder): Replace with actual recorder-spawn detection logic.
 SIMULATE_RECORDER_SPAWN = True
 
 
 async def monitor_recorder_spawn() -> NoReturn:
-    """Periodically check if a recorder has been spawned (simulated for now)."""
+    """Periodically check if a recorder has been spawned.
+
+    TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
+    with actual subprocess / container health checks once recorder spawning
+    is implemented.
+    """
     monitor = HealthMonitor()
     while True:
         # In the future, this will check if the controller has successfully spawned a recorder
@@ -57,7 +63,8 @@ async def main() -> None:
     _health_task_db.add_done_callback(background_tasks.discard)
     _health_task_spawn.add_done_callback(background_tasks.discard)
 
-    # Placeholder — will be replaced with actual orchestration logic.
+    # TODO(placeholder): Replace with actual orchestration logic
+    # (e.g. spawning recorders, managing schedules, handling commands).
     # For now, just keep the loop running until a signal is received.
     stop_event = asyncio.Event()
 

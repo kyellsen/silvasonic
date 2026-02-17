@@ -1,54 +1,29 @@
-# ==============================================================================
-# Silvasonic Controller Service
-# API and orchestration service.
-# Self-contained multi-stage build — no shared base image required.
-# ==============================================================================
+FROM python:3.11-slim-bookworm
 
-ARG PYTHON_VERSION=3.11-slim-bookworm
+WORKDIR /app
 
-# --- Stage 1: Builder ---
-FROM docker.io/python:${PYTHON_VERSION} AS builder
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-WORKDIR /build
-
-# Copy dependency manifests first (cache-friendly layer ordering)
-COPY pyproject.toml uv.lock ./
-COPY packages/ packages/
-COPY services/controller/ services/controller/
-
-# Install only this service's dependencies (not the entire workspace)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable \
-    --package silvasonic-controller
-
-# --- Stage 2: Runtime ---
-FROM docker.io/python:${PYTHON_VERSION}
-
-LABEL org.opencontainers.image.title="silvasonic-controller"
-LABEL org.opencontainers.image.description="Control logic and API for Silvasonic bioacoustic monitoring"
-
-# Runtime system dependencies (curl for container healthcheck)
+# 1. System-Abhängigkeiten installieren (hier nur curl für den Healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the virtual environment from the builder stage
-COPY --from=builder /build/.venv /app/.venv
+# 2. Das Tool 'uv' direkt reinholen
+COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
 
-# Ensure the venv Python is on PATH
+# 3. Einfach alles an Code und Config auf einmal kopieren
+COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
+COPY services/controller/ services/controller/
+
+# 4. Abhängigkeiten und Code in einem Rutsch installieren
+RUN uv sync --frozen --no-dev --no-editable --package silvasonic-controller
+
+# 5. Virtual Environment in den Pfad aufnehmen
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-WORKDIR /app
-
 EXPOSE 9100
-
-# NOTE: No USER directive — container runs as root inside.
-# Podman rootless maps container-root → host user automatically.
-# Docker runs as host-root (acceptable for this edge device).
 
 ENTRYPOINT ["python", "-m"]
 CMD ["silvasonic.controller"]

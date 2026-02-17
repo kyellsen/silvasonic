@@ -15,6 +15,8 @@ SHELL := /bin/bash
 BOOTSTRAP_PYTHON = python3
 # Isolated Python (guarantees execution within the uv virtual environment)
 VENV_PYTHON = uv run python
+# Parallel workers for unit tests (0 = disabled)
+PYTEST_WORKERS = 4
 
 # .env is loaded by the Python scripts (scripts/compose.py)
 
@@ -66,7 +68,8 @@ fix: ## 🔧 Führt Auto-Fixer aus (Ruff Format, Lint Fixes)
 check: ## 🔍 Code Quality: Ruff, Mypy, Unit & Integration Tests (Fast)
 	@$(VENV_PYTHON) scripts/check.py
 
-check-full: check clean build start test-smoke stop clean ## 🧬 Full CI Pipeline: Code Checks -> Build -> Start -> Smoke -> Stop -> Clean
+check-full: ## 🧬 Full CI Pipeline: Lint → Type → Test → Build → Smoke → Clean
+	@$(VENV_PYTHON) scripts/check_full.py
 
 
 # ==============================================================================
@@ -74,7 +77,7 @@ check-full: check clean build start test-smoke stop clean ## 🧬 Full CI Pipeli
 # ==============================================================================
 
 test-unit: ## 🧪 Führt schnelle Unit-Tests aus (Mocked, ohne externe Services)
-	@uv run pytest -m "unit"
+	@uv run pytest -m "unit" -n $(PYTEST_WORKERS) --cov --cov-report=term-missing
 
 test-int: ## 🐢 Führt Integrationstests aus (Testcontainers startet DB automatisch!)
 	@uv run pytest -m "integration"

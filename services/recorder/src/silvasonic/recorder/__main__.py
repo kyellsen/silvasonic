@@ -20,11 +20,17 @@ async def monitor_database() -> NoReturn:
         await asyncio.sleep(10)
 
 
+# TODO(placeholder): Replace with actual recording-health detection logic.
 SIMULATE_RECORDING_HEALTH = True
 
 
 async def monitor_recording() -> NoReturn:
-    """Periodically check recording status (simulated for now)."""
+    """Periodically check recording status.
+
+    TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
+    with actual checks (e.g. verifying .wav file growth, audio device status)
+    once the recording pipeline is implemented.
+    """
     monitor = HealthMonitor()
     while True:
         # In the future, this will check if .wav files are actually being written
@@ -52,8 +58,9 @@ async def main() -> None:
     _health_task_db.add_done_callback(background_tasks.discard)
     _health_task_rec.add_done_callback(background_tasks.discard)
 
-    # Placeholder — will be replaced with the actual recording loop.
-    # For now, just keep the loop running.
+    # TODO(placeholder): Replace with the actual recording loop
+    # (e.g. opening audio device, writing .wav chunks, rotating files).
+    # For now, just keep the loop running until a signal is received.
     stop_event = asyncio.Event()
 
     def handle_signal():

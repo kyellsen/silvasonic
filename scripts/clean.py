@@ -51,7 +51,7 @@ def main() -> None:
     if dry_run:
         print_warning("[DRY-RUN] Would run: compose down -v")
     else:
-        compose("down", "-v", check=False)
+        compose("down", "-v", check=False, quiet=True)
 
     # --- Stage 3: Workspace ---
     print_step("Removing workspace directory...")

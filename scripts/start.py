@@ -4,12 +4,14 @@
 from pathlib import Path
 
 import init
-from common import print_header, print_success, print_warning
+from common import print_banner, print_header, print_success, print_warning
 from compose import compose
 
 
 def main() -> None:
     """Start all Silvasonic services."""
+    print_banner()
+
     # Check if .venv exists
     project_root = Path(__file__).resolve().parent.parent
     venv_path = project_root / ".venv"
@@ -23,6 +25,7 @@ def main() -> None:
     print_header("Starting Silvasonic Services")
     compose("up", "-d")
     print_success("Silvasonic services are running.")
+    print_banner()
 
 
 if __name__ == "__main__":

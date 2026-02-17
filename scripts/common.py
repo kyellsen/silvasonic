@@ -180,3 +180,20 @@ def get_workspace_path() -> Path:
     if not path.is_absolute():
         path = _PROJECT_ROOT / path
     return path.resolve()
+
+
+def fmt_duration(seconds: float) -> str:
+    """Format seconds into a human-readable string (e.g. '1.2s' or '2m 3.4s')."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes = int(seconds // 60)
+    secs = seconds % 60
+    return f"{minutes}m {secs:.1f}s"
+
+
+def print_banner() -> None:
+    """Print the Silvasonic ASCII banner from scripts/banner.txt."""
+    banner_file = Path(__file__).resolve().parent / "banner.txt"
+    if banner_file.exists():
+        text = banner_file.read_text().rstrip("\n")
+        print(f"\n{Colors.OKCYAN}{Colors.BOLD}{text}{Colors.ENDC}\n")

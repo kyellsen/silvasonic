@@ -13,26 +13,29 @@ import subprocess
 import sys
 from pathlib import Path
 
+from common import Colors, print_error, print_header, print_step, print_success
+
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _run(label: str, cmd: list[str]) -> bool:
     """Run a command, print a header, and return True on success."""
-    print(f"\n{'=' * 60}")
-    print(f"🔍 {label}")
-    print(f"{'=' * 60}")
-    print(f"   → {' '.join(cmd)}\n")
+    print_header(label)
+    print_step(f"{' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
     if result.returncode == 0:
-        print(f"   ✅ {label} passed.")
+        print_success(f"{label} passed.")
     else:
-        print(f"   ❌ {label} FAILED (exit {result.returncode}).", file=sys.stderr)
+        print_error(f"{label} FAILED (exit {result.returncode}).")
     return result.returncode == 0
 
 
-def main() -> None:
-    """Run ruff, mypy, and unit tests sequentially."""
+def main() -> dict[str, bool]:
+    """Run ruff, mypy, and unit tests sequentially.
+
+    Returns a dict of {check_name: passed} for use by check_full.py.
+    """
     results: dict[str, bool] = {}
 
     # 1. Ruff lint (strict, no autofix)
@@ -47,21 +50,22 @@ def main() -> None:
     )
 
     # ── Summary ───────────────────────────────────────────────────────────────
-    print(f"\n{'=' * 60}")
-    print("📋 Summary")
-    print(f"{'=' * 60}")
+    print_header("Summary")
     all_ok = True
     for name, passed in results.items():
-        icon = "✅" if passed else "❌"
-        print(f"   {icon} {name}")
-        if not passed:
+        if passed:
+            print(f"   {Colors.OKGREEN}✅ {name}{Colors.ENDC}")
+        else:
+            print(f"   {Colors.FAIL}❌ {name}{Colors.ENDC}")
             all_ok = False
 
     if all_ok:
-        print("\n🎉 All checks passed!")
+        print(f"\n{Colors.OKGREEN}{Colors.BOLD}🎉 All checks passed!{Colors.ENDC}")
     else:
-        print("\n💥 Some checks failed. Please fix the issues above.", file=sys.stderr)
+        print_error("Some checks failed. Please fix the issues above.")
         sys.exit(1)
+
+    return results
 
 
 if __name__ == "__main__":

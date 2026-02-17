@@ -30,6 +30,7 @@ packages/
 scripts/
 services/
 tests/
+prompts/
 
 # === VCS & IDE (hidden, always kept) ===
 .agent/

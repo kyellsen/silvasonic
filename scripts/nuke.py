@@ -9,7 +9,7 @@ with the single engine-detection logic.
 
 import sys
 
-from common import print_error, print_step, print_success, run_command
+from common import print_error, print_header, print_step, print_success, run_command
 from compose import get_container_engine
 
 
@@ -51,6 +51,7 @@ def remove_silvasonic_images() -> None:
 
 def main() -> None:
     """Run the full nuke pipeline."""
+    print_header("Nuclear Reset — Removing Silvasonic Images")
     remove_silvasonic_images()
 
 

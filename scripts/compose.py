@@ -53,8 +53,15 @@ def get_compose_cmd() -> list[str]:
     return cmd
 
 
-def compose(*args: str, check: bool = True) -> None:
-    """Run a compose command with the detected engine."""
+def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
+    """Run a compose command with the detected engine.
+
+    Args:
+        *args: Arguments to pass to the compose command.
+        check: If True, exit on failure.
+        quiet: If True, suppress stderr (useful for cleanup where
+               'no container found' errors are expected and harmless).
+    """
     from common import run_command
 
     # Determine compose files based on Development Mode
@@ -70,16 +77,18 @@ def compose(*args: str, check: bool = True) -> None:
         )
         compose_files.extend(["-f", "compose.override.yml"])
 
-    # Construct final command: [tool, -f base, -f override, command, args]
-    # Note: docker compose accepts flags before the command, podman-compose
-    # might need verification but generally supports standard compose syntax.
-    # Actually, standard `docker compose` syntax is `docker compose -f ... up`.
-    # `podman-compose` syntax is `podman-compose -f ... up`.
-
-    # We need to insert the file flags *after* "compose" but *before* the args.
-    # get_compose_cmd() returns e.g. ["podman-compose"] or ["docker", "compose"]
-
     base_cmd = get_compose_cmd()
     cmd = base_cmd + compose_files + list(args)
 
-    run_command(cmd, cwd=PROJECT_ROOT, check=check)
+    if quiet:
+        # Suppress stderr (e.g. podman "no container found" noise)
+        import subprocess
+
+        subprocess.run(
+            cmd,
+            cwd=PROJECT_ROOT,
+            check=False,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        run_command(cmd, cwd=PROJECT_ROOT, check=check)
