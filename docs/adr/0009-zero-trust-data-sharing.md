@@ -14,6 +14,9 @@ Any service that consumes data it did not create MUST modify its container defin
 **Reasoning:**
 This acts as a physical safety interlock. Even if the BirdNET analyzer code goes haywire and tries to `rm -rf *`, the kernel will reject the operation. This protects the raw scientific data from software faults in the post-processing pipeline.
 
+### 2.1. Controller Exception
+The **Controller** is the only service permitted to mount another service's workspace with **write access** (RW). As the orchestrator, the Controller must prepare Tier 2 workspaces (e.g., directory structure, profile injection) before spawning containers. This is an explicit, documented exception to the Consumer Principle.
+
 ## 3. Options Considered
 *   **Full Shared Access (RW everywhere):**
     *   *Rejected because:* High risk of accidental data loss.
@@ -26,4 +29,4 @@ This acts as a physical safety interlock. Even if the BirdNET analyzer code goes
     *   "Sandbox" safety for experimental analyzers.
 *   **Negative:**
     *   Services generally cannot "mark" files by renaming them (must use Database or Sidecar files for metadata state).
-    *   Requires explicit `ro` flags in `podman-compose.yml`.
+    *   Requires explicit `ro` flags in `compose.yml`.

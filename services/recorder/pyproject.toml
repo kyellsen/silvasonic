@@ -11,7 +11,7 @@ dependencies = ["silvasonic-core"]
 dynamic = ["version"]
 
 [tool.hatch.version]
-path = "src/silvasonic/recorder/__init__.py"
+path = "../../packages/core/src/silvasonic/core/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]

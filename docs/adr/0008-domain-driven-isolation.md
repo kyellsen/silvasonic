@@ -16,7 +16,7 @@ This enforces the "Single Writer" principle at the infrastructure level. If a di
 
 ## 3. Options Considered
 *   **Flat Hierarchy (Dump everything in root):**
-    *   *Rejected because:* Unmaintainable chaose.
+    *   *Rejected because:* Unmaintainable chaos.
 *   **Functional Hierarchy (`logs/`, `data/`):**
     *   *Rejected because:* Splits a service's context across multiple locations. We prefer keeping all reliable data for "Recorder" in one place.
 
