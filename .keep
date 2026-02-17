@@ -13,6 +13,7 @@
 pyproject.toml
 uv.lock
 compose.yml
+compose.override.yml
 Makefile
 
 # === Documentation ===

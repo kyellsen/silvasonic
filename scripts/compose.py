@@ -57,5 +57,29 @@ def compose(*args: str, check: bool = True) -> None:
     """Run a compose command with the detected engine."""
     from common import run_command
 
-    cmd = get_compose_cmd() + list(args)
+    # Determine compose files based on Development Mode
+    env_dev_mode = os.environ.get("SILVASONIC_DEVELOPMENT_MODE")
+    env_file_dev_mode = load_env_value("SILVASONIC_DEVELOPMENT_MODE")
+    dev_mode = (env_dev_mode or env_file_dev_mode or "").lower() == "true"
+
+    compose_files = ["-f", "compose.yml"]
+    if dev_mode:
+        print(
+            "\033[93m⚠️  Development Mode Enabled: "
+            "Hot-reloading active (compose.override.yml loaded).\033[0m"
+        )
+        compose_files.extend(["-f", "compose.override.yml"])
+
+    # Construct final command: [tool, -f base, -f override, command, args]
+    # Note: docker compose accepts flags before the command, podman-compose
+    # might need verification but generally supports standard compose syntax.
+    # Actually, standard `docker compose` syntax is `docker compose -f ... up`.
+    # `podman-compose` syntax is `podman-compose -f ... up`.
+
+    # We need to insert the file flags *after* "compose" but *before* the args.
+    # get_compose_cmd() returns e.g. ["podman-compose"] or ["docker", "compose"]
+
+    base_cmd = get_compose_cmd()
+    cmd = base_cmd + compose_files + list(args)
+
     run_command(cmd, cwd=PROJECT_ROOT, check=check)

@@ -23,6 +23,7 @@ share/python-wheels/
 MANIFEST
 
 # Environment
+compose.override.yml
 .env
 .venv
 env/

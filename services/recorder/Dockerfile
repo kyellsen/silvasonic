@@ -19,7 +19,7 @@ COPY packages/ packages/
 COPY services/recorder/ services/recorder/
 
 # Install only this service's dependencies (not the entire workspace)
-RUN uv sync --frozen --no-dev \
+RUN uv sync --frozen --no-dev --no-editable \
     --package silvasonic-recorder
 
 # --- Stage 2: Runtime ---

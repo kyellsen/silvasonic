@@ -11,19 +11,19 @@ repos:
         pass_filenames: true
         stages: [pre-commit, pre-push]
 
-      # 2. UNIT TESTS: Schnelle Tests (Läuft vor Commit)
-      - id: test-unit
-        name: Unit Tests
-        entry: make test-unit
+      # 2. CHECK: Fast Check (Lint, Types, Unit Tests) - Runs on Commit
+      - id: check-local
+        name: Check (Lint, Types, Unit)
+        entry: make check
         language: system
         types: [python]
         pass_filenames: false
         stages: [pre-commit]
 
-      # 3. CHECK: Statische Analyse & Unit Tests (Läuft nur vor Push)
-      - id: check-local
-        name: Full Check (Lint, Types, Unit Tests)
-        entry: make check
+      # 3. FULL CHECK: Full CI Pipeline (Build, Clean) - Runs on Push
+      - id: check-full-local
+        name: Full Check (Build, Run)
+        entry: make check-full
         language: system
         types: [python]
         pass_filenames: false

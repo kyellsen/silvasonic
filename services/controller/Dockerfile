@@ -19,7 +19,7 @@ COPY packages/ packages/
 COPY services/controller/ services/controller/
 
 # Install only this service's dependencies (not the entire workspace)
-RUN uv sync --frozen --no-dev \
+RUN uv sync --frozen --no-dev --no-editable \
     --package silvasonic-controller
 
 # --- Stage 2: Runtime ---

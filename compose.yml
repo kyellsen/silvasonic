@@ -64,7 +64,6 @@ services:
       context: .
       dockerfile: services/recorder/Dockerfile
     restart: unless-stopped
-    env_file: .env
     volumes:
       - ./services/recorder/src:/app/src/silvasonic/recorder:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z
