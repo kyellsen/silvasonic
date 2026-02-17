@@ -23,3 +23,8 @@ path = "src/silvasonic/core/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]
+
+[dependency-groups]
+dev = [
+    "tenacity>=9.1.4",
+]

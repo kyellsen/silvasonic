@@ -19,7 +19,8 @@ COPY packages/ packages/
 COPY services/controller/ services/controller/
 
 # Install only this service's dependencies (not the entire workspace)
-RUN uv sync --frozen --no-dev --no-editable \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable \
     --package silvasonic-controller
 
 # --- Stage 2: Runtime ---

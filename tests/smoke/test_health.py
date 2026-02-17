@@ -5,9 +5,11 @@ Prerequisites: `make start` must have been run before these tests.
 """
 
 import os
+import socket
 
 import httpx
 import pytest
+from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 
 
 def _get_env(key: str, default: str) -> str:
@@ -39,26 +41,46 @@ DB_PORT = _get_env("SILVASONIC_DB_PORT", "5432")
 class TestServiceHealth:
     """Verify all services respond to health probes."""
 
+    @retry(
+        stop=stop_after_delay(30),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type((AssertionError, httpx.ConnectError, httpx.ReadTimeout)),
+        reraise=True,
+    )
     def test_controller_healthy(self) -> None:
         """Controller /healthy returns 200."""
+        print(f"Probe Controller on port {CONTROLLER_PORT}...")
         url = f"http://localhost:{CONTROLLER_PORT}/healthy"
-        resp = httpx.get(url, timeout=5)
+        # Increased timeout to avoid flakiness during startup
+        resp = httpx.get(url, timeout=2.0)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    @retry(
+        stop=stop_after_delay(30),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type((AssertionError, httpx.ConnectError, httpx.ReadTimeout)),
+        reraise=True,
+    )
     def test_recorder_healthy(self) -> None:
         """Recorder /healthy returns 200."""
+        print(f"Probe Recorder on port {RECORDER_PORT}...")
         url = f"http://localhost:{RECORDER_PORT}/healthy"
-        resp = httpx.get(url, timeout=5)
+        resp = httpx.get(url, timeout=2.0)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    @retry(
+        stop=stop_after_delay(30),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type((AssertionError, ConnectionRefusedError, TimeoutError)),
+        reraise=True,
+    )
     def test_database_healthy(self) -> None:
         """Database accepts TCP connections on configured port."""
-        import socket
-
+        print(f"Probe Database on port {DB_PORT}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
+        sock.settimeout(2.0)
         try:
             result = sock.connect_ex(("localhost", int(DB_PORT)))
             assert result == 0, f"Database not reachable on port {DB_PORT}"

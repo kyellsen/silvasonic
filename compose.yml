@@ -37,10 +37,11 @@ services:
       dockerfile: services/controller/Dockerfile
     restart: unless-stopped
     env_file: .env
+    environment:
+      POSTGRES_HOST: database
     ports:
       - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
     volumes:
-      - ./services/controller/src:/app/src/silvasonic/controller:z
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
     depends_on:
@@ -64,8 +65,11 @@ services:
       context: .
       dockerfile: services/recorder/Dockerfile
     restart: unless-stopped
+    environment:
+      POSTGRES_HOST: database
+    ports:
+      - "${SILVASONIC_RECORDER_PORT:-9500}:9500"
     volumes:
-      - ./services/recorder/src:/app/src/silvasonic/recorder:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z
     depends_on:
       database:

@@ -11,6 +11,9 @@ LABEL org.opencontainers.image.description="TimescaleDB instance for Silvasonic 
 # Custom PostgreSQL configuration (Pi 5 + NVMe optimized)
 COPY services/database/postgresql.conf /etc/postgresql/postgresql.conf
 
+# Install locales to prevent "sh: locale: not found" warnings during init
+RUN apk add --no-cache musl-locales
+
 # --- Custom init scripts (executed once on first start, alphabetical order) ---
 # Place .sql or .sh files here:
 COPY services/database/init/ /docker-entrypoint-initdb.d/
