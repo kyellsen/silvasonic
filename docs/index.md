@@ -4,6 +4,7 @@
 
 - [Architecture Overview](arch/README.md)
 - [Filesystem Governance](arch/filesystem_governance.md)
+- [Messaging Patterns & Protocols](arch/messaging_patterns.md)
 - [Port Allocation](arch/port_allocation.md)
 
 ## Services
@@ -27,13 +28,16 @@
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)
 - [Release Checklist](development/release_checklist.md) — Step-by-step guide for tagging a release
+- [Future Features & Ideas](development/idea.md)
 
 ## Hardware
+
 - [Hardware Specifications](hardware.md)
 - [Microphone Profiles](arch/microphone_profiles.md)
 
 ## Reference
 
+- [API Reference](api_reference.md)
 - [Glossary](glossary.md) — Canonical domain language definitions
 
 ## Specifications

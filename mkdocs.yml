@@ -14,6 +14,7 @@ nav:
   - Architecture:
       - Overview: arch/README.md
       - Filesystem Governance: arch/filesystem_governance.md
+      - "Messaging Patterns & Protocols": arch/messaging_patterns.md
       - Port Allocation: arch/port_allocation.md
       - Microphone Profiles: arch/microphone_profiles.md
   - Services:
@@ -29,6 +30,8 @@ nav:
       - "ADR-0002: Use pyproject.toml": adr/0002-use-pyproject-toml.md
       - "ADR-0003: Frontend Architecture": adr/0003-frontend-architecture.md
       - "ADR-0004: Use Podman": adr/0004-use-podman.md
+      - "ADR-0005: Two-Worlds Separation": adr/0005-two-worlds-separation.md
+      - "ADR-0006: Bind Mounts over Volumes": adr/0006-bind-mounts-over-volumes.md
       - "ADR-0007: Rootless OS Compliance": adr/0007-rootless-os-compliance.md
       - "ADR-0008: Domain-Driven Isolation": adr/0008-domain-driven-isolation.md
       - "ADR-0009: Zero-Trust Data Sharing": adr/0009-zero-trust-data-sharing.md
@@ -38,13 +41,19 @@ nav:
       - "ADR-0013: Tier 2 Container Management": adr/0013-tier2-container-management.md
       - "ADR-0014: Dual Deployment Strategy": adr/0014-dual-deployment-strategy.md
       - "ADR-0015: NVMe-Only Storage Policy": adr/0015-nvme-only-storage.md
+      - "ADR-0016: Hybrid YAML/DB Profiles": adr/0016-hybrid-yaml-db-profiles.md
+      - "ADR-0017: Service State Management": adr/0017-service-state-management.md
+      - "ADR-0018: Worker Pull Orchestration": adr/0018-worker-pull-orchestration.md
   - Development:
       - Overview: development/README.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
       - Release Checklist: development/release_checklist.md
+      - "Future Features & Ideas": development/idea.md
   - Hardware: hardware.md
+  - API Reference: api_reference.md
   - Glossary: glossary.md
+  - Specifications: specs/README.md
 
 plugins:
   - search

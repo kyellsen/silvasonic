@@ -41,15 +41,15 @@ The system is composed of containerized services organized into two tiers.
 
 ### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
-| Service           | Role                                                                                                                     | Criticality             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| **database**      | Central state management (TimescaleDB / PostgreSQL)                                                                      | Critical                |
-| **redis**         | Message broker for live state, pub/sub events, and job queues                                                            | Critical                |
-| **gateway**       | Caddy Reverse Proxy handling HTTPS and authentication                                                                    | Critical                |
-| **controller**    | Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles                           | Critical                |
-| **processor**     | Data Ingestion, Indexing, and Janitor. Clean-up logic is critical for survival                                           | Critical                |
-| **icecast**       | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients   | Life Support / Optional |
-| **monitor**       | System Watchdog. Monitors service heartbeats and alerts independent of the controller                                    | Life Support / Optional |
+| Service        | Role                                                                                                                   | Criticality             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                                    | Critical                |
+| **redis**      | Message broker for real-time heartbeats, pub/sub events, and service control                                           | Critical                |
+| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                                  | Critical                |
+| **controller** | Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles                         | Critical                |
+| **processor**  | Data Ingestion, Indexing, and Janitor. Clean-up logic is critical for survival                                         | Critical                |
+| **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients | Life Support / Optional |
+
 | **web-interface** | Local management console. During development: lightweight status-board dashboard. In production: full management console | Life Support / Optional |
 | **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                       | Life Support / Optional |
 
@@ -96,8 +96,8 @@ Silvasonic supports two deployment models:
 | v0.3.0     | Processor service (Ingestion, Indexing, Janitor)                                                                            | ⏳ Planned |
 | v0.4.0     | Uploader (immutable Tier 2, Controller-managed)                                                                             | ⏳ Planned |
 | v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                                                                                        | ⏳ Planned |
-| v0.6.0     | Web-Interface — Status board, basic service control                                                                         | ⏳ Planned |
-| v0.7.0     | Redis, Monitor — Pub/sub, job queues, system watchdog                                                                       | ⏳ Planned |
+| v0.6.0     | Redis, Web-Interface — Real-time status dashboard, service control via Redis Pub/Sub                                        | ⏳ Planned |
+| v0.7.0     | Web-Interface improvements — Extended management console, alerting                                                          | ⏳ Planned |
 | v0.9.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                             | ⏳ Planned |
 | v1.0.0     | MVP — Production-ready field deployment (Podman Quadlets, Ansible)                                                          | ⏳ Planned |
 | v1.1.0     | BirdNET — On-device avian species classification                                                                            | ⏳ Planned |

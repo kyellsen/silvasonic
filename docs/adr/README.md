@@ -15,3 +15,5 @@
 - [ADR-0014: Dual Deployment Strategy — Compose (Dev) / Quadlets (Prod)](0014-dual-deployment-strategy.md)
 - [ADR-0015: NVMe-Only Storage Policy](0015-nvme-only-storage.md)
 - [ADR-0016: Hybrid YAML/DB Profile Management](0016-hybrid-yaml-db-profiles.md)
+- [ADR-0017: Service State Management — Desired vs. Actual State](0017-service-state-management.md)
+- [ADR-0018: Worker Pull Orchestration — Self-Service Analysis via DB Polling](0018-worker-pull-orchestration.md)
