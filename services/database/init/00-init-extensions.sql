@@ -8,6 +8,5 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 -- 2. Ensure public schema exists (Standard Postgres behavior, but explicit is safer)
 CREATE SCHEMA IF NOT EXISTS public;
 
--- 3. Optimization Note (Documentation)
--- The actual tables are NOT created here. They are managed by Alembic/SQLAlchemy
--- in the 'controller' or 'migration' service to allow for versioned schema evolution.
+-- 3. Note
+-- Tables are created by 01-init-schema.sql, not here.

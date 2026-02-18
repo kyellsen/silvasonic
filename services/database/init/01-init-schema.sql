@@ -3,11 +3,11 @@
 
 -- 0. Microphone Profiles (New)
 CREATE TABLE microphone_profiles (
-    slug VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,
-    description VARCHAR NOT NULL,
-    match_pattern VARCHAR NOT NULL,
-    config JSONB NOT NULL,
+    slug TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    match_pattern TEXT,
+    config JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (slug)
 );
@@ -17,11 +17,11 @@ CREATE TABLE devices (
     name TEXT NOT NULL,
     serial_number TEXT NOT NULL,
     model TEXT NOT NULL,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'offline',
     enrollment_status TEXT NOT NULL DEFAULT 'pending',
     last_seen TIMESTAMP WITH TIME ZONE,
-    enabled BOOLEAN NOT NULL,
-    profile_slug VARCHAR,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    profile_slug TEXT,
     config JSONB NOT NULL,
     PRIMARY KEY (name),
     UNIQUE (serial_number),
@@ -102,7 +102,7 @@ CREATE TABLE recordings (
     sample_rate INTEGER NOT NULL,
     filesize_raw BIGINT NOT NULL,
     filesize_processed BIGINT NOT NULL,
-    uploaded BOOLEAN NOT NULL,
+    uploaded BOOLEAN NOT NULL DEFAULT FALSE,
     uploaded_at TIMESTAMP WITH TIME ZONE,
     local_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     analysis_state JSONB NOT NULL,
@@ -113,6 +113,7 @@ CREATE TABLE recordings (
 CREATE INDEX ix_recordings_time ON recordings (time);
 CREATE INDEX ix_recordings_sensor_id ON recordings (sensor_id);
 CREATE INDEX ix_recordings_uploaded ON recordings (uploaded);
+CREATE INDEX ix_recordings_local_deleted ON recordings (local_deleted);
 
 -- 8. Detections (Hypertable)
 CREATE TABLE detections (

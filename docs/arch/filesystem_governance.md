@@ -8,6 +8,8 @@ This document defines the strict governance rules for file storage, container ac
 
 ## 1. The "Two-Worlds" Architecture Principle
 
+> See **[ADR-0005](../adr/0005-two-worlds-separation.md)** for the architectural decision behind this principle.
+
 The system makes a strict distinction between immutable code (Repository) and mutable state (Workspace). These two worlds must never mix.
 
 ### World A: The Repository (Immutable Code)

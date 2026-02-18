@@ -1,20 +1,41 @@
 # Documentation Index
 
 ## Architecture
-- [Architecture Decision Records (ADR)](adr/README.md)
+
 - [Architecture Overview](arch/README.md)
 - [Filesystem Governance](arch/filesystem_governance.md)
 - [Port Allocation](arch/port_allocation.md)
 
-## Development
-- [Development Guide](development/README.md)
-- [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
+## Services
+
+- [Services Overview](services/README.md)
+- [Controller Service](services/controller.md)
+- [Database Service](services/database.md)
+- [Recorder Service](services/recorder.md)
 
 ## Deployment
-- [Deployment Guide](deployment/README.md)
 
-## Services
-- [Services](services/README.md)
+- [Setup & Initialization](deployment/setup.md)
+
+## ADRs
+
+- [Architecture Decision Records](adr/README.md)
+
+## Development
+
+- [Development Guide](development/README.md)
+- [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
+- [Testing Guide](development/testing.md)
+- [Release Checklist](development/release_checklist.md) — Step-by-step guide for tagging a release
+
+## Hardware
+- [Hardware Specifications](hardware.md)
+- [Microphone Profiles](arch/microphone_profiles.md)
+
+## Reference
+
+- [Glossary](glossary.md) — Canonical domain language definitions
 
 ## Specifications
+
 - [Specs](specs/README.md)

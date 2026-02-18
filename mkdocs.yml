@@ -15,6 +15,7 @@ nav:
       - Overview: arch/README.md
       - Filesystem Governance: arch/filesystem_governance.md
       - Port Allocation: arch/port_allocation.md
+      - Microphone Profiles: arch/microphone_profiles.md
   - Services:
       - Overview: services/README.md
       - Controller Service: services/controller.md
@@ -34,10 +35,14 @@ nav:
       - "ADR-0010: Naming Conventions": adr/0010-naming-conventions.md
       - "ADR-0011: Audio Recording Strategy": adr/0011-audio-recording-strategy.md
       - "ADR-0012: Use Pydantic": adr/0012-use-pydantic.md
+      - "ADR-0013: Tier 2 Container Management": adr/0013-tier2-container-management.md
+      - "ADR-0014: Dual Deployment Strategy": adr/0014-dual-deployment-strategy.md
+      - "ADR-0015: NVMe-Only Storage Policy": adr/0015-nvme-only-storage.md
   - Development:
       - Overview: development/README.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
+      - Release Checklist: development/release_checklist.md
   - Hardware: hardware.md
   - Glossary: glossary.md
 

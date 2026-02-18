@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** Initial Development / MVP
+> **Status:** v0.1.0 — Foundation
 
 ---
 

@@ -109,4 +109,5 @@
 | USB HotPlug detection                           | v0.2.5                      |
 | Resource limits (CPU/RAM)                       | Future (not needed for MVP) |
 | Uploader, BirdNET, BatDetect as Tier 2          | v0.4.0+                     |
+| Icecast live Opus stream (Recorder → Icecast)   | v0.9.0                      |
 | Quadlet generation for production               | v1.0.0                      |

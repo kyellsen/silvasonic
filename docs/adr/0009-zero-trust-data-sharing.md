@@ -1,4 +1,4 @@
-# ADR-0009: Zero-Trust Data Sharing policy
+# ADR-0009: Zero-Trust Data Sharing Policy
 
 > **Status:** Accepted • **Date:** 2026-01-31
 

@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** Initial Development / MVP
+> **Status:** v0.1.0 — Foundation
 
 ---
 
@@ -48,6 +48,7 @@ The system is composed of containerized services organized into two tiers.
 | **gateway**       | Caddy Reverse Proxy handling HTTPS and authentication                                                                    | Critical                |
 | **controller**    | Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles                           | Critical                |
 | **processor**     | Data Ingestion, Indexing, and Janitor. Clean-up logic is critical for survival                                           | Critical                |
+| **icecast**       | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients   | Life Support / Optional |
 | **monitor**       | System Watchdog. Monitors service heartbeats and alerts independent of the controller                                    | Life Support / Optional |
 | **web-interface** | Local management console. During development: lightweight status-board dashboard. In production: full management console | Life Support / Optional |
 | **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                       | Life Support / Optional |
@@ -56,13 +57,13 @@ The system is composed of containerized services organized into two tiers.
 
 > **ALL TIER 2 CONTAINERS ARE IMMUTABLE!**
 
-| Service       | Role                                                                                                                                                                          | Criticality      |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| **recorder**  | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Buffers audio in RAM and writes dual-stream output (Raw Native & Processed 48kHz) to NVMe | Critical         |
-| **uploader**  | Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage                                                                                      | Critical         |
-| **birdnet**   | On-device inference for avian species classification                                                                                                                          | Optional Feature |
-| **batdetect** | On-device inference for bat species classification                                                                                                                            | Optional Feature |
-| **weather**   | Correlates acoustic data with environmental measurements                                                                                                                      | Optional Feature |
+| Service       | Role                                                                                                                                                                                                                | Criticality      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **recorder**  | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Buffers audio in RAM, writes dual-stream output (Raw Native & Processed 48kHz) to NVMe, and sends a live Opus stream to Icecast | Critical         |
+| **uploader**  | Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage                                                                                                                            | Critical         |
+| **birdnet**   | On-device inference for avian species classification                                                                                                                                                                | Optional Feature |
+| **batdetect** | On-device inference for bat species classification                                                                                                                                                                  | Optional Feature |
+| **weather**   | Correlates acoustic data with environmental measurements                                                                                                                                                            | Optional Feature |
 
 ---
 
@@ -87,16 +88,22 @@ Silvasonic supports two deployment models:
 
 ## Roadmap
 
-| Version    | Milestone                                                    | Status        |
-| ---------- | ------------------------------------------------------------ | ------------- |
-| **v0.1.0** | MVP — Health scaffolds, build pipeline, basic lifecycle      | 🔨 In Progress |
-| v0.2.0     | Controller manages Recorder lifecycle (start/stop)           | ⏳ Planned     |
-| v0.2.5     | Recorder writes .wav files, HotPlug USB mic support          | ⏳ Planned     |
-| v0.3.0     | Processor service (Ingestion, Indexing, Janitor)             | ⏳ Planned     |
-| v0.4.0     | Uploader (immutable Tier 2, Controller-managed)              | ⏳ Planned     |
-| v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                         | ⏳ Planned     |
-| v0.6.0     | Redis convenience layer (pub/sub, job queues)                | ⏳ Planned     |
-| v1.0.0     | Production-ready field deployment (Podman Quadlets, Ansible) | ⏳ Planned     |
+| Version    | Milestone                                                                                                                   | Status    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **v0.1.0** | Foundation — Repo structure, core pkg, DB, Controller & Recorder (placeholder), test suite, CI pipeline, docs, ADRs, Podman | ✅ Current |
+| v0.2.0     | Controller manages Recorder lifecycle (start/stop)                                                                          | ⏳ Planned |
+| v0.2.5     | Recorder writes .wav files, HotPlug USB mic support                                                                         | ⏳ Planned |
+| v0.3.0     | Processor service (Ingestion, Indexing, Janitor)                                                                            | ⏳ Planned |
+| v0.4.0     | Uploader (immutable Tier 2, Controller-managed)                                                                             | ⏳ Planned |
+| v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                                                                                        | ⏳ Planned |
+| v0.6.0     | Web-Interface — Status board, basic service control                                                                         | ⏳ Planned |
+| v0.7.0     | Redis, Monitor — Pub/sub, job queues, system watchdog                                                                       | ⏳ Planned |
+| v0.9.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                             | ⏳ Planned |
+| v1.0.0     | MVP — Production-ready field deployment (Podman Quadlets, Ansible)                                                          | ⏳ Planned |
+| v1.1.0     | BirdNET — On-device avian species classification                                                                            | ⏳ Planned |
+| v1.2.0     | Weather — Environmental data correlation                                                                                    | ⏳ Planned |
+| v1.3.0     | BatDetect — On-device bat species classification                                                                            | ⏳ Planned |
+| v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                       | ⏳ Planned |
 
 ---
 

@@ -1,7 +1,6 @@
 # ADR-0014: Dual Deployment Strategy — Compose (Dev) / Quadlets (Prod)
 
-**Date:** 2026-02-17
-**Status:** Accepted (Implementation planned for v1.0.0)
+> **Status:** Accepted (Implementation planned for v1.0.0) • **Date:** 2026-02-17
 
 ## 1. Context
 
@@ -36,7 +35,7 @@ After=network-online.target
 Image=localhost/silvasonic-database:latest
 ContainerName=silvasonic-database
 EnvironmentFile=/etc/silvasonic/.env
-Volume=silvasonic-db-data:/var/lib/postgresql/data:Z
+Volume=silvasonic-db-data:/var/lib/postgresql/data:z
 Network=silvasonic.network
 PublishPort=5432:5432
 HealthCmd=pg_isready -U silvasonic
