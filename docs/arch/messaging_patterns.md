@@ -26,7 +26,7 @@ To satisfy **Data Capture Integrity**, the system employs a **Hybrid Architectur
 **Philosophy:** Responsiveness for the User Interface. Best-effort, but reliable in practice (Redis is as stable as the database on this hardware).
 
 *   **Service Heartbeats → Web-Interface:** Every service publishes periodic heartbeats to Redis. The Web-Interface uses the **Read + Subscribe Pattern** for real-time display (see §4).
-*   **Service Control → Controller API:** The Web-Interface sends control commands (stop, restart, reconcile) to the Controller's operational API via HTTP. The Controller executes them via Podman. See [ADR-0017](../adr/0017-service-state-management.md).
+*   **Service Control → DB + Nudge:** The Web-Interface writes desired state changes to the database (e.g., `enabled=false`). A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller to act immediately. See [ADR-0017](../adr/0017-service-state-management.md).
 
 > [!IMPORTANT]
 > The interactive path is **best-effort**. If Redis is unavailable, the Web-Interface loses real-time status, but all critical operations (recording, analysis, upload) continue via the filesystem/DB path.
@@ -110,25 +110,22 @@ All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-
 
 ---
 
-## 6. Control Flow
+## 6. Control Flow — State Reconciliation Pattern
 
-Control commands are routed through the **Controller's operational API** (HTTP), not through Redis:
+Control is **declarative** (DB desired state), not imperative (HTTP commands). This follows the Kubernetes Operator Pattern:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Config Change (eventual consistency, ~30s)                      │
+│  State Reconciliation (DB + Nudge)                               │
 │                                                                  │
-│  Web-Interface ──[DB Write]──► Database                          │
-│  Controller ──[Reconciliation Loop, 30s]──► reads DB, acts       │
-└──────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────┐
-│  Immediate Action (request-response)                             │
-│                                                                  │
-│  Web-Interface ──[HTTP POST]──► Controller API                   │
-│  Controller ──[podman-py]──► Podman ──► Target Container         │
+│  1. Web-Interface ──[DB Write]──► Database (desired state)       │
+│  2. Web-Interface ──[PUBLISH silvasonic:nudge]──► Redis           │
+│  3. Controller ──[wakes up, reads DB]──► reconcile()              │
+│  4. Controller ──[podman-py]──► Podman ──► start/stop containers │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+The nudge is a simple wake-up signal — not a command. If the nudge is lost (Controller restarting), the 30s reconciliation timer catches up. The DB desired state is never lost.
 
 > [!NOTE]
 > Immutable services (Recorder, Workers, Processor) do not process runtime commands. To change their configuration, the Controller stops and restarts them with updated environment variables.
@@ -148,10 +145,10 @@ Control commands are routed through the **Controller's operational API** (HTTP),
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│ INTERACTIVE PATH (Redis + Controller API, v0.2.0+)         │
+│ INTERACTIVE PATH (Redis + DB, v0.2.0+)                      │
 │                                                             │
 │  All Services ──[heartbeat]──► Redis ──► Web-Interface      │
-│  Web-Interface ──[HTTP]──► Controller API ──► Podman        │
+│  Web-Interface ──[DB write + nudge]──► Controller ──► Podman│
 └─────────────────────────────────────────────────────────────┘
 ```
 

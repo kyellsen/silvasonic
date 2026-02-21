@@ -4,7 +4,6 @@
 # ==============================================================================
 
 services:
-
   # --- Database (TimescaleDB) ---
   database:
     container_name: silvasonic-database
@@ -65,6 +64,7 @@ services:
   # Immutable Tier 2 service. Managed by Controller via podman-py, NOT auto-started.
   # Multiple instances may run concurrently. No database access. No host ports.
   # This profile serves as documentation/template only (see ADR-0013).
+  # Resource limits are enforced at runtime by the Controller (see ADR-0020).
   recorder:
     build:
       context: .
@@ -89,6 +89,10 @@ services:
       - /dev/snd:/dev/snd
     group_add:
       - audio
+    # Resource Limits & QoS (ADR-0020) — template values, enforced by Controller at runtime
+    mem_limit: 512m
+    cpus: 1.0
+    oom_score_adj: -999 # Protected: OOM Killer kills this LAST
 
 # --- Volumes (Named volumes only for database, per AGENTS.md) ---
 volumes:

@@ -2,7 +2,7 @@
 
 > **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 
-The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`), and exposes an operational API for immediate control commands.
+The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`). It follows the **State Reconciliation Pattern** — a pure Listener + Actor with no HTTP API beyond `/healthy`.
 
 > **Implementation Status:** Scaffold (v0.1.0). Health monitoring is implemented. Tier 2 management is planned for v0.3.0.
 
@@ -96,27 +96,22 @@ Profiles are bootstrapped from YAML seed files into the database on every Contro
 
 ---
 
-## Operational API
+## Reconcile-Nudge Subscriber
 
-The Controller exposes a small HTTP API on port `9100` for the Web-Interface to issue immediate operational commands:
+The Controller follows the **State Reconciliation Pattern** (inspired by Kubernetes Operators). It has **no HTTP API** beyond `/healthy` — control is exclusively declarative:
 
-| Endpoint                     | Method | Purpose                                           |
-| ---------------------------- | ------ | ------------------------------------------------- |
-| `/healthy`                   | GET    | Health check (existing)                           |
-| `/api/v1/services`           | GET    | List all managed Tier 2 services and their status |
-| `/api/v1/stop/<instance_id>` | POST   | Immediately stop a Tier 2 container               |
-| `/api/v1/reconcile`          | POST   | Trigger immediate reconciliation cycle            |
-
-This is **not** a full management REST API. CRUD operations on Devices, Profiles, and configuration are handled by the Web-Interface's own FastAPI backend. The Controller API is limited to operational commands that require Podman socket access.
+1.  **Web-Interface** writes desired state to the database (e.g., `enabled=false`).
+2.  **Web-Interface** sends `PUBLISH silvasonic:nudge "reconcile"` — a simple wake-up signal.
+3.  **Controller** (subscribed) wakes up, reads DB, compares desired vs. actual, acts via `podman-py`.
 
 ### Control Flow
 
-*   **Config changes** (enable/disable, change profile): Web-Interface → DB → Controller reconciles (~30s)
-*   **Immediate actions** (emergency stop): Web-Interface → Controller API → Podman
+*   **All state changes** (enable/disable, change profile, emergency stop): Web-Interface → DB write → Redis nudge → Controller reconciles immediately
+*   **Timer fallback**: If the nudge is lost (Controller restarting), the 30s reconciliation timer catches up automatically. The DB desired state is never lost.
 
 See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
 
-> ⏳ **Planned** (v0.8.0)
+> ⏳ **Planned** (v0.3.0)
 
 ---
 
@@ -125,6 +120,31 @@ See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging P
 The Controller publishes its own heartbeat like every service (via `SilvaService`, see [ADR-0019](../../docs/adr/0019-unified-service-infrastructure.md)).
 
 Additionally, it acts as a **status aggregator** for Tier 2 containers that may not have established their Redis connection yet (e.g., during startup). The Controller queries Tier 2 health endpoints via `podman-py` and publishes their status to Redis on their behalf until they report independently.
+
+---
+
+## Resource Limits & QoS Enforcement
+
+The Controller enforces **mandatory resource limits** on every Tier 2 container it spawns:
+
+| Parameter       | Purpose                                | Example Values                     |
+| --------------- | -------------------------------------- | ---------------------------------- |
+| `mem_limit`     | Hard memory cap (cgroups v2)           | `512m`, `1g`                       |
+| `cpu_quota`     | CPU time cap (microseconds per period) | `100000` (= 1.0 CPU)               |
+| `oom_score_adj` | OOM Killer priority (-999 to +500)     | `-999` (Recorder), `500` (BirdNET) |
+
+**OOM Priority Hierarchy:**
+
+| Priority         | `oom_score_adj` | Services                    |
+| ---------------- | --------------- | --------------------------- |
+| **Protected**    | `-999`          | Recorder                    |
+| **Default**      | `0`             | Tier 1 infrastructure       |
+| **Low Priority** | `250`           | Uploader                    |
+| **Expendable**   | `500`           | BirdNET, BatDetect, Weather |
+
+The Recorder's `oom_score_adj=-999` ensures it is the **last** process the Linux OOM Killer targets. This is the final line of defense for Data Capture Integrity.
+
+Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of the `Tier2ServiceSpec` Pydantic model. See [ADR-0020](../../docs/adr/0020-resource-limits-qos.md).
 
 ---
 
@@ -138,14 +158,12 @@ Additionally, it acts as a **status aggregator** for Tier 2 containers that may 
 | USB microphone detection | ⏳ Planned (v0.3.0 Phase 3)                                        |
 | Reconciliation loop      | ⏳ Planned (v0.3.0 Phase 2)                                        |
 | Profile bootstrapper     | ⏳ Planned (ADR-0016)                                              |
-| Operational API          | ⏳ Planned (v0.8.0)                                                |
+| Reconcile-nudge sub.     | ⏳ Planned (v0.3.0)                                                |
 | Redis heartbeat + agg.   | ⏳ Planned (v0.2.0, ADR-0019)                                      |
 
 ---
 
-## API
-
-The Controller exposes an **operational API** on port `9100` for immediate control commands (see §Operational API above). Device and profile management endpoints are provided by the **Web-Interface** service (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)).
+The Controller has **no HTTP API** beyond the `/healthy` health endpoint (from `SilvaService`). CRUD operations on Devices, Profiles, and configuration are handled by the **Web-Interface** service (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)). Control actions are routed declaratively via DB + Redis nudge (see §Reconcile-Nudge Subscriber above).
 
 ## Configuration
 

@@ -6,7 +6,7 @@
 Silvasonic requires precise configuration for audio hardware ("Microphone Profiles") to ensure scientific-grade recordings:
 *   **Stability:** We ship "known good" profiles for supported hardware (e.g., Dodotronic Ultramic, generic USB) that must work out-of-the-box.
 *   **Flexibility:** Users may bring custom hardware or experimental microphones that need custom profiles without rebuilding container images.
-*   **Dynamic Editing:** The Web-Interface (Tier 1, future) needs to create or edit profiles at runtime via the Controller API.
+*   **Dynamic Editing:** The Web-Interface (Tier 1, future) needs to create or edit profiles at runtime via the database.
 
 Previously, profiles were loaded directly from YAML files at startup. This made dynamic editing impossible without complex file editing capabilities inside the container.
 
@@ -23,7 +23,7 @@ Previously, profiles were loaded directly from YAML files at startup. This made 
 1.  **Database is the Single Source of Truth at Runtime:**
     *   The Controller reads profiles exclusively from the `microphone_profiles` database table.
     *   The Recorder never accesses the database — it receives its configuration via Profile Injection (environment variables set by the Controller at container creation time, see ADR-0013).
-    *   The Web-Interface (future) can trivially CRUD profiles via the Controller API.
+    *   The Web-Interface (future) can trivially CRUD profiles via the database.
 
 2.  **YAML Files as Seed Data:**
     *   System-default profiles are maintained as YAML files in the repository (`services/recorder/config/profiles/`).

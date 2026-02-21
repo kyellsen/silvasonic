@@ -52,15 +52,21 @@ This is the **Read + Subscribe Pattern:** The Web-Interface reads all `silvasoni
 > [!IMPORTANT]
 > Redis is as stable as TimescaleDB on this hardware (same host, NVMe, no network). The fire-and-forget pattern is not motivated by distrust of Redis — it reflects the principle that a service's core function should never be blocked by a non-essential operation.
 
-### Control via Controller API (Not Redis)
+### Control via DB + Reconcile-Nudge (State Reconciliation Pattern)
 
-Control commands (stop, restart, reconcile) are routed through the **Controller's operational API** (HTTP), not through Redis:
+Control flows through the **Database** (desired state), not through HTTP API or Redis commands:
 
-*   The Controller is the **only** service with Podman socket access — only it can start/stop containers.
-*   HTTP provides request-response (acknowledgment), unlike fire-and-forget Pub/Sub.
-*   Immutable services (Recorder, Workers) do not process runtime commands — they are stopped and restarted with new configuration by the Controller.
+1.  The Web-Interface writes the desired state to the database (e.g., `enabled=false` in `system_services`).
+2.  A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller immediately (instead of waiting for the 30s timer).
+3.  The Controller reads the DB, compares desired vs. actual state, and acts via `podman-py`.
 
-For details see the Controller's operational API in [controller.md](../services/controller.md).
+This follows the **Kubernetes Operator Pattern** (State Reconciliation) adapted for a single-node system:
+
+*   **DB is the Single Source of Truth** — commands are never lost. If the Controller restarts, it reads the DB and applies the desired state automatically.
+*   **The Controller has no HTTP API** (beyond the `/healthy` health endpoint). It is a pure **Listener + Actor**: subscribe to nudge, read DB, act via Podman.
+*   **Immutable services** (Recorder, Workers, Processor) do not process runtime commands — they are stopped and restarted with new configuration by the Controller.
+
+For details see [controller.md](../services/controller.md) and [Messaging Patterns](../arch/messaging_patterns.md).
 
 ### Monitoring: Distributed, Not Centralized
 
@@ -76,7 +82,8 @@ A dedicated Monitor service was rejected as over-engineering for a single-node e
 *   **Database-only (status + last_seen column):** Rejected. Requires DB polling for UI, adds write load for heartbeats, and mixes ephemeral runtime data with persistent configuration.
 *   **Redis-only (remove system_services):** Rejected. Desired state must survive Redis restarts. DB is the right home for configuration.
 *   **Separate Monitor service:** Rejected. Adds complexity without proportional value on a single-node device.
-*   **Redis Streams for lifecycle/control/audit:** Rejected. Lifecycle events are derivable from heartbeats, control flows through the Controller API, and business events (recording finished, upload completed) are already tracked in the DB. Four separate channels add complexity without proportional value — one Pub/Sub channel + key-value pattern covers all needs.
+*   **Redis Streams for lifecycle/control/audit:** Rejected. Lifecycle events are derivable from heartbeats, control flows through DB + Nudge, and business events (recording finished, upload completed) are already tracked in the DB. Four separate channels add complexity without proportional value — one Pub/Sub channel + key-value pattern + nudge covers all needs.
+*   **Controller HTTP API for control commands:** Rejected. Imperative commands ("stop now!") can be lost if the Controller restarts. The State Reconciliation pattern (DB write + nudge) is more robust: desired state is always persisted, and reconciliation is idempotent.
 *   **Recorder without Redis:** Rejected. Creates a non-uniform pattern where the Controller must proxy Recorder status. With fire-and-forget heartbeats, the Recorder's core function is completely unaffected, and the Web-Interface gets direct, real-time status from all services.
 
 ## 4. Consequences

@@ -16,6 +16,7 @@ Please read **[README.md](README.md)** for project overview and quick start, and
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
+*   **Resource Limits:** Every Tier 2 container **MUST** specify memory and CPU limits. The Recorder **MUST** set `oom_score_adj=-999`. Agents creating new `Tier2ServiceSpec` entries **MUST** include resource limits (see [ADR-0020](docs/adr/0020-resource-limits-qos.md)).
 *   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically (see ADR-0004, ADR-0007).
 *   **Services Architecture:** The system is organized into **Tier 1** (Infrastructure, managed by Podman Compose) and **Tier 2** (Application, managed by Controller). The **recorder** is the highest-priority service but lives in Tier 2 because it is managed by the Controller. **All Tier 2 containers are IMMUTABLE** — they receive configuration via Profile Injection. **Database access for the Recorder is strictly FORBIDDEN** (see [ADR-0013](docs/adr/0013-tier2-container-management.md)); other Tier 2 services (BirdNET, Uploader, etc.) may access the database. See **[VISION.md](VISION.md)** for the full services architecture.
 

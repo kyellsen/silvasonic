@@ -66,7 +66,7 @@ The Live stream is **best-effort** — if Icecast is unavailable, the Recorder c
 
 Each Recorder pushes its Opus stream to a dedicated **mount point** on the Icecast server (e.g. `/mic-ultramic.opus`). The Web-Interface allows the user to select which microphone to listen to by switching the mount point URL.
 
-## 6. Future: Retention Policy (v0.3.0 — The Janitor)
+## 6. Future: Retention Policy (v0.5.0 — The Janitor)
 
 > **Status:** Planned  
 > **Service:** `processor` (Tier 1, Critical)

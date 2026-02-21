@@ -18,3 +18,4 @@
 - [ADR-0017: Service State Management — Desired vs. Actual State](0017-service-state-management.md)
 - [ADR-0018: Worker Pull Orchestration — Self-Service Analysis via DB Polling](0018-worker-pull-orchestration.md)
 - [ADR-0019: Unified Service Infrastructure — SilvaService Pattern](0019-unified-service-infrastructure.md)
+- [ADR-0020: Resource Limits & QoS — Protecting Data Capture Integrity](0020-resource-limits-qos.md)

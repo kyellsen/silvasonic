@@ -2,12 +2,13 @@
 
 > **Status:** Planned for v0.8.0
 
-## Controller Operational API
-
-The Controller will expose a small HTTP API on port `9100` for operational commands. See [Controller Service](services/controller.md) for the endpoint specification.
-
 ## Web-Interface Management API
 
-The Web-Interface will expose a full REST API with Swagger/OpenAPI documentation for device management, profile configuration, and system administration.
+The **Web-Interface** (FastAPI + Swagger) will expose the management API for administrators:
 
-See [ADR-0003](adr/0003-frontend-architecture.md) — FastAPI + Jinja2 + HTMX + Alpine.js.
+- Device and profile CRUD
+- Service configuration (desired state changes → DB → Controller reconciles via nudge)
+- Real-time status dashboard (Read+Subscribe via Redis)
+
+> [!NOTE]
+> The Controller has **no HTTP API** beyond `/healthy`. Control actions flow through DB writes + `PUBLISH silvasonic:nudge "reconcile"` (State Reconciliation Pattern). See [ADR-0017](adr/0017-service-state-management.md) and [controller.md](services/controller.md).

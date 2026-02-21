@@ -57,7 +57,7 @@ The Processor does **not** track worker availability, assign jobs, or maintain a
 
 *   **Positive:**
     *   **No SPOF:** Workers operate autonomously. Processor failure does not block analysis of already-indexed recordings.
-    *   **No Redis dependency:** Worker orchestration works with the database alone — available from v0.3.0 without waiting for Redis.
+    *   **No Redis dependency:** Worker orchestration works with the database alone — no Redis Pub/Sub or notification channels required.
     *   **Atomic claims:** `FOR UPDATE SKIP LOCKED` prevents double-processing without application-level locking.
     *   **Scalable:** Adding a second BirdNET instance (future) requires zero coordination changes — both poll the same table.
     *   **Simple:** No job queue, no dispatcher, no worker registry.

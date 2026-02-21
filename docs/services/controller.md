@@ -1,27 +1,23 @@
 # Controller Service
 
-> The central orchestration service — detects USB microphones, manages the device inventory, dynamically starts/stops Tier 2 containers via the Podman REST API, and exposes an operational API for immediate control commands.
+> The central orchestration service — detects USB microphones, manages the device inventory, and dynamically starts/stops Tier 2 containers via the Podman REST API. Follows the State Reconciliation Pattern (DB desired state + Redis nudge).
 
-## Operational API (v0.8.0)
+## Control Flow — State Reconciliation Pattern
 
-The Controller exposes a small operational API on port `9100` for the Web-Interface to issue immediate actions:
+The Controller has **no HTTP API** beyond the `/healthy` health endpoint. Control is exclusively declarative:
 
-| Endpoint                     | Method | Purpose                                           |
-| ---------------------------- | ------ | ------------------------------------------------- |
-| `/healthy`                   | GET    | Health check (existing — see Service Blueprint)   |
-| `/api/v1/services`           | GET    | List all managed Tier 2 services and their status |
-| `/api/v1/stop/<instance_id>` | POST   | Immediately stop a Tier 2 container               |
-| `/api/v1/reconcile`          | POST   | Trigger immediate reconciliation cycle            |
+1. **Web-Interface** writes desired state to the database (e.g., `enabled=false` in `system_services`).
+2. **Web-Interface** sends `PUBLISH silvasonic:nudge "reconcile"` — a simple wake-up signal.
+3. **Controller** wakes up, reads DB, compares desired vs. actual state, acts via `podman-py`.
+
+```
+Web-Interface ──[DB Write]──► Database (desired state)
+Web-Interface ──[PUBLISH]──► silvasonic:nudge ──► Controller
+Controller ──[reconcile()]──► Podman ──► start/stop containers
+```
 
 > [!NOTE]
-> This is **not** a full management REST API. CRUD operations on Devices, Profiles, and configuration are handled by the Web-Interface's own FastAPI backend. The Controller API is limited to operational commands that require Podman socket access.
-
-## Control Flow
-
-*   **Config changes** (enable/disable service, change profile): Web-Interface writes to DB → Controller reconciles on next loop (~30s).
-*   **Immediate actions** (emergency stop, force reconcile): Web-Interface calls Controller API → Controller acts via `podman-py`.
-
-See [ADR-0017](../adr/0017-service-state-management.md) and [Messaging Patterns](../arch/messaging_patterns.md) for details.
+> If the nudge is lost (Controller restarting), the 30s reconciliation timer catches up automatically. The DB desired state is never lost — this makes the pattern robust against Controller restarts.
 
 ## Full Documentation
 

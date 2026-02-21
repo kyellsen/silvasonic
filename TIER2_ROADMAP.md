@@ -42,8 +42,9 @@
   - Environment variables, devices, mounts (with RO/RW distinction per ADR-0009)
   - Restart policy (`on-failure`, max 5 retries)
   - Network name (from `SILVASONIC_NETWORK`)
+  - Resource limits: `memory_limit`, `cpu_limit`, `oom_score_adj` (ADR-0020)
 - [ ] Create `silvasonic/controller/container_manager.py`:
-  - `start(spec: Tier2ServiceSpec) → Container` — calls `podman.containers.run()`
+  - `start(spec: Tier2ServiceSpec) → Container` — calls `podman.containers.run()` with resource limits
   - `stop(name: str)` — sends SIGTERM, waits for graceful shutdown
   - `list_managed() → list[Container]` — queries `io.silvasonic.owner=controller`
   - `reconcile()` — compares desired state vs. actual, adopts or cleans up
@@ -104,11 +105,12 @@
 
 ## Out of Scope (Deferred)
 
-| Item                                            | Target Version              |
-| ----------------------------------------------- | --------------------------- |
-| Actual audio recording (`recorder/__main__.py`) | v0.4.0                      |
-| USB HotPlug detection                           | v0.4.0                      |
-| Resource limits (CPU/RAM)                       | Future (not needed for MVP) |
-| Uploader, BirdNET, BatDetect as Tier 2          | v0.6.0+                     |
-| Icecast live Opus stream (Recorder → Icecast)   | v0.9.0                      |
-| Quadlet generation for production               | v1.0.0                      |
+| Item                                            | Target Version |
+| ----------------------------------------------- | -------------- |
+| Actual audio recording (`recorder/__main__.py`) | v0.4.0         |
+| USB HotPlug detection                           | v0.4.0         |
+| Uploader, BirdNET, BatDetect as Tier 2          | v0.6.0+        |
+| Icecast live Opus stream (Recorder → Icecast)   | v0.9.0         |
+| Quadlet generation for production               | v1.0.0         |
+
+> **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 2 as part of the `Tier2ServiceSpec` model. See [ADR-0020](docs/adr/0020-resource-limits-qos.md).

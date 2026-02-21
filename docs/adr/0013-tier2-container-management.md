@@ -175,6 +175,10 @@ container = podman.containers.run(
     },
     restart_policy={"Name": "on-failure", "MaximumRetryCount": 5},
     privileged=True,
+    # Resource Limits & QoS (ADR-0020)
+    mem_limit="512m",
+    cpu_quota=100_000,       # 1.0 CPU
+    oom_score_adj=-999,      # Protected: OOM Killer kills this LAST
 )
 ```
 
@@ -201,6 +205,10 @@ container = podman.containers.run(
         "io.silvasonic.service": "birdnet",
     },
     restart_policy={"Name": "on-failure", "MaximumRetryCount": 5},
+    # Resource Limits & QoS (ADR-0020)
+    mem_limit="1g",
+    cpu_quota=100_000,       # 1.0 CPU
+    oom_score_adj=500,       # Expendable: OOM Killer kills this FIRST
 )
 ```
 
@@ -225,6 +233,12 @@ logs = container.logs(stdout=True, stderr=True, tail=100)
 for line in logs:
     log.debug("tier2_log", container=container.name, line=line.decode())
 ```
+
+### Resource Limits & QoS
+
+Every `containers.run()` call **MUST** include resource limit parameters. The Controller enforces memory caps (`mem_limit`), CPU quotas (`cpu_quota`), and OOM priority (`oom_score_adj`) on all Tier 2 containers. This prevents analysis workers (BirdNET, BatDetect) from exhausting system memory and triggering the Linux OOM Killer against the Recorder.
+
+See [ADR-0020](0020-resource-limits-qos.md) for the full resource budget, OOM priority hierarchy, and rationale.
 
 ## 6. Codebase Simplification (Podman-Only) — ✅ Completed
 
