@@ -1,30 +1,30 @@
 # Controller Service
 
-> **Tier:** 1 (Infrastructure) · **Port:** 9100 · **Status:** Scaffold
+> The central orchestration service — detects USB microphones, manages the device inventory, dynamically starts/stops Tier 2 containers via the Podman REST API, and exposes an operational API for immediate control commands.
 
-The Controller is the central orchestration service. It detects USB microphones, manages the device inventory, and dynamically starts/stops Tier 2 containers (Recorder, Uploader, etc.) via the Podman REST API.
+## Operational API (v0.8.0)
 
-For the full specification — including device state evaluation, enrollment state machine, reconciliation loop, and shutdown semantics — see:
+The Controller exposes a small operational API on port `9100` for the Web-Interface to issue immediate actions:
+
+| Endpoint                     | Method | Purpose                                           |
+| ---------------------------- | ------ | ------------------------------------------------- |
+| `/healthy`                   | GET    | Health check (existing — see Service Blueprint)   |
+| `/api/v1/services`           | GET    | List all managed Tier 2 services and their status |
+| `/api/v1/stop/<instance_id>` | POST   | Immediately stop a Tier 2 container               |
+| `/api/v1/reconcile`          | POST   | Trigger immediate reconciliation cycle            |
+
+> [!NOTE]
+> This is **not** a full management REST API. CRUD operations on Devices, Profiles, and configuration are handled by the Web-Interface's own FastAPI backend. The Controller API is limited to operational commands that require Podman socket access.
+
+## Control Flow
+
+*   **Config changes** (enable/disable service, change profile): Web-Interface writes to DB → Controller reconciles on next loop (~30s).
+*   **Immediate actions** (emergency stop, force reconcile): Web-Interface calls Controller API → Controller acts via `podman-py`.
+
+See [ADR-0017](../adr/0017-service-state-management.md) and [Messaging Patterns](../arch/messaging_patterns.md) for details.
+
+## Full Documentation
+
+Die vollständige Dokumentation befindet sich im Service-Verzeichnis:
 
 - **[Controller README](../../services/controller/README.md)** — Primary specification
-
-## API
-
-The Controller itself does **not** expose a REST API for external consumers. Device and profile management endpoints will be provided by the **Web-Interface** service (FastAPI + Swagger) in a future version (see [ADR-0003](../adr/0003-frontend-architecture.md), [VISION.md](../../VISION.md) v0.6.0).
-
-The Controller exposes only a health endpoint on port `9100` (`/healthy`).
-
-## Configuration
-
-| Variable                     | Description                               | Default                   |
-| ---------------------------- | ----------------------------------------- | ------------------------- |
-| `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                    |
-| `CONTAINER_SOCKET`           | Path to Podman socket inside container    | `/var/run/container.sock` |
-| `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`          |
-
-## References
-
-- [Controller README](../../services/controller/README.md) — Full specification
-- [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
-- [ADR-0016: Hybrid YAML/DB Profiles](../adr/0016-hybrid-yaml-db-profiles.md)
-- [Port Allocation](../arch/port_allocation.md)

@@ -49,6 +49,7 @@ Agents should prioritize the following libraries for their respective domains to
 * **Core/Config:** `pydantic` (V2), `pyYAML` (strictly `safe_load`)
 * **Logging:** `structlog` (Output JSON for container aggregation) / `logging` + `rich` (for human)
 * **Database:** `sqlalchemy` (2.0+ async mode), `asyncpg`
+* **Redis:** `redis-py` (async mode, for heartbeat publishing — see ADR-0019)
 * **API/Web:** `fastapi` (for web-interface and status-board frontends, not for backend-only services like controller)
 * **Data Processing:** `numpy` (Audio matrices), `polars` (Tabular data, strictly avoid `pandas` for memory efficiency)
 * **System/Audio:** `psutil`, `soundfile`

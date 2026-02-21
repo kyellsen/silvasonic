@@ -1,6 +1,6 @@
 # Tier 2 Container Management — Implementation Roadmap
 
-> **Target:** v0.2.0 — Controller manages Recorder lifecycle (start/stop)
+> **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop)
 >
 > **References:** [ADR-0013](docs/adr/0013-tier2-container-management.md), [ADR-0007 §6](docs/adr/0007-rootless-os-compliance.md), [ADR-0009](docs/adr/0009-zero-trust-data-sharing.md), [VISION.md](VISION.md)
 
@@ -80,6 +80,7 @@
 - [ ] Implement basic USB microphone detection (or hardcoded device for MVP)
 - [ ] Connect `monitor_recorder_spawn()` to actual container health checks via `podman-py`
 - [ ] Implement Recorder health monitoring loop (check container status + health endpoint)
+- [ ] Add Redis heartbeat to Recorder (fire-and-forget via `SilvaService`, ADR-0019)
 - [ ] Integration test: Controller spawns Recorder container, verifies health, stops it
 
 ---
@@ -97,7 +98,7 @@
 - [ ] Test multi-instance: start 2 Recorders for different devices, verify labels
 - [ ] Implement log access via `podman-py` (`container.logs()`)
 - [ ] Update smoke tests to verify Controller ↔ Recorder lifecycle
-- [ ] Update `VISION.md` roadmap: mark v0.2.0 as 🔨 In Progress
+- [ ] Update `VISION.md` roadmap: mark v0.3.0 as 🔨 In Progress
 
 ---
 
@@ -105,9 +106,9 @@
 
 | Item                                            | Target Version              |
 | ----------------------------------------------- | --------------------------- |
-| Actual audio recording (`recorder/__main__.py`) | v0.2.5                      |
-| USB HotPlug detection                           | v0.2.5                      |
+| Actual audio recording (`recorder/__main__.py`) | v0.4.0                      |
+| USB HotPlug detection                           | v0.4.0                      |
 | Resource limits (CPU/RAM)                       | Future (not needed for MVP) |
-| Uploader, BirdNET, BatDetect as Tier 2          | v0.4.0+                     |
+| Uploader, BirdNET, BatDetect as Tier 2          | v0.6.0+                     |
 | Icecast live Opus stream (Recorder → Icecast)   | v0.9.0                      |
 | Quadlet generation for production               | v1.0.0                      |

@@ -1,6 +1,6 @@
 # ADR-0017: Service State Management — Desired vs. Actual State
 
-> **Status:** Accepted • **Date:** 2026-02-18
+> **Status:** Accepted • **Date:** 2026-02-18 • **Updated:** 2026-02-21
 
 ## 1. Context & Problem
 
@@ -10,11 +10,11 @@ Additionally, the Web-Interface needs real-time visibility into service health. 
 
 ## 2. Decision
 
-**We chose:** A strict separation of Desired State (database) and Actual State (Redis Pub/Sub).
+**We chose:** A strict separation of Desired State (database) and Actual State (Redis), with a **unified heartbeat pattern** for all services.
 
 **Reasoning:**
 
-### Desired State → Database (`system_services`)
+### Desired State → Database
 
 The `system_services` table holds **configuration and intent**:
 
@@ -23,21 +23,50 @@ The `system_services` table holds **configuration and intent**:
 
 This is written by admins or the Web-Interface and read by the Controller to determine what *should* be running.
 
-### Actual State → Redis Pub/Sub (v0.6.0)
+**Scope:** The `system_services` table is used for:
+*   **Tier 1 services** (Processor, Web-Interface, Icecast, etc.)
+*   **Tier 2 singletons** (BirdNET, BatDetect, Weather)
 
-Runtime health and activity (healthy, degraded, crashed, recording, idle) is **ephemeral** and published to Redis:
+For multi-instance Tier 2 services, the Controller derives desired state from domain tables:
+*   **Recorder:** `devices` + `microphone_profiles` (one Recorder per enrolled device)
+*   **Uploader:** `storage_remotes` (one Uploader per remote target)
 
-*   Each service publishes its own heartbeat to `silvasonic.status` (Redis Pub/Sub).
-*   The Controller publishes Tier 2 container status based on its `podman-py` reconciliation loop.
-*   The Web-Interface subscribes to `silvasonic.status` for real-time display — **no DB polling required**.
+### Actual State → Redis (v0.2.0)
 
-### No Separate Monitor Service
+Runtime health and activity is **ephemeral** and stored in Redis via two complementary mechanisms:
 
-Monitoring is distributed, not centralized:
+1.  **`SET silvasonic:status:<instance_id>`** with 30s TTL — current status snapshot, readable anytime.
+2.  **`PUBLISH silvasonic:status`** — live updates for subscribers (Web-Interface).
 
-*   **Controller** → Watches Tier 2 containers (podman-py, reconciliation loop, ADR-0013).
-*   **Each Service** → Publishes its own heartbeat to Redis.
-*   **Web-Interface** → Subscribes to Redis Pub/Sub, displays live dashboard.
+This is the **Read + Subscribe Pattern:** The Web-Interface reads all `silvasonic:status:*` keys on page load for the initial state, then subscribes to `silvasonic:status` for live updates. No missed heartbeats, no polling.
+
+### Unified Heartbeat — All Services, Including Recorder
+
+**Every** Python service publishes its own heartbeat to Redis via the `SilvaService` base class (see [ADR-0019](0019-unified-service-infrastructure.md)). This includes the Recorder.
+
+*   The heartbeat runs in an isolated `asyncio.Task`, completely decoupled from the service's core logic.
+*   `PUBLISH` and `SET` operations are fire-and-forget with a 50ms timeout.
+*   Any Redis failure is silently caught — the service continues without interruption.
+*   The recording loop has **zero coupling** to the heartbeat task.
+
+> [!IMPORTANT]
+> Redis is as stable as TimescaleDB on this hardware (same host, NVMe, no network). The fire-and-forget pattern is not motivated by distrust of Redis — it reflects the principle that a service's core function should never be blocked by a non-essential operation.
+
+### Control via Controller API (Not Redis)
+
+Control commands (stop, restart, reconcile) are routed through the **Controller's operational API** (HTTP), not through Redis:
+
+*   The Controller is the **only** service with Podman socket access — only it can start/stop containers.
+*   HTTP provides request-response (acknowledgment), unlike fire-and-forget Pub/Sub.
+*   Immutable services (Recorder, Workers) do not process runtime commands — they are stopped and restarted with new configuration by the Controller.
+
+For details see the Controller's operational API in [controller.md](../services/controller.md).
+
+### Monitoring: Distributed, Not Centralized
+
+*   **Each Service** → Publishes its own heartbeat to Redis (via `SilvaService`).
+*   **Controller** → Additionally publishes Tier 2 container status based on its `podman-py` reconciliation loop (for containers that may not have Redis connectivity yet during startup).
+*   **Web-Interface** → Subscribes to Redis, displays live dashboard.
 *   **Podman** → Restart policy (`on-failure`) as the last safety net.
 
 A dedicated Monitor service was rejected as over-engineering for a single-node edge device. External alerting (e-mail on failure) can be a future Web-Interface feature.
@@ -46,16 +75,21 @@ A dedicated Monitor service was rejected as over-engineering for a single-node e
 
 *   **Database-only (status + last_seen column):** Rejected. Requires DB polling for UI, adds write load for heartbeats, and mixes ephemeral runtime data with persistent configuration.
 *   **Redis-only (remove system_services):** Rejected. Desired state must survive Redis restarts. DB is the right home for configuration.
-*   **Separate Monitor service:** Rejected. Adds complexity without proportional value on a single-node device. The Controller already monitors Tier 2 via podman-py, and the Web-Interface can subscribe to Redis directly.
+*   **Separate Monitor service:** Rejected. Adds complexity without proportional value on a single-node device.
+*   **Redis Streams for lifecycle/control/audit:** Rejected. Lifecycle events are derivable from heartbeats, control flows through the Controller API, and business events (recording finished, upload completed) are already tracked in the DB. Four separate channels add complexity without proportional value — one Pub/Sub channel + key-value pattern covers all needs.
+*   **Recorder without Redis:** Rejected. Creates a non-uniform pattern where the Controller must proxy Recorder status. With fire-and-forget heartbeats, the Recorder's core function is completely unaffected, and the Web-Interface gets direct, real-time status from all services.
 
 ## 4. Consequences
 
 *   **Positive:**
     *   Clear semantic split: DB = "what should be", Redis = "what is".
-    *   Web-Interface gets real-time status from day one (v0.6.0) via Pub/Sub — no DB polling.
+    *   **Unified pattern:** Every service uses the same `SilvaService` heartbeat — no special cases.
+    *   Web-Interface gets real-time status from day one (v0.8.0) via Read + Subscribe — no DB polling, no missed heartbeats.
     *   No separate Monitor service — fewer containers, less complexity.
     *   `system_services` table schema unchanged — only its semantics are clarified.
+    *   Minimal Redis footprint: one Pub/Sub channel + N keys with TTL. No Streams, no Consumer Groups.
 *   **Negative:**
-    *   Redis becomes a dependency for live status visibility (but not for recording or data integrity).
+    *   Redis becomes a dependency for live status visibility (but not for recording, analysis, or data integrity).
     *   If Redis is down, the Web-Interface loses real-time status. Desired state from DB remains accessible.
     *   No persistent history of runtime state (heartbeats are ephemeral). If needed later, an audit trail can be added to the DB.
+    *   `redis-py` becomes a dependency for all services (including Recorder). The library is ~60 KB pure Python with zero C dependencies.

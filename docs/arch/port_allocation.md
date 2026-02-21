@@ -7,6 +7,7 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 | Service               | Internal Port | Host Port (Dev) | `.env` Variable                 |
 | --------------------- | ------------- | --------------- | ------------------------------- |
 | **TimescaleDB**       | 5432          | 5432            | `SILVASONIC_DB_PORT`            |
+| **Redis**             | 6379          | 6379            | `SILVASONIC_REDIS_PORT`         |
 | **Controller**        | 9100          | 9100            | `SILVASONIC_CONTROLLER_PORT`    |
 | **Recorder** (Health) | 9500          | —               | — (internal only)               |
 | Gateway (Caddy) HTTP  | 80            | 80              | `SILVASONIC_GATEWAY_HTTP_PORT`  |

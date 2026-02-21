@@ -41,21 +41,21 @@ The system is composed of containerized services organized into two tiers.
 
 ### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
-| Service        | Role                                                                                                                   | Criticality             |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                                    | Critical                |
-| **redis**      | Message broker for real-time heartbeats, pub/sub events, and service control                                           | Critical                |
-| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                                  | Critical                |
-| **controller** | Hardware/Container manager. Dynamically detects USB microphones and manages service lifecycles                         | Critical                |
-| **processor**  | Data Ingestion, Indexing, and Janitor. Clean-up logic is critical for survival                                         | Critical                |
-| **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients | Life Support / Optional |
+| Service        | Role                                                                                                                                  | Criticality             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                                                   | Critical                |
+| **redis**      | Status bus — Pub/Sub heartbeats, Key-Value status cache for unified service health reporting (ADR-0019)                               | Life Support            |
+| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                                                 | Critical                |
+| **controller** | Hardware/Container manager. Detects USB microphones, manages service lifecycles, and exposes operational API for control              | Critical                |
+| **processor**  | Data Ingestion, Indexing, and Janitor. Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival | Critical                |
+| **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                | Life Support / Optional |
 
 | **web-interface** | Local management console. During development: lightweight status-board dashboard. In production: full management console | Life Support / Optional |
 | **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                       | Life Support / Optional |
 
 ### Tier 2: Application (Managed by Controller)
 
-> **ALL TIER 2 CONTAINERS ARE IMMUTABLE!**
+> **ALL TIER 2 CONTAINERS ARE IMMUTABLE!** The Processor (Tier 1) is also immutable — see [ADR-0019](docs/adr/0019-unified-service-infrastructure.md).
 
 | Service       | Role                                                                                                                                                                                                                | Criticality      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
@@ -88,22 +88,22 @@ Silvasonic supports two deployment models:
 
 ## Roadmap
 
-| Version    | Milestone                                                                                                                   | Status    |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **v0.1.0** | Foundation — Repo structure, core pkg, DB, Controller & Recorder (placeholder), test suite, CI pipeline, docs, ADRs, Podman | ✅ Current |
-| v0.2.0     | Controller manages Recorder lifecycle (start/stop)                                                                          | ⏳ Planned |
-| v0.2.5     | Recorder writes .wav files, HotPlug USB mic support                                                                         | ⏳ Planned |
-| v0.3.0     | Processor service (Ingestion, Indexing, Janitor)                                                                            | ⏳ Planned |
-| v0.4.0     | Uploader (immutable Tier 2, Controller-managed)                                                                             | ⏳ Planned |
-| v0.5.0     | Gateway (Caddy reverse proxy, HTTPS)                                                                                        | ⏳ Planned |
-| v0.6.0     | Redis, Web-Interface — Real-time status dashboard, service control via Redis Pub/Sub                                        | ⏳ Planned |
-| v0.7.0     | Web-Interface improvements — Extended management console, alerting                                                          | ⏳ Planned |
-| v0.9.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                             | ⏳ Planned |
-| v1.0.0     | MVP — Production-ready field deployment (Podman Quadlets, Ansible)                                                          | ⏳ Planned |
-| v1.1.0     | BirdNET — On-device avian species classification                                                                            | ⏳ Planned |
-| v1.2.0     | Weather — Environmental data correlation                                                                                    | ⏳ Planned |
-| v1.3.0     | BatDetect — On-device bat species classification                                                                            | ⏳ Planned |
-| v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                       | ⏳ Planned |
+| Version    | Milestone                                                                                                                                                                                  | Status    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| **v0.1.0** | Foundation — Repo structure, core pkg, DB, Controller & Recorder (placeholder), test suite, CI pipeline, docs, ADRs, Podman                                                                | ✅ Current |
+| v0.2.0     | Service Infrastructure — Redis container, `SilvaService` base class, `core.service`, `core.redis`, `core.heartbeat`. All services inherit unified lifecycle. Heartbeats go live (ADR-0019) | ⏳ Planned |
+| v0.3.0     | Controller manages Recorder lifecycle (start/stop via `podman-py`, reconciliation loop, Profile Injection)                                                                                 | ⏳ Planned |
+| v0.4.0     | Recorder writes .wav files (Dual Stream), HotPlug USB mic support                                                                                                                          | ⏳ Planned |
+| v0.5.0     | Processor service (Ingestion, Indexing, Janitor — immutable Tier 1)                                                                                                                        | ⏳ Planned |
+| v0.6.0     | Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)                                                                                                             | ⏳ Planned |
+| v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                         | ⏳ Planned |
+| v0.8.0     | Web-Interface — Controller operational API, real-time status dashboard (Read+Subscribe), service control                                                                                   | ⏳ Planned |
+| v0.9.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                                                                                            | ⏳ Planned |
+| v1.0.0     | MVP — Production-ready field deployment (Podman Quadlets, Ansible)                                                                                                                         | ⏳ Planned |
+| v1.1.0     | BirdNET — On-device avian species classification                                                                                                                                           | ⏳ Planned |
+| v1.2.0     | Weather — Environmental data correlation                                                                                                                                                   | ⏳ Planned |
+| v1.3.0     | BatDetect — On-device bat species classification                                                                                                                                           | ⏳ Planned |
+| v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                                                                                      | ⏳ Planned |
 
 ---
 

@@ -66,7 +66,7 @@ On startup, the Controller reconciles desired vs. actual state by querying conta
 Tier 2 containers join the **same custom network** as Tier 1 services. This is required because:
 
 *   The Controller must reach Tier 2 health endpoints (container-internal IP + port, **no host port exposure**).
-*   Future Tier 2 services (Uploader, BirdNET, BatDetect) need access to the database and Redis.
+*   Future Tier 2 services (Uploader, BirdNET, BatDetect) need access to the database and Redis. All Tier 2 services publish heartbeats to Redis via the unified `SilvaService` pattern (see [ADR-0019](0019-unified-service-infrastructure.md)).
 *   The Recorder itself has minimal network needs (health endpoint only), but a unified network simplifies the architecture.
 
 The network name is passed to the Controller via the `SILVASONIC_NETWORK` environment variable. The `compose.yml` sets an explicit `name:` on the network definition to prevent Compose project-prefix ambiguity.

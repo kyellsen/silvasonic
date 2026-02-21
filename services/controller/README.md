@@ -2,9 +2,9 @@
 
 > **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 
-The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`).
+The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`), and exposes an operational API for immediate control commands.
 
-> **Implementation Status:** Scaffold (v0.1.0). Health monitoring is implemented. Tier 2 management is planned for v0.2.0.
+> **Implementation Status:** Scaffold (v0.1.0). Health monitoring is implemented. Tier 2 management is planned for v0.3.0.
 
 ---
 
@@ -67,7 +67,7 @@ io.silvasonic.profile: <profile_slug>
 
 On startup, the Controller queries all containers with `io.silvasonic.owner=controller` and adopts them without restarting — ensuring Data Capture Integrity across Controller restarts.
 
-> **⏳ Planned** (v0.2.0) — See [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md).
+> **⏳ Planned** (v0.3.0) — See [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md).
 
 ---
 
@@ -96,16 +96,64 @@ Profiles are bootstrapped from YAML seed files into the database on every Contro
 
 ---
 
+## Operational API
+
+The Controller exposes a small HTTP API on port `9100` for the Web-Interface to issue immediate operational commands:
+
+| Endpoint                     | Method | Purpose                                           |
+| ---------------------------- | ------ | ------------------------------------------------- |
+| `/healthy`                   | GET    | Health check (existing)                           |
+| `/api/v1/services`           | GET    | List all managed Tier 2 services and their status |
+| `/api/v1/stop/<instance_id>` | POST   | Immediately stop a Tier 2 container               |
+| `/api/v1/reconcile`          | POST   | Trigger immediate reconciliation cycle            |
+
+This is **not** a full management REST API. CRUD operations on Devices, Profiles, and configuration are handled by the Web-Interface's own FastAPI backend. The Controller API is limited to operational commands that require Podman socket access.
+
+### Control Flow
+
+*   **Config changes** (enable/disable, change profile): Web-Interface → DB → Controller reconciles (~30s)
+*   **Immediate actions** (emergency stop): Web-Interface → Controller API → Podman
+
+See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
+
+> ⏳ **Planned** (v0.8.0)
+
+---
+
+## Redis: Heartbeat + Status Aggregator
+
+The Controller publishes its own heartbeat like every service (via `SilvaService`, see [ADR-0019](../../docs/adr/0019-unified-service-infrastructure.md)).
+
+Additionally, it acts as a **status aggregator** for Tier 2 containers that may not have established their Redis connection yet (e.g., during startup). The Controller queries Tier 2 health endpoints via `podman-py` and publishes their status to Redis on their behalf until they report independently.
+
+---
+
 ## Implementation Status
 
 | Feature                  | Status                                                            |
 | ------------------------ | ----------------------------------------------------------------- |
 | Health monitoring        | ✅ Implemented (database connectivity, recorder spawn placeholder) |
-| Podman socket connection | ⏳ Planned (v0.2.0 Phase 1)                                        |
-| Container lifecycle mgmt | ⏳ Planned (v0.2.0 Phase 2)                                        |
-| USB microphone detection | ⏳ Planned (v0.2.0 Phase 3)                                        |
-| Reconciliation loop      | ⏳ Planned (v0.2.0 Phase 2)                                        |
+| Podman socket connection | ⏳ Planned (v0.3.0 Phase 1)                                        |
+| Container lifecycle mgmt | ⏳ Planned (v0.3.0 Phase 2)                                        |
+| USB microphone detection | ⏳ Planned (v0.3.0 Phase 3)                                        |
+| Reconciliation loop      | ⏳ Planned (v0.3.0 Phase 2)                                        |
 | Profile bootstrapper     | ⏳ Planned (ADR-0016)                                              |
+| Operational API          | ⏳ Planned (v0.8.0)                                                |
+| Redis heartbeat + agg.   | ⏳ Planned (v0.2.0, ADR-0019)                                      |
+
+---
+
+## API
+
+The Controller exposes an **operational API** on port `9100` for immediate control commands (see §Operational API above). Device and profile management endpoints are provided by the **Web-Interface** service (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)).
+
+## Configuration
+
+| Variable                     | Description                               | Default                   |
+| ---------------------------- | ----------------------------------------- | ------------------------- |
+| `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                    |
+| `CONTAINER_SOCKET`           | Path to Podman socket inside container    | `/var/run/container.sock` |
+| `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`          |
 
 ---
 

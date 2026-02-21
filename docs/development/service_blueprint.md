@@ -69,41 +69,42 @@ The new service **must** be registered in the root `pyproject.toml`:
 
 ## 3. Service Lifecycle (`__main__.py`)
 
-Every service **must** follow this exact async lifecycle:
+Every service **must** use the `SilvaService` base class (see [ADR-0019](../adr/0019-unified-service-infrastructure.md)):
 
 ```python
 import asyncio
-import signal
-from silvasonic.core.logging import configure_logging
-from silvasonic.core.health import HealthMonitor, start_health_server
+from silvasonic.core.service import SilvaService
 
 async def main() -> None:
     """Start the <name> service."""
+    service = SilvaService(
+        name="<name>",
+        instance_id="<name>",  # Multi-instance: use device/remote ID
+        port=<PORT>,
+    )
+
     # 1. Logging — MUST be first
-    configure_logging("<name>")
+    service.configure_logging()
 
-    # 2. Health Server — MUST be started before any work
-    start_health_server(port=<PORT>)
+    # 2. Health Server — HTTP /healthy (Podman/Compose probes)
+    service.start_health_server()
 
-    # 3. Background Health Monitors — use asyncio.create_task()
+    # 3. Redis Connection — best-effort, non-blocking
+    await service.connect_redis()
+
+    # 4. Heartbeat Loop — fire-and-forget, every 10s
+    service.start_heartbeat()
+
+    # 5. Background Health Monitors — use asyncio.create_task()
     #    MUST keep strong references to prevent GC
     _task = asyncio.create_task(monitor_something())
     background_tasks = {_task}
     _task.add_done_callback(background_tasks.discard)
 
-    # 4. Service Logic — your domain code here
+    # 6. Service-specific Logic — your domain code here
 
-    # 5. Graceful Shutdown — MUST handle SIGTERM + SIGINT
-    stop_event = asyncio.Event()
-
-    def handle_signal():
-        stop_event.set()
-
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGTERM, handle_signal)
-    loop.add_signal_handler(signal.SIGINT, handle_signal)
-
-    await stop_event.wait()
+    # 7. Graceful Shutdown — SIGTERM + SIGINT
+    await service.wait_for_shutdown()
 
 
 if __name__ == "__main__":
@@ -113,6 +114,7 @@ if __name__ == "__main__":
 > [!IMPORTANT]
 > The order of these steps is **mandatory**. Logging must be configured before any
 > log output occurs. The health server must be ready before the orchestrator probes.
+> Redis connection and heartbeat are best-effort — failures are silently caught.
 
 
 ## 4. Shared Components from `silvasonic-core`
@@ -120,16 +122,19 @@ if __name__ == "__main__":
 Services **MUST NOT** reimplement any of the following. Import and use exclusively
 from `silvasonic.core`:
 
-| Module   | Import                                                     | Purpose                                        |
-| -------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| Logging  | `silvasonic.core.logging.configure_logging`                | Structured logging (Rich in dev, JSON in prod) |
-| Health   | `silvasonic.core.health.HealthMonitor`                     | Thread-safe singleton for component status     |
-| Health   | `silvasonic.core.health.start_health_server`               | Background HTTP server on `/healthy`           |
-| Settings | `silvasonic.core.settings.DatabaseSettings`                | Pydantic-based config from env vars            |
-| Database | `silvasonic.core.database.session.get_session`             | Async SQLAlchemy session (context manager)     |
-| Database | `silvasonic.core.database.session.get_db`                  | FastAPI dependency for DB sessions             |
-| Database | `silvasonic.core.database.check.check_database_connection` | Health probe for DB connectivity               |
-| Models   | `silvasonic.core.database.models.*`                        | Shared SQLAlchemy ORM models                   |
+| Module    | Import                                                     | Purpose                                        |
+| --------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| Service   | `silvasonic.core.service.SilvaService`                     | Unified lifecycle base class (ADR-0019)        |
+| Heartbeat | `silvasonic.core.heartbeat.HeartbeatPublisher`             | Async fire-and-forget Redis heartbeats         |
+| Redis     | `silvasonic.core.redis.get_redis_connection`               | Best-effort connect with auto-reconnect        |
+| Logging   | `silvasonic.core.logging.configure_logging`                | Structured logging (Rich in dev, JSON in prod) |
+| Health    | `silvasonic.core.health.HealthMonitor`                     | Thread-safe singleton for component status     |
+| Health    | `silvasonic.core.health.start_health_server`               | Background HTTP server on `/healthy`           |
+| Settings  | `silvasonic.core.settings.DatabaseSettings`                | Pydantic-based config from env vars            |
+| Database  | `silvasonic.core.database.session.get_session`             | Async SQLAlchemy session (context manager)     |
+| Database  | `silvasonic.core.database.session.get_db`                  | FastAPI dependency for DB sessions             |
+| Database  | `silvasonic.core.database.check.check_database_connection` | Health probe for DB connectivity               |
+| Models    | `silvasonic.core.database.models.*`                        | Shared SQLAlchemy ORM models                   |
 
 
 ## 5. Containerfile

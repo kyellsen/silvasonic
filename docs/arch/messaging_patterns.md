@@ -21,12 +21,12 @@ To satisfy **Data Capture Integrity**, the system employs a **Hybrid Architectur
 > [!TIP]
 > The critical path has **zero dependency on Redis**. If Redis goes down, recording, ingestion, and analysis continue uninterrupted.
 
-### 1.2. The Interactive Path (Redis Pub/Sub, v0.6.0)
+### 1.2. The Interactive Path (Redis, v0.2.0+)
 
-**Philosophy:** Responsiveness for the User Interface. Ephemeral, best-effort.
+**Philosophy:** Responsiveness for the User Interface. Best-effort, but reliable in practice (Redis is as stable as the database on this hardware).
 
-*   **Service Heartbeats → Web-Interface:** **Redis Pub/Sub** (`silvasonic.status`). Each service publishes periodic heartbeats; the Web-Interface subscribes for real-time display.
-*   **Service Control:** **Redis Streams** (`stream:control`). The Web-Interface publishes commands (e.g., restart service); targeted services consume and execute them.
+*   **Service Heartbeats → Web-Interface:** Every service publishes periodic heartbeats to Redis. The Web-Interface uses the **Read + Subscribe Pattern** for real-time display (see §4).
+*   **Service Control → Controller API:** The Web-Interface sends control commands (stop, restart, reconcile) to the Controller's operational API via HTTP. The Controller executes them via Podman. See [ADR-0017](../adr/0017-service-state-management.md).
 
 > [!IMPORTANT]
 > The interactive path is **best-effort**. If Redis is unavailable, the Web-Interface loses real-time status, but all critical operations (recording, analysis, upload) continue via the filesystem/DB path.
@@ -37,115 +37,105 @@ To satisfy **Data Capture Integrity**, the system employs a **Hybrid Architectur
 
 See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
-| Dimension                  | Storage                             | Written By                | Read By       |
-| -------------------------- | ----------------------------------- | ------------------------- | ------------- |
-| **Desired State** (config) | `system_services` table (DB)        | Admin / Web-Interface     | Controller    |
-| **Actual State** (runtime) | Redis Pub/Sub (`silvasonic.status`) | Each service / Controller | Web-Interface |
+| Dimension                  | Storage                                    | Written By                        | Read By       |
+| -------------------------- | ------------------------------------------ | --------------------------------- | ------------- |
+| **Desired State** (config) | `system_services` table (DB)               | Admin / Web-Interface             | Controller    |
+| **Actual State** (runtime) | Redis: `SET` with TTL + `PUBLISH` (see §3) | Each service (via `SilvaService`) | Web-Interface |
 
 ---
 
-## 3. Redis Channel Namespace
+## 3. Redis Usage — Minimal and Unified
 
-> **Status:** Planned (v0.6.0)
+> **Status:** Planned (v0.2.0)
 
-| Type          | Key / Channel       | Purpose                                                     |
-| :------------ | :------------------ | :---------------------------------------------------------- |
-| **Status**    | `silvasonic.status` | Pub/Sub: Service heartbeats. Web-Interface subscribes here. |
-| **Lifecycle** | `stream:lifecycle`  | Stream: Service startup, shutdown, and crash events.        |
-| **Control**   | `stream:control`    | Stream: Commands targeted at specific services.             |
-| **Audit**     | `stream:audit`      | Stream: Business events (e.g., "Recording Finished").       |
+Redis serves exactly **two purposes** for Silvasonic:
 
----
+| Mechanism                     | Redis Command                             | Purpose                                                     |
+| :---------------------------- | :---------------------------------------- | :---------------------------------------------------------- |
+| **Current Status** (snapshot) | `SET silvasonic:status:<id> <json> EX 30` | Readable anytime. 30s TTL — key disappears if service stops |
+| **Live Updates** (push)       | `PUBLISH silvasonic:status <json>`        | Real-time notification for subscribers (Web-Interface)      |
 
-## 4. Instance ID Convention
+No Redis Streams, no Consumer Groups, no additional channels.
+
+### Instance ID Convention
 
 Services are identified by a combination of `service` (type) and `instance_id` (unique instance):
 
-| Service Type              | `instance_id`            | Example                                     |
-| ------------------------- | ------------------------ | ------------------------------------------- |
-| Tier 1 Singletons         | `= service name`         | `"controller"`, `"database"`, `"processor"` |
-| Recorder (multi-instance) | `= devices.name`         | `"ultramic-01"`, `"usb-mic-garden"`         |
-| Uploader (multi-instance) | `= storage_remotes.slug` | `"nextcloud-main"`, `"s3-backup"`           |
-| Tier 2 Singletons         | `= service name`         | `"birdnet"`, `"batdetect"`                  |
+| Service Type              | `instance_id`            | Key Example                        |
+| ------------------------- | ------------------------ | ---------------------------------- |
+| Tier 1 Singletons         | `= service name`         | `silvasonic:status:controller`     |
+| Recorder (multi-instance) | `= devices.name`         | `silvasonic:status:ultramic-01`    |
+| Uploader (multi-instance) | `= storage_remotes.slug` | `silvasonic:status:nextcloud-main` |
+| Tier 2 Singletons         | `= service name`         | `silvasonic:status:birdnet`        |
 
 ---
 
-## 5. Payload Schemas
+## 4. Read + Subscribe Pattern
 
-> **Status:** Planned (v0.6.0)
+The Web-Interface uses a two-step pattern to ensure no heartbeats are missed:
 
-All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-0012](../adr/0012-use-pydantic.md)).
+```
+1. On page load:   KEYS silvasonic:status:*  →  read all current statuses
+2. Then:           SUBSCRIBE silvasonic:status  →  receive live updates
+```
 
-### 5.1 Status Schema
+This solves the inherent problem of Pub/Sub (fire-and-forget): if the Web-Interface subscribes *after* a heartbeat was published, it would miss the latest status. The `SET` with TTL ensures the current snapshot is always available.
 
-*Channel:* `silvasonic.status` (Pub/Sub)
+---
+
+## 5. Heartbeat Payload Schema
+
+> **Status:** Planned (v0.2.0)
+
+**Every** service uses the same JSON schema, published by the `SilvaService` base class (see [ADR-0019](../adr/0019-unified-service-infrastructure.md)):
 
 ```json
 {
-  "topic": "status",
   "service": "recorder",
   "instance_id": "ultramic-01",
   "timestamp": 1706612400.123,
-  "payload": {
-    "health": "healthy",
-    "activity": "recording",
-    "meta": { "db_level": -45.2 }
-  }
+  "health": {
+    "status": "ok",
+    "components": {
+      "recording": { "healthy": true, "details": "" },
+      "disk_space": { "healthy": true, "details": "82% free" }
+    }
+  },
+  "activity": "recording",
+  "meta": { "db_level": -45.2 }
 }
 ```
 
-### 5.2 Lifecycle Schema
-
-*Key:* `stream:lifecycle` (Stream)
-
-```json
-{
-  "topic": "lifecycle",
-  "event": "started",
-  "service": "processor",
-  "instance_id": "processor",
-  "timestamp": 1706612405.0,
-  "payload": { "reason": "Process initialized" }
-}
-```
-
-### 5.3 Control Schema
-
-*Key:* `stream:control` (Stream)
-
-```json
-{
-  "topic": "control",
-  "command": "restart_service",
-  "initiator": "web-interface",
-  "target_service": "recorder",
-  "target_instance": "ultramic-01",
-  "timestamp": 1706612500.0,
-  "payload": { "force": true }
-}
-```
-
-### 5.4 Audit Schema
-
-*Key:* `stream:audit` (Stream)
-
-```json
-{
-  "topic": "audit",
-  "event": "recording.finished",
-  "service": "recorder",
-  "instance_id": "ultramic-01",
-  "timestamp": 1706612600.0,
-  "payload": {
-    "filename": "2024-01-30_12-00-00.wav",
-    "duration": 60.0
-  }
-}
-```
+All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-0012](../adr/0012-use-pydantic.md)).
 
 ---
 
-## 6. Communication Flow Overview
+## 6. Control Flow
+
+Control commands are routed through the **Controller's operational API** (HTTP), not through Redis:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Config Change (eventual consistency, ~30s)                      │
+│                                                                  │
+│  Web-Interface ──[DB Write]──► Database                          │
+│  Controller ──[Reconciliation Loop, 30s]──► reads DB, acts       │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  Immediate Action (request-response)                             │
+│                                                                  │
+│  Web-Interface ──[HTTP POST]──► Controller API                   │
+│  Controller ──[podman-py]──► Podman ──► Target Container         │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+> [!NOTE]
+> Immutable services (Recorder, Workers, Processor) do not process runtime commands. To change their configuration, the Controller stops and restarts them with updated environment variables.
+
+---
+
+## 7. Communication Flow Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -158,10 +148,10 @@ All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│ INTERACTIVE PATH (Redis Pub/Sub — best-effort, v0.6.0)      │
+│ INTERACTIVE PATH (Redis + Controller API, v0.2.0+)         │
 │                                                             │
 │  All Services ──[heartbeat]──► Redis ──► Web-Interface      │
-│  Web-Interface ──[command]──► Redis ──► Target Service      │
+│  Web-Interface ──[HTTP]──► Controller API ──► Podman        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,6 +161,7 @@ All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-
 
 *   [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 *   [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
+*   [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
 *   [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 *   [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
 *   [Filesystem Governance](filesystem_governance.md)

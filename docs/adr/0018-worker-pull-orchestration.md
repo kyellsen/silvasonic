@@ -63,4 +63,4 @@ The Processor does **not** track worker availability, assign jobs, or maintain a
     *   **Simple:** No job queue, no dispatcher, no worker registry.
 *   **Negative:**
     *   Workers must poll periodically (e.g., every 30s), adding minor DB query load.
-    *   No instant notification when new recordings are available — there is a polling delay. If needed in the future, a lightweight Redis notification (`PUBLISH`) can be added as an optimization without changing the core pull architecture.
+    *   No instant notification when new recordings are available — there is a polling delay. If needed in the future, a lightweight Redis notification (`PUBLISH`) can be added as an optimization without changing the core pull architecture. The unified heartbeat infrastructure ([ADR-0019](0019-unified-service-infrastructure.md)) provides the Redis connection for this.
