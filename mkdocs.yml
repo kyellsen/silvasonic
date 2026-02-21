@@ -21,7 +21,12 @@ nav:
       - Overview: services/README.md
       - Controller Service: services/controller.md
       - Database Service: services/database.md
+      - Gateway Service: services/gateway.md
+      - Processor Service: services/processor.md
       - Recorder Service: services/recorder.md
+      - BirdNET Service: services/birdnet.md
+      - BatDetect Service: services/batdetect.md
+      - Tailscale Service: services/tailscale.md
   - Deployment:
       - Setup & Initialization: deployment/setup.md
   - ADRs:
