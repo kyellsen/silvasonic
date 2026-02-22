@@ -89,28 +89,14 @@ Silvasonic supports two deployment models:
 
 ## Roadmap
 
-| Version    | Milestone                                                                                                                                                                                  | Status    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| **v0.1.0** | Foundation — Repo structure, core pkg, DB, Controller & Recorder (placeholder), test suite, CI pipeline, docs, ADRs, Podman                                                                | ✅ Current |
-| v0.2.0     | Service Infrastructure — Redis container, `SilvaService` base class, `core.service`, `core.redis`, `core.heartbeat`. All services inherit unified lifecycle. Heartbeats go live (ADR-0019) | ⏳ Planned |
-| v0.3.0     | Controller manages Recorder lifecycle (start/stop via `podman-py`, reconciliation loop, Profile Injection)                                                                                 | ⏳ Planned |
-| v0.4.0     | Recorder writes .wav files (Dual Stream), HotPlug USB mic support                                                                                                                          | ⏳ Planned |
-| v0.5.0     | Processor service (Ingestion, Indexing, Janitor — immutable Tier 1)                                                                                                                        | ⏳ Planned |
-| v0.6.0     | Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)                                                                                                             | ⏳ Planned |
-| v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                         | ⏳ Planned |
-| v0.8.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                | ⏳ Planned |
-| v0.9.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                                                                                            | ⏳ Planned |
-| v1.0.0     | MVP — Production-ready field deployment (Podman Quadlets, Ansible)                                                                                                                         | ⏳ Planned |
-| v1.1.0     | BirdNET — On-device avian species classification                                                                                                                                           | ⏳ Planned |
-| v1.2.0     | Weather — Environmental data correlation                                                                                                                                                   | ⏳ Planned |
-| v1.3.0     | BatDetect — On-device bat species classification                                                                                                                                           | ⏳ Planned |
-| v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                                                                                      | ⏳ Planned |
+For the milestone roadmap see **[ROADMAP.md](ROADMAP.md)**.
 
 ---
 
 ## See Also
 
 - **[README.md](README.md)** — Project overview, quick start, structure (human-facing)
+- **[ROADMAP.md](ROADMAP.md)** — Milestone roadmap (version targets & status)
 - **[AGENTS.md](AGENTS.md)** — Binding rules for AI coding assistants
 - **[docs/index.md](docs/index.md)** — Full technical documentation
 

@@ -1,4 +1,4 @@
-# Tier 2 Container Management — Implementation Roadmap
+# Milestone v0.3.0 — Tier 2 Container Management
 
 > **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop)
 >
@@ -99,7 +99,7 @@
 - [ ] Test multi-instance: start 2 Recorders for different devices, verify labels
 - [ ] Implement log access via `podman-py` (`container.logs()`)
 - [ ] Update smoke tests to verify Controller ↔ Recorder lifecycle
-- [ ] Update `VISION.md` roadmap: mark v0.3.0 as 🔨 In Progress
+- [ ] Update `ROADMAP.md`: mark v0.3.0 as 🔨 In Progress
 
 ---
 

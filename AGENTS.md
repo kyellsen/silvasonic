@@ -9,7 +9,7 @@
 
 > **AUTHORITY:** This document is the **single source of truth** for all AI agents working on this repository. `CLAUDE.md`, `.gemini/`, `.cursorrules` etc. are supplementary redirects that point here — never the reverse.
 
-👤 **Human?** Read **[README.md](README.md)** for overview and **[VISION.md](VISION.md)** for vision/roadmap.
+👤 **Human?** Read **[README.md](README.md)** for overview, **[VISION.md](VISION.md)** for vision/architecture, and **[ROADMAP.md](ROADMAP.md)** for the milestone roadmap.
 
 ## 1. Core Directive: Data Capture Integrity
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
@@ -35,7 +35,8 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 | Document                   | Role                              | Location          |
 | -------------------------- | --------------------------------- | ----------------- |
 | `README.md`                | AS-IS state + quickstart          | Root              |
-| `VISION.md`                | TO-BE vision + roadmap            | Root              |
+| `VISION.md`                | TO-BE vision + architecture       | Root              |
+| `ROADMAP.md`               | Milestone roadmap                 | Root              |
 | `AGENTS.md`                | Agent rules (this file, SoT)      | Root              |
 | `services/<svc>/README.md` | Implemented/partial service (SoT) | `services/<svc>/` |
 | `docs/services/<svc>.md`   | Planned service spec              | `docs/services/`  |
@@ -78,5 +79,6 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 ## See Also
 
 - **[README.md](README.md)** — Project overview, quick start
-- **[VISION.md](VISION.md)** — Vision, architecture, roadmap
+- **[VISION.md](VISION.md)** — Vision, architecture, design principles
+- **[ROADMAP.md](ROADMAP.md)** — Milestone roadmap
 - **[docs/index.md](docs/index.md)** — Full technical documentation

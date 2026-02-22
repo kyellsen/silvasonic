@@ -1,6 +1,6 @@
 # ADR-[Number]: [Short Title]
 
-> **Status:** [Accepted | Rejected | Deprecated] • **Date:** [YYYY-MM-DD]
+> **Status:** [Proposed | Accepted | Rejected | Deprecated] • **Date:** [YYYY-MM-DD]
 
 ## 1. Context & Problem
 [Description]

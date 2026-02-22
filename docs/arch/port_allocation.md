@@ -1,5 +1,8 @@
 # Port Allocation
 
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (v0.1.0) — Database (5432), Controller (9100), Recorder health (9500) are AS-IS; all others TO-BE
+> **Scope:** System-wide port scheme
+
 All Silvasonic services use a consistent port scheme. Ports are configured via `.env`.
 
 ## Port Table

@@ -77,4 +77,4 @@ In-memory data store serving as the real-time status bus for the Silvasonic ecos
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Heartbeat schema
 *   [Messaging Patterns](../arch/messaging_patterns.md) — Redis usage §3, Read+Subscribe §4
 *   [Glossary](../glossary.md) — canonical definitions
-*   [VISION.md](../../VISION.md) — roadmap entry (v0.2.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.2.0)

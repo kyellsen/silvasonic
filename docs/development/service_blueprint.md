@@ -189,7 +189,11 @@ CMD ["silvasonic.<name>"]
 
 ## 6. Compose Integration
 
-### `compose.yml`
+> **IMPORTANT**
+> Only **Tier 1 (Infrastructure)** services should be added to `compose.yml`.
+> Immutable **Tier 2 (Application)** containers (e.g., Recorder, Uploader, BirdNET) are managed dynamically by the Controller and **MUST NOT** be placed in `compose.yml`.
+
+### `compose.yml` (Tier 1 Only)
 
 Add a new service block following the established pattern:
 

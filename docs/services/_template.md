@@ -79,4 +79,4 @@ What does this service explicitly **NOT** do?
 
 *   [ADR-XXXX](../adr/XXXX-title.md) — …
 *   [Glossary](../glossary.md) — canonical definition
-*   [VISION.md](../../VISION.md) — roadmap entry
+*   [ROADMAP.md](../../ROADMAP.md) — milestone

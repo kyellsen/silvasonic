@@ -12,7 +12,7 @@ Silvasonic is a professional-grade, containerized recording system designed for 
 
 **Target Audience:** Researchers, conservationists, and bioacoustic enthusiasts requiring robust, unsupervised data collection.
 
-For the long-term vision, design philosophy, and roadmap see **[VISION.md](VISION.md)**.
+For the long-term vision and design philosophy see **[VISION.md](VISION.md)**. For the milestone roadmap see **[ROADMAP.md](ROADMAP.md)**.
 
 ---
 
@@ -43,7 +43,8 @@ just start              # start all services
 ```
 silvasonic/
 ├── AGENTS.md            # AI agent rules (binding for all AI tools)
-├── VISION.md            # Long-term vision & roadmap
+├── VISION.md            # Long-term vision & architecture
+├── ROADMAP.md           # Milestone roadmap (version targets & status)
 ├── compose.yml          # Container orchestration
 ├── justfile             # Developer commands (init, build, start, stop, clean, nuke)
 ├── docs/                # Single Source of Truth — architecture, ADRs, specs
@@ -63,10 +64,10 @@ The architecture is organized into **Tier 1** (Infrastructure, managed by Podman
 | Service        | Tier | Role                                                                      | Status     |
 | -------------- | ---- | ------------------------------------------------------------------------- | ---------- |
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                       | ✅ Running  |
-| **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration | ✅ Scaffold |
+| **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration | ✅ Partial  |
 | **recorder**   | 2    | Audio Capture — health monitoring, placeholder recording loop             | ✅ Scaffold |
 
-> For the full target architecture (13 services across two tiers) see **[VISION.md](VISION.md)**.
+> For the full target architecture (13 services across two tiers) see **[VISION.md](VISION.md)**. For version milestones see **[ROADMAP.md](ROADMAP.md)**.
 
 ---
 
@@ -75,7 +76,8 @@ The architecture is organized into **Tier 1** (Infrastructure, managed by Podman
 | Document                           | Audience    | Purpose                                                           |
 | ---------------------------------- | ----------- | ----------------------------------------------------------------- |
 | **[README.md](README.md)**         | 👤 Humans    | Project overview, quick start, structure                          |
-| **[VISION.md](VISION.md)**         | 👤 + 🤖       | Vision, services architecture, design philosophy, roadmap         |
+| **[VISION.md](VISION.md)**         | 👤 + 🤖       | Vision, services architecture, design philosophy                  |
+| **[ROADMAP.md](ROADMAP.md)**       | 👤 + 🤖       | Milestone roadmap (version targets & status)                      |
 | **[AGENTS.md](AGENTS.md)**         | 🤖 AI Agents | Binding rules, constraints & conventions for AI coding assistants |
 | **[docs/index.md](docs/index.md)** | 👤 + 🤖       | Full technical documentation (architecture, ADRs, specs)          |
 

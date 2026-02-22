@@ -127,7 +127,7 @@ Central persistent store for the Silvasonic system — relational metadata and t
 ## References
 
 - [Database Schema (DDL)](init/01-init-schema.sql) — SQL source of truth
-- [SQLAlchemy Models](../../packages/core/src/silvasonic_core/models/) — ORM mirror
+- [SQLAlchemy Models](../../packages/core/src/silvasonic/core/database/models/) — ORM mirror
 - [ADR-0006: Bind Mounts over Volumes](../../docs/adr/0006-bind-mounts-over-volumes.md) — Named Volume exception for database
 - [Port Allocation](../../docs/arch/port_allocation.md) — Database on port 5432
 - [Glossary](../../docs/glossary.md) — canonical definitions of all DB entities

@@ -2,7 +2,7 @@
 
 > **Status:** Partial (v0.1.0) · **Tier:** 2 (Application, Managed by Controller) · **Port:** 9500
 
-The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller. Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) planned for v0.9.0.
+The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller. Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) **TO-BE** v0.9.0.
 
 ---
 
@@ -15,7 +15,7 @@ The Recorder is the most critical service in the Silvasonic stack. It captures a
 ## User Benefit
 
 *   **Plug & Play:** Works with any ALSA-compatible USB microphone. Configuration is injected by the Controller via Microphone Profiles.
-*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording (v0.9.0).
+*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording (**TO-BE** v0.9.0).
 *   **Data Quality:** Raw files are untouched (24-bit, native sample rate), ensuring no data loss for downstream analysis.
 
 ---
@@ -44,14 +44,14 @@ The Recorder is an **immutable Tier 2** service. This means:
 *   **Dual Stream Architecture** (current target):
     1.  **Raw:** Preserves original sample rate and bit depth (`pcm_s24le`). Written to `raw/` directory.
     2.  **Processed:** Resamples to 48 kHz (`pcm_s16le`) for consistent ML input. Written to `processed/` directory.
-*   **Triple Stream Architecture** (v0.9.0):
+*   **Triple Stream Architecture** (**TO-BE** v0.9.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 *   **Watchdog:** Monitors the FFmpeg subprocess via `stderr` for errors, hangs, or death. Restarts the pipeline on failure.
 
 ### Outputs
 
 *   **Filesystem:** Segmented WAV files in `raw/` and `processed/` directories under the Recorder workspace on NVMe.
-*   **Icecast Stream:** (v0.9.0) Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
+*   **Icecast Stream:** (**TO-BE** v0.9.0) Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
 *   **Redis Heartbeats:** Fire-and-forget heartbeats via `SilvaService` base class (ADR-0019). Zero coupling to the recording loop — if Redis is unavailable, heartbeats are silently skipped.
 
 ---
@@ -137,7 +137,7 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 | Health server            | ✅ Implemented (`:9500/healthy`)                |
 | Recording health monitor | ✅ Implemented (placeholder, hardcoded healthy) |
 | Signal handling          | ✅ Implemented (graceful shutdown)              |
-| Audio capture logic      | ⏳ Planned (v0.4.0)                             |
+| Audio capture logic      | **TO-BE** (v0.4.0)                             |
 
 ---
 
@@ -152,4 +152,4 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 - [Microphone Profiles](../../docs/arch/microphone_profiles.md) — Profile seed files and format
 - [Port Allocation](../../docs/arch/port_allocation.md) — Recorder on port 9500
 - [Glossary](../../docs/glossary.md) — Dual/Triple Stream Architecture, Recorder definition
-- [VISION.md](../../VISION.md) — roadmap entries
+- [ROADMAP.md](../../ROADMAP.md) — roadmap entries

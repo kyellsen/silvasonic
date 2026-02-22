@@ -79,7 +79,7 @@ io.silvasonic.profile: <profile_slug>
 
 On startup, the Controller queries all containers with `io.silvasonic.owner=controller` and adopts them without restarting — ensuring Data Capture Integrity across Controller restarts.
 
-> **⏳ Planned** (v0.3.0) — See [Roadmap](../../docs/development/roadmap.md).
+> **TO-BE** (v0.3.0) — See [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md).
 
 ---
 
@@ -123,7 +123,7 @@ The Controller follows the **State Reconciliation Pattern** (inspired by Kuberne
 
 See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
 
-> ⏳ **Planned** (v0.3.0)
+> **TO-BE** (v0.3.0)
 
 ---
 
@@ -138,6 +138,14 @@ Additionally, it acts as a **status aggregator** for Tier 2 containers that may 
 ## Resource Limits & QoS Enforcement
 
 The Controller enforces **mandatory resource limits** on every Tier 2 container it spawns:
+
+### Container Operational Constraints & Rules
+
+Specific technical rules the Controller must obey:
+
+*   **Concurrency**: **Single Control Loop**. Avoids race conditions by serializing orchestration actions.
+*   **State**: **Stateless** (Authority is DB + Podman states).
+*   **Privileges**: **High Privilege**. Requires access to Podman Socket (Group `podman`).
 
 | Parameter       | Purpose                                | Example Values                     |
 | --------------- | -------------------------------------- | ---------------------------------- |
@@ -165,13 +173,13 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | Feature                  | Status                                                            |
 | ------------------------ | ----------------------------------------------------------------- |
 | Health monitoring        | ✅ Implemented (database connectivity, recorder spawn placeholder) |
-| Podman socket connection | ⏳ Planned (v0.3.0 Phase 1)                                        |
-| Container lifecycle mgmt | ⏳ Planned (v0.3.0 Phase 2)                                        |
-| USB microphone detection | ⏳ Planned (v0.3.0 Phase 3)                                        |
-| Reconciliation loop      | ⏳ Planned (v0.3.0 Phase 2)                                        |
-| Profile bootstrapper     | ⏳ Planned (ADR-0016)                                              |
-| Reconcile-nudge sub.     | ⏳ Planned (v0.3.0)                                                |
-| Redis heartbeat + agg.   | ⏳ Planned (v0.2.0, ADR-0019)                                      |
+| Podman socket connection | **TO-BE** (v0.3.0 Phase 1)                                        |
+| Container lifecycle mgmt | **TO-BE** (v0.3.0 Phase 2)                                        |
+| USB microphone detection | **TO-BE** (v0.3.0 Phase 3)                                        |
+| Reconciliation loop      | **TO-BE** (v0.3.0 Phase 2)                                        |
+| Profile bootstrapper     | **TO-BE** (ADR-0016)                                              |
+| Reconcile-nudge sub.     | **TO-BE** (v0.3.0)                                                |
+| Redis heartbeat + agg.   | **TO-BE** (v0.2.0, ADR-0019)                                      |
 
 ---
 
@@ -182,6 +190,8 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
 *   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
+*   **Core:** `silvasonic.core.service.SilvaService` (base class for Health check and Redis Publisher)
+*   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
 
 ---
 
@@ -215,7 +225,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 - [ADR-0017: Service State Management](../../docs/adr/0017-service-state-management.md)
 - [ADR-0019: Unified Service Infrastructure](../../docs/adr/0019-unified-service-infrastructure.md)
 - [ADR-0020: Resource Limits & QoS](../../docs/adr/0020-resource-limits-qos.md)
-- [Roadmap](../../docs/development/roadmap.md) — Step-by-step implementation plan
+- [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md) — Step-by-step implementation plan
 - [Messaging Patterns](../../docs/arch/messaging_patterns.md) — State Reconciliation Pattern, Nudge
 - [Port Allocation](../../docs/arch/port_allocation.md) — Controller on port 9100
 - [Microphone Profiles](../../docs/arch/microphone_profiles.md) — Profile seed files

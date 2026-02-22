@@ -10,7 +10,6 @@
 
 ## Services
 
-- [Services Overview](services/README.md) — All 13 services with status & links
 - [Controller](services/controller.md) · [Database](services/database.md) · [Recorder](services/recorder.md)
 - [Redis](services/redis.md) · [Processor](services/processor.md) · [Gateway](services/gateway.md)
 - [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md) · [Uploader](services/uploader.md)
@@ -27,7 +26,9 @@
 ## Development
 
 - [Development Guide](development/README.md)
-- [Roadmap](development/roadmap.md) — Concrete implementation plan (phases, tasks, milestones)
+- [Milestone Roadmap](../ROADMAP.md) — Version targets & status
+- [Milestone v0.2.0](development/milestone_0_2_0.md) — Concrete implementation plan for Service Infrastructure
+- [Milestone v0.3.0](development/milestone_0_3_0.md) — Concrete implementation plan for Tier 2 Container Management
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)
 - [Release Checklist](development/release_checklist.md) — Step-by-step guide for tagging a release
