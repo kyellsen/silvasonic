@@ -7,8 +7,8 @@ repos:
         name: Fix (Format & Lint)
         entry: just fix
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
         stages: [pre-commit, pre-push]
 
       # 2. CHECK: Fast Check (Lint, Types, Unit Tests) - Runs on Commit
@@ -16,8 +16,8 @@ repos:
         name: Check (Lint, Types, Unit)
         entry: just check
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
         stages: [pre-commit]
 
       # 3. FULL CHECK: Full CI Pipeline (Build, Clean) - Runs on Push
@@ -25,6 +25,6 @@ repos:
         name: Full Check (Build, Run)
         entry: just check-all
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
         stages: [pre-push]
