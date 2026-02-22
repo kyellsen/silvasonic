@@ -6,17 +6,19 @@
 - [Filesystem Governance](arch/filesystem_governance.md)
 - [Messaging Patterns & Protocols](arch/messaging_patterns.md)
 - [Port Allocation](arch/port_allocation.md)
+- [Microphone Profiles](arch/microphone_profiles.md)
 
 ## Services
 
-- [Services Overview](services/README.md)
-- [Controller Service](services/controller.md)
-- [Database Service](services/database.md)
-- [Recorder Service](services/recorder.md)
+- [Services Overview](services/README.md) — All 13 services with status & links
+- [Controller](services/controller.md) · [Database](services/database.md) · [Recorder](services/recorder.md)
+- [Redis](services/redis.md) · [Processor](services/processor.md) · [Gateway](services/gateway.md)
+- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md) · [Uploader](services/uploader.md)
+- [BirdNET](services/birdnet.md) · [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
 
 ## Deployment
 
-- [Setup & Initialization](deployment/setup.md)
+- [Deployment Guide](deployment/README.md)
 
 ## ADRs
 
@@ -25,6 +27,7 @@
 ## Development
 
 - [Development Guide](development/README.md)
+- [Roadmap](development/roadmap.md) — Concrete implementation plan (phases, tasks, milestones)
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)
 - [Release Checklist](development/release_checklist.md) — Step-by-step guide for tagging a release
@@ -40,6 +43,3 @@
 - [API Reference](api_reference.md)
 - [Glossary](glossary.md) — Canonical domain language definitions
 
-## Specifications
-
-- [Specs](specs/README.md)

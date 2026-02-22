@@ -21,14 +21,19 @@ nav:
       - Overview: services/README.md
       - Controller Service: services/controller.md
       - Database Service: services/database.md
-      - Gateway Service: services/gateway.md
-      - Processor Service: services/processor.md
       - Recorder Service: services/recorder.md
+      - Redis Service: services/redis.md
+      - Processor Service: services/processor.md
+      - Uploader Service: services/uploader.md
+      - Gateway Service: services/gateway.md
+      - Web-Interface Service: services/web_interface.md
+      - Icecast Service: services/icecast.md
       - BirdNET Service: services/birdnet.md
+      - Weather Service: services/weather.md
       - BatDetect Service: services/batdetect.md
       - Tailscale Service: services/tailscale.md
   - Deployment:
-      - Setup & Initialization: deployment/setup.md
+      - Overview: deployment/README.md
   - ADRs:
       - Overview: adr/README.md
       - "ADR-0001: Use uv": adr/0001-use-uv.md
@@ -53,6 +58,7 @@ nav:
       - "ADR-0020: Resource Limits & QoS": adr/0020-resource-limits-qos.md
   - Development:
       - Overview: development/README.md
+      - Roadmap: development/roadmap.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
       - Release Checklist: development/release_checklist.md
@@ -60,7 +66,6 @@ nav:
   - Hardware: hardware.md
   - API Reference: api_reference.md
   - Glossary: glossary.md
-  - Specifications: specs/README.md
 
 plugins:
   - search
