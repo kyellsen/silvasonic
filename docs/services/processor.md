@@ -92,7 +92,6 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 
 ## 7. Open Questions & Future Ideas
 
-*   WAV metadata extraction: `soundfile` vs. `ffprobe` — trade-off between dependency weight and robustness
 *   Notification optimization: Redis `PUBLISH` when new recordings are indexed, so workers react instantly instead of polling
 *   Continuous aggregates: Processor could trigger TimescaleDB materialized views for pre-computed statistics
 *   Archive-before-delete: Copy files to a staging area before Janitor deletion for extra safety
@@ -108,10 +107,11 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 
 ## 9. References
 
+*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `recordings` table schema
 *   [ADR-0009](../adr/0009-zero-trust-data-sharing.md) — Consumer Principle, Janitor delete authority
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Audio Recording Strategy, Retention Policy (§6)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration, Processor role
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
 *   [Port Allocation](../arch/port_allocation.md) — Processor on port 9200
 *   [Glossary: Processor, Janitor, Data Retention Policy](../glossary.md)
-*   [VISION.md](../../VISION.md) — roadmap entry (v0.5.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.5.0)

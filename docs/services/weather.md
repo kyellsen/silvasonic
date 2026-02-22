@@ -48,13 +48,14 @@ Environmental data service that downloads weather observations from external API
 
 ## 5. Configuration & Environment
 
-| Variable / Mount        | Description              | Default / Example |
-| ----------------------- | ------------------------ | ----------------- |
-| Health port             | Internal health endpoint | `9500`            |
-| `WEATHER_PROVIDER`      | API provider             | `openmeteo`       |
-| `WEATHER_LATITUDE`      | Station latitude         | `51.9607`         |
-| `WEATHER_LONGITUDE`     | Station longitude        | `7.6261`          |
-| `WEATHER_POLL_INTERVAL` | Seconds between fetches  | `900` (15 min)    |
+| Variable / Mount        | Description              | Default / Example                                                                   |
+| ----------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
+| Health port             | Internal health endpoint | `9500`                                                                              |
+| `WEATHER_PROVIDER`      | API provider             | `openmeteo`                                                                         |
+| `WEATHER_LATITUDE`      | Station latitude         | `51.9607`                                                                           |
+| `WEATHER_LONGITUDE`     | Station longitude        | `7.6261`                                                                            |
+| `WEATHER_POLL_INTERVAL` | Seconds between fetches  | `900` (15 min)                                                                      |
+| `WEATHER_VARIABLES`     | OpenMeteo Hourly Vars    | `temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,precipitation` |
 
 ## 6. Technology Stack
 
@@ -79,8 +80,9 @@ Environmental data service that downloads weather observations from external API
 
 ## 9. References
 
+*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — QoS priority for analysis services
 *   [Future Features & Ideas](../development/idea.md) — Sensor recommendations
 *   [Glossary: Weather Observation](../glossary.md)
-*   [VISION.md](../../VISION.md) — roadmap entry (v1.2.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.2.0)

@@ -77,9 +77,10 @@ On-device inference service for bat species classification using specialized ult
 
 ## 9. References
 
+*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `detections` table schema.
 *   [ADR-0009](../adr/0009-zero-trust-data-sharing.md) — Consumer Principle (read-only mounts)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — Resource Limits & QoS
 *   [Glossary: BatDetect](../glossary.md) — canonical definition
-*   [VISION.md](../../VISION.md) — roadmap entry (v1.3.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.3.0)

@@ -57,17 +57,16 @@ On-device inference service for avian species classification using the BirdNET-A
 
 ## 6. Technology Stack
 
-*   **ML Model:** BirdNET-Analyzer — TFLite-based avian species classifier
-*   **Runtime:** TensorFlow Lite (Lite variant recommended for RPi 5 resource constraints)
-*   **Audio:** `soundfile`, `numpy` (spectrogram / segment extraction)
+*   **ML Model:** BirdNET-Analyzer — TFLite-based avian species classifier.
+*   **Runtime:** TensorFlow Lite (`tflite-runtime`). This is the official and mandatory requirement for deployment on resource-constrained Edge devices like the Raspberry Pi 5 to drastically reduce RAM and CPU overhead compared to full TensorFlow.
+*   **Audio:** `soundfile`, `numpy` (spectrogram / segment extraction).
 
 ## 7. Open Questions & Future Ideas
 
-*   TFLite vs. full TensorFlow — memory/performance trade-off on RPi 5
-*   Custom model fine-tuning with local species data
-*   Location-aware filtering (restrict predictions to species plausible for the deployment region)
-*   Confidence threshold tuning — balancing recall vs. precision
-*   Post-MVP: spectrogram + detection overlay visualization in the Web-Interface
+*   Custom model fine-tuning with local species data.
+*   Location-aware filtering (restrict predictions to species plausible for the deployment region).
+*   Confidence threshold tuning — balancing recall vs. precision (currently hardcoded or default).
+*   Post-MVP: spectrogram + detection overlay visualization in the Web-Interface.
 
 ## 8. Out of Scope
 
@@ -79,9 +78,10 @@ On-device inference service for avian species classification using the BirdNET-A
 
 ## 9. References
 
+*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `detections` table schema.
 *   [ADR-0009](../adr/0009-zero-trust-data-sharing.md) — Consumer Principle (read-only mounts)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — Resource Limits & QoS
 *   [Glossary: BirdNET](../glossary.md) — canonical definition
-*   [VISION.md](../../VISION.md) — roadmap entry (v1.1.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)

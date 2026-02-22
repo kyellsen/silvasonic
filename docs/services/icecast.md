@@ -54,10 +54,36 @@ Lightweight streaming server that receives live Opus audio from Recorder instanc
 | `SILVASONIC_ICECAST_PORT` | Host-exposed listener port | `8080`            |
 | Icecast config XML        | Server configuration       | Mounted at build  |
 
+### Example `icecast.xml` Structure (MVP)
+
+```xml
+<icecast>
+    <location>Earth</location>
+    <admin>admin@silvasonic.local</admin>
+    <limits>
+        <clients>100</clients>
+        <sources>10</sources>
+    </limits>
+    <authentication>
+        <!-- Read-only access for listeners defaults to public -->
+        <source-password>silvasonic-source-secret</source-password>
+        <admin-password>silvasonic-admin-secret</admin-password>
+    </authentication>
+    <listen-socket>
+        <port>8080</port>
+    </listen-socket>
+    <mount type="normal">
+        <!-- Recorder instances push here: /mic-ultramic.opus -->
+        <mount-name>/mic-*.opus</mount-name>
+        <public>1</public>
+    </mount>
+</icecast>
+```
+
 ## 6. Technology Stack
 
-*   **Image:** `icecast:2.4-kh` or official `icecast/icecast:latest`
-*   **Codec:** Opus (received from Recorder, relayed as-is)
+*   **Image:** `linuxserver/icecast` (actively maintained, rootless compatible, PUID/PGID support).
+*   **Codec:** Opus (received from Recorder, relayed as-is).
 
 ## 7. Open Questions & Future Ideas
 
@@ -75,4 +101,4 @@ Lightweight streaming server that receives live Opus audio from Recorder instanc
 
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Triple Stream Architecture (§5)
 *   [Glossary: Icecast, Live Stream, Mount Point, Opus, Triple Stream Architecture](../glossary.md)
-*   [VISION.md](../../VISION.md) — roadmap entry (v0.9.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.9.0)

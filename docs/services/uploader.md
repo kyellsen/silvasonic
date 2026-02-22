@@ -65,8 +65,8 @@ Data exfiltration service responsible for compressing Raw recordings to FLAC and
 
 ## 6. Technology Stack
 
-*   **FLAC Encoding:** `soundfile` or `ffmpeg` (subprocess)
-*   **Upload Protocols:** `boto3` (S3), `webdavfs` (WebDAV/Nextcloud), `paramiko` (SFTP)
+*   **FLAC Encoding:** `ffmpeg` (via Python `subprocess`). Highly optimized, stable for large files, and streams data without blowing up container memory.
+*   **Upload Protocols:** `rclone` (via subprocess wrapper). Serves as a universal backend for WebDAV, S3, SFTP, and dozens of other protocols without needing protocol-specific Python libraries.
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 
 ## 7. Open Questions & Future Ideas
@@ -74,7 +74,6 @@ Data exfiltration service responsible for compressing Raw recordings to FLAC and
 *   Parallel uploads: Multiple files concurrently for faster throughput.
 *   Resume support: Track partial uploads to avoid re-uploading on interruption.
 *   Bandwidth throttling: Avoid saturating the network link during peak hours.
-*   Rclone integration: Use rclone as a universal backend instead of protocol-specific libraries.
 
 ## 8. Out of Scope
 
@@ -85,8 +84,9 @@ Data exfiltration service responsible for compressing Raw recordings to FLAC and
 
 ## 9. References
 
+*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of `uploads` and `storage_remotes` tables
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Raw → FLAC for cloud, Retention Policy
 *   [ADR-0013](../adr/0013-tier2-container-management.md) — Tier 2 lifecycle management
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [Glossary: Uploader, Store & Forward, Raw Artifact, Storage Remote](../glossary.md)
-*   [VISION.md](../../VISION.md) — roadmap entry (v0.6.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.6.0)

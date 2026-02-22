@@ -26,8 +26,8 @@ Caddy-based reverse proxy providing a unified entry point, HTTPS termination, in
 ### Processing
 
 *   **Reverse Proxying:** Path-based routing to internal services (e.g., `/` → Web-Interface, `/stream` → Icecast).
-*   **TLS Termination:** Handles HTTPS; backends communicate over plain HTTP on the internal network.
-*   **Authentication:** Enforces Basic Auth or other configured authentication methods.
+*   **TLS Termination:** Handles HTTPS; backends communicate over plain HTTP on the internal network. Tailscale HTTPS is used for true valid certificates on `.local`/tailnet domains.
+*   **Authentication:** Enforces custom login page authentication for the frontend (falling back to Basic Auth/Tailscale ACLs where custom auth isn't supported).
 *   **Compression & Caching:** Automatic gzip/brotli for static assets.
 
 ### Outputs
@@ -62,7 +62,31 @@ Caddy-based reverse proxy providing a unified entry point, HTTPS termination, in
 | Log mount                       | Caddy access/error logs            | `${SILVASONIC_WORKSPACE_PATH}/gateway/logs:/var/log/caddy:z` |
 
 > [!NOTE]
-> Caddy's `/data` (certificates) and `/config` (runtime state) are stored via **bind mounts** into the Gateway workspace — not as Named Volumes. This keeps ADR-0006 intact (Named Volumes only for database). Caddy auto-regenerates certificates if the data directory is empty.
+> Caddy's `/data` (certificates) and `/config` (runtime state) are stored via **bind mounts** into the Gateway workspace — not as Named Volumes. This keeps ADR-0006 intact.
+
+### Example Caddyfile Structure (MVP)
+
+```caddyfile
+# For local dev without Tailscale: http://silvasonic.local
+# For field deployed with Tailscale: https://silvasonic.tailnet-xyz.ts.net
+
+{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+    }
+
+    # Proxy root to Web-Interface
+    handle /* {
+        reverse_proxy web_interface:8000
+    }
+
+    # Proxy live stream to Icecast
+    handle /stream/* {
+        reverse_proxy icecast:8080
+    }
+}
+```
 
 ## 6. Technology Stack
 
@@ -75,10 +99,9 @@ Caddy-based reverse proxy providing a unified entry point, HTTPS termination, in
 
 ## 7. Open Questions & Future Ideas
 
-*   Automatic HTTPS with Let's Encrypt vs. self-signed certificates for `.local` domains
-*   Authentication strategy: Basic Auth (simple) vs. OAuth2 proxy (complex but more secure)
-*   Rate limiting for external access via Tailscale
-*   Alternatives considered and rejected: Nginx (config too verbose for single-appliance use case), Traefik (overkill for a single-node deployment)
+*   Rate limiting for external access via Tailscale.
+*   Custom Login Page integration: Caddy supports `forward_auth` which could bounce unauthenticated users to a custom FastAPI login page (Web-Interface) instead of the ugly browser-native Basic Auth popup.
+*   Alternatives considered and rejected: Nginx (config too verbose for single-appliance use case), Traefik (overkill for a single-node deployment).
 
 ## 8. Out of Scope
 
@@ -95,4 +118,4 @@ Caddy-based reverse proxy providing a unified entry point, HTTPS termination, in
 *   [ADR-0003](../adr/0003-frontend-architecture.md) — Frontend Architecture
 *   [ADR-0006](../adr/0006-bind-mounts-over-volumes.md) — Bind Mounts vs. Named Volumes (caddy_data exception TBD)
 *   [Glossary: Gateway](../glossary.md) — canonical definition
-*   [VISION.md](../../VISION.md) — roadmap entry (v0.7.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.7.0)
