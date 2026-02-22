@@ -16,9 +16,9 @@ Please read **[README.md](README.md)** for project overview and quick start, and
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
-*   **Resource Limits:** Every Tier 2 container **MUST** specify memory and CPU limits. The Recorder **MUST** set `oom_score_adj=-999`. Agents creating new `Tier2ServiceSpec` entries **MUST** include resource limits (see [ADR-0020](docs/adr/0020-resource-limits-qos.md)).
-*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically (see ADR-0004, ADR-0007).
-*   **Services Architecture:** The system is organized into **Tier 1** (Infrastructure, managed by Podman Compose) and **Tier 2** (Application, managed by Controller). The **recorder** is the highest-priority service but lives in Tier 2 because it is managed by the Controller. **All Tier 2 containers are IMMUTABLE** — they receive configuration via Profile Injection. **Database access for the Recorder is strictly FORBIDDEN** (see [ADR-0013](docs/adr/0013-tier2-container-management.md)); other Tier 2 services (BirdNET, Uploader, etc.) may access the database. See **[VISION.md](VISION.md)** for the full services architecture.
+*   **Resource Limits & QoS:** You **MUST** specify memory, CPU limits, and `oom_score_adj` for every Tier 2 container. The Recorder is the most protected service, while analysis workers are expendable. See **[ADR-0020](docs/adr/0020-resource-limits-qos.md)** for exact values and policies.
+*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically. See **[ADR-0004](docs/adr/0004-use-podman.md)** and **[ADR-0007](docs/adr/0007-rootless-os-compliance.md)**.
+*   **Services Architecture:** The system is organized into **Tier 1 (Infrastructure)** and **Tier 2 (Application)**. All Tier 2 containers are **IMMUTABLE** and receive their configuration dynamically from the Controller via injected configuration. The Recorder has **NO database access**. See **[ADR-0013](docs/adr/0013-tier2-container-management.md)** and **[VISION.md](VISION.md)** for full architecture constraints.
 
 ## 2. Language & Domain Policy
 *   **Repository Content:** **ENGLISH ONLY** (Code, Docs, Commits, Configs).
@@ -37,6 +37,9 @@ Full details in **[ADR 0010](docs/adr/0010-naming-conventions.md)**.
 *   **Documentation Structure:**
     *   **`docs/`**: **Single Source of Truth** (Architecture, ADRs, Specs, Requirements). Agents **MUST** search here recursively.
     *   **Index:** Start at **[docs/index.md](docs/index.md)**.
+*   **Service Documentation Constraint:**
+    *   **Implemented Services** (fully or partially): Must have their authoritative `README.md` in their respective `services/<name>/` directory. The `docs/services/<name>.md` file must only be a stub linking to it.
+    *   **Planned/Unimplemented Services**: Must be documented centrally in `docs/services/<name>.md`.
 *   **Filesystem Constraints (`/mnt/data`):**
     *   **Persistence:** Strict governance rules apply (see `docs/index.md`).
     *   **Volumes:** Use Bind Mounts with `:z` (shared) suffix. Named Volumes **ONLY** for `database`.
@@ -68,6 +71,32 @@ Agents should prioritize the following libraries for their respective domains to
     *   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — required by the TimescaleDB / PostgreSQL image.
     *   `DOCKER_HOST` — required by the Testcontainers library (connects to the Podman socket, not Docker).
 *   **Rationale:** A consistent prefix prevents collisions with system or third-party variables and makes Silvasonic configuration instantly identifiable in any environment.
+
+
+## 8. Repository Documentation Rules (Source of Truth)
+
+### Document Roles
+- `README.md` (root): describes the **current (as-is) state** and the **minimal quickstart**. Link out to deeper docs. No long-term vision or detailed service designs here.
+- `VISION.md`: describes the **target (to-be) vision**: motivation, principles, high-level roadmap. No setup instructions.
+- `AGENTS.md`: defines **contributor/agent behavior** and **repo conventions** (structure, editing rules, quality gates).
+- `docs/adr/`: Architecture Decision Records. Each ADR must include context, decision, alternatives, consequences, and a status (`proposed` / `accepted` / `superseded`).
+- `services/<svc>/README.md`: exists **only for implemented or partially implemented services** and is the single source of truth for running/config/API details of that service.
+- `docs/services/<svc>.md`: exists **only for not-yet-implemented services** as a service specification (planned behavior, interfaces, dependencies).
+
+### As-Is vs To-Be Labeling
+- Every doc section must clearly indicate whether it is **AS-IS (implemented)** or **TO-BE (planned)**.
+- Service docs must include a `Status:` line: `implemented` | `partial` | `planned`.
+
+### Redundancy Rule
+- Do not duplicate content across root `README.md`, `docs/`, and service READMEs.
+- Root `README.md` links to service READMEs/specs instead of copying them.
+
+### Location Rule
+- Implemented/partial service details live in `services/<svc>/README.md`.
+- Planned-only service descriptions live in `docs/services/<svc>.md`.
+
+### Change Rule
+- When a service moves from planned to implementation, introduce `services/<svc>/README.md` and update links. Keep any planned spec clearly marked as design, or migrate key decisions into ADRs.
 
 ---
 
