@@ -1,4 +1,4 @@
-# Service Blueprint — Leitfaden für neue Python-Services
+# Service Blueprint — Guide for New Python Services
 
 > **Purpose:** This document defines the **mandatory** structure, patterns, and shared
 > components for every Python-based service in the Silvasonic project.

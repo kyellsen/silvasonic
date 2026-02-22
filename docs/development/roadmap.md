@@ -2,7 +2,7 @@
 
 > **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop)
 >
-> **References:** [ADR-0013](docs/adr/0013-tier2-container-management.md), [ADR-0007 §6](docs/adr/0007-rootless-os-compliance.md), [ADR-0009](docs/adr/0009-zero-trust-data-sharing.md), [VISION.md](VISION.md)
+> **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](../../VISION.md)
 
 ---
 
@@ -113,4 +113,4 @@
 | Icecast live Opus stream (Recorder → Icecast)   | v0.9.0         |
 | Quadlet generation for production               | v1.0.0         |
 
-> **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 2 as part of the `Tier2ServiceSpec` model. See [ADR-0020](docs/adr/0020-resource-limits-qos.md).
+> **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 2 as part of the `Tier2ServiceSpec` model. See [ADR-0020](../adr/0020-resource-limits-qos.md).

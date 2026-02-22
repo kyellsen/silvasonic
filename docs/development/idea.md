@@ -1,5 +1,7 @@
 # Future Features & Ideas
 
+> **Status:** TO-BE (ideas, not yet scheduled)
+
 ## Recommended Sensors for Silvasonic Ecosystem Sentinel
 
 Below is a compact overview of recommended hardware sensors to enhance the ecosystem monitoring capabilities.

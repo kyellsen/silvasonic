@@ -1,10 +1,22 @@
 # silvasonic-controller
 
-> **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
+> **Status:** Partial (v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 
 The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`). It follows the **State Reconciliation Pattern** — a pure Listener + Actor with no HTTP API beyond `/healthy`.
 
-> **Implementation Status:** Scaffold (v0.1.0). Health monitoring is implemented. Tier 2 management is planned for v0.3.0.
+---
+
+## The Problem / The Gap
+
+*   **Dynamic Hardware:** A static `compose.yml` cannot handle USB microphones being plugged/unplugged. Each physical microphone must be bound to a dedicated Recorder instance with the appropriate Microphone Profile.
+*   **Self-Healing:** If a Recorder crashes, something must detect it and restart it intelligently — verifying the microphone is still present and the device is still enrolled before restarting.
+*   **Orchestration:** Users need to toggle services (e.g., "Enable BirdNET", "Disable Weather") via the Web-Interface without SSH access. The Controller bridges this gap via the State Reconciliation Pattern.
+
+## User Benefit
+
+*   **Plug-and-Play:** Automatically detects connected microphones and spins up the appropriate Recorder containers with the correct configuration (Profile Injection).
+*   **Resilience:** Automatically repairs broken services via the reconciliation loop (~30s).
+*   **Control:** Allows enabling/disabling features via the Web-Interface to save power, CPU, or storage — all routed through DB desired state, never direct commands.
 
 ---
 
@@ -67,7 +79,7 @@ io.silvasonic.profile: <profile_slug>
 
 On startup, the Controller queries all containers with `io.silvasonic.owner=controller` and adopts them without restarting — ensuring Data Capture Integrity across Controller restarts.
 
-> **⏳ Planned** (v0.3.0) — See [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md).
+> **⏳ Planned** (v0.3.0) — See [Roadmap](../../docs/development/roadmap.md).
 
 ---
 
@@ -163,15 +175,36 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 
 ---
 
-The Controller has **no HTTP API** beyond the `/healthy` health endpoint (from `SilvaService`). CRUD operations on Devices, Profiles, and configuration are handled by the **Web-Interface** service (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)). Control actions are routed declaratively via DB + Redis nudge (see §Reconcile-Nudge Subscriber above).
+## Technology Stack
+
+*   **Container Management:** `podman-py` (Podman REST API client)
+*   **Hardware Detection:** `psutil` / USB device polling
+*   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
+*   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
+*   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
+
+---
+
+## Out of Scope
+
+*   **Does NOT** process audio data (Recorder + Processor's job).
+*   **Does NOT** serve the User Interface (Web-Interface's job).
+*   **Does NOT** store business data persistently (Database's job).
+*   **Does NOT** perform heavy inference (BirdNET / BatDetect's job).
+*   **Does NOT** expose an HTTP API beyond `/healthy` — CRUD operations are handled by the Web-Interface (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)). Control actions are routed declaratively via DB + Redis nudge (see §Reconcile-Nudge Subscriber above).
+
+---
 
 ## Configuration
 
-| Variable                     | Description                               | Default                   |
-| ---------------------------- | ----------------------------------------- | ------------------------- |
-| `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                    |
-| `CONTAINER_SOCKET`           | Path to Podman socket inside container    | `/var/run/container.sock` |
-| `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`          |
+| Variable / Mount             | Description                               | Default / Example                                                 |
+| ---------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                                                            |
+| `CONTAINER_SOCKET`           | Podman socket path inside container       | `/var/run/container.sock`                                         |
+| `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`                                                  |
+| Socket mount                 | Host Podman socket bind mount             | `${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`           |
+| Workspace mount              | Controller workspace                      | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
+| Recorder workspace mount     | Recorder workspace (for provisioning)     | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
 
 ---
 
@@ -179,6 +212,12 @@ The Controller has **no HTTP API** beyond the `/healthy` health endpoint (from `
 
 - [ADR-0013: Tier 2 Container Management](../../docs/adr/0013-tier2-container-management.md)
 - [ADR-0016: Hybrid YAML/DB Profile Management](../../docs/adr/0016-hybrid-yaml-db-profiles.md)
-- [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md) — Step-by-step implementation plan
+- [ADR-0017: Service State Management](../../docs/adr/0017-service-state-management.md)
+- [ADR-0019: Unified Service Infrastructure](../../docs/adr/0019-unified-service-infrastructure.md)
+- [ADR-0020: Resource Limits & QoS](../../docs/adr/0020-resource-limits-qos.md)
+- [Roadmap](../../docs/development/roadmap.md) — Step-by-step implementation plan
+- [Messaging Patterns](../../docs/arch/messaging_patterns.md) — State Reconciliation Pattern, Nudge
 - [Port Allocation](../../docs/arch/port_allocation.md) — Controller on port 9100
-- [Microphone Profiles](../../docs/arch/microphone_profiles.md)
+- [Microphone Profiles](../../docs/arch/microphone_profiles.md) — Profile seed files
+- [Glossary](../../docs/glossary.md) — canonical definitions
+- [VISION.md](../../VISION.md) — services architecture

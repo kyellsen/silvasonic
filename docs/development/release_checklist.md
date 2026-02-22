@@ -4,30 +4,30 @@ Step-by-step guide for tagging a new Silvasonic release.
 
 ---
 
-## 1. Version setzen
+## 1. Set Version
 
-Silvasonic hat **eine** zentrale Versionsdatei. Alle Sub-Packages (Controller, Recorder) leiten ihre Version dynamisch via Hatch ab.
+Silvasonic has **one** central version file. All sub-packages (Controller, Recorder) derive their version dynamically via Hatch.
 
-| Datei                                           | Anpassen?                       | Beschreibung                                                      |
-| ----------------------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
-| `packages/core/src/silvasonic/core/__init__.py` | **JA — Single Source of Truth** | `__version__ = "X.Y.Z"`                                           |
-| `pyproject.toml` (Root)                         | **JA**                          | `version = "X.Y.Z"`                                               |
-| `VISION.md` Zeile 5                             | **JA**                          | `> **Status:** vX.Y.Z — Milestone`                                |
-| `README.md` Zeile 5                             | **JA**                          | `> **Status:** vX.Y.Z — Milestone`                                |
-| `VISION.md` Roadmap-Tabelle                     | **JA**                          | Status der Version auf `✅ Current` setzen, vorherige auf `✅ Done` |
-| Sub-Package `pyproject.toml`                    | **NEIN**                        | Version wird dynamisch aus `silvasonic-core` gelesen              |
+| File                                            | Update?                          | Description                                                  |
+| ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------ |
+| `packages/core/src/silvasonic/core/__init__.py` | **YES — Single Source of Truth** | `__version__ = "X.Y.Z"`                                      |
+| `pyproject.toml` (Root)                         | **YES**                          | `version = "X.Y.Z"`                                          |
+| `VISION.md` Line 5                              | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
+| `README.md` Line 5                              | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
+| `VISION.md` Roadmap table                       | **YES**                          | Set version status to `✅ Current`, mark previous as `✅ Done` |
+| Sub-package `pyproject.toml`                    | **NO**                           | Version is derived dynamically from `silvasonic-core`        |
 
 ---
 
-## 2. Checks durchlaufen lassen
+## 2. Run All Checks
 
-Alle Checks **müssen grün** sein bevor der Tag gesetzt wird:
+All checks **must pass** before tagging:
 
 ```bash
 just check-all
 ```
 
-Das umfasst:
+This includes:
 
 - **Ruff** — Linting & Formatting
 - **Mypy** — Type Checking
@@ -37,31 +37,31 @@ Das umfasst:
 - **Containerfile Lint** — Hadolint
 - **Compose Validation** — Schema Check
 
-Falls ein Check fehlschlägt: **Fix → Commit → Erneut `just check-all`**.
+If any check fails: **Fix → Commit → Re-run `just check-all`**.
 
 ---
 
 ## 3. Commit & Tag
 
-### Finaler Commit
+### Final Commit
 
-Stelle sicher, dass alle Änderungen committed sind:
+Ensure all changes are committed:
 
 ```bash
-git status                # Keine uncommitted changes
+git status                # No uncommitted changes
 git add -A
 git commit -m "release: vX.Y.Z — Milestone-Name"
 ```
 
-### Annotated Tag setzen
+### Create Annotated Tag
 
 ```bash
 git tag -a vX.Y.Z -m "vX.Y.Z — Milestone-Name"
 ```
 
-> **Wichtig:** Immer **annotated tags** (`-a`) verwenden, keine lightweight tags. Annotated Tags enthalten Autor, Datum und Nachricht.
+> **Important:** Always use **annotated tags** (`-a`), never lightweight tags. Annotated tags include author, date, and message.
 
-### Push (inkl. Tag)
+### Push (Including Tag)
 
 ```bash
 git push origin main
@@ -72,5 +72,5 @@ git push origin vX.Y.Z
 
 ## 4. Post-Release
 
-- [ ] VISION.md Roadmap: Nächste Version als `🔨 In Progress` markieren
-- [ ] Ggf. GitHub Release erstellen (ab v1.0.0 mit CHANGELOG)
+- [ ] VISION.md Roadmap: Mark next version as `🔨 In Progress`
+- [ ] Optionally create a GitHub Release (recommended from v1.0.0 onwards with CHANGELOG)

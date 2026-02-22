@@ -1,25 +1,25 @@
 # Testing Guide
 
-> **TODO** — Diese Seite dokumentiert die Test-Strategie und -Infrastruktur.
+> **TODO** — This page documents the testing strategy and infrastructure.
 
-## Test-Marker
+## Test Markers
 
-| Marker        | Beschreibung                                          |
-| ------------- | ----------------------------------------------------- |
-| `unit`        | Schnelle, isolierte Tests ohne externe Abhängigkeiten |
-| `integration` | Tests mit externen Services (DB via Testcontainers)   |
-| `smoke`       | Health-Checks auf laufende Container                  |
-| `e2e`         | Browser-Tests via Playwright                          |
+| Marker        | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| `unit`        | Fast, isolated tests without external dependencies   |
+| `integration` | Tests with external services (DB via Testcontainers) |
+| `smoke`       | Health checks against running containers             |
+| `e2e`         | Browser tests via Playwright                         |
 
-## Tests ausführen
+## Running Tests
 
 ```bash
-just test-unit       # Unit-Tests
-just test-int        # Integrationstests
-just test-smoke      # Smoke-Tests (Stack muss laufen)
+just test-unit       # Unit tests
+just test-int        # Integration tests
+just test-smoke      # Smoke tests (stack must be running)
 just test-all        # Unit + Integration
 ```
 
 ## Coverage
 
-_Noch zu dokumentieren._
+_To be documented._

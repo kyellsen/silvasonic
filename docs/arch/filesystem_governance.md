@@ -1,8 +1,8 @@
 # Data Architecture & Filesystem Governance
 
-> **STATUS:** NORMATIVE (Mandatory)
-> **SCOPE:** System-wide (Host & Container)
-> **OS TARGET:** Fedora Linux (SELinux Enforcing) with Rootless Podman
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (v0.1.0) — Two-Worlds separation and init script are AS-IS; full access control matrix is TO-BE
+> **Scope:** System-wide (Host & Container)
+> **OS Target:** Fedora Linux (SELinux Enforcing) with Rootless Podman
 
 This document defines the strict governance rules for file storage, container access control, and directory structures within the Silvasonic ecosystem.
 

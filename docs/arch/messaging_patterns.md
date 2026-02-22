@@ -1,7 +1,7 @@
 # Messaging Patterns & Protocols
 
-> **STATUS:** NORMATIVE (Mandatory)
-> **SCOPE:** System-wide inter-service communication
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (v0.1.0) — Critical Path (§1.1) is AS-IS; Redis / Interactive Path (§1.2, §3–§6) is TO-BE (v0.2.0)
+> **Scope:** System-wide inter-service communication
 
 This document defines the communication standards within Silvasonic — how services discover work, exchange status, and receive commands.
 
@@ -87,26 +87,7 @@ This solves the inherent problem of Pub/Sub (fire-and-forget): if the Web-Interf
 
 > **Status:** Planned (v0.2.0)
 
-**Every** service uses the same JSON schema, published by the `SilvaService` base class (see [ADR-0019](../adr/0019-unified-service-infrastructure.md)):
-
-```json
-{
-  "service": "recorder",
-  "instance_id": "ultramic-01",
-  "timestamp": 1706612400.123,
-  "health": {
-    "status": "ok",
-    "components": {
-      "recording": { "healthy": true, "details": "" },
-      "disk_space": { "healthy": true, "details": "82% free" }
-    }
-  },
-  "activity": "recording",
-  "meta": { "db_level": -45.2 }
-}
-```
-
-All payloads **MUST** be valid JSON and validated via Pydantic models (see [ADR-0012](../adr/0012-use-pydantic.md)).
+**Every** service uses the same JSON schema, published by the `SilvaService` base class. The canonical schema definition is in [ADR-0019 §2.4](../adr/0019-unified-service-infrastructure.md). All payloads **MUST** be valid JSON and validated via Pydantic models ([ADR-0012](../adr/0012-use-pydantic.md)).
 
 ---
 

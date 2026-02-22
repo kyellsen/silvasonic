@@ -73,36 +73,9 @@ Each Recorder pushes its Opus stream to a dedicated **mount point** on the Iceca
 
 To prevent storage exhaustion on the edge device, the `processor` service implements a centralized background cleanup task, colloquially called "The Janitor".
 
-### Deletion Rules
+### Design Decision
 
-- **Non-negotiable**: Files are typically only candidates for deletion if they meet high-level state criteria in TimescaleDB.
-- **Criteria**: `uploaded == true` AND all required workers in `analysis_state` (JSONB) are marked as `true`.
-- **Targeting**: Deletes the oldest 15s chunks first to free space iteratively.
+We have decided to enforce **Data Capture Integrity** via an escalating retention policy based on local disk utilization. As storage fills up, the policy progressively sacrifices first local analysis completeness, and eventually remote backup guarantees, to ensure the Recorder never faces a "Disk Full" scenario and never stops recording.
 
-### Survival Thresholds (3-Stage Rocket)
-
-The Janitor operates in three escalating modes based on NVMe storage utilization:
-
-#### 1. Housekeeping (>70% full)
-
-- **Action**: Delete files where `uploaded=true` AND `analysis_state=complete`.
-- **Log Level**: `INFO`.
-- **Goal**: Regular storage rotation. No data loss, no analysis loss.
-
-#### 2. Defensive (>80% full)
-
-- **Action**: Delete files where `uploaded=true` (regardless of analysis).
-- **Log Level**: `WARNING` ("Sacrificing local analysis for stability").
-- **Goal**: Prevent "Disk Full" by removing locally redundant data. Remote copy exists in cloud storage.
-
-#### 3. Panic Mode (>90% full)
-
-- **Action**: Delete **OLDEST** files regardless of status.
-- **Log Level**: `CRITICAL` ("DATA LOSS EVENT: Deleting non-uploaded data").
-- **Fallback**: If Database is offline, fallback to filesystem `mtime` to clean up blindly.
-- **Goal**: Survival. **The Recorder must never stop.**
-
-### Design Rationale
-
-This escalating policy enforces **Data Capture Integrity** as the paramount concern. In degraded states, the system will sacrifice local analysis completeness (Defensive Mode) or even remote backup guarantees (Panic Mode) to ensure the Recorder continues capturing audio. The device is designed to survive, even if it means losing non-uploaded historical data.
+The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
 

@@ -89,7 +89,7 @@ container = podman.containers.run(
 
 ### 2.4. Tier2ServiceSpec Integration
 
-The `Tier2ServiceSpec` Pydantic model (see [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md) Phase 2) MUST include resource limit fields:
+The `Tier2ServiceSpec` Pydantic model (see [Roadmap](../../docs/development/roadmap.md) Phase 2) MUST include resource limit fields:
 
 ```python
 class Tier2ServiceSpec(BaseModel):
@@ -125,7 +125,7 @@ The `container_manager.start()` method MUST pass these fields to `podman.contain
 ## 5. References
 
 *   [ADR-0013: Tier 2 Container Management](0013-tier2-container-management.md) — Container lifecycle, `Tier2ServiceSpec`
-*   [TIER2_ROADMAP.md](../../TIER2_ROADMAP.md) — Implementation phases
+*   [Roadmap](../../docs/development/roadmap.md) — Implementation phases
 *   [VISION.md §Design Principles](../../VISION.md) — Resource Isolation principle
 *   Linux kernel documentation: [OOM Killer](https://www.kernel.org/doc/html/latest/admin-guide/mm/concepts.html)
 *   Podman documentation: [Resource constraints](https://docs.podman.io/en/latest/markdown/podman-run.1.html)
