@@ -128,3 +128,15 @@ docs:
 # 📦 Baut die statische Dokumentation (Output: site/)
 docs-build:
     @uv run mkdocs build
+
+# ==============================================================================
+# FRONTEND (Tailwind CSS)
+# ==============================================================================
+
+# 🎨 Baut das Tailwind CSS für web-mock (einmalig, minified)
+css-build:
+    @cd services/web-mock && npm run css:build
+
+# 👁️  Tailwind CSS Watch-Mode (auto-rebuild bei Template-/CSS-Änderungen)
+css-watch:
+    @cd services/web-mock && npm run css:watch

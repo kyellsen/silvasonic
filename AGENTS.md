@@ -41,6 +41,7 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 | `services/<svc>/README.md` | Implemented/partial service (SoT) | `services/<svc>/` |
 | `docs/services/<svc>.md`   | Planned service spec              | `docs/services/`  |
 | `docs/adr/`                | Architecture Decision Records     | `docs/adr/`       |
+| `docs/arch/`               | Architecture Patterns & Specs     | `docs/arch/`      |
 | `docs/index.md`            | Entry point for all docs          | `docs/`           |
 
 **Rules:**
@@ -53,17 +54,19 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 
 ## 5. Libraries
 
-| Domain  | Use                                             |
-| ------- | ----------------------------------------------- |
-| Config  | `pydantic` V2, `pyYAML` (`safe_load` only)      |
-| Logging | `structlog` (JSON) / `rich` (dev)               |
-| DB      | `sqlalchemy` 2.0+ async, `asyncpg`              |
-| Redis   | `redis-py` async (ADR-0019)                     |
-| Web     | `fastapi` (web-interface only, not controller)  |
-| Data    | `numpy`, `polars` (**no** `pandas`)             |
-| Audio   | `psutil`, `soundfile`                           |
-| Test    | `pytest`, `playwright`                          |
-| Tools   | `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit` |
+| Domain   | Use                                                                       |
+| -------- | ------------------------------------------------------------------------- |
+| Config   | `pydantic` V2, `pyYAML` (`safe_load` only)                                |
+| Logging  | `structlog` (JSON) / `rich` (dev)                                         |
+| DB       | `sqlalchemy` 2.0+ async, `asyncpg`                                        |
+| Redis    | `redis-py` async (ADR-0019)                                               |
+| System   | `psutil` (process + host resource monitoring, ADR-0019)                   |
+| Web      | `fastapi`, `jinja2`, `htmx`, `alpine.js` (ADR-0003)                       |
+| Frontend | `tailwindcss`, `daisyui` (v5), `echarts`, `wavesurfer.js` (v7) (ADR-0021) |
+| Data     | `numpy`, `polars` (**no** `pandas`)                                       |
+| Audio    | `soundfile`                                                               |
+| Test     | `pytest`, `playwright`, `testcontainers`, `polyfactory`                   |
+| Tools    | `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit`                           |
 
 ## 6. Testing Rules
 1. **Explicit Markers:** Every test MUST have `@pytest.mark.unit`, `.integration`, `.e2e`, or `.smoke`.

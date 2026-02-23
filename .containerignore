@@ -46,6 +46,9 @@ VISION.md
 CLAUDE.md
 LICENCE
 
+# Frontend
+node_modules/
+
 # Deployment / Temporary
 .gemini/
 .agent/

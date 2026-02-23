@@ -8,18 +8,32 @@ dependencies = [
     "silvasonic-core",
     "silvasonic-controller",
     "silvasonic-recorder",
+    "silvasonic-web-mock",
 ]
 
 [tool.uv.workspace]
 # UV automatically discovers all Python packages in these directories
 members = ["services/*", "packages/*"]
-exclude = ["services/database", "packages/tests", "packages/test-utils"]
+exclude = [
+    "services/database",
+    "packages/tests",
+    "services/gateway",
+    "services/processor",
+    "services/uploader",
+    "services/web-interface",
+    "services/icecast",
+    "services/batdetect",
+    "services/birdnet",
+    "services/weather",
+    "services/tailscale",
+]
 
 [tool.uv.sources]
 # Workspace dependencies must be explicitly declared here
 silvasonic-core = { workspace = true }
 silvasonic-controller = { workspace = true }
 silvasonic-recorder = { workspace = true }
+silvasonic-web-mock = { workspace = true }
 silvasonic-test-utils = { workspace = true }
 
 
@@ -50,12 +64,14 @@ dev = [
     # -- Testing Utilities (Mocking & Integration) --
     "faker>=23.0.0",          # Generates realistic dummy data (names, IPs, etc.)
     "polyfactory>=2.14.0",    # State-of-the-art factory for Pydantic/SQLAlchemy mocks
+    "silvasonic-test-utils",  # Shared testcontainer fixtures (packages/test-utils)
     "structlog>=24.1.0",
     "tenacity>=9.1.2",        # Retry logic for flaky E2E/integration tests
     "testcontainers>=4.14.1", # Generic, without hardcoded database plugins
 
     # -- Type Stubs --
     "types-aiofiles",
+    "types-psutil",
     "types-pyyaml",
 
     # -- Documentation --
@@ -91,6 +107,10 @@ ignore = [
     "B008", # Do not perform function call in argument defaults
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["D101", "D102", "D103"]
+"conftest.py" = ["D100", "D101", "D103"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -100,11 +120,36 @@ python_version = "3.11"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:services/controller/src:services/recorder/src"
+mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/recorder/src:services/web-mock/src"
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "uvicorn",
+    "uvicorn.*",
+    "fastapi",
+    "fastapi.*",
+    "sse_starlette",
+    "sse_starlette.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# FastAPI app.get() decorators return Any when stubs are absent; exempt web-mock
+# from the untyped-decorator check rather than pulling in non-upstream stub packages.
+module = ["silvasonic.web_mock.*"]
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+# Tests: relax strict typing to reduce friction when writing new tests.
+# No __init__.py in test dirs → mypy sees each file as top-level module.
+module = ["tests", "tests.*", "conftest"]
+disallow_untyped_defs = false
+disallow_untyped_decorators = false
+disallow_untyped_calls = false
 
 
 [tool.pytest.ini_options]
@@ -122,6 +167,14 @@ markers = [
     "integration: requires external services (DB) to run.",
     "e2e: browser tests via playwright running against a full stack.",
     "smoke: quick health checks on built images or deployments.",
+]
+filterwarnings = [
+    # testcontainers uses deprecated @wait_container_is_ready internally
+    "ignore::DeprecationWarning:testcontainers",
+    # Importing async main() during tests causes harmless "never awaited" noise
+    "ignore:coroutine 'main' was never awaited:RuntimeWarning",
+    # runpy warns when re-executing a module already in sys.modules (test_main_guard)
+    "ignore:.*found in sys.modules.*:RuntimeWarning",
 ]
 
 [tool.coverage.run]

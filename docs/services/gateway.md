@@ -1,8 +1,8 @@
 # Gateway Service
 
-> **Status:** Planned (v0.7.0) · **Tier:** 1 · **Instances:** Single · **Ports:** 80 (HTTP), 443 (HTTPS)
+> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** 80 (HTTP), 443 (HTTPS)
 
-Caddy-based reverse proxy providing a unified entry point, HTTPS termination, internal routing, and authentication for all Silvasonic web services.
+**TO-BE:** Caddy-based reverse proxy providing a unified entry point, HTTPS termination, internal routing, and authentication for all Silvasonic web services.
 
 ---
 

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Weather{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="text-xl font-bold">Weather</h1>
+    <p class="text-xs text-base-content/50 mt-0.5">Environmental conditions</p>
+</div>
+
+<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'current' }">
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'current' }" @click="tab = 'current'">Current</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'correlations' }"
+        @click="tab = 'correlations'">Correlations</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'export' }" @click="tab = 'export'">Export</a>
+
+    <!-- Current — stat cards (static, non-interactive display) -->
+    <div x-show="tab === 'current'" class="tab-content col-span-3 pt-4 w-full">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5 items-center text-center">
+                    <div class="text-4xl mb-1">🌡️</div>
+                    <div class="text-2xl font-bold">8.4°C</div>
+                    <div class="text-xs text-base-content/50">Temperature</div>
+                </div>
+            </div>
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5 items-center text-center">
+                    <div class="text-4xl mb-1">💧</div>
+                    <div class="text-2xl font-bold">72%</div>
+                    <div class="text-xs text-base-content/50">Humidity</div>
+                </div>
+            </div>
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5 items-center text-center">
+                    <div class="text-4xl mb-1">🌀</div>
+                    <div class="text-2xl font-bold">1013 hPa</div>
+                    <div class="text-xs text-base-content/50">Pressure</div>
+                </div>
+            </div>
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5 items-center text-center">
+                    <div class="text-4xl mb-1">💨</div>
+                    <div class="text-2xl font-bold">3.2 m/s</div>
+                    <div class="text-xs text-base-content/50">Wind</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Correlations (static) -->
+    <div x-show="tab === 'correlations'" class="tab-content col-span-3 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <h3 class="text-sm font-semibold mb-3">Detections vs. Temperature (dual Y-axis)</h3>
+                <div
+                    class="h-48 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
+                    [ ECharts dual Y-axis correlation chart ]</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export (static) -->
+    <div x-show="tab === 'export'" class="tab-content col-span-3 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <h3 class="text-sm font-semibold mb-3">Export Weather Data</h3>
+                <div class="flex gap-3">
+                    <input type="date" class="input input-bordered input-sm" value="2026-02-01" />
+                    <input type="date" class="input input-bordered input-sm" value="2026-02-23" />
+                    <button class="btn btn-outline btn-sm">✅ Export CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

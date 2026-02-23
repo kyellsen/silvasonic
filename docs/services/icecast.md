@@ -1,8 +1,8 @@
 # Icecast
 
-> **Status:** Planned (v0.9.0) · **Tier:** 1 · **Instances:** Single
+> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single
 
-Lightweight streaming server that receives live Opus audio from Recorder instances and serves it to the Web-Interface and external clients via HTTP. Enables real-time soundscape monitoring without accessing stored recordings.
+**TO-BE:** Lightweight streaming server that receives live Opus audio from Recorder instances and serves it to the Web-Interface and external clients via HTTP. Enables real-time soundscape monitoring without accessing stored recordings.
 
 ---
 

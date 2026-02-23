@@ -23,7 +23,7 @@ services:
     networks:
       - silvasonic-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-silvasonic}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-silvasonic}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,7 +54,7 @@ services:
     # Hardware access (same privilege level as recorder for consistency)
     privileged: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9100/healthy"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9100/healthy" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +70,7 @@ services:
       context: .
       dockerfile: services/recorder/Containerfile
     restart: unless-stopped
-    profiles: ["managed"]
+    profiles: [ "managed" ]
     # No host port exposure — Controller reaches Recorder via container-internal IP.
     # Health endpoint (port 9500) is accessible within silvasonic-net only.
     volumes:
@@ -78,7 +78,7 @@ services:
     networks:
       - silvasonic-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9500/healthy"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9500/healthy" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,11 +94,59 @@ services:
     cpus: 1.0
     oom_score_adj: -999 # Protected: OOM Killer kills this LAST
 
-# --- Volumes (Named volumes only for database, per AGENTS.md) ---
+  # --- Redis (Pub/Sub broker for heartbeats and SSE log streaming) ---
+  # Ephemeral — no persistence required (status bus, see ADR-0017, ADR-0019, ADR-0022).
+  # Named volume used for bind-mount consistency (ADR-0006).
+  redis:
+    container_name: silvasonic-redis
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    # Disable persistence — all Redis data (heartbeats, status) is volatile by design.
+    command: [ "redis-server", "--save", "" ]
+    ports:
+      - "${SILVASONIC_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Web-Mock (Tier 1 Dev UI — v0.2.0) ---
+  # Full UI shell with hardcoded mock data. No DB or Redis dependency.
+  # Replace mock_data imports route-by-route with real DB queries for v0.8.0.
+  web-mock:
+    container_name: silvasonic-web-mock
+    build:
+      context: .
+      dockerfile: services/web-mock/Containerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SILVASONIC_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+# --- Volumes (Named volumes only for stateful services, per ADR-0006) ---
 volumes:
   db-data:
+  redis-data:
 
-# --- Networks ---
+    # --- Networks ---
 networks:
   silvasonic-net:
     driver: bridge

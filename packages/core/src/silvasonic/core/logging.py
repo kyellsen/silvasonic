@@ -43,18 +43,25 @@ def configure_logging(service_name: str) -> None:
     ]
 
     # 4. Environment-Specific Rendering
+    #
+    # Three modes:
+    #   - PROD (!dev_mode): JSON lines — ideal for Loki / Elasticsearch
+    #   - DEV + TTY: Rich console — beautiful colors and tracebacks
+    #   - DEV + no TTY (container): structlog ConsoleRenderer — safe, no hang
+    #
+    # RichHandler hangs in containers without a TTY because Rich's Console
+    # tries to detect terminal capabilities.  We detect this at runtime.
+
+    is_interactive = sys.stdout.isatty()
     renderer: Any
+
     if not dev_mode:
         # PROD: JSON array tracebacks (perfect for Loki/Elasticsearch)
         shared_processors.append(structlog.processors.dict_tracebacks)
         renderer = structlog.processors.JSONRenderer()
     else:
-        # DEV: Beautiful, colored, multiline tracebacks for humans via Rich
-        from rich.logging import RichHandler
-
-        # Rich handles timestamps and levels beautifully; we simplify the structlog pipeline
-        # to avoid double-printing or formatting conflicts.
-        renderer = structlog.dev.ConsoleRenderer(colors=True)
+        # DEV: Colored console output (works with and without TTY)
+        renderer = structlog.dev.ConsoleRenderer(colors=is_interactive)
 
     # 5. Bridge: Standard Library -> Structlog Format
     # `foreign_pre_chain` ensures third-party logs get timestamps and service names
@@ -71,23 +78,17 @@ def configure_logging(service_name: str) -> None:
     root_logger.setLevel(logging.INFO)
     root_logger.handlers.clear()  # Wipe any existing handlers
 
-    if dev_mode:
-        # Import inside function to avoid heavy dependency at module level if not needed
+    if dev_mode and is_interactive:
+        # Interactive terminal: use RichHandler for beautiful output
         from rich.logging import RichHandler
 
-        # RichHandler inherently handles timestamp, level coloring, and formatting.
-        # We perform a minimal setup here.
         rich_handler = RichHandler(
             rich_tracebacks=True, tracebacks_show_locals=True, show_time=True
         )
-        # Note: We bind the ProcessorFormatter to the handler so structlog-processed messages
-        # still pass through (rendering as the 'message' string).
-        # However, for pure stdlib logs, Rich does its own magic.
-        # The key is that `renderer` above (ConsoleRenderer) returns a string.
-        # RichHandler expects a string message.
         rich_handler.setFormatter(formatter)
         root_logger.addHandler(rich_handler)
     else:
+        # Container / CI / prod: plain StreamHandler to stdout (never blocks)
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setFormatter(formatter)
         root_logger.addHandler(stdout_handler)

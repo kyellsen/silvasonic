@@ -1,8 +1,8 @@
 # <Service Name>
 
-> **Status:** Planned (vX.Y.0) · **Tier:** <1 | 2> · **Instances:** <Single | Multi-instance: one per …>
+> **Status:** planned - Not implemented · **Tier:** <1 | 2> · **Instances:** <Single | Multi-instance: one per …>
 
-<!-- One-liner: what this service IS and WHY it matters. -->
+**TO-BE:** <!-- One-liner: what this service IS and WHY it matters. -->
 
 ---
 

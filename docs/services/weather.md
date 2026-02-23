@@ -1,8 +1,8 @@
 # Weather
 
-> **Status:** Planned (v1.2.0) · **Tier:** 2 · **Instances:** Single
+> **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Single
 
-Environmental data service that downloads weather observations from external APIs and local sensors, stores them in the database, and enables correlation of acoustic activity with environmental conditions.
+**TO-BE:** Environmental data service that downloads weather observations from external APIs and local sensors, stores them in the database, and enables correlation of acoustic activity with environmental conditions.
 
 ---
 

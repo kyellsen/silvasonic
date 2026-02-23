@@ -1,8 +1,8 @@
 # BirdNET Service
 
-> **Status:** Planned (v1.1.0) · **Tier:** 2 · **Instances:** Single
+> **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Single
 
-On-device inference service for avian species classification using the BirdNET-Analyzer framework.
+**TO-BE:** On-device inference service for avian species classification using the BirdNET-Analyzer framework.
 
 ---
 
@@ -55,6 +55,22 @@ On-device inference service for avian species classification using the BirdNET-A
 | `/mnt/data/recordings/processed:ro` | Processed recordings (read-only mount) | —                 |
 | `POSTGRES_HOST`, `SILVASONIC_DB_*`  | Database connection                    | via `.env`        |
 
+### Dynamic Configuration (Database)
+
+Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an **Immutable Container** (ADR-0019), BirdNET reads these settings *once* on startup.
+
+| Key       | Setting                | Default | Description                                          |
+| --------- | ---------------------- | ------- | ---------------------------------------------------- |
+| `system`  | `latitude`             | `53.55` | Station latitude — restricts species list to region  |
+| `system`  | `longitude`            | `9.99`  | Station longitude — restricts species list to region |
+| `birdnet` | `confidence_threshold` | `0.25`  | Minimum confidence for species detection             |
+
+**Update Mechanism (State Reconciliation):**
+1. User changes settings in Web UI.
+2. Frontend updates `system_config` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
+3. The Controller restarts the BirdNET container.
+4. BirdNET reads the new settings from the database upon startup.
+
 ## 6. Technology Stack
 
 *   **ML Model:** BirdNET-Analyzer — TFLite-based avian species classifier.
@@ -64,8 +80,6 @@ On-device inference service for avian species classification using the BirdNET-A
 ## 7. Open Questions & Future Ideas
 
 *   Custom model fine-tuning with local species data.
-*   Location-aware filtering (restrict predictions to species plausible for the deployment region).
-*   Confidence threshold tuning — balancing recall vs. precision (currently hardcoded or default).
 *   Post-MVP: spectrogram + detection overlay visualization in the Web-Interface.
 
 ## 8. Out of Scope
@@ -83,5 +97,6 @@ On-device inference service for avian species classification using the BirdNET-A
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — Resource Limits & QoS
+*   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (latitude, confidence threshold)
 *   [Glossary: BirdNET](../glossary.md) — canonical definition
 *   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)

@@ -1,8 +1,8 @@
 # Tailscale Service
 
-> **Status:** Planned (v1.5.0) · **Tier:** 1 · **Instances:** Single · **Ports:** None (VPN overlay)
+> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** None (VPN overlay)
 
-Secure, zero-config remote access via WireGuard-based VPN mesh networking. Enables SSH, Web-Interface, and fleet management access to field-deployed devices behind CGNAT or mobile networks.
+**TO-BE:** Secure, zero-config remote access via WireGuard-based VPN mesh networking. Enables SSH, Web-Interface, and fleet management access to field-deployed devices behind CGNAT or mobile networks.
 
 ---
 

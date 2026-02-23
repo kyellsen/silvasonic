@@ -2,18 +2,18 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.1.0 — Foundation
+> **Status:** v0.1.0 — Requirements Engineering & Specification
 
 ---
 
 ## Core Philosophy: Data Capture Integrity
 
-Silvasonic is a **recording station first**. Every design decision is subordinate to one principle:
+**TO-BE:** Silvasonic is a **recording station first**. Every design decision is subordinate to one principle:
 
 > **Data Capture Integrity is paramount.**  
 > Any operation that risks the continuity of sound recording is forbidden.
 
-The system is designed to run autonomously for **years** without human intervention, buffering data locally on high-speed NVMe storage and synchronizing with central servers (e.g., Nextcloud) via a **Store & Forward** architecture.
+**TO-BE:** The system is designed to run autonomously for **years** without human intervention, buffering data locally on high-speed NVMe storage and synchronizing with central servers (e.g., Nextcloud) via a **Store & Forward** architecture.
 
 ---
 
@@ -25,19 +25,19 @@ The system is designed to run autonomously for **years** without human intervent
 - Professional-grade audio interface for full-spectrum capture
 
 ### Soundscape Scope
-Silvasonic captures the **entire soundscape** — from low-frequency avian vocalizations to ultrasonic bat echolocation calls. The system is not limited to a single species or frequency band.
+**TO-BE:** Silvasonic captures the **entire soundscape** — from low-frequency avian vocalizations to ultrasonic bat echolocation calls. The system is not limited to a single species or frequency band.
 
 ### Containerized
-All services run in **Podman containers** (see ADR-0004). Processes run as root inside the container for simplicity; Podman's rootless mode maps container-root to an unprivileged host user automatically. This maximizes security and isolation while simplifying deployment and updates on remote devices.
+**AS-IS:** All services run in **Podman containers** (see ADR-0004). Processes run as root inside the container for simplicity; Podman's rootless mode maps container-root to an unprivileged host user automatically. This maximizes security and isolation while simplifying deployment and updates on remote devices.
 
 ### Store & Forward
-Recordings are written to local NVMe storage first. Synchronization to central infrastructure happens opportunistically — the station never depends on network connectivity for its primary mission.
+**TO-BE:** Recordings are written to local NVMe storage first. Synchronization to central infrastructure happens opportunistically — the station never depends on network connectivity for its primary mission.
 
 ---
 
 ## Services Architecture
 
-The system is composed of containerized services organized into two tiers.
+**TO-BE:** The system is composed of containerized services organized into two tiers.
 
 ### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
@@ -80,7 +80,7 @@ The system is composed of containerized services organized into two tiers.
 
 ## Deployment & Fleet Management
 
-Silvasonic supports two deployment models:
+**TO-BE:** Silvasonic supports two deployment models:
 
 1. **Single Node:** Manual provisioning via local installer scripts.
 2. **Fleet Mode:** "Zero-Touch" provisioning using a bootstrap image. The device connects to a VPN management network upon boot and pulls its configuration via **Ansible**.

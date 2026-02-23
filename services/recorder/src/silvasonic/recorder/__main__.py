@@ -12,14 +12,13 @@ background_tasks: set[asyncio.Task[NoReturn]] = set()
 SIMULATE_RECORDING_HEALTH = True
 
 
-async def monitor_recording() -> NoReturn:
+async def monitor_recording(monitor: HealthMonitor) -> NoReturn:
     """Periodically check recording status.
 
     TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
     with actual checks (e.g. verifying .wav file growth, audio device status)
     once the recording pipeline is implemented.
     """
-    monitor = HealthMonitor()
     while True:
         # In the future, this will check if .wav files are actually being written
         is_recording = SIMULATE_RECORDING_HEALTH
@@ -39,11 +38,12 @@ async def main() -> None:
     """
     configure_logging("recorder")
 
-    # Start health server in a separate thread (default port 9500)
-    start_health_server()
+    # Create health monitor and start HTTP server on default port 9500
+    health_monitor = HealthMonitor()
+    start_health_server(port=9500, monitor=health_monitor)
 
     # Start background health checks
-    _health_task_rec = asyncio.create_task(monitor_recording())
+    _health_task_rec = asyncio.create_task(monitor_recording(health_monitor))
     background_tasks.add(_health_task_rec)
     _health_task_rec.add_done_callback(background_tasks.discard)
 

@@ -43,3 +43,11 @@ class TestServiceHealth:
         resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+
+    def test_web_mock_healthy(self, web_mock_container: DockerContainer) -> None:
+        """Web-Mock /healthy returns 200 with status ok."""
+        host = web_mock_container.get_container_host_ip()
+        port = int(web_mock_container.get_exposed_port(8001))
+        resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"

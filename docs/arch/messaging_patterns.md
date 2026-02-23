@@ -48,12 +48,13 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 > **Status:** Planned (v0.2.0)
 
-Redis serves exactly **two purposes** for Silvasonic:
+Redis serves exactly **three purposes** for Silvasonic:
 
 | Mechanism                     | Redis Command                             | Purpose                                                     |
 | :---------------------------- | :---------------------------------------- | :---------------------------------------------------------- |
 | **Current Status** (snapshot) | `SET silvasonic:status:<id> <json> EX 30` | Readable anytime. 30s TTL — key disappears if service stops |
 | **Live Updates** (push)       | `PUBLISH silvasonic:status <json>`        | Real-time notification for subscribers (Web-Interface)      |
+| **Live Logs** (push)          | `PUBLISH silvasonic:logs <json>`          | Container log streaming for Web-Interface (ADR-0022)        |
 
 No Redis Streams, no Consumer Groups, no additional channels.
 
@@ -140,6 +141,7 @@ The nudge is a simple wake-up signal — not a command. If the nudge is lost (Co
 *   [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 *   [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
 *   [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
+*   [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
 *   [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 *   [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
 *   [Filesystem Governance](filesystem_governance.md)

@@ -32,4 +32,4 @@ class Detection(Base):
     label: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     common_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    details: Mapped[dict[str, Any]] = mapped_column(JSONB, default={}, nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

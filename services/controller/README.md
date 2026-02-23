@@ -2,7 +2,7 @@
 
 > **Status:** Partial (v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 
-The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`). It follows the **State Reconciliation Pattern** — a pure Listener + Actor with no HTTP API beyond `/healthy`.
+**AS-IS:** The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`). It follows the **State Reconciliation Pattern** — a pure Listener + Actor with no HTTP API beyond `/healthy`.
 
 ---
 
@@ -79,7 +79,7 @@ io.silvasonic.profile: <profile_slug>
 
 On startup, the Controller queries all containers with `io.silvasonic.owner=controller` and adopts them without restarting — ensuring Data Capture Integrity across Controller restarts.
 
-> **TO-BE** (v0.3.0) — See [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md).
+> **TO-BE:** (v0.3.0) — See [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md).
 
 ---
 
@@ -123,13 +123,21 @@ The Controller follows the **State Reconciliation Pattern** (inspired by Kuberne
 
 See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
 
-> **TO-BE** (v0.3.0)
+> **TO-BE:** (v0.3.0)
 
 ---
 
 ## Redis: Heartbeat + Status Aggregator
 
 The Controller publishes its own heartbeat like every service (via `SilvaService`, see [ADR-0019](../../docs/adr/0019-unified-service-infrastructure.md)).
+
+**Host Resource Monitoring:** In addition to the standard per-process `meta.resources` that every `SilvaService` includes, the Controller publishes **host-level** metrics in `meta.host_resources`:
+
+*   Total CPU utilization and core count
+*   Total RAM used/total/percent
+*   Storage used/total/percent (for `SILVASONIC_WORKSPACE_PATH`)
+
+This enables the Web-Interface dashboard to display system-wide resource gauges alongside per-service metrics. The Controller uses the `HostResourceCollector` from `silvasonic.core.resources` for this.
 
 Additionally, it acts as a **status aggregator** for Tier 2 containers that may not have established their Redis connection yet (e.g., during startup). The Controller queries Tier 2 health endpoints via `podman-py` and publishes their status to Redis on their behalf until they report independently.
 
@@ -173,13 +181,13 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | Feature                  | Status                                                            |
 | ------------------------ | ----------------------------------------------------------------- |
 | Health monitoring        | ✅ Implemented (database connectivity, recorder spawn placeholder) |
-| Podman socket connection | **TO-BE** (v0.3.0 Phase 1)                                        |
-| Container lifecycle mgmt | **TO-BE** (v0.3.0 Phase 2)                                        |
-| USB microphone detection | **TO-BE** (v0.3.0 Phase 3)                                        |
-| Reconciliation loop      | **TO-BE** (v0.3.0 Phase 2)                                        |
-| Profile bootstrapper     | **TO-BE** (ADR-0016)                                              |
-| Reconcile-nudge sub.     | **TO-BE** (v0.3.0)                                                |
-| Redis heartbeat + agg.   | **TO-BE** (v0.2.0, ADR-0019)                                      |
+| Podman socket connection | **TO-BE:** (v0.3.0 Phase 1)                                       |
+| Container lifecycle mgmt | **TO-BE:** (v0.3.0 Phase 2)                                       |
+| USB microphone detection | **TO-BE:** (v0.3.0 Phase 3)                                       |
+| Reconciliation loop      | **TO-BE:** (v0.3.0 Phase 2)                                       |
+| Profile bootstrapper     | **TO-BE:** (ADR-0016)                                             |
+| Reconcile-nudge sub.     | **TO-BE:** (v0.3.0)                                               |
+| Redis heartbeat + agg.   | **TO-BE:** (v0.2.0, ADR-0019)                                     |
 
 ---
 

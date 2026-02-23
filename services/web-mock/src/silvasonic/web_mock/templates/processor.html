@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Processor{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="text-xl font-bold">Processor</h1>
+</div>
+
+<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'pipeline' }">
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'pipeline' }" @click="tab = 'pipeline'">Pipeline</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'storage' }" @click="tab = 'storage'">Storage &amp;
+        Retention</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'index' }" @click="tab = 'index'">Index</a>
+
+    <!-- Pipeline tab -->
+    <div x-show="tab === 'pipeline'" class="tab-content col-span-3 pt-4 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5">
+                    <h3 class="font-semibold text-sm mb-3">Indexer</h3>
+                    <div class="stat p-0">
+                        <div class="stat-value text-2xl text-success">Running</div>
+                        <div class="stat-desc font-mono">Last run: 3 min ago</div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5">
+                    <h3 class="font-semibold text-sm mb-3">Ingestion Backlog</h3>
+                    <div class="stat p-0">
+                        <div class="stat-value text-2xl text-warning">14</div>
+                        <div class="stat-desc font-mono">files pending</div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5">
+                    <h3 class="font-semibold text-sm mb-3">Janitor</h3>
+                    <div class="stat p-0">
+                        <div class="stat-value text-2xl text-success">Idle</div>
+                        <div class="stat-desc font-mono">No cleanup scheduled</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage & Retention tab -->
+    <div x-show="tab === 'storage'" class="tab-content col-span-3 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 mb-5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <h3 class="font-semibold text-sm mb-4">NVMe Status</h3>
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="radial-progress text-warning text-sm font-bold"
+                        style="--value:{{ metrics.nvme_used_pct }}; --size:5rem; --thickness:6px;">
+                        {{ metrics.nvme_used_pct }}%
+                    </div>
+                    <div class="text-sm">
+                        <div class="font-mono">{{ metrics.nvme_used_gb }} GB used of {{ metrics.nvme_total_gb }} GB
+                        </div>
+                        <div class="text-xs text-base-content/50 mt-1">Estimated days remaining: <span
+                                class="text-success font-mono">~18</span></div>
+                    </div>
+                </div>
+                <div class="alert alert-warning py-2 text-xs rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    </svg>
+                    NVMe usage above 65% — janitor policy will trigger at 80%.
+                </div>
+            </div>
+        </div>
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <h3 class="font-semibold text-sm mb-3">Retention Policy</h3>
+                <div class="form-control w-full max-w-xs mb-3">
+                    <label class="label py-1"><span class="label-text text-xs">Delete recordings older
+                            than</span></label>
+                    <select class="select select-bordered select-sm">
+                        <option>30 days</option>
+                        <option>60 days</option>
+                        <option>90 days</option>
+                        <option>Never</option>
+                    </select>
+                </div>
+                <button class="btn btn-warning btn-sm">
+                    🟨 Preview Janitor Impact
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Index tab -->
+    <div x-show="tab === 'index'" class="tab-content col-span-3 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <h3 class="font-semibold text-sm mb-3">Index Status</h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm table-zebra font-mono text-xs">
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th>Rows</th>
+                                <th>Last indexed</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>recordings</td>
+                                <td>4,821</td>
+                                <td>3 min ago</td>
+                                <td><span class="badge badge-success badge-xs">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>birdnet_detections</td>
+                                <td>98,432</td>
+                                <td>5 min ago</td>
+                                <td><span class="badge badge-success badge-xs">OK</span></td>
+                            </tr>
+                            <tr>
+                                <td>batdetect_detections</td>
+                                <td>12,018</td>
+                                <td>5 min ago</td>
+                                <td><span class="badge badge-success badge-xs">OK</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn btn-sm btn-outline mt-3">Rebuild Index</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

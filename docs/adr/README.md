@@ -19,3 +19,5 @@
 - [ADR-0018: Worker Pull Orchestration — Self-Service Analysis via DB Polling](0018-worker-pull-orchestration.md)
 - [ADR-0019: Unified Service Infrastructure — SilvaService Pattern](0019-unified-service-infrastructure.md)
 - [ADR-0020: Resource Limits & QoS — Protecting Data Capture Integrity](0020-resource-limits-qos.md)
+- [ADR-0021: Frontend Design System — Tailwind CSS + DaisyUI + ECharts + Wavesurfer.js](0021-frontend-design-system.md)
+- [ADR-0022: Live Log Streaming — Podman Logs via Redis SSE](0022-live-log-streaming.md)

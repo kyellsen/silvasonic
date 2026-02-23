@@ -11,9 +11,8 @@ CONTROLLER_HEALTH_PORT = int(os.environ.get("SILVASONIC_CONTROLLER_PORT", "9100"
 background_tasks: set[asyncio.Task[NoReturn]] = set()
 
 
-async def monitor_database() -> NoReturn:
+async def monitor_database(monitor: HealthMonitor) -> NoReturn:
     """Periodically check database connectivity and update health status."""
-    monitor = HealthMonitor()
     while True:
         is_connected = await check_database_connection()
         monitor.update_status(
@@ -26,14 +25,13 @@ async def monitor_database() -> NoReturn:
 SIMULATE_RECORDER_SPAWN = True
 
 
-async def monitor_recorder_spawn() -> NoReturn:
+async def monitor_recorder_spawn(monitor: HealthMonitor) -> NoReturn:
     """Periodically check if a recorder has been spawned.
 
     TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
     with actual subprocess / container health checks once recorder spawning
     is implemented.
     """
-    monitor = HealthMonitor()
     while True:
         # In the future, this will check if the controller has successfully spawned a recorder
         has_spawned_recorder = SIMULATE_RECORDER_SPAWN
@@ -50,13 +48,14 @@ async def main() -> None:
     """Start the controller service."""
     configure_logging("controller")
 
-    # Start health server in a separate thread (it uses http.server)
-    start_health_server(port=CONTROLLER_HEALTH_PORT)
+    # Create health monitor and start HTTP server
+    health_monitor = HealthMonitor()
+    start_health_server(port=CONTROLLER_HEALTH_PORT, monitor=health_monitor)
 
     # Start background health checks
     # Create a strong reference to the task to avoid    # Start background health checks
-    _health_task_db = asyncio.create_task(monitor_database())
-    _health_task_spawn = asyncio.create_task(monitor_recorder_spawn())
+    _health_task_db = asyncio.create_task(monitor_database(health_monitor))
+    _health_task_spawn = asyncio.create_task(monitor_recorder_spawn(health_monitor))
 
     # Keep strong references to avoid GC
     background_tasks = {_health_task_db, _health_task_spawn}

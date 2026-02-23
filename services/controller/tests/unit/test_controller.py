@@ -62,10 +62,6 @@ class TestMonitorDatabase:
                 return_value=True,
             ),
             patch(
-                "silvasonic.controller.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
@@ -74,7 +70,7 @@ class TestMonitorDatabase:
             from silvasonic.controller.__main__ import monitor_database
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_database()
+                await monitor_database(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with("database", True, "Connected")
 
@@ -88,10 +84,6 @@ class TestMonitorDatabase:
                 return_value=False,
             ),
             patch(
-                "silvasonic.controller.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
@@ -100,7 +92,7 @@ class TestMonitorDatabase:
             from silvasonic.controller.__main__ import monitor_database
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_database()
+                await monitor_database(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with("database", False, "Connection failed")
 
@@ -121,10 +113,6 @@ class TestMonitorRecorderSpawn:
                 True,
             ),
             patch(
-                "silvasonic.controller.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
@@ -133,7 +121,7 @@ class TestMonitorRecorderSpawn:
             from silvasonic.controller.__main__ import monitor_recorder_spawn
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_recorder_spawn()
+                await monitor_recorder_spawn(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with(
             "recorder_spawn", True, "Recorder spawned"
@@ -148,10 +136,6 @@ class TestMonitorRecorderSpawn:
                 False,
             ),
             patch(
-                "silvasonic.controller.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
@@ -160,7 +144,7 @@ class TestMonitorRecorderSpawn:
             from silvasonic.controller.__main__ import monitor_recorder_spawn
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_recorder_spawn()
+                await monitor_recorder_spawn(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with(
             "recorder_spawn", False, "No recorder spawned"

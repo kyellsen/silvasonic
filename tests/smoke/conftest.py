@@ -145,3 +145,23 @@ def recorder_container() -> Generator[DockerContainer]:
     _wait_for_http(host, port)
     yield container
     container.stop()
+
+
+# ── Web-Mock ──────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def web_mock_container() -> Generator[DockerContainer]:
+    """Start an isolated Web-Mock container.
+
+    Function-scoped: fresh container per test (immutable Tier 2 pattern).
+    No database connection needed — web-mock serves hardcoded mock data.
+    No shared network needed.
+    """
+    container = DockerContainer("silvasonic_web-mock").with_exposed_ports(8001)
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(8001))
+    _wait_for_http(host, port)
+    yield container
+    container.stop()

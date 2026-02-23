@@ -4,6 +4,34 @@ Step-by-step guide for tagging a new Silvasonic release.
 
 ---
 
+## 0. Release Type & Quality Gates
+
+Every version bump **must** be classified as one of two types. The quality gates
+differ accordingly.
+
+### Feature Release (Minor or Major: `X.Y.0`)
+
+Adds new functionality, changes behavior, or introduces new services. **All** of
+the following are **mandatory** before tagging:
+
+- [ ] **Unit Tests** — Every new feature has dedicated unit tests (`@pytest.mark.unit`)
+- [ ] **Integration Tests** — Database interactions, service-to-service communication, and adjacent-service contracts are covered (`@pytest.mark.integration`)
+- [ ] **Smoke Tests** — Every service included in the release has a passing smoke test (`@pytest.mark.smoke`)
+- [ ] **`just check-all` passes** — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly
+
+> [!CAUTION]
+> A Feature Release **MUST NOT** be tagged if any of the above gates fails.
+> Fix all issues first, then re-run `just check-all` until clean.
+
+### Patch Release (Bug-Fix: `X.Y.Z` where `Z > 0`)
+
+Bug fixes only — no new features, no behavior changes.
+
+- [ ] **`just check-all` passes**
+- [ ] **Regression test** for the fixed bug (recommended, ideally mandatory)
+
+---
+
 ## 1. Set Version
 
 Silvasonic has **one** central version file. All sub-packages (Controller, Recorder) derive their version dynamically via Hatch.

@@ -3,6 +3,8 @@
 import asyncio
 import os
 import signal
+import sys
+import warnings
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -38,10 +40,6 @@ class TestMonitorRecording:
                 True,
             ),
             patch(
-                "silvasonic.recorder.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
                 side_effect=asyncio.CancelledError,
             ),
@@ -49,7 +47,7 @@ class TestMonitorRecording:
             from silvasonic.recorder.__main__ import monitor_recording
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_recording()
+                await monitor_recording(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with("recording", True, "Recording active")
 
@@ -62,10 +60,6 @@ class TestMonitorRecording:
                 False,
             ),
             patch(
-                "silvasonic.recorder.__main__.HealthMonitor",
-                return_value=mock_monitor,
-            ),
-            patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
                 side_effect=asyncio.CancelledError,
             ),
@@ -73,7 +67,7 @@ class TestMonitorRecording:
             from silvasonic.recorder.__main__ import monitor_recording
 
             with pytest.raises(asyncio.CancelledError):
-                await monitor_recording()
+                await monitor_recording(mock_monitor)
 
         mock_monitor.update_status.assert_called_once_with("recording", False, "Recording failed")
 
@@ -127,6 +121,13 @@ class TestMain:
         """The if __name__ == '__main__' guard calls asyncio.run(main())."""
         import runpy
 
-        with patch("asyncio.run", MagicMock()) as mock_run:
+        # Remove cached module to prevent "found in sys.modules" RuntimeWarning
+        sys.modules.pop("silvasonic.recorder.__main__", None)
+
+        with (
+            patch("asyncio.run", MagicMock()) as mock_run,
+            warnings.catch_warnings(),
+        ):
+            warnings.simplefilter("error", RuntimeWarning)
             runpy.run_module("silvasonic.recorder.__main__", run_name="__main__")
             mock_run.assert_called_once()

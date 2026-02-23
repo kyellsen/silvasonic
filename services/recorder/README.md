@@ -2,7 +2,7 @@
 
 > **Status:** Partial (v0.1.0) · **Tier:** 2 (Application, Managed by Controller) · **Port:** 9500
 
-The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller. Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) **TO-BE** v0.9.0.
+**AS-IS:** The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller. Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) **TO-BE:** v0.9.0.
 
 ---
 
@@ -15,7 +15,7 @@ The Recorder is the most critical service in the Silvasonic stack. It captures a
 ## User Benefit
 
 *   **Plug & Play:** Works with any ALSA-compatible USB microphone. Configuration is injected by the Controller via Microphone Profiles.
-*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording (**TO-BE** v0.9.0).
+*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording (**TO-BE:** v0.9.0).
 *   **Data Quality:** Raw files are untouched (24-bit, native sample rate), ensuring no data loss for downstream analysis.
 
 ---
@@ -35,23 +35,25 @@ The Recorder is an **immutable Tier 2** service. This means:
 
 ### Inputs
 
-*   **Audio Hardware:** ALSA devices via `/dev/snd` hardware mapping.
+*   **Audio Hardware:** ALSA devices via `/dev/snd` hardware mapping. We only support USB microphones for v1.0.0.
 *   **Configuration:** Microphone Profile injected as environment variables by the Controller at container creation time (Profile Injection, ADR-0013/ADR-0016). **No database access.**
 
 ### Processing
 
 *   **FFmpeg Pipeline:** Orchestrates a filter graph using `ffmpeg-python`. A single ALSA capture is split into multiple output streams.
 *   **Dual Stream Architecture** (current target):
-    1.  **Raw:** Preserves original sample rate and bit depth (`pcm_s24le`). Written to `raw/` directory.
-    2.  **Processed:** Resamples to 48 kHz (`pcm_s16le`) for consistent ML input. Written to `processed/` directory.
-*   **Triple Stream Architecture** (**TO-BE** v0.9.0):
+    1.  **Raw:** Preserves original sample rate and bit depth (`pcm_s24le`).
+    2.  **Processed:** Resamples to 48 kHz (`pcm_s16le`) for consistent ML input.
+*   **Segment Writing:** Files are written in 10-second segments by default (this duration can be overridden by the Microphone Profile via the YAML seed/database).
+*   **Buffer to Records:** While a 10s segment is being actively written, it is stored in a `.buffer/` directory. Only when the segment is completely written and closed by FFmpeg is it moved to the `records/` directory. This ensures the Processor only picks up complete, valid files.
+*   **Triple Stream Architecture** (**TO-BE:** v0.9.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 *   **Watchdog:** Monitors the FFmpeg subprocess via `stderr` for errors, hangs, or death. Restarts the pipeline on failure.
 
 ### Outputs
 
-*   **Filesystem:** Segmented WAV files in `raw/` and `processed/` directories under the Recorder workspace on NVMe.
-*   **Icecast Stream:** (**TO-BE** v0.9.0) Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
+*   **Filesystem:** Segmented WAV files in `records/raw/` and `records/processed/` directories under the Recorder workspace on NVMe (moved there from `.buffer/`).
+*   **Icecast Stream:** (**TO-BE:** v0.9.0) Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
 *   **Redis Heartbeats:** Fire-and-forget heartbeats via `SilvaService` base class (ADR-0019). Zero coupling to the recording loop — if Redis is unavailable, heartbeats are silently skipped.
 
 ---
@@ -64,7 +66,7 @@ The Recorder is an **immutable Tier 2** service. This means:
 | **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
 | **Concurrency**  | Process-based — core work in FFmpeg subprocess, Python wrapper is threaded (Watchdog)    |
 | **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
-| **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd`, ALSA, and GPIO access (ADR-0007)  |
+| **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
 | **Resources**    | Medium — continuous I/O to NVMe, FFmpeg CPU usage scales with sample rate                |
 | **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
 
@@ -82,7 +84,7 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 ## Lifecycle
 
 - **Not auto-started.** The Recorder uses the `managed` Compose profile and does not start with `just start`.
-- **Started by Controller.** The Controller spawns Recorder instances as needed, injecting the appropriate profile (device, sample rate, channel config).
+- **Started by Controller.** The Controller spawns Recorder instances as needed, injecting the appropriate profile (device, sample rate, channel config, segment duration).
 - **Graceful shutdown.** The Recorder handles `SIGTERM` and `SIGINT` for clean shutdown.
 
 ---
@@ -94,6 +96,7 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 | `SILVASONIC_RECORDER_PORT` | Health endpoint port     | `9500`                                                   |
 | `RECORDER_DEVICE`          | ALSA device identifier   | `hw:1,0`                                                 |
 | `RECORDER_PROFILE`         | Microphone Profile slug  | `ultramic_384_evo`                                       |
+| `SILVASONIC_ICECAST_URL`   | Target for Opus Stream   | `icecast://user:pass@host:port/mount`                    |
 | `/dev/snd`                 | ALSA audio device access | (device mapping)                                         |
 | Workspace mount            | NVMe recording workspace | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/workspace:z` |
 
@@ -107,20 +110,20 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 *   **Audio Pipeline:** FFmpeg (system binary) + `ffmpeg-python` (graph construction)
 *   **Audio Codecs:** `pcm_s24le` (Raw), `pcm_s16le` (Processed), Opus/Ogg (Live)
 *   **System Dependencies:** `ffmpeg`, `alsa-utils`
-*   **Python:** `silvasonic-core` (SilvaService base class, health monitoring)
+*   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
+*   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
 
 ---
 
 ## Open Questions & Future Ideas
 
 *   FFmpeg vs. GStreamer — GStreamer offers lower-latency ALSA integration but more complex pipeline syntax
-*   Segment duration tuning (currently planned: 5-minute WAV segments)
-*   FLAC compression for processed stream (reduces NVMe write volume)
-*   I2S microphone support (e.g., ICS-43434) in addition to USB/ALSA
 *   Automatic gain control based on ambient noise levels
 
 ## Out of Scope
 
+*   **Does NOT** compress files to FLAC (Uploader's job).
+*   **Does NOT** support I2S microphones for v1.0.0 (USB/ALSA only).
 *   **Does NOT** analyze audio (BirdNET / BatDetect / Processor's job).
 *   **Does NOT** upload files to the cloud (Uploader's job).
 *   **Does NOT** provide a UI (Web-Interface's job).
@@ -137,7 +140,7 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 | Health server            | ✅ Implemented (`:9500/healthy`)                |
 | Recording health monitor | ✅ Implemented (placeholder, hardcoded healthy) |
 | Signal handling          | ✅ Implemented (graceful shutdown)              |
-| Audio capture logic      | **TO-BE** (v0.4.0)                             |
+| Audio capture logic      | **TO-BE:** (v0.4.0)                            |
 
 ---
 

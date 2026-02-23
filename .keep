@@ -17,6 +17,7 @@ compose.yml
 compose.override.yml
 justfile
 mkdocs.yml
+conftest.py
 
 # === Documentation ===
 AGENTS.md

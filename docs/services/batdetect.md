@@ -1,8 +1,8 @@
 # BatDetect Service
 
-> **Status:** Planned (v1.3.0) · **Tier:** 2 · **Instances:** Single
+> **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Single
 
-On-device inference service for bat species classification using specialized ultrasonic ML models.
+**TO-BE:** On-device inference service for bat species classification using specialized ultrasonic ML models.
 
 ---
 

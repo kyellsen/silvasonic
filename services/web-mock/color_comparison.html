@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silvasonic – Farbpaletten-Vergleich (3 Varianten)</title>
+    <style>
+        :root {
+            --font: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font);
+            font-size: 13.5px;
+            background: #18181b;
+            color: #e4e4e7;
+            padding: 1.25rem;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: .4rem;
+            font-size: 1.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #a1a1aa;
+            font-size: .88rem;
+        }
+
+        .grid3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: .8rem;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1100px) {
+            .grid3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .palette {
+            border: 1px solid #3f3f46;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .palette-header {
+            padding: .55rem .7rem;
+            font-weight: 700;
+            font-size: .85rem;
+            border-bottom: 1px solid #3f3f46;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            flex-wrap: wrap;
+        }
+
+        .palette-header.light-head {
+            background: #f4f4f5;
+            color: #27272a;
+        }
+
+        .palette-header.dark-head {
+            background: #27272a;
+            color: #e4e4e7;
+        }
+
+        .palette-body {
+            padding: .65rem;
+            display: flex;
+            flex-direction: column;
+            gap: .35rem;
+        }
+
+        .palette-body.light-bg {
+            background: #fafafa;
+            color: #27272a;
+        }
+
+        .palette-body.dark-bg {
+            background: #1c1c1e;
+            color: #e4e4e7;
+        }
+
+        .swatch-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .swatch {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            border: 1px solid rgba(128, 128, 128, .3);
+            flex-shrink: 0;
+        }
+
+        .swatch-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            min-width: 0;
+        }
+
+        .swatch-name {
+            font-weight: 600;
+            font-size: .76rem;
+        }
+
+        .swatch-value {
+            font-size: .65rem;
+            font-family: 'Courier New', monospace;
+            opacity: .7;
+            word-break: break-all;
+        }
+
+        .group-label {
+            font-weight: 700;
+            font-size: .66rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-top: .35rem;
+            margin-bottom: .08rem;
+            opacity: .55;
+            border-bottom: 1px solid rgba(128, 128, 128, .15);
+            padding-bottom: .15rem;
+        }
+
+        .section-title {
+            max-width: 1800px;
+            margin: 1.5rem auto .6rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding-bottom: .3rem;
+            border-bottom: 2px solid #3f3f46;
+        }
+
+        /* Module colors */
+        .module-section {
+            max-width: 1800px;
+            margin: 1.2rem auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .8rem;
+        }
+
+        @media (max-width: 900px) {
+            .module-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mod-card {
+            background: #27272a;
+            border-radius: 8px;
+            padding: .6rem .7rem;
+        }
+
+        .mod-card h4 {
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            opacity: .55;
+            margin-bottom: .4rem;
+        }
+
+        .mod-row {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            margin-bottom: .3rem;
+        }
+
+        .mod-color {
+            width: 28px;
+            height: 28px;
+            border-radius: 5px;
+            border: 1px solid rgba(128, 128, 128, .3);
+            flex-shrink: 0;
+        }
+
+        .mod-strip {
+            display: flex;
+            gap: 3px;
+        }
+
+        .mod-strip .s {
+            width: 28px;
+            height: 28px;
+            border-radius: 5px;
+            border: 1px solid rgba(128, 128, 128, .2);
+        }
+
+        .mod-info {
+            font-size: .74rem;
+        }
+
+        .mod-name {
+            font-weight: 600;
+        }
+
+        .mod-val {
+            font-size: .62rem;
+            font-family: monospace;
+            opacity: .65;
+        }
+
+        .note-box {
+            max-width: 1800px;
+            margin: 1.5rem auto;
+            padding: .8rem 1rem;
+            background: #27272a;
+            border-radius: 9px;
+            font-size: .78rem;
+            line-height: 1.55;
+        }
+
+        .note-box ul {
+            padding-left: 1.2rem;
+        }
+
+        .note-box h3 {
+            margin-bottom: .4rem;
+            font-size: .95rem;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: .6rem;
+            font-weight: 700;
+            padding: .12rem .4rem;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+
+        .badge-new {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        .badge-v5 {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .badge-default {
+            background: #52525b;
+            color: #e4e4e7;
+        }
+
+        .verdict {
+            max-width: 1800px;
+            margin: 1.5rem auto;
+            padding: .8rem 1rem;
+            background: #1a2332;
+            border: 1px solid #334155;
+            border-radius: 9px;
+            font-size: .8rem;
+            line-height: 1.55;
+        }
+
+        .verdict h3 {
+            margin-bottom: .4rem;
+            font-size: .95rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🎨 Silvasonic Farbpaletten-Vergleich</h1>
+    <p class="subtitle">Aktuelles Repo (DaisyUI v5 Default) · Vorschlag A „Forest Slate / Neon-Wireframe" · Vorschlag B
+        (v5 OKLCH einfach)</p>
+
+    <!-- ═══════════════════ LIGHT MODE ═══════════════════ -->
+    <h2 class="section-title">☀️ Light Mode</h2>
+    <div class="grid3">
+
+        <!-- CURRENT LIGHT -->
+        <div class="palette">
+            <div class="palette-header light-head">🟢 Aktuell <span class="badge badge-default">v5 Default</span></div>
+            <div class="palette-body light-bg">
+                <div class="group-label">Base</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(100% 0 0)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(100% 0 0)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(98% 0 0)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(98% 0 0)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(95% 0 0)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(95% 0 0)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(21% .006 285)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(21% .006 286)</span></div>
+                </div>
+                <div class="group-label">Semantic</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(45% .24 277)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span class="swatch-value">Indigo
+                            (hue 277)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(65% .241 354)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span class="swatch-value">Pink
+                            (hue 354)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(77% .152 182)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">Teal (hue
+                            182)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(14% .005 286)"></div>
+                    <div class="swatch-info"><span class="swatch-name">neutral</span><span class="swatch-value">Fast
+                            Schwarz</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(74% .16 233)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(76% .177 163)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(82% .189 84)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(71% .194 13)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VORSCHLAG A LIGHT – Forest Slate -->
+        <div class="palette">
+            <div class="palette-header light-head">🌲 Vorschlag A <span class="badge badge-new">Forest Slate</span>
+            </div>
+            <div class="palette-body light-bg">
+                <div class="group-label">Base</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(99% 0.004 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(99% .004 220) Cards</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(97% 0.006 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(97% .006 220) Page BG</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(92% 0.010 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(92% .010 220) Borders</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(22% 0.018 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(22% .018 220)</span></div>
+                </div>
+                <div class="group-label">Brand</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(62% 0.090 179)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span
+                            class="swatch-value">oklch(62% .090 179) Silva Teal</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(63% 0.233 304)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span
+                            class="swatch-value">oklch(63% .233 304) Aurora Violet</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(86.06% 0.173 91.9)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">oklch(86%
+                            .173 92) Solar Gold</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(34% 0.020 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">neutral</span><span
+                            class="swatch-value">oklch(34% .020 250)</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(75.35% 0.139 232.7)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span><span class="swatch-value">oklch(75%
+                            .139 233) Sky</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(72.27% 0.192 149.6)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span><span
+                            class="swatch-value">oklch(72% .192 150) Green</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(83.69% 0.164 84.4)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span><span
+                            class="swatch-value">oklch(84% .164 84) Amber</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(57.71% 0.215 27.3)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span><span class="swatch-value">oklch(58%
+                            .215 27) Strong Red</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VORSCHLAG B LIGHT -->
+        <div class="palette">
+            <div class="palette-header light-head">🧪 Vorschlag B <span class="badge badge-v5">Einfach</span></div>
+            <div class="palette-body light-bg">
+                <div class="group-label">Base</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(100% 0 0)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(100% 0 0)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(96% 0.01 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(96% .01 250)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(90% 0.01 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(90% .01 250)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(25% 0.02 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(25% .02 250)</span></div>
+                </div>
+                <div class="group-label">Semantic</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(60% 0.15 150)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span
+                            class="swatch-value">oklch(60% .15 150) Grün</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(55% 0.20 310)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span
+                            class="swatch-value">oklch(55% .20 310) Violet</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(70% 0.16 75)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">oklch(70%
+                            .16 75) Amber</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(74% .16 233)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(76% .177 163)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(82% .189 84)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(71% .194 13)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════ DARK MODE ═══════════════════ -->
+    <h2 class="section-title">🌙 Dark Mode</h2>
+    <div class="grid3">
+
+        <!-- CURRENT DARK -->
+        <div class="palette">
+            <div class="palette-header dark-head">🟢 Aktuell <span class="badge badge-default">v5 Default</span></div>
+            <div class="palette-body dark-bg">
+                <div class="group-label">Base</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(25.33% .016 252)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(25% .016 252)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(23.26% .014 253)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(23% .014 253)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(21.15% .012 254)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(21% .012 254)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(98% .029 257)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(98% .029 257)</span></div>
+                </div>
+                <div class="group-label">Semantic</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(58% .233 277)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span class="swatch-value">Indigo
+                            (hue 277)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(65% .241 354)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span class="swatch-value">Pink
+                            (hue 354)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(77% .152 182)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">Teal (hue
+                            182)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(14% .005 286)"></div>
+                    <div class="swatch-info"><span class="swatch-name">neutral</span><span class="swatch-value">Fast
+                            Schwarz</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(74% .16 233)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(76% .177 163)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(82% .189 84)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(71% .194 13)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VORSCHLAG A DARK – Forest Slate -->
+        <div class="palette">
+            <div class="palette-header dark-head">🌲 Vorschlag A <span class="badge badge-new">Forest Slate</span></div>
+            <div class="palette-body dark-bg">
+                <div class="group-label">Base (Forest Slate)</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(21% 0.020 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(21% .020 220) Cards</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(16% 0.018 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(16% .018 220) Page BG</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(26% 0.020 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(26% .020 220) Borders</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(92% 0.010 230)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(92% .010 230)</span></div>
+                </div>
+                <div class="group-label">Brand</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(78% 0.080 179)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span
+                            class="swatch-value">oklch(78% .080 179) Bright Teal</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(74% 0.170 304)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span
+                            class="swatch-value">oklch(74% .170 304) Soft Violet</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(86.06% 0.173 91.9)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">oklch(86%
+                            .173 92) Gold</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(30% 0.016 220)"></div>
+                    <div class="swatch-info"><span class="swatch-name">neutral</span><span
+                            class="swatch-value">oklch(30% .016 220)</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(78% 0.139 232.7)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span><span class="swatch-value">oklch(78%
+                            .139 233)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(76% 0.170 150)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span><span
+                            class="swatch-value">oklch(76% .170 150)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(88% 0.150 90)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span><span
+                            class="swatch-value">oklch(88% .150 90)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(63.68% 0.208 25.3)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span><span class="swatch-value">oklch(64%
+                            .208 25)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VORSCHLAG B DARK -->
+        <div class="palette">
+            <div class="palette-header dark-head">🧪 Vorschlag B <span class="badge badge-v5">Einfach</span></div>
+            <div class="palette-body dark-bg">
+                <div class="group-label">Base</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(22% 0.02 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-100</span><span
+                            class="swatch-value">oklch(22% .02 250)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(18% 0.02 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-200</span><span
+                            class="swatch-value">oklch(18% .02 250)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(26% 0.02 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-300</span><span
+                            class="swatch-value">oklch(26% .02 250)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(85% 0.01 250)"></div>
+                    <div class="swatch-info"><span class="swatch-name">base-content</span><span
+                            class="swatch-value">oklch(85% .01 250)</span></div>
+                </div>
+                <div class="group-label">Semantic</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(65% 0.15 150)"></div>
+                    <div class="swatch-info"><span class="swatch-name">primary</span><span
+                            class="swatch-value">oklch(65% .15 150) Grün</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(60% 0.20 310)"></div>
+                    <div class="swatch-info"><span class="swatch-name">secondary</span><span
+                            class="swatch-value">oklch(60% .20 310) Violet</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(75% 0.16 75)"></div>
+                    <div class="swatch-info"><span class="swatch-name">accent</span><span class="swatch-value">oklch(75%
+                            .16 75) Amber</span></div>
+                </div>
+                <div class="group-label">Status</div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(74% .16 233)"></div>
+                    <div class="swatch-info"><span class="swatch-name">info</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(76% .177 163)"></div>
+                    <div class="swatch-info"><span class="swatch-name">success</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(82% .189 84)"></div>
+                    <div class="swatch-info"><span class="swatch-name">warning</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+                <div class="swatch-row">
+                    <div class="swatch" style="background:oklch(71% .194 13)"></div>
+                    <div class="swatch-info"><span class="swatch-name">error</span><span class="swatch-value">(erbt
+                            Default)</span></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════ MODULE COLORS ═══════════════════ -->
+    <h2 class="section-title">🧩 Modul-Farben — Vorschlag A vs. Vorschlag B</h2>
+    <div class="module-section">
+
+        <!-- A: mit strong/soft Varianten -->
+        <div class="mod-card">
+            <h4>🌲 Vorschlag A — mit strong / soft Varianten</h4>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(77.29% 0.153 163.2)" title="base"></div>
+                    <div class="s" style="background:oklch(69.59% 0.149 162.5)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 163)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Dashboard</span> <span class="mod-val">Emerald ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(78.45% 0.133 181.9)" title="base"></div>
+                    <div class="s" style="background:oklch(60.02% 0.104 184.7)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 182)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Recorder</span> <span class="mod-val">Teal ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(76.81% 0.204 130.8)" title="base"></div>
+                    <div class="s" style="background:oklch(64.82% 0.175 131.7)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 131)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Processor</span> <span class="mod-val">Lime ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(79.71% 0.134 211.5)" title="base"></div>
+                    <div class="s" style="background:oklch(60.89% 0.111 221.7)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 212)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Uploader</span> <span class="mod-val">Cyan ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(86.06% 0.173 91.9)" title="base"></div>
+                    <div class="s" style="background:oklch(68.06% 0.142 75.8)" title="strong"></div>
+                    <div class="s" style="background:oklch(96% 0.02 92)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Birds</span> <span class="mod-val">Gold ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(74.77% 0.207 322.2)" title="base"></div>
+                    <div class="s" style="background:oklch(59.15% 0.257 322.9)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 322)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Bats</span> <span class="mod-val">Purple/Pink ·
+                        base/strong/soft</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-strip">
+                    <div class="s" style="background:oklch(75.35% 0.139 232.7)" title="base"></div>
+                    <div class="s" style="background:oklch(68.47% 0.148 237.3)" title="strong"></div>
+                    <div class="s" style="background:oklch(95% 0.02 233)" title="soft (approx)"></div>
+                </div>
+                <div class="mod-info"><span class="mod-name">Weather</span> <span class="mod-val">Light Blue ·
+                        base/strong/soft</span></div>
+            </div>
+        </div>
+
+        <!-- B: nur eine Farbe pro Modul -->
+        <div class="mod-card">
+            <h4>🧪 Vorschlag B — eine Farbe pro Modul</h4>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(65% 0.12 250)"></div>
+                <div class="mod-info"><span class="mod-name">Dashboard</span> <span class="mod-val">oklch(65% .12 250)
+                        Blau</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(75% 0.15 180)"></div>
+                <div class="mod-info"><span class="mod-name">Recorder</span> <span class="mod-val">oklch(75% .15 180)
+                        Teal</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(65% 0.18 45)"></div>
+                <div class="mod-info"><span class="mod-name">Processor</span> <span class="mod-val">oklch(65% .18 45)
+                        Orange</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(55% 0.18 280)"></div>
+                <div class="mod-info"><span class="mod-name">Uploader</span> <span class="mod-val">oklch(55% .18 280)
+                        Indigo</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(78% 0.17 85)"></div>
+                <div class="mod-info"><span class="mod-name">Birds</span> <span class="mod-val">oklch(78% .17 85)
+                        Gelb</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(65% 0.22 330)"></div>
+                <div class="mod-info"><span class="mod-name">Bats</span> <span class="mod-val">oklch(65% .22 330)
+                        Pink</span></div>
+            </div>
+            <div class="mod-row">
+                <div class="mod-color" style="background:oklch(80% 0.12 225)"></div>
+                <div class="mod-info"><span class="mod-name">Weather</span> <span class="mod-val">oklch(80% .12 225)
+                        Hellblau</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════ BEWERTUNG ═══════════════════ -->
+    <div class="verdict">
+        <h3>🤔 Ist Vorschlag A „over-engineered"?</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:.8rem; margin-top:.5rem;">
+            <thead>
+                <tr style="border-bottom:2px solid #3f3f46; text-align:left;">
+                    <th style="padding:.4rem;">Aspekt</th>
+                    <th style="padding:.4rem;">Vorschlag A (Forest Slate)</th>
+                    <th style="padding:.4rem;">Vorschlag B (Einfach)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">Theme-Variablen</td>
+                    <td style="padding:.35rem .4rem;">~30 (inkl. content, shape/feel)</td>
+                    <td style="padding:.35rem .4rem;">~12 (nur Farben, keine shape)</td>
+                </tr>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">Modul-Farben</td>
+                    <td style="padding:.35rem .4rem;">7 × 3 Stufen (base/strong/soft) + on-accent = <strong>22
+                            Variablen</strong></td>
+                    <td style="padding:.35rem .4rem;">7 × 1 = <strong>7 Variablen</strong></td>
+                </tr>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">Status-Farben</td>
+                    <td style="padding:.35rem .4rem;">Vollständig custom (8 Vars: Farbe + Content je Status)</td>
+                    <td style="padding:.35rem .4rem;">Erbt DaisyUI Defaults</td>
+                </tr>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">DaisyUI v5 Syntax</td>
+                    <td style="padding:.35rem .4rem;">✅ <code>@plugin "daisyui/theme"</code>, korrekt</td>
+                    <td style="padding:.35rem .4rem;">⚠️ <code>@layer theme</code>, nicht offiziell</td>
+                </tr>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">color-mix() Soft-Farben</td>
+                    <td style="padding:.35rem .4rem;">✅ dynamisch, passt sich an Theme an</td>
+                    <td style="padding:.35rem .4rem;">❌ nicht vorhanden</td>
+                </tr>
+                <tr style="border-bottom:1px solid #27272a;">
+                    <td style="padding:.35rem .4rem; font-weight:600;">Gesamte CSS-Variablen</td>
+                    <td style="padding:.35rem .4rem;">~52</td>
+                    <td style="padding:.35rem .4rem;">~19</td>
+                </tr>
+                <tr>
+                    <td style="padding:.35rem .4rem; font-weight:600;">Wartbarkeit</td>
+                    <td style="padding:.35rem .4rem;">⚠️ Mehr Aufwand bei Änderungen</td>
+                    <td style="padding:.35rem .4rem;">✅ Wenig Vars, schnelle Anpassung</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="note-box">
+        <h3>💡 Einschätzung</h3>
+        <ul>
+            <li><strong>Vorschlag A ist durchdacht, aber ja — für den aktuellen Stand over-engineered.</strong> 52
+                CSS-Variablen + <code>color-mix()</code>-Soft-Tinting + 3 Stufen pro Modul sind eines Design-Systems für
+                eine reife SaaS-App würdig, aber das Web-Mock hat aktuell ~9 Templates.</li>
+            <li><strong>Die Ideen aus A sind aber gut</strong>: „Forest Slate" Base (hue 220), Teal als Primary, und die
+                <em>Konzepte</em> strong/soft/on-accent sind sinnvoll — nur vielleicht noch nicht in vollem Umfang
+                nötig.</li>
+            <li><strong>Pragmatischer Weg:</strong> Vorschlag B als Start nehmen, aber mit den <em>besseren
+                    Farbwerten</em> aus A (z.B. die Base hue 220, den Teal-Primary statt generischem Grün). Modul-Farben
+                erst mit 1 Stufe starten, strong/soft bei Bedarf hinzufügen.</li>
+            <li><strong>A's DaisyUI-Syntax ist korrekter</strong>: <code>@plugin "daisyui/theme"</code> ist das
+                offizielle v5-Pattern. B nutzt <code>@layer theme</code>, was nicht der offizielle Weg ist.</li>
+        </ul>
+    </div>
+
+</body>
+
+</html>

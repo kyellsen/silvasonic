@@ -1,9 +1,10 @@
-import logging
+"""Database connectivity health check."""
 
+import structlog
 from silvasonic.core.database.session import get_session
 from sqlalchemy import text
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def check_database_connection() -> bool:
@@ -17,5 +18,5 @@ async def check_database_connection() -> bool:
             await session.execute(text("SELECT 1"))
         return True
     except Exception as e:
-        logger.warning(f"Database health check failed: {e}")
+        logger.warning("database_health_check_failed", error=str(e))
         return False

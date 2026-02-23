@@ -8,6 +8,10 @@ Runs (in order):
     2. ruff check      - lint (no autofix)
     3. mypy            - static type checking (strict, incl. services + packages)
     4. pytest -m unit  - fast isolated tests
+
+Ruff and Mypy always both run so the developer gets full lint+type
+feedback in a single pass.  If either fails the pipeline aborts
+before moving on to the test stages.
 """
 
 import subprocess
@@ -30,6 +34,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Stages that may fail without aborting the pipeline.
 # Their result is still shown in the summary and affects the exit code.
 NON_CRITICAL_STAGES: set[str] = {"Lock-File Check"}
+
+# Stages that always run even if a sibling fails.
+# After all ALWAYS_RUN stages have executed, the pipeline aborts if
+# any of them failed.
+ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Mypy"}
 
 
 def _run(label: str, cmd: list[str]) -> bool:
@@ -63,12 +72,28 @@ def main() -> dict[str, bool | None]:
 
     results: dict[str, bool | None] = {}
 
-    # ── Early-fail for critical stages; non-critical stages continue ──────
+    # ── Run stages with always-run group support ─────────────────────────
+    always_run_failed = False
     for i, (label, cmd) in enumerate(all_stages):
         passed = _run(label, cmd)
         results[label] = passed
-        if not passed and label not in NON_CRITICAL_STAGES:
-            # Mark remaining stages as skipped
+
+        if not passed:
+            if label in ALWAYS_RUN_STAGES:
+                # Record failure but keep going so sibling stages run.
+                always_run_failed = True
+            elif label not in NON_CRITICAL_STAGES:
+                # Hard abort for other critical stages.
+                for skip_label, _ in all_stages[i + 1 :]:
+                    results[skip_label] = None
+                break
+
+        # After leaving the always-run group, abort if any member failed.
+        if (
+            label in ALWAYS_RUN_STAGES
+            and always_run_failed
+            and (i + 1 >= len(all_stages) or all_stages[i + 1][0] not in ALWAYS_RUN_STAGES)
+        ):
             for skip_label, _ in all_stages[i + 1 :]:
                 results[skip_label] = None
             break

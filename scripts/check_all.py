@@ -1,5 +1,8 @@
 """Full CI pipeline: Lock → Audit → Lint → Type → Unit → Int → Containerfile → Build → Smoke → E2E.
 
+Dep Audit is skipped by default during development. Remove "Dep Audit" from
+SKIPPED_BY_DEFAULT to re-enable it (e.g. in CI).
+
 Usage:
     python3 scripts/check_all.py
 
@@ -9,6 +12,10 @@ with colored pass/fail indicators.
 Non-critical stages (Lock-File Check, Dep Audit, Containerfile Lint)
 may fail without aborting the pipeline; their results are still
 reported in the summary and affect the exit code.
+
+Ruff Lint and Mypy always both run so the developer gets full
+lint+type feedback in a single pass.  If either fails the pipeline
+aborts before moving on to the test stages.
 
 Smoke tests are self-contained via testcontainers — no need to
 start/stop the real compose stack.
@@ -74,6 +81,15 @@ def _run_stage(num: int, label: str, func: Callable[[], None]) -> StageResult:
 # Stages that may fail without aborting the pipeline.
 # Their result is still shown in the summary and affects the exit code.
 NON_CRITICAL_STAGES: set[str] = {"Lock-File Check", "Dep Audit", "Containerfile Lint"}
+
+# Stages that always run even if a sibling fails.
+# After all ALWAYS_RUN stages have executed, the pipeline aborts if
+# any of them failed.
+ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Mypy"}
+
+# Stages that are skipped by default (dev convenience).
+# Remove a stage name from this set to re-enable it.
+SKIPPED_BY_DEFAULT: set[str] = {"Dep Audit"}
 
 
 # ── Stage Functions ───────────────────────────────────────────────────────────
@@ -208,11 +224,35 @@ def main() -> None:
         ("E2E Tests", 11, _stage_e2e_tests),
     ]
 
-    # ── Early-fail for critical stages; non-critical stages continue ──
-    for label, num, func in all_stages:
-        if not record(label, num, func) and label not in NON_CRITICAL_STAGES:
-            # Mark all remaining stages as skipped
-            for skip_label, _skip_num, _ in all_stages[num:]:
+    # ── Run stages with always-run group support ──────────────────────
+    always_run_failed = False
+    for idx, stage_entry in enumerate(all_stages):
+        label: str = stage_entry[0]
+        num: int = stage_entry[1]
+        func: Callable[[], None] = stage_entry[2]
+        if label in SKIPPED_BY_DEFAULT:
+            _stage_header(num, label)
+            print(f"  ⏩  {label} skipped by default (SKIPPED_BY_DEFAULT).")
+            stages.append((label, None, 0.0))
+            continue
+        passed = record(label, num, func)
+        if not passed:
+            if label in ALWAYS_RUN_STAGES:
+                # Record failure but keep going so sibling stages run.
+                always_run_failed = True
+            elif label not in NON_CRITICAL_STAGES:
+                # Hard abort for other critical stages.
+                for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
+                    stages.append((skip_label, None, 0.0))
+                break
+
+        # After leaving the always-run group, abort if any member failed.
+        if (
+            label in ALWAYS_RUN_STAGES
+            and always_run_failed
+            and (idx + 1 >= len(all_stages) or all_stages[idx + 1][0] not in ALWAYS_RUN_STAGES)
+        ):
+            for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
                 stages.append((skip_label, None, 0.0))
             break
 

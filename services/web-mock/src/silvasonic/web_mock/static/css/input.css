@@ -1,0 +1,193 @@
+/*
+ * Silvasonic Web Mock — Tailwind CSS v4 entry point.
+ *
+ * This file is compiled by `tailwindcss` into `output.css`.
+ * Run:  npm run css:build   (one-shot, minified)
+ *       npm run css:watch   (dev hot-reload)
+ */
+
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* ──────────────────────────────────────────────────────────
+   Silvasonic DaisyUI Themes — silvadark / silvalight
+   Colors in OKLCH for perceptual uniformity.
+   ────────────────────────────────────────────────────────── */
+
+@layer theme {
+  /* Dark mode (default) — blue-slate base */
+  [data-theme="silvadark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(22% 0.02 250);
+    --color-base-200: oklch(18% 0.02 250);
+    --color-base-300: oklch(26% 0.02 250);
+    --color-base-content: oklch(85% 0.01 250);
+
+    --color-primary: oklch(65% 0.15 150);
+    --color-primary-content: oklch(20% 0.05 150);
+    --color-secondary: oklch(60% 0.20 310);
+    --color-secondary-content: oklch(95% 0.02 310);
+    --color-accent: oklch(75% 0.16 75);
+    --color-accent-content: oklch(20% 0.05 75);
+  }
+
+  /* Light mode */
+  [data-theme="silvalight"] {
+    color-scheme: light;
+    --color-base-100: oklch(100% 0 0);
+    --color-base-200: oklch(96% 0.01 250);
+    --color-base-300: oklch(90% 0.01 250);
+    --color-base-content: oklch(25% 0.02 250);
+
+    --color-primary: oklch(60% 0.15 150);
+    --color-primary-content: oklch(98% 0.01 150);
+    --color-secondary: oklch(55% 0.20 310);
+    --color-secondary-content: oklch(98% 0.01 310);
+    --color-accent: oklch(70% 0.16 75);
+    --color-accent-content: oklch(20% 0.05 75);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────
+   Module accent colors — one per service module.
+   Usage:  bg-mod-recorder, text-mod-birds, border-mod-bats, etc.
+   ────────────────────────────────────────────────────────── */
+
+@theme {
+  --color-mod-dashboard: oklch(65% 0.12 250);
+  --color-mod-recorder:  oklch(75% 0.15 180);
+  --color-mod-processor: oklch(65% 0.18 45);
+  --color-mod-uploader:  oklch(55% 0.18 280);
+  --color-mod-birds:     oklch(78% 0.17 85);
+  --color-mod-bats:      oklch(65% 0.22 330);
+  --color-mod-weather:   oklch(80% 0.12 225);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Self-hosted Geist fonts (no Google Fonts CDN)
+   ────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/geist-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/static/fonts/geist-mono-latin-500-normal.woff2') format('woff2');
+}
+
+/* ──────────────────────────────────────────────────────────
+   Tailwind v4 Theme — fonts
+   ────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Custom component styles (migrated from base.html <style>)
+   ────────────────────────────────────────────────────────── */
+
+/* Scale all rem-based sizes up proportionally (default 16px → 18px).
+   Every Tailwind text-* utility uses rem, so this single rule
+   enlarges all typography consistently across the entire app. */
+html {
+  font-size: 18px;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Layout grid — five-zone IDE-style shell */
+.layout-grid {
+  display: grid;
+  grid-template-rows: 3.5rem 1fr 2.5rem;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "header header header"
+    "nav    main   inspector"
+    "footer footer footer";
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.zone-header    { grid-area: header; position: sticky; top: 0; z-index: 30; }
+.zone-nav       { grid-area: nav;    overflow-y: auto; }
+.zone-main      { grid-area: main;   overflow-y: auto; }
+.zone-inspector { grid-area: inspector; overflow-y: auto; }
+.zone-footer    { grid-area: footer; }
+
+/* Console overlay — slide-up panel above footer */
+.console-panel {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 0;
+  right: 0;
+  height: 14rem;
+  background: var(--color-base-200);
+  z-index: 50;
+  border-top: 1px solid var(--color-base-300);
+  transition: transform 0.2s ease;
+}
+
+.console-panel.hidden {
+  transform: translateY(100%);
+}
+
+/* Level bar pulse animation */
+@keyframes pulse-level {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .7; }
+}
+
+.level-animate {
+  animation: pulse-level 1.5s ease-in-out infinite;
+}

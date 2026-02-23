@@ -93,7 +93,41 @@ All heartbeats use the same JSON schema:
     }
   },
   "activity": "recording",
-  "meta": { "db_level": -45.2 }
+  "meta": {
+    "resources": {
+      "cpu_percent": 12.3,
+      "memory_mb": 87.2,
+      "num_threads": 4,
+      "storage_used_gb": 142.7,
+      "storage_total_gb": 476.9,
+      "storage_percent": 30.0
+    },
+    "db_level": -45.2
+  }
+}
+```
+
+The `meta.resources` block is **automatically populated** by the `ResourceCollector` (part of `SilvaService`). Services that have a `workspace_path` also get storage metrics. Service-specific custom fields (e.g. `db_level`) are added by the service itself.
+
+> [!NOTE]
+> The **Controller** additionally includes host-level metrics in its heartbeat under `meta.host_resources` (total CPU, total RAM, total disk). This enables the Web-Interface dashboard to show system-wide resource utilization in addition to per-service metrics.
+
+```json
+{
+  "service": "controller",
+  "meta": {
+    "resources": { "cpu_percent": 3.1, "memory_mb": 45.0, "num_threads": 2 },
+    "host_resources": {
+      "cpu_percent": 23.5,
+      "cpu_count": 4,
+      "memory_used_mb": 2048.0,
+      "memory_total_mb": 8192.0,
+      "memory_percent": 25.0,
+      "storage_used_gb": 142.7,
+      "storage_total_gb": 476.9,
+      "storage_percent": 30.0
+    }
+  }
 }
 ```
 

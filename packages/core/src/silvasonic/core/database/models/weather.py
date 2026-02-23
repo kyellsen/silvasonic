@@ -41,4 +41,4 @@ class Weather(Base):
     is_forecast: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Overflow Buffer for extra sensors
-    extra: Mapped[dict[str, Any]] = mapped_column(JSONB, default={})
+    extra: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)

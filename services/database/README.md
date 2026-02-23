@@ -2,7 +2,7 @@
 
 > **Status:** Implemented (v0.1.0) · **Tier:** 1 (Infrastructure) · **Engine:** TimescaleDB / PostgreSQL · **Instances:** Single · **Port:** 5432
 
-Central persistent store for the Silvasonic system — relational metadata and time-series data powered by TimescaleDB on PostgreSQL.
+**AS-IS:** Central persistent store for the Silvasonic system — relational metadata and time-series data powered by TimescaleDB on PostgreSQL.
 
 ---
 
@@ -111,7 +111,7 @@ Central persistent store for the Silvasonic system — relational metadata and t
 
 *   TimescaleDB continuous aggregates for pre-computed hourly/daily detection summaries
 *   Compression policies for old hypertable chunks (detections, weather)
-*   Backup strategy for NVMe-based deployments (pg_dump vs. WAL archiving)
+*   **Backup Strategy:** For our NVMe-based deployments, logical backups (pg_dump) on millions of rows will be too slow and resource-heavy. We need to implement physical backups (WAL archiving / pg_basebackup) stored locally on the NVMe and opportunistically synced off-device via the Uploader.
 *   Alternatives considered and rejected: InfluxDB (not relational, harder to join with metadata), SQLite (concurrency issues with multiple writers)
 
 ## Out of Scope

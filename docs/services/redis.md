@@ -1,8 +1,8 @@
 # Redis
 
-> **Status:** Planned (v0.2.0) · **Tier:** 1 · **Instances:** Single
+> **Status:** implemented · **Tier:** 1 · **Instances:** Single
 
-In-memory data store serving as the real-time status bus for the Silvasonic ecosystem. Provides two mechanisms: key-value snapshots with TTL (current state) and Pub/Sub channels (live updates, nudge signals).
+**TO-BE:** In-memory data store serving as the real-time status bus for the Silvasonic ecosystem. Provides two mechanisms: key-value snapshots with TTL (current state) and Pub/Sub channels (live updates, nudge signals).
 
 ---
 

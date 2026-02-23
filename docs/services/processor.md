@@ -1,8 +1,8 @@
 # Processor Service
 
-> **Status:** Planned (v0.5.0) · **Tier:** 1 · **Instances:** Single · **Port:** 9200
+> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Port:** 9200
 
-Background workhorse for data ingestion, metadata indexing, and storage retention management. Bridges the gap between raw audio files on disk and the database. Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
+**TO-BE:** Background workhorse for data ingestion, metadata indexing, and storage retention management. Bridges the gap between raw audio files on disk and the database. Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
 
 ---
 
@@ -68,29 +68,50 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 > [!IMPORTANT]
 > The Processor is **Tier 1 (Infrastructure)** because the Janitor is critical for system survival — without it, the NVMe fills up and the Recorder halts. Despite being Tier 1, it follows the **Immutable Container** pattern like Tier 2 services (ADR-0019).
 
-## 5. Configuration & Environment
+### Static Configuration (Environment Variables)
 
-| Variable / Mount                         | Description                                        | Default / Example |
-| ---------------------------------------- | -------------------------------------------------- | ----------------- |
-| `SILVASONIC_PROCESSOR_PORT`              | Health endpoint port                               | `9200`            |
-| `SILVASONIC_JANITOR_THRESHOLD_WARNING`   | Housekeeping trigger (%)                           | `70.0`            |
-| `SILVASONIC_JANITOR_THRESHOLD_CRITICAL`  | Defensive trigger (%)                              | `80.0`            |
-| `SILVASONIC_JANITOR_THRESHOLD_EMERGENCY` | Panic trigger (%)                                  | `90.0`            |
-| `SILVASONIC_JANITOR_INTERVAL_SECONDS`    | Seconds between cleanup cycles                     | `60`              |
-| `SILVASONIC_INDEXER_POLL_INTERVAL`       | Seconds between indexing scans                     | `5.0`             |
-| `/mnt/data/recordings:rw`                | Recorder workspace (read-write for Janitor delete) | —                 |
-| `POSTGRES_HOST`, `SILVASONIC_DB_*`       | Database connection                                | via `.env`        |
+Configured via `settings.py` using `pydantic-settings`. All variables use the `SILVASONIC_` prefix.
+
+| Environment Variable        | Default               | Description                              |
+| :-------------------------- | :-------------------- | :--------------------------------------- |
+| `SILVASONIC_PROCESSOR_PORT` | `9200`                | Health endpoint port                     |
+| `SILVASONIC_LOG_DIR`        | `/var/log/silvasonic` | Directory for log files                  |
+| `SILVASONIC_RECORDINGS_DIR` | `/data/recorder`      | Path to Recorder workspace (Read-Only)   |
+| `SILVASONIC_PROCESSOR_DIR`  | `/data/processor`     | Path to Processor workspace (Read-Write) |
+
+> **Note:** Database and Redis connection settings are managed by the `silvasonic-core` package.
+
+### Dynamic Configuration (Database)
+
+Runtime-tunable settings stored in the `system_config` table under key `processor_settings`:
+As an **Immutable Container** (ADR-0019), the Processor reads these settings *once* on startup.
+
+| Setting                       | Default | Description                    |
+| :---------------------------- | :------ | :----------------------------- |
+| `janitor_threshold_warning`   | `70.0`  | Housekeeping Trigger (%)       |
+| `janitor_threshold_critical`  | `80.0`  | Defensive Trigger (%)          |
+| `janitor_threshold_emergency` | `90.0`  | Panic Trigger (%)              |
+| `janitor_interval_seconds`    | `60`    | Seconds between cleanup cycles |
+| `indexer_poll_interval`       | `5.0`   | Seconds between indexing scans |
+
+**Update Mechanism (State Reconciliation):**
+1. User changes settings in Web UI.
+2. Frontend updates `system_config` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
+3. The Controller restarts the Processor container.
+4. The Processor reads the new settings from the database upon startup.
 
 > [!WARNING]
 > The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect, Uploader) mount it `:ro` per the Consumer Principle (ADR-0009).
 
 ## 6. Technology Stack
 
-*   **Python:** `silvasonic-core` (SilvaService, database models, health monitoring)
+*   **Language**: Python 3.11
+*   **Base Image**: `python:3.11-slim-bookworm` (with `libsndfile1`, `ffmpeg`)
+*   **Python:** `silvasonic-core` (SilvaService, database models, health monitoring), `structlog` (JSON logging)
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 *   **Filesystem:** `pathlib`, `soundfile` (WAV metadata extraction)
 
-## 7. Open Questions & Future Ideas
+## 7. Deferred & Future Features
 
 *   Notification optimization: Redis `PUBLISH` when new recordings are indexed, so workers react instantly instead of polling
 *   Continuous aggregates: Processor could trigger TimescaleDB materialized views for pre-computed statistics
@@ -112,6 +133,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Audio Recording Strategy, Retention Policy (§6)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration, Processor role
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
+*   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (Janitor/Indexer settings)
 *   [Port Allocation](../arch/port_allocation.md) — Processor on port 9200
 *   [Glossary: Processor, Janitor, Data Retention Policy](../glossary.md)
 *   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.5.0)

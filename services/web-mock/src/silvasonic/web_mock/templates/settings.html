@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="text-xl font-bold">Settings</h1>
+</div>
+
+<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'general' }">
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'general' }" @click="tab = 'general'">General</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'modules' }" @click="tab = 'modules'">Modules</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'recording_policy' }"
+        @click="tab = 'recording_policy'">Recording Policy</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'network' }" @click="tab = 'network'">Network</a>
+    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'access' }" @click="tab = 'access'">Access</a>
+
+    <!-- General -->
+    <div x-show="tab === 'general'" class="tab-content col-span-5 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5 space-y-4">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Station Name</span></label>
+                    <input type="text" class="input input-bordered input-sm" value="{{ settings.station_name }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Timezone</span></label>
+                    <input type="text" class="input input-bordered input-sm" value="{{ settings.timezone }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Language</span></label>
+                    <select class="select select-bordered select-sm">
+                        <option selected>de</option>
+                        <option>en</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-sm">Save General Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modules -->
+    <div x-show="tab === 'modules'" class="tab-content col-span-5 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5 space-y-3">
+                <div class="alert alert-info py-2 text-xs mb-2 rounded-xl">Module toggles drive sidebar visibility and
+                    DB →
+                    Controller → HTMX sidebar refresh.</div>
+                {% for module, enabled in [('birdnet_enabled', settings.birdnet_enabled), ('batdetect_enabled',
+                settings.batdetect_enabled), ('weather_enabled', settings.weather_enabled)] %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-sm">{{ module | replace('_enabled', '') | title }}</div>
+                        <div class="text-xs text-base-content/50">Enable {{ module | replace('_enabled', '') }} module
+                        </div>
+                    </div>
+                    <input type="checkbox" class="toggle toggle-primary" {% if enabled %}checked{% endif %} />
+                </div>
+                {% endfor %}
+                <button class="btn btn-warning btn-sm mt-3">🟨 Preview Impact &amp; Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recording Policy -->
+    <div x-show="tab === 'recording_policy'" class="tab-content col-span-5 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5 space-y-4">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Max Segment Duration (s)</span></label>
+                    <input type="number" class="input input-bordered input-sm w-32 font-mono"
+                        value="{{ settings.recording_policy.max_segment_s }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Min Free Space (GB)</span></label>
+                    <input type="number" class="input input-bordered input-sm w-32 font-mono"
+                        value="{{ settings.recording_policy.min_free_gb }}" />
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" class="checkbox checkbox-sm" {% if
+                        settings.recording_policy.delete_after_upload %}checked{% endif %} />
+                    <span class="text-sm">Delete recordings after successful upload</span>
+                </div>
+                <button class="btn btn-primary btn-sm">Save Policy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network -->
+    <div x-show="tab === 'network'" class="tab-content col-span-5 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <div class="space-y-2 text-sm font-mono">
+                    <div class="flex justify-between"><span class="text-base-content/50">Tailscale
+                            IP</span><span>100.64.0.42</span></div>
+                    <div class="flex justify-between"><span
+                            class="text-base-content/50">Hostname</span><span>silvasonic-01.tailnet.ts.net</span></div>
+                    <div class="flex justify-between"><span class="text-base-content/50">HTTPS</span><span
+                            class="text-success">Active (Let's Encrypt)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access -->
+    <div x-show="tab === 'access'" class="tab-content col-span-5 pt-4 w-full">
+        <div
+            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5 space-y-4">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">Current Password</span></label>
+                    <input type="password" class="input input-bordered input-sm" placeholder="••••••••" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-sm">New Password</span></label>
+                    <input type="password" class="input input-bordered input-sm" placeholder="••••••••" />
+                </div>
+                <button class="btn btn-primary btn-sm">Change Password</button>
+                <div class="divider text-xs">API Keys</div>
+                <div class="font-mono text-xs p-3 bg-base-300 rounded-xl">sk-mock-api-key-1234567890abcdef</div>
+                <button class="btn btn-outline btn-sm btn-error btn-xs">Rotate Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

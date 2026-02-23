@@ -11,6 +11,8 @@ nav:
   - Home: index.md
   - Project Readme: readme.md
   - Agents: agents.md
+  - Vision: vision.md
+  - Roadmap: roadmap.md
   - Architecture:
       - Overview: arch/README.md
       - Filesystem Governance: arch/filesystem_governance.md
@@ -55,6 +57,8 @@ nav:
       - "ADR-0018: Worker Pull Orchestration": adr/0018-worker-pull-orchestration.md
       - "ADR-0019: Unified Service Infrastructure": adr/0019-unified-service-infrastructure.md
       - "ADR-0020: Resource Limits & QoS": adr/0020-resource-limits-qos.md
+      - "ADR-0021: Frontend Design System": adr/0021-frontend-design-system.md
+      - "ADR-0022: Live Log Streaming": adr/0022-live-log-streaming.md
   - Development:
       - Overview: development/README.md
       - "Milestone v0.2.0": development/milestone_0_2_0.md

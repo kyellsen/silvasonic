@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silvasonic-test-utils"
+version = "0.1.0"
+description = "Shared testcontainer fixtures for Silvasonic integration tests"
+requires-python = ">=3.11"
+keywords = ["silvasonic", "test", "fixtures", "testcontainers"]
+classifiers = []
+dependencies = ["pytest>=8.3.0", "testcontainers>=4.14.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silvasonic"]

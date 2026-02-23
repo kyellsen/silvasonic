@@ -45,7 +45,7 @@ class Recording(Base):
     local_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     # Analysis status map
-    analysis_state: Mapped[dict[str, Any]] = mapped_column(JSONB, default={}, nullable=False)
+    analysis_state: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Upload detailed status/error history
-    upload_info: Mapped[dict[str, Any]] = mapped_column(JSONB, default={}, nullable=False)
+    upload_info: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

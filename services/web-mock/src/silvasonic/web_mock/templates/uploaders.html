@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Uploaders{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="text-xl font-bold">Uploaders</h1>
+    <p class="text-xs text-base-content/50 mt-0.5">{{ uploaders | length }} / 3 configured</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+    {% for up in uploaders %}
+    <div
+        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-info/30">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    {% if up.status == 'syncing' %}
+                    <span class="badge badge-info badge-sm">Syncing</span>
+                    {% elif up.status == 'idle' %}
+                    <span class="badge badge-success badge-sm">Idle</span>
+                    {% elif up.status == 'throttled' %}
+                    <span class="badge badge-warning badge-sm">Throttled</span>
+                    {% else %}
+                    <span class="badge badge-error badge-sm">Error</span>
+                    {% endif %}
+                    <h2 class="font-semibold text-sm">{{ up.label }}</h2>
+                </div>
+                <span class="badge badge-outline badge-xs font-mono">{{ up.target_type }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono mb-3">
+                <span class="text-base-content/40">Queue</span>
+                <span class="text-right text-warning">{{ up.queue_files }} files</span>
+                <span class="text-base-content/40">Throughput</span>
+                <span class="text-right text-info">{{ up.throughput_kbps }} KB/s</span>
+                <span class="text-base-content/40">Schedule</span>
+                <span class="text-right">{{ up.schedule }}</span>
+            </div>
+
+            <div class="text-xs text-base-content/40 font-mono pt-3 border-t border-base-content/5">
+                Last sync: {{ up.last_sync }}
+            </div>
+
+            <div class="flex gap-2 mt-3">
+                <button class="btn btn-success btn-xs">✅ Test</button>
+                <button class="btn btn-outline btn-xs">Sync Now</button>
+                <button class="btn btn-ghost btn-xs">Pause</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

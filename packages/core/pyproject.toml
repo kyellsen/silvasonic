@@ -15,6 +15,9 @@ dependencies = [
     "asyncpg>=0.30.0",
     "pydantic-settings>=2.0.0",
     "rich>=13.0.0",
+    "psutil>=5.9.0",
+    "redis[hiredis]>=5.0.0",
+    "cryptography>=46.0.5",
 ]
 dynamic = ["version"]
 
@@ -25,6 +28,4 @@ path = "src/silvasonic/core/__init__.py"
 packages = ["src/silvasonic"]
 
 [dependency-groups]
-dev = [
-    "tenacity>=9.1.4",
-]
+dev = ["tenacity>=9.1.4"]

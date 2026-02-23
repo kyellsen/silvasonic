@@ -1,0 +1,46 @@
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# 1. System dependencies (curl for healthcheck)
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Node.js 22 LTS (Tailwind CSS v4 requires Node >= 20)
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# hadolint ignore=DL3008
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. UV installer (pinned — must match other Containerfiles)
+COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
+
+# 4. Copy workspace files
+COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
+COPY services/web-mock/ services/web-mock/
+
+# 5. Install Python dependencies with uv
+RUN uv sync --frozen --no-dev --no-editable --package silvasonic-web-mock
+
+# 6. Build Tailwind CSS → static output.css (no CDN at runtime)
+WORKDIR /app/services/web-mock
+RUN npm install --ignore-scripts=false \
+    && npx tailwindcss \
+        -i ./src/silvasonic/web_mock/static/css/input.css \
+        -o ./src/silvasonic/web_mock/static/css/output.css \
+        --minify
+WORKDIR /app
+
+# 7. Environment
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8001
+
+ENTRYPOINT ["python", "-m"]
+CMD ["silvasonic.web_mock"]

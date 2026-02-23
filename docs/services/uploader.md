@@ -1,8 +1,8 @@
 # Uploader
 
-> **Status:** Planned (v0.6.0) · **Tier:** 2 · **Instances:** Multi-instance: one per remote storage target
+> **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Multi-instance: one per remote storage target
 
-Data exfiltration service responsible for compressing Raw recordings to FLAC and synchronizing them to remote storage providers. Ensures the field device never depends on network connectivity — recordings are safely stored locally first (Store & Forward).
+**TO-BE:** Data exfiltration service responsible for compressing Raw recordings to FLAC and synchronizing them to remote storage providers. Ensures the field device never depends on network connectivity — recordings are safely stored locally first (Store & Forward).
 
 ---
 
@@ -55,18 +55,41 @@ Data exfiltration service responsible for compressing Raw recordings to FLAC and
 
 ## 5. Configuration & Environment
 
-| Variable / Mount          | Description                       | Default / Example                                                |
-| ------------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| Health port               | Internal health endpoint          | `9500`                                                           |
-| `/mnt/data/recordings:ro` | Recorder workspace (read-only)    | Consumer Principle                                               |
-| `STORAGE_REMOTE_SLUG`     | Identifier for the storage target | `nextcloud-main`                                                 |
-| `STORAGE_REMOTE_TYPE`     | Protocol (s3, webdav, sftp)       | `webdav`                                                         |
-| `STORAGE_REMOTE_ENDPOINT` | Remote URL                        | `https://cloud.example.com/remote.php/dav/files/user/silvasonic` |
+### Static Configuration (Environment Variables & Mounts)
+
+| Variable / Mount             | Description                       | Default / Example                                                |
+| ---------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| Health port                  | Internal health endpoint          | `9500`                                                           |
+| `SILVASONIC_RCLONE_CONFIG`   | Path to Rclone configuration file | `/config/rclone/rclone.conf`                                     |
+| `STORAGE_REMOTE_SLUG`        | Identifier for the storage target | `nextcloud-main`                                                 |
+| `STORAGE_REMOTE_TYPE`        | Protocol (s3, webdav, sftp)       | `webdav`                                                         |
+| `STORAGE_REMOTE_ENDPOINT`    | Remote URL                        | `https://cloud.example.com/remote.php/dav/files/user/silvasonic` |
+| `/mnt/data/recordings:ro`    | Recorder workspace (read-only)    | (Consumer Principle)                                             |
+| `/mnt/data/config/rclone:ro` | Rclone configuration secrets      | (Consumer Principle)                                             |
+
+### Dynamic Configuration (Database)
+
+Runtime-tunable settings stored in the `system_config` table under key `uploader_settings`. As an **Immutable Container** (ADR-0019), the Uploader reads these settings *once* on startup.
+
+| Setting               | Description                          | Default / Example |
+| --------------------- | ------------------------------------ | ----------------- |
+| `enabled`             | Global toggle for upload activity    | `true`            |
+| `poll_interval`       | Seconds between checking DB for work | `30`              |
+| `bandwidth_limit`     | Rclone `--bwlimit` parameter String  | `"1M"`            |
+| `schedule_start_hour` | Optional hour to start daily window  | `22`              |
+| `schedule_end_hour`   | Optional hour to end daily window    | `6`               |
+
+**Update Mechanism (State Reconciliation):**
+1. User changes settings in Web UI.
+2. Frontend updates `system_config` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
+3. The Controller restarts the Uploader container(s).
+4. The Uploader reads the new `UploaderSettings` from the database upon startup.
 
 ## 6. Technology Stack
 
+*   **Base Image:** `python:3.11-slim-bookworm` (with rclone installed)
 *   **FLAC Encoding:** `ffmpeg` (via Python `subprocess`). Highly optimized, stable for large files, and streams data without blowing up container memory.
-*   **Upload Protocols:** `rclone` (via subprocess wrapper). Serves as a universal backend for WebDAV, S3, SFTP, and dozens of other protocols without needing protocol-specific Python libraries.
+*   **Upload Protocols:** `rclone` (system binary via Python wrapper). Serves as a universal backend for WebDAV, S3, SFTP, and dozens of other protocols without needing protocol-specific Python libraries.
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 
 ## 7. Open Questions & Future Ideas
@@ -88,5 +111,6 @@ Data exfiltration service responsible for compressing Raw recordings to FLAC and
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Raw → FLAC for cloud, Retention Policy
 *   [ADR-0013](../adr/0013-tier2-container-management.md) — Tier 2 lifecycle management
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
+*   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (upload settings)
 *   [Glossary: Uploader, Store & Forward, Raw Artifact, Storage Remote](../glossary.md)
 *   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.6.0)
