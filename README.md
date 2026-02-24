@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.2.0 — Service Infrastructure
+> **Status:** v0.3.0 — Tier 2 Container Management
 
 ---
 
