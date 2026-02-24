@@ -7,45 +7,46 @@
  */
 
 @import "tailwindcss";
-@plugin "daisyui";
+@source "../../../../../";
+@plugin "daisyui" {
+  themes: silvadark --default, silvalight;
+}
 
 /* ──────────────────────────────────────────────────────────
    Silvasonic DaisyUI Themes — silvadark / silvalight
    Colors in OKLCH for perceptual uniformity.
    ────────────────────────────────────────────────────────── */
 
-@layer theme {
-  /* Dark mode (default) — blue-slate base */
-  [data-theme="silvadark"] {
-    color-scheme: dark;
-    --color-base-100: oklch(22% 0.02 250);
-    --color-base-200: oklch(18% 0.02 250);
-    --color-base-300: oklch(26% 0.02 250);
-    --color-base-content: oklch(85% 0.01 250);
+@plugin "daisyui/theme" {
+  name: "silvadark";
+  color-scheme: dark;
+  --color-base-100: oklch(22% 0.02 250);
+  --color-base-200: oklch(18% 0.02 250);
+  --color-base-300: oklch(26% 0.02 250);
+  --color-base-content: oklch(85% 0.01 250);
 
-    --color-primary: oklch(65% 0.15 150);
-    --color-primary-content: oklch(20% 0.05 150);
-    --color-secondary: oklch(60% 0.20 310);
-    --color-secondary-content: oklch(95% 0.02 310);
-    --color-accent: oklch(75% 0.16 75);
-    --color-accent-content: oklch(20% 0.05 75);
-  }
+  --color-primary: oklch(65% 0.15 150);
+  --color-primary-content: oklch(20% 0.05 150);
+  --color-secondary: oklch(60% 0.20 310);
+  --color-secondary-content: oklch(95% 0.02 310);
+  --color-accent: oklch(75% 0.16 75);
+  --color-accent-content: oklch(20% 0.05 75);
+}
 
-  /* Light mode */
-  [data-theme="silvalight"] {
-    color-scheme: light;
-    --color-base-100: oklch(100% 0 0);
-    --color-base-200: oklch(96% 0.01 250);
-    --color-base-300: oklch(90% 0.01 250);
-    --color-base-content: oklch(25% 0.02 250);
+@plugin "daisyui/theme" {
+  name: "silvalight";
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(96% 0.01 250);
+  --color-base-300: oklch(90% 0.01 250);
+  --color-base-content: oklch(25% 0.02 250);
 
-    --color-primary: oklch(60% 0.15 150);
-    --color-primary-content: oklch(98% 0.01 150);
-    --color-secondary: oklch(55% 0.20 310);
-    --color-secondary-content: oklch(98% 0.01 310);
-    --color-accent: oklch(70% 0.16 75);
-    --color-accent-content: oklch(20% 0.05 75);
-  }
+  --color-primary: oklch(60% 0.15 150);
+  --color-primary-content: oklch(98% 0.01 150);
+  --color-secondary: oklch(55% 0.20 310);
+  --color-secondary-content: oklch(98% 0.01 310);
+  --color-accent: oklch(70% 0.16 75);
+  --color-accent-content: oklch(20% 0.05 75);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -54,13 +55,33 @@
    ────────────────────────────────────────────────────────── */
 
 @theme {
-  --color-mod-dashboard: oklch(65% 0.12 250);
-  --color-mod-recorder:  oklch(75% 0.15 180);
-  --color-mod-processor: oklch(65% 0.18 45);
-  --color-mod-uploader:  oklch(55% 0.18 280);
-  --color-mod-birds:     oklch(78% 0.17 85);
-  --color-mod-bats:      oklch(65% 0.22 330);
-  --color-mod-weather:   oklch(80% 0.12 225);
+  /* ═══ Module Accent Colors v4 ═══
+     Finalized color palette — 8 chromatic + 1 achromatic (Settings).
+     All colors in OKLCH.  Strong = dark-mode accent, regular = light variant.
+     Hue spacing:  20° → 80° → 120° → 155° → 200° → 245° → 290° → 335°
+  */
+
+  /* ── Strong variants (dark-mode accents, sidebar dots, card borders) ── */
+  --color-mod-recorder-strong:  oklch(62% 0.20 20);   /* 🔴  Korallrot          */
+  --color-mod-birds-strong:     oklch(75% 0.22 80);   /* 🟡  Gold               */
+  --color-mod-processor-strong: oklch(62% 0.14 120);  /* 🟢  Frühlings-Grün     */
+  --color-mod-dashboard-strong: oklch(52% 0.17 155);  /* 🟢  Smaragdgrün        */
+  --color-mod-livesound-strong: oklch(61% 0.13 200);  /* 🔵  Teal/Cyan          */
+  --color-mod-weather-strong:   oklch(65% 0.15 245);  /* 🔵  Kornblumenblau     */
+  --color-mod-bats-strong:      oklch(60% 0.18 290);  /* 🟣  Violett            */
+  --color-mod-uploader-strong:  oklch(65% 0.20 335);  /* 🩷  Magenta/Hot Pink   */
+  --color-mod-settings-strong:  oklch(55% 0.02 250);  /* ⚪  Neutral-Grau       */
+
+  /* ── Light variants (hover/bg tints, light-mode accents) ── */
+  --color-mod-recorder:  oklch(77% 0.15 20);
+  --color-mod-birds:     oklch(90% 0.17 80);
+  --color-mod-processor: oklch(77% 0.09 120);
+  --color-mod-dashboard: oklch(67% 0.12 155);
+  --color-mod-livesound: oklch(76% 0.08 200);
+  --color-mod-weather:   oklch(80% 0.10 245);
+  --color-mod-bats:      oklch(75% 0.13 290);
+  --color-mod-uploader:  oklch(80% 0.15 335);
+  --color-mod-settings:  oklch(70% 0.01 250);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -191,3 +212,22 @@ body {
 .level-animate {
   animation: pulse-level 1.5s ease-in-out infinite;
 }
+
+/* Livesound waveform animation */
+@keyframes waveform {
+  0%, 100% { height: 10%; }
+  50% { height: 100%; }
+}
+
+.waveform-bar {
+  animation: waveform 1.2s ease-in-out infinite;
+  width: 100%;
+  transform-origin: bottom;
+}
+
+.waveform-bar:nth-child(2n)   { animation-duration: 0.9s; animation-delay: -0.2s; }
+.waveform-bar:nth-child(3n)   { animation-duration: 1.1s; animation-delay: -0.5s; }
+.waveform-bar:nth-child(5n)   { animation-duration: 0.8s; animation-delay: -0.1s; }
+.waveform-bar:nth-child(7n)   { animation-duration: 1.3s; animation-delay: -0.7s; }
+.waveform-bar:nth-child(11n)  { animation-duration: 1.0s; animation-delay: -0.4s; }
+.waveform-bar:nth-child(2n+1) { animation-duration: 0.7s; animation-delay: -0.9s; }

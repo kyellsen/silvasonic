@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="silvadark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silvasonic — Akzentfarben v4</title>
+    <style>
+        :root {
+            /* ═══ FARBZUORDNUNG v4 ═══
+       Birds    = Gold v2 (80°)
+       Uploader = Magenta/Hot Pink (335°) — ehemals frei
+       Dashboard = Smaragdgrün — Varianten zur Auswahl
+       Settings = Grau
+       Kein freier Hue-Slot mehr — alle 8 Positionen belegt!
+    */
+
+            /* ── 8 chromatische Modulfarben ── */
+            --mod-recorder: oklch(62% 0.20 20);
+            /* 🔴  Korallrot          */
+            --mod-birds: oklch(75% 0.22 80);
+            /* 🟡  Gold               */
+            --mod-processor: oklch(62% 0.14 120);
+            /* 🟢  Frühlings-Grün     */
+            --mod-dashboard: oklch(52% 0.17 155);
+            /* 🟢  Smaragdgrün (kräftig) */
+            --mod-livesound: oklch(61% 0.13 200);
+            /* 🔵  Teal/Cyan          */
+            --mod-weather: oklch(65% 0.15 245);
+            /* 🔵  Kornblumenblau     */
+            --mod-bats: oklch(60% 0.18 290);
+            /* 🟣  Violett            */
+            --mod-uploader: oklch(65% 0.20 335);
+            /* 🩷  Magenta/Hot Pink   */
+
+            /* ── 1 achromatisches Modul ── */
+            --mod-settings: oklch(55% 0.02 250);
+            /* ⚪  Neutral-Grau       */
+
+            /* ── Light-Varianten ── */
+            --mod-recorder-light: oklch(77% 0.15 20);
+            --mod-birds-light: oklch(90% 0.17 80);
+            --mod-processor-light: oklch(77% 0.09 120);
+            --mod-dashboard-light: oklch(67% 0.12 155);
+            --mod-livesound-light: oklch(76% 0.08 200);
+            --mod-weather-light: oklch(80% 0.10 245);
+            --mod-bats-light: oklch(75% 0.13 290);
+            --mod-uploader-light: oklch(80% 0.15 335);
+            --mod-settings-light: oklch(70% 0.01 250);
+
+            --bg: oklch(22% 0.02 250);
+            --bg2: oklch(18% 0.02 250);
+            --bg3: oklch(26% 0.02 250);
+            --text: oklch(85% 0.01 250);
+            --text-dim: oklch(55% 0.01 250);
+            --border: oklch(35% 0.02 250);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-dim);
+        }
+
+        h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+
+        .section {
+            margin-bottom: 2.5rem;
+        }
+
+        .color-wheel {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .color-swatch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            width: 110px;
+        }
+
+        .swatch-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 3px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .swatch-circle:hover {
+            transform: scale(1.15);
+        }
+
+        .swatch-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .swatch-hue {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .sidebar-demo {
+            background: var(--bg2);
+            border-radius: 12px;
+            padding: 1rem;
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: oklch(30% 0.02 250);
+        }
+
+        .nav-item.active {
+            font-weight: 600;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .nav-group-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            padding: 0.75rem 0.75rem 0.25rem;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--bg3);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: oklch(45% 0.02 250);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px oklch(0% 0 0 / 0.3);
+        }
+
+        .card-accent {
+            border-top: 3px solid;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        .card-stat {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .breadcrumb .sep {
+            opacity: 0.3;
+        }
+
+        .bar-track {
+            height: 6px;
+            background: oklch(30% 0.02 250);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .radial {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+            position: relative;
+        }
+
+        .radial::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(var(--fill-color) var(--pct), oklch(30% 0.02 250) var(--pct));
+            mask: radial-gradient(transparent 60%, black 61%);
+            -webkit-mask: radial-gradient(transparent 60%, black 61%);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .demo-row {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .demo-col {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .rarest-card {
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+        }
+
+        .rarest-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.7;
+            margin-bottom: 0.25rem;
+        }
+
+        .rarest-count {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .rarest-name {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .discovery-card {
+            background: var(--bg3);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            width: 140px;
+        }
+
+        .discovery-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px oklch(0% 0 0 / 0.3);
+        }
+
+        .discovery-img {
+            height: 90px;
+            background: oklch(30% 0.02 250);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .discovery-body {
+            padding: 0.75rem;
+        }
+
+        .discovery-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .discovery-sci {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .confidence-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: oklch(30% 0.02 250);
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .toggle-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            border: 1px solid;
+        }
+
+        .toggle-switch {
+            width: 28px;
+            height: 16px;
+            border-radius: 8px;
+        }
+
+        html[data-theme="silvalight"] {
+            --bg: oklch(98% 0.005 250);
+            --bg2: oklch(95% 0.01 250);
+            --bg3: oklch(100% 0 0);
+            --text: oklch(25% 0.02 250);
+            --text-dim: oklch(55% 0.02 250);
+            --border: oklch(88% 0.01 250);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.8rem;
+        }
+
+        th,
+        td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .dot-inline {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        .option-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .color-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            border-color: oklch(50% 0.02 250);
+        }
+
+        .color-option.selected {
+            border-color: oklch(55% 0.17 155);
+            box-shadow: 0 0 12px oklch(55% 0.17 155 / 0.3);
+        }
+
+        .opt-swatch {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+        }
+
+        .opt-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .opt-hue {
+            font-size: 0.6rem;
+            font-family: monospace;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+
+    <h1>Silvasonic — Akzentfarben v4</h1>
+    <h2>8 Hues voll belegt • Birds = Gold • Uploader = Magenta • Settings = Grau</h2>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 0: DASHBOARD FARB-PICKER -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Dashboard — Grün-Varianten (passend zum Referenzbild)</h3>
+        <div class="option-row">
+            <div class="color-option" onclick="setDash(150, 0.18, 48)">
+                <div class="opt-swatch" style="background: oklch(48% 0.18 150);"></div>
+                <div class="opt-label" style="color: oklch(48% 0.18 150);">Forest Green</div>
+                <div class="opt-hue">150° • L48 C0.18</div>
+            </div>
+            <div class="color-option selected" onclick="setDash(155, 0.17, 52)">
+                <div class="opt-swatch" style="background: oklch(52% 0.17 155);"></div>
+                <div class="opt-label" style="color: oklch(52% 0.17 155);">Emerald (gewählt)</div>
+                <div class="opt-hue">155° • L52 C0.17</div>
+            </div>
+            <div class="color-option" onclick="setDash(155, 0.15, 56)">
+                <div class="opt-swatch" style="background: oklch(56% 0.15 155);"></div>
+                <div class="opt-label" style="color: oklch(56% 0.15 155);">Medium Emerald</div>
+                <div class="opt-hue">155° • L56 C0.15</div>
+            </div>
+            <div class="color-option" onclick="setDash(160, 0.14, 60)">
+                <div class="opt-swatch" style="background: oklch(60% 0.14 160);"></div>
+                <div class="opt-label" style="color: oklch(60% 0.14 160);">Jade (v3)</div>
+                <div class="opt-hue">160° • L60 C0.14</div>
+            </div>
+            <div class="color-option" onclick="setDash(145, 0.19, 50)">
+                <div class="opt-swatch" style="background: oklch(50% 0.19 145);"></div>
+                <div class="opt-label" style="color: oklch(50% 0.19 145);">Deep Green</div>
+                <div class="opt-hue">145° • L50 C0.19</div>
+            </div>
+        </div>
+        <p style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.5rem;">
+            Klicke auf eine Variante um sie live zu sehen. „Emerald" (L52 C0.17) ist dem Referenzbild am nächsten.
+        </p>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 0b: PROCESSOR FARB-PICKER -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Processor — Farbvorschläge (aktuell: Lime/Chartreuse 110°)</h3>
+        <div class="option-row">
+            <div class="color-option" onclick="setProc(95, 0.18, 65)">
+                <div class="opt-swatch" style="background: oklch(65% 0.18 95);"></div>
+                <div class="opt-label" style="color: oklch(65% 0.18 95);">Gelbgrün</div>
+                <div class="opt-hue">95° • L65 C0.18</div>
+            </div>
+            <div class="color-option" onclick="setProc(110, 0.16, 62)">
+                <div class="opt-swatch" style="background: oklch(62% 0.16 110);"></div>
+                <div class="opt-label" style="color: oklch(62% 0.16 110);">Lime</div>
+                <div class="opt-hue">110° • L62 C0.16</div>
+            </div>
+            <div class="color-option" onclick="setProc(110, 0.20, 60)">
+                <div class="opt-swatch" style="background: oklch(60% 0.20 110);"></div>
+                <div class="opt-label" style="color: oklch(60% 0.20 110);">Lime Kräftig</div>
+                <div class="opt-hue">110° • L60 C0.20</div>
+            </div>
+            <div class="color-option selected" onclick="setProc(120, 0.14, 62)">
+                <div class="opt-swatch" style="background: oklch(62% 0.14 120);"></div>
+                <div class="opt-label" style="color: oklch(62% 0.14 120);">Frühlings-Grün (gewählt)</div>
+                <div class="opt-hue">120° • L62 C0.14</div>
+            </div>
+            <div class="color-option" onclick="setProc(130, 0.15, 60)">
+                <div class="opt-swatch" style="background: oklch(60% 0.15 130);"></div>
+                <div class="opt-label" style="color: oklch(60% 0.15 130);">Mint-Grün</div>
+                <div class="opt-hue">130° • L60 C0.15</div>
+            </div>
+            <div class="color-option" onclick="setProc(105, 0.12, 58)">
+                <div class="opt-swatch" style="background: oklch(58% 0.12 105);"></div>
+                <div class="opt-label" style="color: oklch(58% 0.12 105);">Olive/Gedämpft</div>
+                <div class="opt-hue">105° • L58 C0.12</div>
+            </div>
+        </div>
+        <p style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.5rem;">
+            Nachbarn: Birds (80°) ← <strong>Processor</strong> → Dashboard (155°). Min. 30° Abstand empfohlen.
+        </p>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 1: TABLE -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Farbzuordnung — alle 8 Hue-Slots belegt</h3>
+        <table>
+            <tr>
+                <th>Modul</th>
+                <th>Farbe</th>
+                <th>Hue</th>
+                <th>Δ zu v3</th>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-recorder);"></span>Recorder</td>
+                <td style="color:var(--mod-recorder);font-weight:600;">Korallrot</td>
+                <td style="font-family:monospace;">20°</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-birds);"></span>Birds</td>
+                <td style="color:var(--mod-birds);font-weight:600;">Gold</td>
+                <td style="font-family:monospace;">80°</td>
+                <td>🔄 55°→80°</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-processor);"></span>Processor</td>
+                <td style="color:var(--mod-processor);font-weight:600;">Frühlings-Grün</td>
+                <td style="font-family:monospace;">120°</td>
+                <td>🔄 110°→120°</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-dashboard);"></span>Dashboard</td>
+                <td style="color:var(--mod-dashboard);font-weight:600;">Smaragdgrün (kräftig)</td>
+                <td style="font-family:monospace;">155°</td>
+                <td>🔄 Dunkler/satter</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-livesound);"></span>Livesound</td>
+                <td style="color:var(--mod-livesound);font-weight:600;">Teal/Cyan</td>
+                <td style="font-family:monospace;">200°</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-weather);"></span>Weather</td>
+                <td style="color:var(--mod-weather);font-weight:600;">Kornblumenblau</td>
+                <td style="font-family:monospace;">245°</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-bats);"></span>Bats</td>
+                <td style="color:var(--mod-bats);font-weight:600;">Violett</td>
+                <td style="font-family:monospace;">290°</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td><span class="dot-inline" style="background:var(--mod-uploader);"></span>Uploader</td>
+                <td style="color:var(--mod-uploader);font-weight:600;">Magenta/Hot Pink</td>
+                <td style="font-family:monospace;">335°</td>
+                <td>🔄 Grau→335°</td>
+            </tr>
+            <tr style="border-top:2px solid var(--border);">
+                <td><span class="dot-inline" style="background:var(--mod-settings);"></span>Settings</td>
+                <td style="color:var(--mod-settings);font-weight:600;">Grau</td>
+                <td style="font-family:monospace;">—</td>
+                <td>—</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 2: COLOR WHEEL -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Farbrad — 8 chromatisch + 1 grau (alle Slots belegt!)</h3>
+        <div class="color-wheel">
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-recorder);border-color:var(--mod-recorder);">
+                </div>
+                <div class="swatch-label" style="color:var(--mod-recorder);">Recorder</div>
+                <div class="swatch-hue">20°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-birds);border-color:var(--mod-birds);"></div>
+                <div class="swatch-label" style="color:var(--mod-birds);">Birds</div>
+                <div class="swatch-hue">80° Gold</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-processor);border-color:var(--mod-processor);">
+                </div>
+                <div class="swatch-label" style="color:var(--mod-processor);">Processor</div>
+                <div class="swatch-hue">110°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-dashboard);border-color:var(--mod-dashboard);">
+                </div>
+                <div class="swatch-label" style="color:var(--mod-dashboard);">Dashboard</div>
+                <div class="swatch-hue">155°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-livesound);border-color:var(--mod-livesound);">
+                </div>
+                <div class="swatch-label" style="color:var(--mod-livesound);">Livesound</div>
+                <div class="swatch-hue">200°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-weather);border-color:var(--mod-weather);"></div>
+                <div class="swatch-label" style="color:var(--mod-weather);">Weather</div>
+                <div class="swatch-hue">245°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-bats);border-color:var(--mod-bats);"></div>
+                <div class="swatch-label" style="color:var(--mod-bats);">Bats</div>
+                <div class="swatch-hue">290°</div>
+            </div>
+            <div class="color-swatch">
+                <div class="swatch-circle" style="background:var(--mod-uploader);border-color:var(--mod-uploader);">
+                </div>
+                <div class="swatch-label" style="color:var(--mod-uploader);">Uploader</div>
+                <div class="swatch-hue">335°</div>
+            </div>
+            <div style="border-left:2px dashed var(--border);padding-left:1rem;">
+                <div class="color-swatch">
+                    <div class="swatch-circle" style="background:var(--mod-settings);border-color:var(--mod-settings);">
+                    </div>
+                    <div class="swatch-label" style="color:var(--mod-settings);">Settings</div>
+                    <div class="swatch-hue">Grau</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 3: SIDEBAR + CARDS -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Sidebar + Modul-Cards</h3>
+        <div class="demo-row">
+            <div class="sidebar-demo">
+                <div class="nav-group-label">System</div>
+                <div class="nav-item active"
+                    style="background:oklch(from var(--mod-dashboard) l c h / 0.15);color:var(--mod-dashboard);">
+                    <div class="nav-dot" style="background:var(--mod-dashboard);"></div>Dashboard
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-recorder);"></div>Recorders
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-processor);"></div>Processor
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-uploader);"></div>Uploaders
+                </div>
+                <div class="nav-group-label">Modules</div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-livesound);"></div>Livesound
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-birds);"></div>Birds
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-bats);"></div>Bats
+                </div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-weather);"></div>Weather
+                </div>
+                <div class="nav-group-label"></div>
+                <div class="nav-item">
+                    <div class="nav-dot" style="background:var(--mod-settings);"></div>Settings
+                </div>
+            </div>
+
+            <div class="demo-col">
+                <div class="cards-grid">
+                    <!-- Dashboard -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-dashboard);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span>System</span><span class="sep">›</span><span
+                                    style="color:var(--mod-dashboard);font-weight:600;">Dashboard</span></div>
+                            <div class="card-title">SSD Storage</div>
+                            <div
+                                style="display:flex;align-items:center;justify-content:space-between;margin-top:0.5rem;">
+                                <div>
+                                    <div class="card-stat" style="color:var(--mod-dashboard);">68%</div>
+                                    <div class="card-subtitle">136 / 200 GB</div>
+                                </div>
+                                <div class="radial"
+                                    style="--fill-color:var(--mod-dashboard);--pct:68%;color:var(--mod-dashboard);">68%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Recorder -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-recorder);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span>System</span><span class="sep">›</span><span
+                                    style="color:var(--mod-recorder);font-weight:600;">Recorders</span></div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div class="card-title">Ultramic-01</div>
+                                <div class="badge"
+                                    style="background:oklch(from var(--mod-recorder) l c h / 0.15);color:var(--mod-recorder);">
+                                    REC</div>
+                            </div>
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:72%;background:var(--mod-recorder);"></div>
+                            </div>
+                            <div class="card-subtitle" style="margin-top:0.25rem;">Level: 72%</div>
+                        </div>
+                    </div>
+                    <!-- Uploader (jetzt Magenta!) -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-uploader);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span>System</span><span class="sep">›</span><span
+                                    style="color:var(--mod-uploader);font-weight:600;">Uploaders</span></div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div class="card-title">S3 Primary</div>
+                                <div class="badge"
+                                    style="background:oklch(from var(--mod-uploader) l c h / 0.15);color:var(--mod-uploader);">
+                                    Idle</div>
+                            </div>
+                            <div class="card-stat" style="color:var(--mod-uploader);font-size:1.25rem;">1.2 GB</div>
+                            <div class="card-subtitle">uploaded today</div>
+                        </div>
+                    </div>
+                    <!-- Weather -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-weather);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span>Modules</span><span class="sep">›</span><span
+                                    style="color:var(--mod-weather);font-weight:600;">Weather</span></div>
+                            <div class="card-title">Current Conditions</div>
+                            <div style="display:flex;gap:1.5rem;margin-top:0.5rem;">
+                                <div>
+                                    <div class="card-stat" style="color:var(--mod-weather);font-size:1.5rem;">14.2°C
+                                    </div>
+                                    <div class="card-subtitle">Temperature</div>
+                                </div>
+                                <div>
+                                    <div class="card-stat" style="font-size:1.5rem;">67%</div>
+                                    <div class="card-subtitle">Humidity</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Livesound -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-livesound);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span>Modules</span><span class="sep">›</span><span
+                                    style="color:var(--mod-livesound);font-weight:600;">Livesound</span></div>
+                            <div class="card-title">Ultramic-01 — Live</div>
+                            <div style="display:flex;align-items:end;gap:3px;height:40px;margin-top:0.5rem;">
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:60%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:90%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:40%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:75%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:55%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:85%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:35%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:95%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:50%;">
+                                </div>
+                                <div
+                                    style="flex:1;background:var(--mod-livesound);border-radius:2px 2px 0 0;height:70%;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Settings (Grau) -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-settings);">
+                        <div class="card-body">
+                            <div class="breadcrumb"><span
+                                    style="color:var(--mod-settings);font-weight:600;">Settings</span></div>
+                            <div class="card-title">General</div>
+                            <div class="card-subtitle" style="margin-top:0.5rem;">Station Name: Silvasonic-001</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 4: DISCOVERY -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Discovery Cards — Birds (Gold) vs. Bats (Violett)</h3>
+        <div class="demo-row">
+            <div class="demo-col">
+                <div class="breadcrumb" style="margin-bottom:1rem;">
+                    <span>Modules</span><span class="sep">›</span>
+                    <span style="color:var(--mod-birds);font-weight:600;">Birds</span><span
+                        class="sep">›</span><span>Discovery</span>
+                </div>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    <div class="rarest-card"
+                        style="background:oklch(from var(--mod-birds) l c h / 0.12);border:1px solid oklch(from var(--mod-birds) l c h / 0.25);flex:0 0 140px;">
+                        <div class="rarest-label" style="color:var(--mod-birds);">Rarest Species</div>
+                        <div class="rarest-count" style="color:var(--mod-birds);">2 <span
+                                style="font-size:0.9rem;opacity:0.7;">det.</span></div>
+                        <div class="rarest-name" style="color:var(--mod-birds);">Eisvogel</div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-img">🐦</div>
+                        <div class="discovery-body">
+                            <div class="discovery-name">Amsel</div>
+                            <div class="discovery-sci">Turdus merula</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width:92%;background:var(--mod-birds);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-img">🦅</div>
+                        <div class="discovery-body">
+                            <div class="discovery-name">Rotkehlchen</div>
+                            <div class="discovery-sci">Erithacus rubecula</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width:78%;background:var(--mod-birds);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="demo-col">
+                <div class="breadcrumb" style="margin-bottom:1rem;">
+                    <span>Modules</span><span class="sep">›</span>
+                    <span style="color:var(--mod-bats);font-weight:600;">Bats</span><span
+                        class="sep">›</span><span>Discovery</span>
+                </div>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    <div class="rarest-card"
+                        style="background:oklch(from var(--mod-bats) l c h / 0.12);border:1px solid oklch(from var(--mod-bats) l c h / 0.25);flex:0 0 140px;">
+                        <div class="rarest-label" style="color:var(--mod-bats);">Rarest Species</div>
+                        <div class="rarest-count" style="color:var(--mod-bats);">1 <span
+                                style="font-size:0.9rem;opacity:0.7;">det.</span></div>
+                        <div class="rarest-name" style="color:var(--mod-bats);">Mopsfledermaus</div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-img">🦇</div>
+                        <div class="discovery-body">
+                            <div class="discovery-name">Zwergfledermaus</div>
+                            <div class="discovery-sci">Pipistrellus pipistrellus</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width:85%;background:var(--mod-bats);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-img">🦇</div>
+                        <div class="discovery-body">
+                            <div class="discovery-name">Großer Abendsegler</div>
+                            <div class="discovery-sci">Nyctalus noctula</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width:63%;background:var(--mod-bats);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- SECTION 5: TOGGLES -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="section">
+        <h3>Settings — Module Toggles</h3>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <div class="toggle-pill"
+                style="background:oklch(from var(--mod-livesound) l c h / 0.1);border-color:oklch(from var(--mod-livesound) l c h / 0.2);">
+                <div class="toggle-switch" style="background:var(--mod-livesound);"></div><span
+                    style="font-size:0.8rem;color:var(--mod-livesound);font-weight:600;">Livesound</span>
+            </div>
+            <div class="toggle-pill"
+                style="background:oklch(from var(--mod-birds) l c h / 0.1);border-color:oklch(from var(--mod-birds) l c h / 0.2);">
+                <div class="toggle-switch" style="background:var(--mod-birds);"></div><span
+                    style="font-size:0.8rem;color:var(--mod-birds);font-weight:600;">BirdNET</span>
+            </div>
+            <div class="toggle-pill"
+                style="background:oklch(from var(--mod-bats) l c h / 0.1);border-color:oklch(from var(--mod-bats) l c h / 0.2);">
+                <div class="toggle-switch" style="background:var(--mod-bats);"></div><span
+                    style="font-size:0.8rem;color:var(--mod-bats);font-weight:600;">BatDetect</span>
+            </div>
+            <div class="toggle-pill"
+                style="background:oklch(from var(--mod-weather) l c h / 0.1);border-color:oklch(from var(--mod-weather) l c h / 0.2);">
+                <div class="toggle-switch" style="background:var(--mod-weather);"></div><span
+                    style="font-size:0.8rem;color:var(--mod-weather);font-weight:600;">Weather</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.dataset.theme = html.dataset.theme === 'silvadark' ? 'silvalight' : 'silvadark';
+        }
+        function setDash(hue, chroma, lightness) {
+            document.documentElement.style.setProperty('--mod-dashboard', `oklch(${lightness}% ${chroma} ${hue})`);
+            document.documentElement.style.setProperty('--mod-dashboard-light', `oklch(${lightness + 15}% ${Math.max(chroma - 0.05, 0.05)} ${hue})`);
+            event.currentTarget.closest('.option-row').querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+        }
+        function setProc(hue, chroma, lightness) {
+            document.documentElement.style.setProperty('--mod-processor', `oklch(${lightness}% ${chroma} ${hue})`);
+            document.documentElement.style.setProperty('--mod-processor-light', `oklch(${lightness + 15}% ${Math.max(chroma - 0.05, 0.05)} ${hue})`);
+            event.currentTarget.closest('.option-row').querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+        }
+    </script>
+
+</body>
+
+</html>

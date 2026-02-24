@@ -1,0 +1,210 @@
+{#- ═══════════════════════════════════════════════════════════════
+Silvasonic — Shared Species Module Template (Birds / Bats)
+
+Include via: {% include "_species_module.html" %}
+
+Required variables (set before include):
+module_name — "Birds" / "Bats"
+module_key — "birds" / "bats"
+detector_name — "BirdNET" / "BatDetect"
+color_token — "mod-birds-strong" / "mod-bats-strong"
+emoji — "🐦" / "🦇"
+tab_prefix — "birds_tabs" / "bats_tabs"
+detail_prefix — "/birds/" / "/bats/"
+species — list of species summary dicts
+detections — list of detection dicts
+top_10 — list of top 10 species
+rarest — rarest species dict
+═══════════════════════════════════════════════════════════════ -#}
+{% from "_macros.html" import chart_placeholder %}
+
+<div role="tablist" class="tabs tabs-lifted w-full">
+    <!-- Overview -->
+    <input type="radio" name="{{ tab_prefix }}" role="tab" class="tab w-max" aria-label="Overview" checked="checked" />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-content/10 rounded-box p-6 w-full">
+        <div class="mb-5">
+            <h1 class="text-xl font-bold">{{ module_name }} — Overview</h1>
+            <p class="text-xs text-base-content/50 mt-0.5">Summary of {{ detector_name }} activity</p>
+        </div>
+        <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="card-body p-5">
+                <p class="text-sm text-base-content/50">Overview metrics will be displayed here.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analyzer — detection table (static card) -->
+    <input type="radio" name="{{ tab_prefix }}" role="tab" class="tab w-max" aria-label="Analyzer" />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-content/10 rounded-box p-6 w-full">
+        <div class="mb-5">
+            <h2 class="text-xl font-bold">Analyzer</h2>
+            <p class="text-xs text-base-content/50 mt-0.5">Filter and review detections</p>
+        </div>
+        <div
+            class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            <div class="card-body p-5">
+                <div class="flex gap-3 mb-4">
+                    <select class="select select-bordered focus:select-primary transition-all w-36">
+                        <option>All species</option>
+                        {% for sp in species %}<option>{{ sp.species_en }}</option>{% endfor %}
+                    </select>
+                    <select class="select select-bordered select-sm w-32">
+                        <option>All mics</option>
+                        <option>mic_01</option>
+                        <option>mic_02</option>
+                    </select>
+                    <input type="text" placeholder="Min confidence…"
+                        class="input input-bordered focus:input-primary transition-all w-32 font-mono" />
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm table-zebra font-mono text-xs">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Species</th>
+                                <th>Confidence</th>
+                                <th>Mic</th>
+                                <th>Duration</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in detections %}
+                            <tr class="hover cursor-pointer" @click="inspectorOpen = true">
+                                <td class="text-base-content/60">{{ d.ts | truncate(19, true, '') }}</td>
+                                <td>
+                                    <div class="font-semibold">{{ d.species_en }}</div>
+                                    <div class="text-[10px] text-base-content/50 italic leading-none">{{ d.species_sci
+                                        }}</div>
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <progress class="progress progress-secondary w-16 h-1.5"
+                                            value="{{ (d.confidence * 100) | int }}" max="100"></progress>
+                                        <span>{{ "%.0f"|format(d.confidence * 100) }}%</span>
+                                    </div>
+                                </td>
+                                <td>{{ d.mic }}</td>
+                                <td>{{ d.duration_s }}s</td>
+                                <td class="text-right">
+                                    <button class="btn btn-ghost btn-sm btn-square" aria-label="Play"><svg
+                                            xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="6 3 20 12 6 21 6 3" />
+                                        </svg></button>
+                                    <button class="btn btn-ghost btn-sm btn-square">⬇</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <input type="radio" name="{{ tab_prefix }}" role="tab" class="tab w-max" aria-label="Statistics" />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-content/10 rounded-box p-6 w-full">
+        <div class="mb-5">
+            <h2 class="text-xl font-bold">Statistics</h2>
+            <p class="text-xs text-base-content/50 mt-0.5">Detection trends and top species</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+            <!-- Top 10 Bar Chart -->
+            <div
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10 lg:col-span-2">
+                <div class="card-body p-5">
+                    <h3 class="text-sm font-semibold mb-4">Top 10 Species Frequency</h3>
+                    <div class="space-y-3">
+                        {% set max_count = top_10[0].count if top_10 else 1 %}
+                        {% for sp in top_10 %}
+                        <div class="flex items-center gap-3 text-sm">
+                            <div class="w-36 truncate text-right text-base-content/80 font-medium"
+                                title="{{ sp.species_en }}">{{ sp.species_en }}</div>
+                            <div class="flex-1 h-2.5 rounded-full bg-base-200 overflow-hidden relative">
+                                <div class="absolute top-0 left-0 h-full bg-{{ color_token }}/60 transition-all duration-500 rounded-full"
+                                    style="width: {{ (sp.count / max_count) * 100 }}%"></div>
+                            </div>
+                            <div class="w-10 text-right font-mono text-xs text-base-content/50">{{ sp.count }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rarest Species Stat Card -->
+            <div
+                class="card bg-secondary/10 text-secondary-content rounded-xl shadow-sm border border-secondary/20 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                <div class="card-body p-5 flex flex-col justify-center text-center">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-secondary/70 mb-2">Rarest Species</h3>
+                    <div class="text-5xl mb-2">💎</div>
+                    <div class="text-3xl font-bold text-secondary mb-1">{{ rarest.count }} <span
+                            class="text-lg font-normal text-secondary/60">det.</span></div>
+                    <div class="font-semibold text-lg text-base-content">{{ rarest.species_en }}</div>
+                    <div class="text-[10px] text-base-content/50 italic">{{ rarest.species_sci }}</div>
+                    <div class="text-[10px] text-base-content/40 font-mono mt-4">Last seen: {{ rarest.last_seen |
+                        truncate(16, true, '') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="text-base font-bold mb-4 mt-8">Temporal Trends</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5">
+                    <h3 class="text-sm font-semibold mb-3">{% if module_key == 'bats' %}Nightly activity{% else
+                        %}Detections per day{% endif %}</h3>
+                    {{ chart_placeholder('[ ECharts ' ~ ('time-series' if module_key == 'bats' else 'bar chart') ~ ' ]',
+                    'h-36') }}
+                </div>
+            </div>
+            {% if module_key == 'birds' %}
+            <div
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                <div class="card-body p-5">
+                    <h3 class="text-sm font-semibold mb-3">Confidence histogram</h3>
+                    {{ chart_placeholder('[ ECharts histogram ]', 'h-36') }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Discovery — species cards (interactive) -->
+    <input type="radio" name="{{ tab_prefix }}" role="tab" class="tab w-max" aria-label="Discovery" />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-content/10 rounded-box p-6 w-full">
+        <div class="mb-5">
+            <h1 class="text-xl font-bold">{{ module_name }} — Discovery</h1>
+            <p class="text-xs text-base-content/50 mt-0.5">{{ detector_name }} {% if module_key == 'bats' %}ultrasonic
+                {% endif %}detections overview</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+            {% for sp in species %}
+            <a href="{{ detail_prefix }}{{ sp.id }}"
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-secondary/30 block">
+                {% if sp.image_url %}
+                <figure class="aspect-4/3 w-full m-0 bg-base-200">
+                    <img src="{{ sp.image_url }}" alt="{{ sp.species_en }}" class="w-full h-full object-cover" />
+                </figure>
+                {% else %}
+                <figure class="aspect-4/3 w-full m-0 bg-secondary/10 flex items-center justify-center">
+                    <span class="text-6xl">{{ emoji }}</span>
+                </figure>
+                {% endif %}
+                <div class="card-body items-center text-center p-5 pt-4">
+                    <h3 class="font-semibold text-sm">{{ sp.species_en }}</h3>
+                    <p class="text-xs text-base-content/50 italic">{{ sp.species_sci }}</p>
+                    <div class="badge badge-secondary badge-sm mt-1">{{ sp.count }} detections</div>
+                    <div class="text-[10px] text-base-content/40 font-mono mt-2">last: {{ sp.last_seen | truncate(16,
+                        true, '') }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>

@@ -1,59 +1,32 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb %}
 {% block title %}Bats{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('Modules',), ('Bats',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-    <h1 class="text-xl font-bold">Bats</h1>
-    <p class="text-xs text-base-content/50 mt-0.5">BatDetect ultrasonic detections</p>
-</div>
+{%- set module_name = "Bats" -%}
+{%- set module_key = "bats" -%}
+{%- set detector_name = "BatDetect" -%}
+{%- set color_token = "mod-bats-strong" -%}
+{%- set emoji = "🦇" -%}
+{%- set tab_prefix = "bats_tabs" -%}
+{%- set detail_prefix = "/bats/" -%}
+{% include "_species_module.html" %}
+{% endblock %}
 
-<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'discovery' }">
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'discovery' }" @click="tab = 'discovery'">Discovery</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'analyzer' }" @click="tab = 'analyzer'">Analyzer</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'statistics' }" @click="tab = 'statistics'">Statistics</a>
-
-    <!-- Discovery — species cards (interactive) -->
-    <div x-show="tab === 'discovery'" class="tab-content col-span-3 pt-4 w-full">
-        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-            {% for sp in species %}
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-accent/30">
-                <div class="card-body items-center text-center p-5">
-                    <div class="w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center text-3xl mb-2">🦇
-                    </div>
-                    <h3 class="font-semibold text-sm">{{ sp.species_de }}</h3>
-                    <p class="text-xs text-base-content/50 italic">{{ sp.species_en }}</p>
-                    <div class="badge badge-accent badge-sm mt-1">{{ sp.count }} detections</div>
-                    <div class="text-xs text-base-content/30 font-mono mt-1">last: {{ sp.last_seen | truncate(16, true,
-                        '') }}</div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Analyzer (static) -->
-    <div x-show="tab === 'analyzer'" class="tab-content col-span-3 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <p class="text-sm text-base-content/50">No detections match current filter (mock data only loaded for
-                    Discovery view).</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistics (static) -->
-    <div x-show="tab === 'statistics'" class="tab-content col-span-3 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <h3 class="text-sm font-semibold mb-3">Nightly activity</h3>
-                <div
-                    class="h-36 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
-                    [ ECharts time-series ]</div>
-            </div>
-        </div>
+{% block inspector %}
+<div class="space-y-3">
+    <div class="text-xs text-base-content/50">Click a detection row to inspect.</div>
+    <div class="h-24 bg-base-300 rounded-xl flex items-center justify-center text-xs text-base-content/30 font-mono">
+        [Wavesurfer.js waveform]</div>
+    <div class="h-20 bg-base-300 rounded-xl flex items-center justify-center text-xs text-base-content/30 font-mono">
+        [Spectrogram + BatDetect regions]</div>
+    <div class="flex gap-2 mt-2">
+        <button class="btn btn-outline btn-sm">Export WAV</button>
+        <button class="btn btn-ghost btn-sm">Export CSV</button>
     </div>
 </div>
 {% endblock %}

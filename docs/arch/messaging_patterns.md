@@ -1,6 +1,6 @@
 # Messaging Patterns & Protocols
 
-> **Status:** Normative (Mandatory) · **Implemented:** Partial (v0.1.0) — Critical Path (§1.1) is AS-IS; Redis / Interactive Path (§1.2, §3–§6) is TO-BE (v0.2.0)
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (since v0.1.0) — Critical Path (§1.1) is AS-IS; Redis / Interactive Path (§1.2, §3–§6) is TO-BE (v0.2.0)
 > **Scope:** System-wide inter-service communication
 
 This document defines the communication standards within Silvasonic — how services discover work, exchange status, and receive commands.

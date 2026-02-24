@@ -40,6 +40,7 @@ services:
       POSTGRES_HOST: database
       CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
+      SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
       - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
     volumes:
@@ -48,6 +49,8 @@ services:
       - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
     depends_on:
       database:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - silvasonic-net
@@ -127,10 +130,16 @@ services:
     env_file: .env
     environment:
       SILVASONIC_REDIS_URL: redis://redis:6379/0
+      POSTGRES_HOST: database
+      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
     ports:
       - "${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
     depends_on:
       redis:
+        condition: service_healthy
+      database:
         condition: service_healthy
     networks:
       - silvasonic-net

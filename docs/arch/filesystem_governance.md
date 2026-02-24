@@ -1,6 +1,6 @@
 # Data Architecture & Filesystem Governance
 
-> **Status:** Normative (Mandatory) · **Implemented:** Partial (v0.1.0) — Two-Worlds separation and init script are AS-IS; full access control matrix is TO-BE
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (since v0.1.0) — Two-Worlds separation and init script are AS-IS; full access control matrix is TO-BE
 > **Scope:** System-wide (Host & Container)
 > **OS Target:** Fedora Linux (SELinux Enforcing) with Rootless Podman
 

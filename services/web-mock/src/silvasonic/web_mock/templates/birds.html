@@ -1,120 +1,20 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb %}
 {% block title %}Birds{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('Modules',), ('Birds',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-    <h1 class="text-xl font-bold">Birds</h1>
-    <p class="text-xs text-base-content/50 mt-0.5">BirdNET detections</p>
-</div>
-
-<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'discovery' }">
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'discovery' }" @click="tab = 'discovery'">Discovery</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'analyzer' }" @click="tab = 'analyzer'">Analyzer</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'statistics' }" @click="tab = 'statistics'">Statistics</a>
-
-    <!-- Discovery — species cards (interactive) -->
-    <div x-show="tab === 'discovery'" class="tab-content col-span-3 pt-4 w-full">
-        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-            {% for sp in species %}
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-secondary/30">
-                <div class="card-body items-center text-center p-5">
-                    <div class="w-16 h-16 rounded-full bg-secondary/15 flex items-center justify-center text-3xl mb-2">
-                        🐦</div>
-                    <h3 class="font-semibold text-sm">{{ sp.species_de }}</h3>
-                    <p class="text-xs text-base-content/50 italic">{{ sp.species_en }}</p>
-                    <div class="badge badge-secondary badge-sm mt-1">{{ sp.count }} detections</div>
-                    <div class="text-xs text-base-content/30 font-mono mt-1">last: {{ sp.last_seen | truncate(16, true,
-                        '') }}</div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Analyzer — detection table (static card) -->
-    <div x-show="tab === 'analyzer'" class="tab-content col-span-3 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <div class="flex gap-3 mb-4">
-                    <select class="select select-bordered select-sm w-36">
-                        <option>All species</option>
-                        {% for sp in species %}<option>{{ sp.species_de }}</option>{% endfor %}
-                    </select>
-                    <select class="select select-bordered select-sm w-32">
-                        <option>All mics</option>
-                        <option>mic_01</option>
-                        <option>mic_02</option>
-                    </select>
-                    <input type="text" placeholder="Min confidence…"
-                        class="input input-bordered input-sm w-32 font-mono" />
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm table-zebra font-mono text-xs">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Species (DE)</th>
-                                <th>Species (EN)</th>
-                                <th>Confidence</th>
-                                <th>Mic</th>
-                                <th>Duration</th>
-                                <th class="text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for d in detections %}
-                            <tr class="hover cursor-pointer" @click="inspectorOpen = true">
-                                <td class="text-base-content/60">{{ d.ts | truncate(19, true, '') }}</td>
-                                <td class="font-semibold">{{ d.species_de }}</td>
-                                <td class="text-base-content/60">{{ d.species_en }}</td>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <progress class="progress progress-secondary w-16 h-1.5"
-                                            value="{{ (d.confidence * 100) | int }}" max="100"></progress>
-                                        <span>{{ "%.0f"|format(d.confidence * 100) }}%</span>
-                                    </div>
-                                </td>
-                                <td>{{ d.mic }}</td>
-                                <td>{{ d.duration_s }}s</td>
-                                <td class="text-right">
-                                    <button class="btn btn-ghost btn-xs">▶</button>
-                                    <button class="btn btn-ghost btn-xs">⬇</button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistics — ECharts placeholder (static cards) -->
-    <div x-show="tab === 'statistics'" class="tab-content col-span-3 pt-4 w-full">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-                <div class="card-body p-5">
-                    <h3 class="text-sm font-semibold mb-3">Detections per day</h3>
-                    <div
-                        class="h-36 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
-                        [ ECharts bar chart ]</div>
-                </div>
-            </div>
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-                <div class="card-body p-5">
-                    <h3 class="text-sm font-semibold mb-3">Confidence histogram</h3>
-                    <div
-                        class="h-36 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
-                        [ ECharts histogram ]</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{%- set module_name = "Birds" -%}
+{%- set module_key = "birds" -%}
+{%- set detector_name = "BirdNET" -%}
+{%- set color_token = "mod-birds-strong" -%}
+{%- set emoji = "🐦" -%}
+{%- set tab_prefix = "birds_tabs" -%}
+{%- set detail_prefix = "/birds/" -%}
+{% include "_species_module.html" %}
 {% endblock %}
 
 {% block inspector %}
@@ -125,8 +25,8 @@
     <div class="h-20 bg-base-300 rounded-xl flex items-center justify-center text-xs text-base-content/30 font-mono">
         [Spectrogram + BirdNET regions]</div>
     <div class="flex gap-2 mt-2">
-        <button class="btn btn-xs btn-outline">Export WAV</button>
-        <button class="btn btn-xs btn-ghost">Export CSV</button>
+        <button class="btn btn-outline btn-sm">Export WAV</button>
+        <button class="btn btn-ghost btn-sm">Export CSV</button>
     </div>
 </div>
 {% endblock %}

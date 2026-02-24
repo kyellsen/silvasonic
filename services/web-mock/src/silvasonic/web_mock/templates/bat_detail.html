@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% from "_macros.html" import breadcrumb %}
+{% block title %}{{ species.species_en }} - Bats{% endblock %}
+
+{% block breadcrumb %}
+{{ breadcrumb([('Modules',), ('Bats', '/bats'), ('Discovery',), (species.species_en,)]) }}
+{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+        <h1 class="text-xl font-bold">{{ species.species_en }}</h1>
+        <p class="text-xs text-base-content/50 italic">{{ species.species_sci }}</p>
+    </div>
+    <div class="md:text-right">
+        <div class="stat-value text-secondary">{{ species.count }}</div>
+        <div class="stat-desc">detections</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Image and Details -->
+    <div class="lg:col-span-1 flex flex-col gap-6">
+        <div class="card bg-base-100 shadow-sm border border-base-content/5 overflow-hidden">
+            {% if species.image_url %}
+            <figure class="w-full m-0 bg-base-200">
+                <img src="{{ species.image_url }}" alt="{{ species.species_en }}"
+                    class="w-full h-auto object-cover aspect-4/3" />
+            </figure>
+            {% else %}
+            <figure class="aspect-4/3 w-full m-0 bg-secondary/10 flex items-center justify-center">
+                <span class="text-8xl">🦇</span>
+            </figure>
+            {% endif %}
+            <div class="card-body p-5">
+                <h3 class="font-bold text-lg mb-2">Details</h3>
+                <ul class="text-sm space-y-2">
+                    <li class="flex justify-between border-b border-base-content/5 pb-1">
+                        <span class="text-base-content/50">Scientific Name</span>
+                        <span class="font-mono text-right">{{ species.species_sci }}</span>
+                    </li>
+                    <li class="flex justify-between border-b border-base-content/5 pb-1">
+                        <span class="text-base-content/50">Last Seen</span>
+                        <span class="font-mono text-right">{{ species.last_seen | truncate(16, true, '') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Wikipedia Summary & Recent Detections -->
+    <div class="lg:col-span-2 flex flex-col gap-6">
+        <!-- Wikipedia Box -->
+        <div class="card bg-base-100 shadow-sm border border-base-content/5">
+            <div class="card-body p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="card-title">About</h2>
+                    <div class="badge badge-outline gap-1">
+                        <span class="font-serif">W</span> Wikipedia
+                    </div>
+                </div>
+
+                <div id="wiki-content" data-species="{{ species.species_en }}"
+                    class="prose prose-sm max-w-none text-base-content/80">
+                    <div class="flex items-center gap-3 text-base-content/50">
+                        <span class="loading loading-spinner loading-sm"></span>
+                        Loading Wikipedia information...
+                    </div>
+                </div>
+                <div class="card-actions justify-end mt-4">
+                    <a id="wiki-link" href="#" target="_blank" class="btn btn-sm btn-ghost hidden">Read more on
+                        Wikipedia</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Detections -->
+        <div class="card bg-base-100 shadow-sm border border-base-content/5">
+            <div class="card-body p-5">
+                <h2 class="card-title mb-4">Recent Detections</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm table-zebra font-mono text-xs w-full">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Confidence</th>
+                                <th>Mic</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in detections %}
+                            <tr>
+                                <td class="text-base-content/60">{{ d.ts | truncate(19, true, '') }}</td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <progress class="progress progress-secondary w-12 h-1.5"
+                                            value="{{ (d.confidence * 100) | int }}" max="100"></progress>
+                                        <span>{{ "%.0f"|format(d.confidence * 100) }}%</span>
+                                    </div>
+                                </td>
+                                <td>{{ d.mic }}</td>
+                                <td>{{ d.duration_s }}s</td>
+                                <td>
+                                    <button class="btn btn-ghost btn-sm btn-square" aria-label="Play">▶</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-base-content/50 py-4">No detections recorded
+                                    yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript to fetch Wikipedia content using the English name -->
+<script src="/static/js/wiki-loader.js"></script>
+{% endblock %}

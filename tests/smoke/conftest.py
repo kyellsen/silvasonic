@@ -53,7 +53,7 @@ def _wait_for_log(container: DockerContainer, message: str, timeout: float = 60)
 def smoke_network() -> Generator[Network]:
     """Create a shared network for inter-container communication.
 
-    Ensures the controller can resolve the database by alias name.
+    Ensures services can resolve each other by alias name.
     """
     with Network() as network:
         yield network
@@ -87,6 +87,30 @@ def database_container(smoke_network: Network) -> Generator[DockerContainer]:
     container.stop()
 
 
+# ── Redis ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def redis_container_smoke(smoke_network: Network) -> Generator[DockerContainer]:
+    """Start an isolated Redis container for smoke tests.
+
+    Session-scoped: shared across all smoke tests for performance.
+    Connected to the shared smoke_network so services can reach it
+    via the 'test-redis' alias.
+    """
+    container = (
+        DockerContainer("docker.io/library/redis:7-alpine")
+        .with_exposed_ports(6379)
+        .with_command("redis-server --save ''")
+        .with_network(smoke_network)
+        .with_network_aliases("test-redis")
+    )
+    container.start()
+    _wait_for_log(container, "Ready to accept connections")
+    yield container
+    container.stop()
+
+
 # ── Controller ────────────────────────────────────────────────────────────────
 
 
@@ -94,15 +118,18 @@ def database_container(smoke_network: Network) -> Generator[DockerContainer]:
 def controller_container(
     smoke_network: Network,
     database_container: DockerContainer,
+    redis_container_smoke: DockerContainer,
 ) -> Generator[DockerContainer]:
-    """Start an isolated Controller container connected to the test database.
+    """Start an isolated Controller container connected to test database and Redis.
 
     Session-scoped: shared across all smoke tests for performance.
-    Connects to the database via the shared smoke_network using the
-    'test-database' alias. Uses tmpfs for workspace directories.
+    Connects to the database via 'test-database' alias and to Redis via
+    'test-redis' alias on the shared smoke_network.
+    Uses tmpfs for workspace directories.
     """
-    # Ensure database_container is used (fixture dependency ordering)
+    # Ensure fixtures are used (dependency ordering)
     _ = database_container
+    _ = redis_container_smoke
 
     container = (
         DockerContainer("silvasonic_controller")
@@ -112,6 +139,7 @@ def controller_container(
         .with_env("POSTGRES_PASSWORD", "silvasonic")
         .with_env("POSTGRES_DB", "silvasonic")
         .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw", "/app/recorder-workspace": "rw"})
     )
@@ -127,16 +155,24 @@ def controller_container(
 
 
 @pytest.fixture()
-def recorder_container() -> Generator[DockerContainer]:
-    """Start an isolated Recorder container.
+def recorder_container(
+    smoke_network: Network,
+    redis_container_smoke: DockerContainer,
+) -> Generator[DockerContainer]:
+    """Start an isolated Recorder container with Redis.
 
     Function-scoped: fresh container per test (immutable Tier 2 pattern).
-    No database connection needed. No shared network needed.
+    No database connection needed. Connected to Redis via 'test-redis'
+    alias on the shared smoke_network.
     Uses tmpfs for workspace directory.
     """
+    _ = redis_container_smoke
+
     container = (
         DockerContainer("silvasonic_recorder")
         .with_exposed_ports(9500)
+        .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw"})
     )
     container.start()

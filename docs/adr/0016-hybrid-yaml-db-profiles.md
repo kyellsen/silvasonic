@@ -26,7 +26,7 @@ Previously, profiles were loaded directly from YAML files at startup. This made 
     *   The Web-Interface (future) can trivially CRUD profiles via the database.
 
 2.  **YAML Files as Seed Data:**
-    *   System-default profiles are maintained as YAML files in the repository (`services/recorder/config/profiles/`).
+    *   System-default profiles are maintained as YAML files in the repository (`services/controller/config/profiles/`). The seeds live with the Controller — not the Recorder — because the Controller is their sole consumer (ProfileBootstrapper). The Recorder never reads these files.
     *   YAML files MUST be parsed using `pyYAML` with strict `safe_load` (see AGENTS.md §5).
     *   On every Controller startup, a `ProfileBootstrapper`:
         *   Reads the YAML files.

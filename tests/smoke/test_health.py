@@ -1,14 +1,18 @@
-"""Smoke tests — health probes for all Silvasonic services.
+"""Smoke tests — health probes and heartbeat verification for all Silvasonic services.
 
 Each test uses testcontainer fixtures (from conftest.py) to spin up
 isolated, ephemeral containers with random ports. No conflicts with
 the dev stack, no host-filesystem writes, automatic cleanup.
 """
 
+import json
 import socket
+import time
+from typing import Any
 
 import httpx
 import pytest
+from redis import Redis
 from testcontainers.core.container import DockerContainer
 
 
@@ -51,3 +55,62 @@ class TestServiceHealth:
         resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+
+
+def _poll_redis_key(redis_client: Redis, key: str, timeout: float = 30.0) -> dict[str, Any]:
+    """Poll Redis for a key until it exists or timeout. Returns parsed JSON."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        raw = redis_client.get(key)
+        if raw is not None:
+            return json.loads(str(raw))  # type: ignore[no-any-return]
+        time.sleep(2)
+    msg = f"Redis key '{key}' not found within {timeout}s"
+    raise TimeoutError(msg)
+
+
+@pytest.mark.smoke
+class TestServiceHeartbeats:
+    """Verify services publish heartbeats to Redis (container-to-container)."""
+
+    def test_controller_heartbeat_in_redis(
+        self,
+        controller_container: DockerContainer,
+        redis_container_smoke: DockerContainer,
+    ) -> None:
+        """Controller writes a heartbeat to Redis with host_resources."""
+        # Connect to Redis from the test host (via exposed port)
+        host = redis_container_smoke.get_container_host_ip()
+        port = int(redis_container_smoke.get_exposed_port(6379))
+        redis_client = Redis(host=host, port=port, decode_responses=True)
+
+        payload = _poll_redis_key(redis_client, "silvasonic:status:controller")
+
+        assert payload["service"] == "controller"
+        assert payload["instance_id"] == "controller"
+        assert payload["health"]["status"] == "ok"
+        assert "resources" in payload["meta"]
+        assert "host_resources" in payload["meta"], (
+            "Controller heartbeat should include host_resources"
+        )
+
+        redis_client.close()
+
+    def test_recorder_heartbeat_in_redis(
+        self,
+        recorder_container: DockerContainer,
+        redis_container_smoke: DockerContainer,
+    ) -> None:
+        """Recorder writes a heartbeat to Redis."""
+        host = redis_container_smoke.get_container_host_ip()
+        port = int(redis_container_smoke.get_exposed_port(6379))
+        redis_client = Redis(host=host, port=port, decode_responses=True)
+
+        payload = _poll_redis_key(redis_client, "silvasonic:status:recorder")
+
+        assert payload["service"] == "recorder"
+        assert payload["instance_id"] == "recorder"
+        assert payload["health"]["status"] == "ok"
+        assert "resources" in payload["meta"]
+
+        redis_client.close()

@@ -1,129 +1,616 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb %}
 {% block title %}Settings{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('Settings',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-    <h1 class="text-xl font-bold">Settings</h1>
-</div>
+<div x-data="{ activeTab: 'general' }" class="flex flex-col md:flex-row gap-8 max-w-5xl mx-auto w-full pb-12">
 
-<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'general' }">
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'general' }" @click="tab = 'general'">General</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'modules' }" @click="tab = 'modules'">Modules</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'recording_policy' }"
-        @click="tab = 'recording_policy'">Recording Policy</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'network' }" @click="tab = 'network'">Network</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'access' }" @click="tab = 'access'">Access</a>
-
-    <!-- General -->
-    <div x-show="tab === 'general'" class="tab-content col-span-5 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5 space-y-4">
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Station Name</span></label>
-                    <input type="text" class="input input-bordered input-sm" value="{{ settings.station_name }}" />
-                </div>
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Timezone</span></label>
-                    <input type="text" class="input input-bordered input-sm" value="{{ settings.timezone }}" />
-                </div>
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Language</span></label>
-                    <select class="select select-bordered select-sm">
-                        <option selected>de</option>
-                        <option>en</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary btn-sm">Save General Settings</button>
-            </div>
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 shrink-0">
+        <div class="sticky top-20">
+            <h2 class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-4 px-3">Settings</h2>
+            <nav class="flex flex-col space-y-1">
+                <button @click="activeTab = 'general'"
+                    :class="activeTab === 'general' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    General
+                </button>
+                <button @click="activeTab = 'modules'"
+                    :class="activeTab === 'modules' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                        <path d="M3 9h18" />
+                        <path d="M9 21V9" />
+                    </svg>
+                    Modules
+                </button>
+                <button @click="activeTab = 'storage'"
+                    :class="activeTab === 'storage' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3" />
+                        <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+                        <path d="M3 12A9 3 0 0 0 21 12" />
+                    </svg>
+                    Storage & Retention
+                </button>
+                <button @click="activeTab = 'remotes'"
+                    :class="activeTab === 'remotes' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" x2="12" y1="3" y2="15" />
+                    </svg>
+                    Remotes
+                </button>
+                <button @click="activeTab = 'network'"
+                    :class="activeTab === 'network' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                        <line x1="12" x2="12.01" y1="20" y2="20" />
+                    </svg>
+                    Network
+                </button>
+                <button @click="activeTab = 'user'"
+                    :class="activeTab === 'user' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    User
+                </button>
+            </nav>
         </div>
-    </div>
+    </aside>
 
-    <!-- Modules -->
-    <div x-show="tab === 'modules'" class="tab-content col-span-5 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5 space-y-3">
-                <div class="alert alert-info py-2 text-xs mb-2 rounded-xl">Module toggles drive sidebar visibility and
-                    DB →
-                    Controller → HTMX sidebar refresh.</div>
-                {% for module, enabled in [('birdnet_enabled', settings.birdnet_enabled), ('batdetect_enabled',
-                settings.batdetect_enabled), ('weather_enabled', settings.weather_enabled)] %}
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="font-medium text-sm">{{ module | replace('_enabled', '') | title }}</div>
-                        <div class="text-xs text-base-content/50">Enable {{ module | replace('_enabled', '') }} module
+    <!-- Main Content Area -->
+    <div class="flex-1 min-w-0">
+
+        <!-- General Settings -->
+        <div x-show="activeTab === 'general'" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div>
+                <h1 class="text-xl font-bold">General Settings</h1>
+                <p class="text-xs text-base-content/50 mt-0.5">Manage your station's primary identity, location, and
+                    power
+                    preferences.</p>
+            </div>
+
+            <form action="/settings/general" method="POST" class="space-y-6">
+
+                <!-- Station Identity Card -->
+                <div
+                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    <div class="p-6 border-b border-base-content/5">
+                        <h3 class="font-semibold text-base">Station Identity</h3>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Station
+                                    Name</span></label>
+                            <input type="text" name="station_name"
+                                class="input input-bordered focus:input-primary transition-all"
+                                value="{{ settings.station_name }}" />
+                            <label class="label py-1"><span class="label-text-alt text-base-content/50">Used to identify
+                                    this device on the network and in uploads.</span></label>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-1"><span
+                                    class="label-text font-medium text-sm">Language</span></label>
+                            <select class="select select-bordered focus:select-primary transition-all w-full max-w-xs">
+                                <option {% if settings.language=='de' %}selected{% endif %}>de</option>
+                                <option {% if settings.language=='en' %}selected{% endif %}>en</option>
+                            </select>
                         </div>
                     </div>
-                    <input type="checkbox" class="toggle toggle-primary" {% if enabled %}checked{% endif %} />
                 </div>
-                {% endfor %}
-                <button class="btn btn-warning btn-sm mt-3">🟨 Preview Impact &amp; Apply</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Recording Policy -->
-    <div x-show="tab === 'recording_policy'" class="tab-content col-span-5 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5 space-y-4">
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Max Segment Duration (s)</span></label>
-                    <input type="number" class="input input-bordered input-sm w-32 font-mono"
-                        value="{{ settings.recording_policy.max_segment_s }}" />
-                </div>
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Min Free Space (GB)</span></label>
-                    <input type="number" class="input input-bordered input-sm w-32 font-mono"
-                        value="{{ settings.recording_policy.min_free_gb }}" />
-                </div>
-                <div class="flex items-center gap-3">
-                    <input type="checkbox" class="checkbox checkbox-sm" {% if
-                        settings.recording_policy.delete_after_upload %}checked{% endif %} />
-                    <span class="text-sm">Delete recordings after successful upload</span>
-                </div>
-                <button class="btn btn-primary btn-sm">Save Policy</button>
-            </div>
-        </div>
-    </div>
+                <!-- Location & Time Card -->
+                <div
+                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    <div class="p-6 border-b border-base-content/5">
+                        <h3 class="font-semibold text-base">Location & Time</h3>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="form-control">
+                            <label class="label py-1"><span
+                                    class="label-text font-medium text-sm">Timezone</span></label>
+                            <input type="text" class="input input-bordered focus:input-primary transition-all max-w-xs"
+                                value="{{ settings.timezone }}" />
+                        </div>
 
-    <!-- Network -->
-    <div x-show="tab === 'network'" class="tab-content col-span-5 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <div class="space-y-2 text-sm font-mono">
-                    <div class="flex justify-between"><span class="text-base-content/50">Tailscale
-                            IP</span><span>100.64.0.42</span></div>
-                    <div class="flex justify-between"><span
-                            class="text-base-content/50">Hostname</span><span>silvasonic-01.tailnet.ts.net</span></div>
-                    <div class="flex justify-between"><span class="text-base-content/50">HTTPS</span><span
-                            class="text-success">Active (Let's Encrypt)</span></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="form-control">
+                                <label class="label py-1"><span
+                                        class="label-text font-medium text-sm">Latitude</span></label>
+                                <input type="number" step="0.0001"
+                                    class="input input-bordered focus:input-primary font-mono transition-all"
+                                    value="{{ settings.latitude }}" />
+                            </div>
+                            <div class="form-control">
+                                <label class="label py-1"><span
+                                        class="label-text font-medium text-sm">Longitude</span></label>
+                                <input type="number" step="0.0001"
+                                    class="input input-bordered focus:input-primary font-mono transition-all"
+                                    value="{{ settings.longitude }}" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Access -->
-    <div x-show="tab === 'access'" class="tab-content col-span-5 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 max-w-lg transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5 space-y-4">
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">Current Password</span></label>
-                    <input type="password" class="input input-bordered input-sm" placeholder="••••••••" />
+                <!-- Power Management Card -->
+                <div
+                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base">Poweroff on Low Battery</h3>
+                            <p class="text-sm text-base-content/60 mt-1">Safely shutdown the system to prevent SD card
+                                corruption when battery level is critically low.</p>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-primary shadow-sm" {% if
+                            settings.poweroff_on_low_battery %}checked{% endif %} />
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label class="label py-1"><span class="label-text text-sm">New Password</span></label>
-                    <input type="password" class="input input-bordered input-sm" placeholder="••••••••" />
+
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
                 </div>
-                <button class="btn btn-primary btn-sm">Change Password</button>
-                <div class="divider text-xs">API Keys</div>
-                <div class="font-mono text-xs p-3 bg-base-300 rounded-xl">sk-mock-api-key-1234567890abcdef</div>
-                <button class="btn btn-outline btn-sm btn-error btn-xs">Rotate Key</button>
+            </form>
+        </div>
+
+        <!-- Modules Settings -->
+        <div x-show="activeTab === 'modules'" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div>
+                <h1 class="text-xl font-bold">Modules</h1>
+                <p class="text-xs text-base-content/50 mt-0.5">Toggle active modules. This controls sidebar visibility,
+                    background processing, and UI features.</p>
+            </div>
+
+            <div
+                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                <div class="p-6 bg-info/5 border-b border-info/10">
+                    <div class="flex items-start gap-3 text-info">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="mt-0.5 shrink-0">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                        <p class="text-sm font-medium">Changes to modules require a system reload to reflect completely
+                            in the user interface and background services.</p>
+                    </div>
+                </div>
+
+                <div class="divide-y divide-base-content/5">
+                    {% set module_items = [
+                    ('livesound', 'Livesound', 'Realtime audio streaming and visualization', settings.livesound_enabled,
+                    'text-mod-livesound-strong', 'bg-mod-livesound-strong/10', '
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />'),
+                    ('birdnet', 'BirdNET Analysis', 'Automated bird call identification using AI',
+                    settings.birdnet_enabled, 'text-mod-birds-strong', 'bg-mod-birds-strong/10', '
+                    <path d="M16 7h.01" />
+                    <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+                    <path d="m20 7 2 .5-2 .5" />
+                    <path d="M10 18v3" />
+                    <path d="M14 17.75V21" />
+                    <path d="M7 18a6 6 0 0 0 3.84-10.61" />'),
+                    ('batdetect', 'Bat Detection', 'Ultrasonic bat call recognition analysis',
+                    settings.batdetect_enabled, 'text-mod-bats-strong', 'bg-mod-bats-strong/10', '
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />'),
+                    ('weather', 'Weather Station', 'Integration with local weather sensors', settings.weather_enabled,
+                    'text-mod-weather-strong', 'bg-mod-weather-strong/10', '
+                    <path d="M12 2v2" />
+                    <path d="m4.93 4.93 1.41 1.41" />
+                    <path d="M20 12h2" />
+                    <path d="m19.07 4.93-1.41 1.41" />
+                    <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" />
+                    <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" />')
+                    ] %}
+
+                    {% for id, title, desc, enabled, text_color, bg_color, icon in module_items %}
+                    <div class="p-6 flex items-center justify-between gap-4 transition-colors hover:bg-base-200/30">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 rounded-xl flex items-center justify-center {{ bg_color }} {{ text_color }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">{{ icon | safe }}</svg>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-base">{{ title }}</h4>
+                                <p class="text-sm text-base-content/60">{{ desc }}</p>
+                            </div>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-primary shadow-sm" {% if enabled %}checked{% endif
+                            %} />
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="p-4 bg-base-200/50 border-t border-base-content/5 flex justify-end">
+                    <button class="btn btn-warning btn-sm gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                        </svg>
+                        Apply & Reload System
+                    </button>
+                </div>
             </div>
         </div>
+
+        <!-- Storage & Retention -->
+        <div x-show="activeTab === 'storage'" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div>
+                <h1 class="text-xl font-bold">Storage & Retention</h1>
+                <p class="text-xs text-base-content/50 mt-0.5">Configure automated cleanup tasks to ensure the station
+                    never runs out of disk space.</p>
+            </div>
+
+            <div
+                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                <div class="p-6 border-b border-base-content/5">
+                    <h3 class="font-semibold text-base flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="text-primary">
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            <line x1="10" x2="10" y1="11" y2="17" />
+                            <line x1="14" x2="14" y1="11" y2="17" />
+                        </svg>
+                        Disk Janitor Policy
+                    </h3>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Max File Age
+                                    (Days)</span></label>
+                            <input type="number"
+                                class="input input-bordered focus:input-primary text-lg font-mono transition-all"
+                                value="30" />
+                            <label class="label py-1"><span class="label-text-alt text-base-content/50">Files older than
+                                    this will be deleted to free space.</span></label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Min Free Space Buffer
+                                    (GB)</span></label>
+                            <input type="number"
+                                class="input input-bordered focus:input-primary text-lg font-mono transition-all"
+                                value="{{ settings.recording_policy.min_free_gb }}" />
+                            <label class="label py-1"><span class="label-text-alt text-base-content/50">Urgent cleanup
+                                    triggers below this threshold.</span></label>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <label
+                        class="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-base-content/10 hover:border-primary/50 hover:bg-primary/5 transition-all">
+                        <input type="checkbox" class="checkbox checkbox-primary mt-1" {% if
+                            settings.recording_policy.delete_after_upload %}checked{% endif %} />
+                        <div>
+                            <span class="font-medium text-sm block">Delete after successful upload</span>
+                            <span class="text-sm text-base-content/60">Immediately remove local copies of recordings
+                                once they have been safely transferred to remote storage.</span>
+                        </div>
+                    </label>
+
+                    <div class="flex justify-end pt-2">
+                        <button class="btn btn-primary btn-sm">Save Policy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remotes Settings -->
+        <div x-show="activeTab === 'remotes'" x-data="{ activeRemote: '{{ settings.remotes[0].id }}' }"
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold">Remote Targets</h1>
+                    <p class="text-xs text-base-content/50 mt-0.5">Configure where uploaded recordings and metadata are
+                        sent.</p>
+                </div>
+                <select class="select select-bordered font-medium bg-base-100 shadow-sm w-full sm:w-56"
+                    x-model="activeRemote">
+                    {% for remote in settings.remotes %}
+                    <option value="{{ remote.id }}">{{ remote.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% for remote in settings.remotes %}
+            <div x-show="activeRemote === '{{ remote.id }}'" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all"
+                style="display: none;">
+                <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
+                    <h3 class="font-bold text-lg flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="text-primary">
+                            <ellipse cx="12" cy="5" rx="9" ry="3" />
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                        </svg>
+                        {{ remote.name }}
+                    </h3>
+                    <span class="badge badge-primary badge-outline font-mono text-xs">{{ remote.target_type | upper
+                        }}</span>
+                </div>
+
+                <div class="p-6 space-y-5">
+                    <div class="form-control">
+                        <label class="label py-1"><span class="label-text font-medium text-sm">Server URL</span></label>
+                        <input type="text"
+                            class="input input-bordered focus:input-primary font-mono transition-all w-full"
+                            value="{{ remote.url }}" />
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Username / Key
+                                    ID</span></label>
+                            <input type="text" class="input input-bordered focus:input-primary font-mono transition-all"
+                                value="{{ remote.username }}" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Password / Secret
+                                    Key</span></label>
+                            <input type="password" class="input input-bordered focus:input-primary transition-all"
+                                value="********" />
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label py-1"><span class="label-text font-medium text-sm">Target Path /
+                                Bucket</span></label>
+                        <div class="input-group flex">
+                            <span
+                                class="bg-base-200 border border-base-content/20 border-r-0 rounded-l-lg px-4 flex items-center justify-center text-base-content/60 font-mono text-sm leading-none m-0 h-12">/</span>
+                            <input type="text"
+                                class="input input-bordered focus:input-primary font-mono transition-all flex-1 rounded-l-none"
+                                value="silvasonic-archives/{{ settings.station_name }}/" />
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex flex-col-reverse sm:flex-row items-center gap-3 pt-4 mt-2 border-t border-base-content/5">
+                        <button class="btn btn-outline btn-sm btn-block sm:btn-wide flex-1 sm:flex-none">Test
+                            Connection</button>
+                        <button class="btn btn-primary btn-sm btn-block sm:btn-wide flex-1 sm:flex-none sm:ml-auto">Save
+                            Target</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Network Settings -->
+        <div x-show="activeTab === 'network'" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div>
+                <h1 class="text-xl font-bold">Network</h1>
+                <p class="text-xs text-base-content/50 mt-0.5">Manage local hotspot and remote VPN connectivity.</p>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <!-- WLAN Access Point -->
+                <div
+                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 flex flex-col">
+                    <div class="p-6 border-b border-base-content/5 flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                                    <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                                    <line x1="12" x2="12.01" y1="20" y2="20" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg leading-tight">WLAN Hotspot</h3>
+                                <span class="badge badge-success badge-sm badge-outline mt-1 font-mono">ACTIVE</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-primary" checked="checked" />
+                    </div>
+
+                    <div class="p-6 space-y-3 flex-1 bg-base-200/20">
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span class="text-xs uppercase font-bold tracking-widest text-base-content/50">SSID</span>
+                            <span class="font-mono text-sm font-medium">SilvaSonic-AP</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span
+                                class="text-xs uppercase font-bold tracking-widest text-base-content/50">Password</span>
+                            <span class="font-mono text-sm font-medium">silvasonic</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span
+                                class="text-xs uppercase font-bold tracking-widest text-base-content/50">Channel</span>
+                            <span class="font-mono text-sm font-medium">6 <span
+                                    class="text-base-content/40 ml-1">(2.4GHz)</span></span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span class="text-xs uppercase font-bold tracking-widest text-base-content/50">IP
+                                Address</span>
+                            <span class="font-mono text-sm font-medium text-info">192.168.4.1</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-base-content/5 flex justify-end bg-base-100">
+                        <button class="btn btn-outline btn-sm">Edit Configuration</button>
+                    </div>
+                </div>
+
+                <!-- Tailscale VPN -->
+                <div
+                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 flex flex-col">
+                    <div class="p-6 border-b border-base-content/5 flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg leading-tight">Tailscale VPN</h3>
+                                <span class="badge badge-success badge-sm badge-outline mt-1 font-mono">CONNECTED</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-primary" checked="checked" />
+                    </div>
+
+                    <div class="p-6 space-y-3 flex-1 bg-base-200/20">
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span class="text-xs uppercase font-bold tracking-widest text-base-content/50">Tailnet
+                                IP</span>
+                            <span class="font-mono text-sm font-medium text-info">100.64.0.42</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span
+                                class="text-xs uppercase font-bold tracking-widest text-base-content/50">Hostname</span>
+                            <span class="font-mono text-sm font-medium max-w-[150px] truncate sm:max-w-xs"
+                                title="silvasonic-01.tailnet.ts.net">silvasonic-01.tailnet.ts.net</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span class="text-xs uppercase font-bold tracking-widest text-base-content/50">HTTPS
+                                Proxy</span>
+                            <span class="font-mono text-sm font-medium text-success">ACTIVE</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between p-3 bg-base-100 rounded-xl border border-base-content/5">
+                            <span class="text-xs uppercase font-bold tracking-widest text-base-content/50">Auth
+                                Status</span>
+                            <span class="font-mono text-sm font-medium text-base-content/60">Configured via Key</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-base-content/5 flex justify-end bg-base-100 gap-3">
+                        <button class="btn btn-ghost btn-sm">View Logs</button>
+                        <button class="btn btn-outline btn-sm">Edit Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Configuration -->
+        <div x-show="activeTab === 'user'" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-6" style="display: none;">
+            <div>
+                <h1 class="text-xl font-bold">User Configuration</h1>
+                <p class="text-xs text-base-content/50 mt-0.5">Manage your local administrator account credentials.</p>
+            </div>
+
+            <div
+                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 max-w-2xl">
+                <div class="p-6 border-b border-base-content/5 flex items-center gap-4">
+                    <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-12 text-xl font-bold">
+                            {{ settings.user.username[0] | upper }}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg">{{ settings.user.username }}</h3>
+                        <p class="text-sm text-base-content/50">Local Administrator</p>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div class="form-control">
+                        <label class="label py-1"><span class="label-text font-medium text-sm">Username</span></label>
+                        <input type="text"
+                            class="input input-bordered focus:outline-none bg-base-200 text-base-content/70 cursor-not-allowed font-medium transition-all"
+                            value="{{ settings.user.username }}" readonly />
+                        <label class="label py-1"><span class="label-text-alt text-base-content/50">The admin username
+                                is fixed and cannot be changed.</span></label>
+                    </div>
+
+                    <div class="divider">Change Password</div>
+
+                    <div class="space-y-5">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Current
+                                    Password</span></label>
+                            <input type="password" class="input input-bordered focus:input-primary transition-all"
+                                placeholder="Enter current password" />
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="form-control">
+                                <label class="label py-1"><span class="label-text font-medium text-sm">New
+                                        Password</span></label>
+                                <input type="password" class="input input-bordered focus:input-primary transition-all"
+                                    placeholder="Enter new password" />
+                            </div>
+                            <div class="form-control">
+                                <label class="label py-1"><span class="label-text font-medium text-sm">Confirm
+                                        Password</span></label>
+                                <input type="password" class="input input-bordered focus:input-primary transition-all"
+                                    placeholder="Confirm new password" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 mt-2 border-t border-base-content/5">
+                        <button class="btn btn-primary btn-sm">Update Security Credentials</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}

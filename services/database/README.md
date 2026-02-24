@@ -1,6 +1,6 @@
 # silvasonic-database
 
-> **Status:** Implemented (v0.1.0) · **Tier:** 1 (Infrastructure) · **Engine:** TimescaleDB / PostgreSQL · **Instances:** Single · **Port:** 5432
+> **Status:** Implemented (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Engine:** TimescaleDB / PostgreSQL · **Instances:** Single · **Port:** 5432
 
 **AS-IS:** Central persistent store for the Silvasonic system — relational metadata and time-series data powered by TimescaleDB on PostgreSQL.
 

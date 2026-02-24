@@ -1,14 +1,17 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb, page_header %}
 {% block title %}About{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('About',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-        <h1 class="text-xl font-bold">About Silvasonic</h1>
-</div>
+{{ page_header('About Silvasonic') }}
 
 <div class="max-w-lg space-y-5">
         <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
                 <div class="card-body p-5 space-y-2 font-mono text-sm">
                         <div class="flex justify-between"><span class="text-base-content/50">Version</span><span
                                         class="text-primary">{{ station.version }}</span></div>
@@ -23,7 +26,7 @@
         </div>
 
         <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
                 <div class="card-body p-5">
                         <h2 class="font-semibold text-sm mb-3">Technology Stack</h2>
                         <div class="space-y-1.5 text-xs font-mono">

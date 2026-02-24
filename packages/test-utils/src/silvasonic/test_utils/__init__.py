@@ -14,6 +14,6 @@ The canonical way to consume these fixtures project-wide is via the root
 ``conftest.py``, which pytest discovers automatically for all test paths.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__: list[str] = []

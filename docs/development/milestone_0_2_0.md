@@ -40,11 +40,11 @@
 **Goal:** Migrate previously implemented Python services to use `SilvaService`.
 
 ### Tasks
-- [ ] Update `controller/__main__.py` to use `SilvaService`
-- [ ] Update `recorder/__main__.py` to use `SilvaService`
-- [ ] Remove duplicate/custom health/shutdown logic from both services, relying on the base class.
-- [ ] Verify both services publish status heartbeats correctly (via log output or Redis CLI).
-- [ ] Ensure integration tests and smoke tests (`just check-all`) pass with the new infrastructure.
+- [x] Update `controller/__main__.py` to use `SilvaService`
+- [x] Update `recorder/__main__.py` to use `SilvaService`
+- [x] Remove duplicate/custom health/shutdown logic from both services, relying on the base class.
+- [x] Verify both services publish status heartbeats correctly (via log output or Redis CLI).
+- [x] Ensure integration tests and smoke tests (`just check-all`) pass with the new infrastructure.
 
 ---
 

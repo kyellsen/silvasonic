@@ -1,5 +1,5 @@
 # Database Service
 
-> **Status:** Implemented (v0.1.0) · **Tier:** 1
+> **Status:** Implemented (since v0.1.0) · **Tier:** 1
 
 → Full documentation: [services/database/README.md](../../services/database/README.md)

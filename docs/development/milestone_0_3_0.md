@@ -63,26 +63,53 @@
 
 ---
 
-## Phase 3: Recorder Spawning with Profile Injection
+## Phase 3: USB Detection, HotPlug & Recorder Spawning
 
-**Goal:** Controller detects USB microphones and starts Recorder containers dynamically.
+**Goal:** Controller detects USB microphones in near-realtime (≤ 1 s), matches profiles, and starts Recorder containers dynamically.
 
-### Tasks
+### Tasks — USB Detection & HotPlug
+
+- [ ] Add `pyudev` as dependency to `services/controller/pyproject.toml`
+- [ ] Create `silvasonic/controller/device_scanner.py` — `DeviceScanner`
+  - Enumerate ALSA cards via `/proc/asound/cards`
+  - Correlate each card with USB parent via `pyudev` / `sysfs` (→ `DeviceInfo`)
+  - Extract: `usb_vendor_id`, `usb_product_id`, `usb_serial`, `alsa_name`, `alsa_device`
+- [ ] Create `silvasonic/controller/hotplug_monitor.py` — `HotPlugMonitor`
+  - `pyudev.Monitor` (subsystem `sound`) as dedicated `asyncio.Task`
+  - On `add`: scan single device, write to DB, trigger reconciliation
+  - On `remove`: set `status=offline`, trigger reconciliation
+  - **Latency target: ≤ 1 second** from USB plug to reconciliation trigger
+  - Graceful degradation: if `/run/udev` unavailable → fallback to polling with log warning
+- [ ] Implement stable device identity:
+  - With USB serial: `{vendor_id}-{product_id}-{serial}` (globally unique)
+  - Without serial: `{vendor_id}-{product_id}-port{bus_path}` (port-bound)
+  - Store as `devices.name` (PK) → determines Recorder name + workspace path
+
+### Tasks — Profile Matching & Auto-Enrollment
+
+- [ ] Create `silvasonic/controller/profile_matcher.py` — `ProfileMatcher`
+  - Score 100: USB Vendor+Product ID match → auto-enroll
+  - Score 50: ALSA name substring match → suggest in Web-Interface
+  - Score 0: no match → `pending`
+- [ ] Add `auto_enrollment` to `SystemSettings` Pydantic schema and `config/defaults.yml` (default: `true`)
+- [ ] Read `auto_enrollment` from `system_config` on each reconciliation cycle (runtime-changeable)
+
+### Tasks — Recorder Spawning
 
 - [ ] Replace `SIMULATE_RECORDER_SPAWN` placeholder in `controller/__main__.py`
 - [ ] Create `Tier2ServiceSpec` for Recorder:
   - Image: `silvasonic-recorder:latest`
-  - Name pattern: `silvasonic-recorder-<device_id>`
+  - Name pattern: `silvasonic-recorder-{device_id}`
   - Devices: `/dev/snd:/dev/snd`
   - Group add: `audio`
   - Privileged: `true` (see ADR-0007 §6)
   - Mounts: Recorder workspace = RW (producer)
   - Env vars: `RECORDER_DEVICE`, `RECORDER_PROFILE` (Profile Injection)
-- [ ] Implement basic USB microphone detection (or hardcoded device for MVP)
 - [ ] Connect `monitor_recorder_spawn()` to actual container health checks via `podman-py`
 - [ ] Implement Recorder health monitoring loop (check container status + health endpoint)
 - [ ] Add Redis heartbeat to Recorder (fire-and-forget via `SilvaService`, ADR-0019)
 - [ ] Integration test: Controller spawns Recorder container, verifies health, stops it
+- [ ] Integration test: HotPlug — plug USB device, verify Recorder starts within 1 s
 
 ---
 
@@ -108,9 +135,10 @@
 | Item                                            | Target Version |
 | ----------------------------------------------- | -------------- |
 | Actual audio recording (`recorder/__main__.py`) | v0.4.0         |
-| USB HotPlug detection                           | v0.4.0         |
 | Uploader, BirdNET, BatDetect as Tier 2          | v0.6.0+        |
 | Icecast live Opus stream (Recorder → Icecast)   | v0.9.0         |
 | Quadlet generation for production               | v1.0.0         |
 
 > **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 2 as part of the `Tier2ServiceSpec` model. See [ADR-0020](../adr/0020-resource-limits-qos.md).
+>
+> **Note:** USB HotPlug detection (≤ 1 s latency via `pyudev.Monitor`) is now **in scope** for Phase 3. Previously deferred to v0.4.0.

@@ -30,9 +30,9 @@ def _get_repo_root() -> Path:
     This file lives at:
         packages/test-utils/src/silvasonic/test_utils/containers.py
 
-    So the root is 6 levels up from here.
+    So the root is 5 levels up from here.
     """
-    return Path(__file__).resolve().parents[6]
+    return Path(__file__).resolve().parents[5]
 
 
 @pytest.fixture(scope="session")

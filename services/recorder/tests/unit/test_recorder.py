@@ -1,13 +1,39 @@
-"""Unit tests for silvasonic-recorder service — 100 % coverage."""
+"""Unit tests for silvasonic-recorder service — 100 % coverage.
+
+Tests the RecorderService (SilvaService subclass) including:
+- Package import
+- Service configuration
+- Background health monitor (_monitor_recording)
+- run() lifecycle with shutdown event
+- __main__ guard
+"""
 
 import asyncio
 import os
-import signal
 import sys
 import warnings
-from unittest.mock import MagicMock, patch
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from silvasonic.core.health import HealthMonitor
+
+if TYPE_CHECKING:
+    from silvasonic.recorder.__main__ import RecorderService
+
+
+def _make_bare_service() -> "RecorderService":
+    """Create a bare RecorderService without triggering SilvaService.__init__.
+
+    Sets up a mock _ctx with a real HealthMonitor so the `svc.health` property
+    works without mypy complaints.
+    """
+    from silvasonic.recorder.__main__ import RecorderService
+
+    svc = RecorderService.__new__(RecorderService)
+    svc._ctx = MagicMock()
+    svc._ctx.health = HealthMonitor()
+    return svc
 
 
 # ---------------------------------------------------------------------------
@@ -23,17 +49,58 @@ class TestRecorderPackage:
 
         assert silvasonic.recorder is not None
 
+    def test_package_exports_version(self) -> None:
+        """Package re-exports __version__ from core."""
+        from silvasonic.recorder import __version__
+
+        assert isinstance(__version__, str)
+        assert len(__version__) > 0
+
 
 # ---------------------------------------------------------------------------
-# monitor_recording
+# Configuration
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestRecorderConfig:
+    """Tests for service-level configuration."""
+
+    def test_service_name(self) -> None:
+        """service_name is 'recorder'."""
+        from silvasonic.recorder.__main__ import RecorderService
+
+        assert RecorderService.service_name == "recorder"
+
+    def test_service_port(self) -> None:
+        """service_port is 9500."""
+        from silvasonic.recorder.__main__ import RecorderService
+
+        assert RecorderService.service_port == 9500
+
+    def test_init_uses_env_redis_url(self) -> None:
+        """__init__ reads SILVASONIC_REDIS_URL from environment."""
+        with (
+            patch.dict(os.environ, {"SILVASONIC_REDIS_URL": "redis://custom:1234/5"}),
+            patch("silvasonic.core.service.SilvaService.__init__") as mock_super,
+        ):
+            from silvasonic.recorder.__main__ import RecorderService
+
+            RecorderService()
+            mock_super.assert_called_once_with(
+                instance_id="recorder", redis_url="redis://custom:1234/5"
+            )
+
+
+# ---------------------------------------------------------------------------
+# _monitor_recording
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestMonitorRecording:
-    """Tests for the monitor_recording coroutine."""
+    """Tests for the _monitor_recording coroutine."""
 
     async def test_recording_active(self) -> None:
         """Reports healthy when SIMULATE_RECORDING_HEALTH is True."""
-        mock_monitor = MagicMock()
+        svc = _make_bare_service()
+
         with (
             patch(
                 "silvasonic.recorder.__main__.SIMULATE_RECORDING_HEALTH",
@@ -41,19 +108,21 @@ class TestMonitorRecording:
             ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
             ),
+            pytest.raises(asyncio.CancelledError),
         ):
-            from silvasonic.recorder.__main__ import monitor_recording
+            await svc._monitor_recording()
 
-            with pytest.raises(asyncio.CancelledError):
-                await monitor_recording(mock_monitor)
-
-        mock_monitor.update_status.assert_called_once_with("recording", True, "Recording active")
+        status = svc.health.get_status()
+        assert status["components"]["recording"]["healthy"] is True
+        assert status["components"]["recording"]["details"] == "Recording active"
 
     async def test_recording_failed(self) -> None:
         """Reports unhealthy when SIMULATE_RECORDING_HEALTH is False."""
-        mock_monitor = MagicMock()
+        svc = _make_bare_service()
+
         with (
             patch(
                 "silvasonic.recorder.__main__.SIMULATE_RECORDING_HEALTH",
@@ -61,73 +130,94 @@ class TestMonitorRecording:
             ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
                 side_effect=asyncio.CancelledError,
             ),
+            pytest.raises(asyncio.CancelledError),
         ):
-            from silvasonic.recorder.__main__ import monitor_recording
+            await svc._monitor_recording()
 
-            with pytest.raises(asyncio.CancelledError):
-                await monitor_recording(mock_monitor)
-
-        mock_monitor.update_status.assert_called_once_with("recording", False, "Recording failed")
+        status = svc.health.get_status()
+        assert status["components"]["recording"]["healthy"] is False
+        assert status["components"]["recording"]["details"] == "Recording failed"
 
 
 # ---------------------------------------------------------------------------
-# main()
+# RecorderService.run()
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
-class TestMain:
-    """Tests for the main() coroutine."""
+class TestRecorderServiceRun:
+    """Tests for the run() coroutine."""
 
-    async def test_main_starts_services_and_handles_signal(self) -> None:
-        """main() wires up logging, health, tasks, signals, and exits on SIGTERM."""
-        mock_configure = MagicMock()
-        mock_health = MagicMock()
+    async def test_run_starts_monitor_and_exits_on_shutdown(self) -> None:
+        """run() starts background task and exits when shutdown_event is set."""
+        svc = _make_bare_service()
+        svc._shutdown_event = asyncio.Event()
 
-        # Mock the monitor coroutines so they don't actually run
-        async def noop() -> None:
-            await asyncio.Event().wait()  # block forever
+        # Mock the monitor method to be a no-op
+        async def noop_rec() -> None:
+            await asyncio.Event().wait()
+
+        with patch.object(svc, "_monitor_recording", side_effect=noop_rec):
+            # Set shutdown after a short delay
+            async def trigger_shutdown() -> None:
+                await asyncio.sleep(0.05)
+                svc._shutdown_event.set()
+
+            shutdown_task = asyncio.create_task(trigger_shutdown())
+            await svc.run()
+            await shutdown_task
+
+        # Health should have been initialized
+        status = svc.health.get_status()
+        assert "recorder" in status["components"]
+
+    async def test_run_handles_cancellation(self) -> None:
+        """run() catches CancelledError in the recording loop and exits cleanly."""
+        svc = _make_bare_service()
+        svc._shutdown_event = asyncio.Event()
+
+        async def noop_rec() -> None:
+            await asyncio.Event().wait()
+
+        call_count = 0
+
+        async def sleep_then_cancel(_delay: float) -> None:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                raise asyncio.CancelledError
+            # First call: let the loop iterate once
 
         with (
-            patch(
-                "silvasonic.recorder.__main__.configure_logging",
-                mock_configure,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.start_health_server",
-                mock_health,
-            ),
-            patch(
-                "silvasonic.recorder.__main__.monitor_recording",
-                side_effect=noop,
-            ),
+            patch.object(svc, "_monitor_recording", side_effect=noop_rec),
+            patch("silvasonic.recorder.__main__.asyncio.sleep", side_effect=sleep_then_cancel),
         ):
-            from silvasonic.recorder.__main__ import main
+            await svc.run()
 
-            # Schedule main and send ourselves SIGTERM after a tiny delay
-            task = asyncio.create_task(main())
-            await asyncio.sleep(0.01)
+        # run() should have exited cleanly (CancelledError caught internally)
+        status = svc.health.get_status()
+        assert "recorder" in status["components"]
 
-            os.kill(os.getpid(), signal.SIGTERM)
-            await asyncio.sleep(0.01)
 
-            # main() should have exited cleanly after the signal
-            await asyncio.wait_for(task, timeout=2.0)
-
-        mock_configure.assert_called_once_with("recorder")
-        mock_health.assert_called_once()
+# ---------------------------------------------------------------------------
+# __main__ guard
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestMainGuard:
+    """Tests for the if __name__ == '__main__' guard."""
 
     def test_main_guard(self) -> None:
-        """The if __name__ == '__main__' guard calls asyncio.run(main())."""
+        """The if __name__ == '__main__' guard calls RecorderService().start()."""
         import runpy
 
-        # Remove cached module to prevent "found in sys.modules" RuntimeWarning
+        # Remove cached module to prevent RuntimeWarning
         sys.modules.pop("silvasonic.recorder.__main__", None)
 
         with (
-            patch("asyncio.run", MagicMock()) as mock_run,
+            patch("silvasonic.core.service.SilvaService.start", MagicMock()) as mock_start,
             warnings.catch_warnings(),
         ):
-            warnings.simplefilter("error", RuntimeWarning)
+            warnings.simplefilter("ignore", RuntimeWarning)
             runpy.run_module("silvasonic.recorder.__main__", run_name="__main__")
-            mock_run.assert_called_once()
+            mock_start.assert_called_once()

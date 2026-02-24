@@ -1,66 +1,80 @@
+"""Silvasonic Recorder — Audio capture service (ADR-0019).
+
+The Recorder is an **immutable Tier 2** service. It has NO database access
+and receives all configuration via environment variables (Profile Injection)
+from the Controller. Multiple recorder instances may run concurrently.
+
+Inherits the full ``SilvaService`` managed lifecycle: structured logging,
+health monitoring, Redis heartbeats with liveness watchdog, and graceful
+shutdown.
+"""
+
 import asyncio
-import signal
+import os
 from typing import NoReturn
 
-from silvasonic.core.health import HealthMonitor, start_health_server
-from silvasonic.core.logging import configure_logging
-
-background_tasks: set[asyncio.Task[NoReturn]] = set()
-
+from silvasonic.core.service import SilvaService
 
 # TODO(placeholder): Replace with actual recording-health detection logic.
 SIMULATE_RECORDING_HEALTH = True
 
 
-async def monitor_recording(monitor: HealthMonitor) -> NoReturn:
-    """Periodically check recording status.
+class RecorderService(SilvaService):
+    """Recorder service — captures audio from USB microphones.
 
-    TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
-    with actual checks (e.g. verifying .wav file growth, audio device status)
-    once the recording pipeline is implemented.
+    Class Attributes:
+        service_name: ``"recorder"``
+        service_port: ``9500`` (health endpoint, internal to silvasonic-net).
     """
-    while True:
-        # In the future, this will check if .wav files are actually being written
-        is_recording = SIMULATE_RECORDING_HEALTH
 
-        monitor.update_status(
-            "recording", is_recording, "Recording active" if is_recording else "Recording failed"
+    service_name = "recorder"
+    service_port = 9500
+
+    def __init__(self) -> None:
+        """Initialize with Redis URL from environment."""
+        super().__init__(
+            instance_id="recorder",
+            redis_url=os.environ.get("SILVASONIC_REDIS_URL", "redis://localhost:6379/0"),
         )
-        await asyncio.sleep(5)
 
+    async def run(self) -> None:
+        """Main recording loop.
 
-async def main() -> None:
-    """Start the recorder service.
+        Starts background health monitors and runs until shutdown.
+        Calls ``self.health.touch()`` each iteration to keep the
+        liveness watchdog alive.
+        """
+        self.health.update_status("recorder", True, "running")
 
-    The recorder is an immutable Tier 2 service. It has NO database access
-    and receives all configuration via environment variables (Profile Injection)
-    from the Controller. Multiple recorder instances may run concurrently.
-    """
-    configure_logging("recorder")
+        # Start background health monitors
+        rec_task = asyncio.create_task(self._monitor_recording())
+        try:
+            # TODO(placeholder): Replace with the actual recording loop
+            # (e.g. opening audio device, writing .wav chunks, rotating files).
+            while not self._shutdown_event.is_set():
+                self.health.touch()
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            rec_task.cancel()
 
-    # Create health monitor and start HTTP server on default port 9500
-    health_monitor = HealthMonitor()
-    start_health_server(port=9500, monitor=health_monitor)
+    async def _monitor_recording(self) -> NoReturn:
+        """Periodically check recording status.
 
-    # Start background health checks
-    _health_task_rec = asyncio.create_task(monitor_recording(health_monitor))
-    background_tasks.add(_health_task_rec)
-    _health_task_rec.add_done_callback(background_tasks.discard)
-
-    # TODO(placeholder): Replace with the actual recording loop
-    # (e.g. opening audio device, writing .wav chunks, rotating files).
-    # For now, just keep the loop running until a signal is received.
-    stop_event = asyncio.Event()
-
-    def handle_signal() -> None:
-        stop_event.set()
-
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGTERM, handle_signal)
-    loop.add_signal_handler(signal.SIGINT, handle_signal)
-
-    await stop_event.wait()
+        TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
+        with actual checks (e.g. verifying .wav file growth, audio device status)
+        once the recording pipeline is implemented (v0.4.0).
+        """
+        while True:
+            is_recording = SIMULATE_RECORDING_HEALTH
+            self.health.update_status(
+                "recording",
+                is_recording,
+                "Recording active" if is_recording else "Recording failed",
+            )
+            await asyncio.sleep(5)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    RecorderService().start()

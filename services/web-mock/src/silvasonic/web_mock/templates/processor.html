@@ -1,141 +1,165 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb, page_header %}
 {% block title %}Processor{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('System',), ('Processor',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-    <h1 class="text-xl font-bold">Processor</h1>
-</div>
+{{ page_header('Processor', 'Background task execution and data management') }}
 
-<div role="tablist" class="tabs tabs-bordered mb-6" x-data="{ tab: 'pipeline' }">
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'pipeline' }" @click="tab = 'pipeline'">Pipeline</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'storage' }" @click="tab = 'storage'">Storage &amp;
-        Retention</a>
-    <a role="tab" class="tab" :class="{ 'tab-active': tab === 'index' }" @click="tab = 'index'">Index</a>
+<div class="flex flex-col gap-6 mb-8">
 
-    <!-- Pipeline tab -->
-    <div x-show="tab === 'pipeline'" class="tab-content col-span-3 pt-4 w-full">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-                <div class="card-body p-5">
-                    <h3 class="font-semibold text-sm mb-3">Indexer</h3>
-                    <div class="stat p-0">
-                        <div class="stat-value text-2xl text-success">Running</div>
-                        <div class="stat-desc font-mono">Last run: 3 min ago</div>
-                    </div>
+    <!-- Storage Card -->
+    <div
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5">
+            <h2 class="text-lg font-bold mb-4">Storage (SSD)</h2>
+            <div class="flex items-start gap-6">
+                <!-- Radial Progress -->
+                <div class="radial-progress shrink-0 {% if metrics.nvme_used_pct > 80 %}text-error{% elif metrics.nvme_used_pct > 65 %}text-warning{% else %}text-success{% endif %}"
+                    style="--value:{{ metrics.nvme_used_pct }}; --size:6rem; --thickness:8px;">
+                    <span class="text-lg font-bold text-base-content">{{ metrics.nvme_used_pct }}%</span>
                 </div>
-            </div>
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-                <div class="card-body p-5">
-                    <h3 class="font-semibold text-sm mb-3">Ingestion Backlog</h3>
-                    <div class="stat p-0">
-                        <div class="stat-value text-2xl text-warning">14</div>
-                        <div class="stat-desc font-mono">files pending</div>
-                    </div>
-                </div>
-            </div>
-            <div
-                class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-                <div class="card-body p-5">
-                    <h3 class="font-semibold text-sm mb-3">Janitor</h3>
-                    <div class="stat p-0">
-                        <div class="stat-value text-2xl text-success">Idle</div>
-                        <div class="stat-desc font-mono">No cleanup scheduled</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Storage & Retention tab -->
-    <div x-show="tab === 'storage'" class="tab-content col-span-3 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 mb-5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <h3 class="font-semibold text-sm mb-4">NVMe Status</h3>
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="radial-progress text-warning text-sm font-bold"
-                        style="--value:{{ metrics.nvme_used_pct }}; --size:5rem; --thickness:6px;">
-                        {{ metrics.nvme_used_pct }}%
-                    </div>
-                    <div class="text-sm">
-                        <div class="font-mono">{{ metrics.nvme_used_gb }} GB used of {{ metrics.nvme_total_gb }} GB
+                <div class="flex-1 space-y-4">
+                    <div>
+                        <div class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-1">Capacity
                         </div>
-                        <div class="text-xs text-base-content/50 mt-1">Estimated days remaining: <span
-                                class="text-success font-mono">~18</span></div>
+                        <div class="font-mono text-sm">
+                            <span class="font-bold text-base-content">{{ metrics.nvme_used_gb }} GB</span>
+                            <span class="text-base-content/50 mx-1">/</span>
+                            <span>{{ metrics.nvme_total_gb }} GB</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-1">Estimated
+                            runway</div>
+                        <div class="flex items-center gap-2 font-mono text-sm">
+                            {% set remaining_gb = metrics.nvme_total_gb - metrics.nvme_used_gb %}
+                            {% set daily_growth = 4.5 %} <!-- Mock value: 4.5 GB per day -->
+                            {% set days_left = (remaining_gb / daily_growth)|int %}
+
+                            <span
+                                class="font-bold {% if days_left < 14 %}text-error{% elif days_left < 30 %}text-warning{% else %}text-success{% endif %}">
+                                ~{{ days_left }} days left
+                            </span>
+                            <span class="text-xs text-base-content/40">(@ {{ daily_growth }} GB/day)</span>
+                        </div>
                     </div>
                 </div>
-                <div class="alert alert-warning py-2 text-xs rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path
-                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    </svg>
-                    NVMe usage above 65% — janitor policy will trigger at 80%.
+            </div>
+
+            {% if metrics.nvme_used_pct > 65 %}
+            <div class="alert alert-warning py-2 px-3 mt-4 text-xs rounded-xl flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="shrink-0">
+                    <path
+                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                </svg>
+                <span>Usage above 65%. Janitor escalation may trigger soon.</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Indexer Card -->
+    <div
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Indexer</h2>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-base-content/50 font-mono">Last run: 3 min ago</span>
+                    <span class="badge badge-success badge-sm">Running</span>
                 </div>
             </div>
-        </div>
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <h3 class="font-semibold text-sm mb-3">Retention Policy</h3>
-                <div class="form-control w-full max-w-xs mb-3">
-                    <label class="label py-1"><span class="label-text text-xs">Delete recordings older
-                            than</span></label>
-                    <select class="select select-bordered select-sm">
-                        <option>30 days</option>
-                        <option>60 days</option>
-                        <option>90 days</option>
-                        <option>Never</option>
-                    </select>
-                </div>
-                <button class="btn btn-warning btn-sm">
-                    🟨 Preview Janitor Impact
-                </button>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm text-sm">
+                    <thead>
+                        <tr class="text-base-content/50 uppercase tracking-wider text-[10px]">
+                            <th>Filename</th>
+                            <th>Recorder</th>
+                            <th>Size</th>
+                            <th>Indexed At</th>
+                            <th class="text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="font-mono text-xs">
+                        {% for file in indexer_files %}
+                        <tr class="hover:bg-base-200/50 transition-colors">
+                            <td class="font-medium text-base-content w-1/3">{{ file.filename }}</td>
+                            <td>{{ file.recorder }}</td>
+                            <td>{{ file.size_mb }} MB</td>
+                            <td class="text-base-content/70">{{ file.indexed_at|replace('T', ' ')|replace('Z', '') }}
+                            </td>
+                            <td class="text-right">
+                                {% if file.status == 'success' %}
+                                <span class="badge badge-success badge-xs badge-outline">OK</span>
+                                {% elif file.status == 'warn_short' %}
+                                <span class="badge badge-warning badge-xs badge-outline"
+                                    title="Segment too short">WARN</span>
+                                {% else %}
+                                <span class="badge badge-error badge-xs badge-outline">FAIL</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Index tab -->
-    <div x-show="tab === 'index'" class="tab-content col-span-3 pt-4 w-full">
-        <div
-            class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-            <div class="card-body p-5">
-                <h3 class="font-semibold text-sm mb-3">Index Status</h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm table-zebra font-mono text-xs">
-                        <thead>
-                            <tr>
-                                <th>Table</th>
-                                <th>Rows</th>
-                                <th>Last indexed</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>recordings</td>
-                                <td>4,821</td>
-                                <td>3 min ago</td>
-                                <td><span class="badge badge-success badge-xs">OK</span></td>
-                            </tr>
-                            <tr>
-                                <td>birdnet_detections</td>
-                                <td>98,432</td>
-                                <td>5 min ago</td>
-                                <td><span class="badge badge-success badge-xs">OK</span></td>
-                            </tr>
-                            <tr>
-                                <td>batdetect_detections</td>
-                                <td>12,018</td>
-                                <td>5 min ago</td>
-                                <td><span class="badge badge-success badge-xs">OK</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <!-- Retention Card -->
+    <div
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Retention (Janitor)</h2>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-base-content/50 font-mono">Last run: 4 hrs ago</span>
+                    <span class="badge badge-ghost badge-sm border-base-content/20">Sleeping</span>
                 </div>
-                <button class="btn btn-sm btn-outline mt-3">Rebuild Index</button>
+            </div>
+
+            <h3 class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-3">Recently Deleted</h3>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm text-sm">
+                    <thead>
+                        <tr class="text-base-content/50 uppercase tracking-wider text-[10px]">
+                            <th>Filename</th>
+                            <th>Time</th>
+                            <th class="text-right">Trigger</th>
+                        </tr>
+                    </thead>
+                    <tbody class="font-mono text-xs">
+                        {% for event in retention_events %}
+                        <tr class="hover:bg-base-200/50 transition-colors">
+                            <td class="font-medium text-base-content truncate max-w-[120px]"
+                                title="{{ event.filename }}">{{ event.filename[:16] }}...</td>
+                            <td class="text-base-content/70">{{ event.deleted_at.split('T')[1][:5] }}</td>
+                            <td class="text-right">
+                                <span class="badge badge-xs badge-outline
+                                    {% if 'Level 1' in event.escalation %}badge-info
+                                    {% elif 'Level 2' in event.escalation %}badge-warning
+                                    {% else %}badge-error{% endif %} opacity-70 border-base-content/20">
+                                    {{ event.escalation.split('(')[0].strip() }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-base-content/5 text-xs text-base-content/50 font-mono text-center">
+                Current policy: Delete > 30d old when capacity > 80%
             </div>
         </div>
     </div>

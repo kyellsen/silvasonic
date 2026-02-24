@@ -28,12 +28,12 @@ Without a clear strategy, configuration is scattered across `.env`, hardcoded Py
 
 The existing `system_config` table (key TEXT, value JSONB) stores all application settings as namespaced JSON blobs:
 
-| Key         | Pydantic Schema     | Used By                                                           |
-| ----------- | ------------------- | ----------------------------------------------------------------- |
-| `system`    | `SystemSettings`    | All services (latitude, longitude, station name, resource limits) |
-| `processor` | `ProcessorSettings` | Processor (Janitor thresholds, Indexer intervals)                 |
-| `uploader`  | `UploaderSettings`  | Uploader (polling, bandwidth, schedule)                           |
-| `birdnet`   | `BirdnetSettings`   | BirdNET (confidence threshold)                                    |
+| Key         | Pydantic Schema     | Used By                                                                            |
+| ----------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `system`    | `SystemSettings`    | All services (latitude, longitude, station name, resource limits, auto_enrollment) |
+| `processor` | `ProcessorSettings` | Processor (Janitor thresholds, Indexer intervals)                                  |
+| `uploader`  | `UploaderSettings`  | Uploader (polling, bandwidth, schedule)                                            |
+| `birdnet`   | `BirdnetSettings`   | BirdNET (confidence threshold)                                                     |
 
 Each key maps to a Pydantic `BaseModel` that defines field types and default values. Services read their settings **once on startup** (Immutable Container pattern, ADR-0019). The Web-Interface writes changes to `system_config`, then triggers a `silvasonic:nudge` so the Controller restarts the affected service.
 
@@ -49,6 +49,7 @@ system:
   max_recorders: 5
   max_uploaders: 3
   station_name: "Silvasonic Dev"
+  auto_enrollment: true   # Auto-enroll devices with exact profile match (runtime-changeable)
 
 auth:
   default_username: "admin"

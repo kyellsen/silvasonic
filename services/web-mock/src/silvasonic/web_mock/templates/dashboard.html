@@ -1,18 +1,20 @@
 {% extends "base.html" %}
+{% from "_macros.html" import breadcrumb, page_header, chart_placeholder %}
 {% block title %}Dashboard{% endblock %}
 
+{% block breadcrumb %}
+{{ breadcrumb([('System',), ('Dashboard',)]) }}
+{% endblock %}
+
 {% block content %}
-<div class="mb-5">
-    <h1 class="text-xl font-bold">Dashboard</h1>
-    <p class="text-xs text-base-content/50 mt-0.5">Real-time operations overview — {{ station.name }}</p>
-</div>
+{{ page_header('Dashboard', 'Real-time operations overview — ' ~ station.name) }}
 
 <!-- Bento-Grid -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
 
     <!-- Orchestration card (interactive) -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="card-title text-sm font-semibold">Orchestration</h2>
@@ -37,7 +39,7 @@
 
     <!-- Data Pipeline card (interactive) -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="card-title text-sm font-semibold">Data Pipeline</h2>
@@ -60,55 +62,112 @@
         </div>
     </div>
 
-    <!-- NVMe card (static) -->
+    <!-- SSD Storage card (static) — radial progress -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-        <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">NVMe</h2>
-            <div
-                class="text-2xl font-bold {% if metrics.nvme_used_pct > 80 %}text-error{% elif metrics.nvme_used_pct > 65 %}text-warning{% else %}text-success{% endif %}">
-                {{ metrics.nvme_used_pct }}%
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5 flex flex-row items-center justify-between">
+            <div class="flex flex-col justify-between h-full w-full">
+                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-1">SSD Storage</h2>
+
+                <div class="flex flex-col mt-2">
+                    <div class="text-sm text-base-content/40 font-mono mt-1 mb-2">{{ metrics.nvme_used_gb }} / {{
+                        metrics.nvme_total_gb }} GB</div>
+                </div>
             </div>
-            <div class="text-xs text-base-content/40 font-mono">{{ metrics.nvme_used_gb }} / {{ metrics.nvme_total_gb }}
-                GB</div>
-            <progress
-                class="progress {% if metrics.nvme_used_pct > 80 %}progress-error{% elif metrics.nvme_used_pct > 65 %}progress-warning{% else %}progress-success{% endif %} mt-2 h-1.5"
-                value="{{ metrics.nvme_used_pct }}" max="100"></progress>
+
+            <div class="shrink-0 flex flex-col items-center justify-center">
+                <div class="radial-progress text-primary bg-base-200 border-4 border-base-200"
+                    style="--value:{{ metrics.nvme_used_pct }}; --size:6rem; --thickness: 0.7rem;" role="progressbar">
+                    <span class="text-xl font-bold text-primary">{{ metrics.nvme_used_pct }}%</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- CPU card (static) -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-        <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">CPU Temp</h2>
-            <div
-                class="text-2xl font-bold {% if metrics.cpu_temp_c > 75 %}text-error{% elif metrics.cpu_temp_c > 60 %}text-warning{% else %}text-success{% endif %}">
-                {{ metrics.cpu_temp_c }}°C
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">CPU</h2>
+                    <div class="text-xs text-base-content/50 font-mono flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="text-primary">
+                            <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+                        </svg>
+                        {{ metrics.cpu_temp_c }}°C
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2 mb-1">
+                    <div class="text-3xl font-bold text-base-content">{{ metrics.cpu_load_pct }}%</div>
+                    <div class="text-sm text-base-content/40 font-mono">Avg Load</div>
+                </div>
             </div>
-            <div class="text-xs text-base-content/40 font-mono">Load {{ metrics.cpu_load_pct }}%</div>
+            <div class="mt-2">
+                <div class="flex items-end h-[64px] gap-2">
+                    {% for core_pct in metrics.cpu_cores_load_pct %}
+                    <div
+                        class="flex-1 bg-base-200 rounded-sm flex flex-col justify-end h-full relative group overflow-visible">
+                        <div class="bg-primary w-full rounded-sm transition-all duration-500"
+                            style="height: {{ core_pct }}%;"></div>
+                        <span
+                            class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono opacity-0 group-hover:opacity-100 transition-opacity bg-base-300 rounded px-1 z-10">{{
+                            core_pct }}%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="text-[9px] text-base-content/40 font-mono mt-2 flex justify-around">
+                    <span>C1</span><span>C2</span><span>C3</span><span>C4</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- RAM card (static) -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-        <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">RAM</h2>
-            <div class="text-2xl font-bold text-base-content">{{ metrics.ram_used_mb }}</div>
-            <div class="text-xs text-base-content/40 font-mono">of {{ metrics.ram_total_mb }} MB</div>
-            <progress class="progress progress-info mt-2 h-1.5" value="{{ metrics.ram_used_mb }}"
-                max="{{ metrics.ram_total_mb }}"></progress>
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5 flex flex-row items-center justify-between">
+            <div class="flex flex-col justify-between h-full w-full">
+                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-1">RAM</h2>
+
+                <div class="flex flex-col mt-2">
+                    <div class="text-sm text-base-content/40 font-mono mt-1 mb-2">{{ metrics.ram_used_mb }} / {{
+                        metrics.ram_total_mb }} MB</div>
+                </div>
+            </div>
+
+            <div class="shrink-0 flex flex-col items-center justify-center">
+                <div class="radial-progress text-primary bg-base-200 border-4 border-base-200"
+                    style="--value:{{ (metrics.ram_used_mb / metrics.ram_total_mb * 100)|int }}; --size:6rem; --thickness: 0.7rem;"
+                    role="progressbar">
+                    <span class="text-xl font-bold text-primary">{{ (metrics.ram_used_mb / metrics.ram_total_mb *
+                        100)|int }}%</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Uptime card (static) -->
     <div
-        class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
-        <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Uptime</h2>
-            <div class="text-2xl font-bold text-base-content">{{ metrics.uptime_h }}h</div>
-            <div class="text-xs text-base-content/40 font-mono">since last restart</div>
+        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        <div class="card-body p-5 flex flex-col justify-between">
+            <div>
+                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Uptime</h2>
+                <div class="text-3xl font-bold text-base-content mb-1">{{ metrics.uptime_h }}<span
+                        class="text-xl text-base-content/40 ml-1 font-normal">h</span></div>
+                <div class="text-sm text-base-content/40 font-mono">since last restart</div>
+            </div>
+            <div
+                class="mt-4 flex items-center gap-2 text-xs font-semibold text-success bg-success/10 px-3 py-2 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                System running smoothly
+            </div>
         </div>
     </div>
 </div>
@@ -120,7 +179,7 @@
     <div class="space-y-2">
         {% for alert in alerts %}
         <div
-            class="alert {% if alert.level == 'error' %}alert-error{% elif alert.level == 'warn' %}alert-warning{% else %}alert-info{% endif %} py-2 rounded-2xl">
+            class="alert {% if alert.level == 'error' %}alert-error{% elif alert.level == 'warn' %}alert-warning{% else %}alert-info{% endif %} py-2 rounded-xl">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -134,15 +193,36 @@
 </div>
 {% endif %}
 
+
+
 <!-- ECharts placeholder (static) -->
 <div
-    class="card bg-base-100 rounded-2xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+    class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
     <div class="card-body p-5">
         <h2 class="text-sm font-semibold mb-2">Upload Throughput</h2>
-        <div
-            class="h-28 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
-            [ ECharts time-series chart — mock placeholder ]
-        </div>
+        {{ chart_placeholder('[ ECharts time-series chart — mock placeholder ]') }}
     </div>
+</div>
+{% endblock %}
+
+{% block inspector %}
+<div class="space-y-4">
+    {% for svc in inspector_services %}
+    <div class="border-b border-base-content/5 pb-3 last:border-0 last:pb-0">
+        <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-2 h-2 rounded-full {% if svc.status == 'running' %}bg-success shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-success/50{% else %}bg-error shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-error/50{% endif %}">
+                </div>
+                <span class="font-bold text-sm text-base-content">{{ svc.name }}</span>
+            </div>
+            <span
+                class="text-xs {% if svc.status == 'running' %}text-base-content/50{% else %}text-base-content/30{% endif %} font-medium">
+                {{ 'Running' if svc.status == 'running' else 'Down' }}
+            </span>
+        </div>
+        <div class="text-[10px] font-mono text-base-content/50 pl-5">{{ svc.task }}</div>
+    </div>
+    {% endfor %}
 </div>
 {% endblock %}

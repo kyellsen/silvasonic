@@ -32,19 +32,38 @@ This is the correct tradeoff for a service that is a pure UI shell.
 from __future__ import annotations
 
 import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from silvasonic.web_mock import mock_data
 
 # Allow skipping in CI environments that cannot bind ports
 _SKIP = os.getenv("SILVASONIC_SKIP_INTEGRATION", "").lower() in ("1", "true", "yes")
 
 
+# ---------------------------------------------------------------------------
+# DB dependency stubs — same pattern as the unit tests
+# ---------------------------------------------------------------------------
+
+
+async def _mock_get_db() -> AsyncGenerator[AsyncMock, None]:
+    yield AsyncMock()
+
+
+async def _mock_station() -> dict[str, str]:
+    return mock_data.STATION.copy()
+
+
+async def _mock_settings() -> dict[str, Any]:
+    return mock_data.SETTINGS.copy()
+
+
 @pytest.fixture(scope="module")
 def lifespan_client() -> Generator[TestClient, None, None]:
-    """App running with real lifespan — Redis mocked (external service).
+    """App running with real lifespan — Redis & DB mocked (external services).
 
     Real infrastructure exercised:
       - configure_logging() — real structlog
@@ -57,8 +76,19 @@ def lifespan_client() -> Generator[TestClient, None, None]:
       - Best-effort Redis failure path (heartbeat=None) is the correct
         steady-state to validate for web-mock in a no-infra environment
       - Avoids 15s Docker container startup for zero correctness benefit
+
+    DB (get_db / get_station / get_settings) mocked because:
+      - No PostgreSQL container is started for these tests
+      - Page routes depend on get_station → get_db; without mocking,
+        asyncpg raises "another operation is in progress"
+      - DB integration is covered by test_web_mock_db.py
     """
-    from silvasonic.web_mock.__main__ import app
+    from silvasonic.core.database.session import get_db
+    from silvasonic.web_mock.__main__ import app, get_settings, get_station
+
+    app.dependency_overrides[get_db] = _mock_get_db
+    app.dependency_overrides[get_station] = _mock_station
+    app.dependency_overrides[get_settings] = _mock_settings
 
     with (
         patch(
@@ -69,6 +99,11 @@ def lifespan_client() -> Generator[TestClient, None, None]:
         TestClient(app, raise_server_exceptions=True) as client,
     ):
         yield client
+
+    # Clean up overrides so other test modules are unaffected
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_station, None)
+    app.dependency_overrides.pop(get_settings, None)
 
 
 @pytest.mark.integration

@@ -23,7 +23,7 @@ from common import discover_cov_args, ensure_initialized, print_error, print_hea
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Parallel workers for unit tests (0 = disabled)
-PYTEST_WORKERS = 4
+PYTEST_WORKERS = 6
 
 
 def _pytest(marker: str, cmd: list[str]) -> int:
