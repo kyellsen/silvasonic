@@ -1023,6 +1023,19 @@ wheels = [
 ]
 
 [[package]]
+name = "podman"
+version = "5.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/12/149e906003e1ae4e702d999ea80e79ef6a1a842254fc716edfbbc997f3ce/podman-5.7.0.tar.gz", hash = "sha256:9314e8d782a76266dfafe7d0f72645f32031b1029a0428fd197dead5c05926a0", size = 111564, upload-time = "2026-01-21T13:21:09.519Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/3f/778bd27cbac59d001710a34774600358b1da1cc3f21207fc170b9ec9a318/podman-5.7.0-py3-none-any.whl", hash = "sha256:70d0d53dbc04b6539b027e58075f2d88936df04b2f1465cb34ed518c885dd46f", size = 89529, upload-time = "2026-01-21T13:21:07.767Z" },
+]
+
+[[package]]
 name = "polyfactory"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1613,11 +1626,15 @@ dev = [
 name = "silvasonic-controller"
 source = { editable = "services/controller" }
 dependencies = [
+    { name = "podman" },
     { name = "silvasonic-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "silvasonic-core", editable = "packages/core" }]
+requires-dist = [
+    { name = "podman", specifier = ">=5.0.0" },
+    { name = "silvasonic-core", editable = "packages/core" },
+]
 
 [[package]]
 name = "silvasonic-core"

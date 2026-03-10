@@ -8,18 +8,19 @@ with liveness watchdog, and graceful shutdown.
 In addition to per-process resource metrics (inherited), the Controller
 publishes **host-level** resource metrics (CPU, RAM) via ``get_extra_meta()``
 so the Web-Interface dashboard can display system-wide utilisation.
+
+v0.3.0: Connects to the host Podman engine via ``SilvasonicPodmanClient``
+and monitors socket connectivity as a health component.
 """
 
 import asyncio
 import os
 from typing import Any, NoReturn
 
+from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.resources import HostResourceCollector
 from silvasonic.core.service import SilvaService
-
-# TODO(placeholder): Replace with actual recorder-spawn detection logic.
-SIMULATE_RECORDER_SPAWN = True
 
 
 class ControllerService(SilvaService):
@@ -34,12 +35,13 @@ class ControllerService(SilvaService):
     service_port = int(os.environ.get("SILVASONIC_CONTROLLER_PORT", "9100"))
 
     def __init__(self) -> None:
-        """Initialize with Redis URL from environment."""
+        """Initialize with Redis URL and Podman client from environment."""
         super().__init__(
             instance_id="controller",
             redis_url=os.environ.get("SILVASONIC_REDIS_URL", "redis://localhost:6379/0"),
         )
         self._host_resources = HostResourceCollector()
+        self._podman_client = SilvasonicPodmanClient()
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Include host-level resource metrics in heartbeat (ADR-0019 §2.4)."""
@@ -56,10 +58,8 @@ class ControllerService(SilvaService):
 
         # Start background health monitors
         db_task = asyncio.create_task(self._monitor_database())
-        spawn_task = asyncio.create_task(self._monitor_recorder_spawn())
+        podman_task = asyncio.create_task(self._monitor_podman())
         try:
-            # TODO(placeholder): Replace with actual orchestration logic
-            # (e.g. spawning recorders, managing schedules, handling commands).
             while not self._shutdown_event.is_set():
                 self.health.touch()
                 await asyncio.sleep(1)
@@ -67,7 +67,8 @@ class ControllerService(SilvaService):
             pass
         finally:
             db_task.cancel()
-            spawn_task.cancel()
+            podman_task.cancel()
+            self._podman_client.close()
 
     async def _monitor_database(self) -> NoReturn:
         """Periodically check database connectivity and update health status."""
@@ -78,21 +79,36 @@ class ControllerService(SilvaService):
             )
             await asyncio.sleep(10)
 
-    async def _monitor_recorder_spawn(self) -> NoReturn:
-        """Periodically check if a recorder has been spawned.
+    async def _monitor_podman(self) -> NoReturn:
+        """Periodically verify Podman socket connectivity (ADR-0013).
 
-        TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
-        with actual subprocess / container health checks once recorder spawning
-        is implemented (v0.3.0).
+        On first call, attempts to connect to the Podman socket with
+        retry logic.  Then periodically pings the engine and reports
+        the number of managed containers.
         """
+        # Initial connection with retry
+        try:
+            await asyncio.to_thread(self._podman_client.connect)
+        except Exception:
+            self.health.update_status("podman", False, "Socket unreachable")
+
         while True:
-            has_spawned_recorder = SIMULATE_RECORDER_SPAWN
+            is_alive = await asyncio.to_thread(self._podman_client.ping)
             self.health.update_status(
-                "recorder_spawn",
-                has_spawned_recorder,
-                "Recorder spawned" if has_spawned_recorder else "No recorder spawned",
+                "podman",
+                is_alive,
+                "Connected" if is_alive else "Socket unreachable",
             )
-            await asyncio.sleep(5)
+            if is_alive:
+                containers = await asyncio.to_thread(
+                    self._podman_client.list_managed_containers,
+                )
+                self.health.update_status(
+                    "containers",
+                    True,
+                    f"{len(containers)} managed containers",
+                )
+            await asyncio.sleep(10)
 
 
 if __name__ == "__main__":

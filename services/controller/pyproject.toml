@@ -7,7 +7,7 @@ name = "silvasonic-controller"
 description = "Control logic and orchestration service for Silvasonic"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["silvasonic-core"]
+dependencies = ["silvasonic-core", "podman>=5.0.0"]
 dynamic = ["version"]
 
 [tool.hatch.version]
