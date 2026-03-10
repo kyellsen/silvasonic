@@ -7,51 +7,45 @@
     <title>Silvasonic — Akzentfarben v4</title>
     <style>
         :root {
-            /* ═══ FARBZUORDNUNG v4 ═══
-       Birds    = Gold v2 (80°)
-       Uploader = Magenta/Hot Pink (335°) — ehemals frei
-       Dashboard = Smaragdgrün — Varianten zur Auswahl
-       Settings = Grau
-       Kein freier Hue-Slot mehr — alle 8 Positionen belegt!
-    */
+            /* ═══ Oktett v3 Palette — Module Colors ═══ */
 
-            /* ── 8 chromatische Modulfarben ── */
-            --mod-recorder: oklch(62% 0.20 20);
-            /* 🔴  Korallrot          */
-            --mod-birds: oklch(75% 0.22 80);
-            /* 🟡  Gold               */
-            --mod-processor: oklch(62% 0.14 120);
-            /* 🟢  Frühlings-Grün     */
-            --mod-dashboard: oklch(52% 0.17 155);
-            /* 🟢  Smaragdgrün (kräftig) */
-            --mod-livesound: oklch(61% 0.13 200);
-            /* 🔵  Teal/Cyan          */
+            /* ── 8 chromatic module colors (strong) ── */
+            --mod-recorder: oklch(58% 0.22 25);
+            /* scarlet     */
+            --mod-birds: oklch(75% 0.22 85);
+            /* gold        */
+            --mod-processor: oklch(65% 0.16 130);
+            /* chartreuse  */
+            --mod-dashboard: oklch(52% 0.17 160);
+            /* emerald     */
+            --mod-livesound: oklch(61% 0.16 200);
+            /* teal        */
             --mod-weather: oklch(65% 0.15 245);
-            /* 🔵  Kornblumenblau     */
+            /* cornflower  */
             --mod-bats: oklch(60% 0.18 290);
-            /* 🟣  Violett            */
+            /* violet      */
             --mod-uploader: oklch(65% 0.20 335);
-            /* 🩷  Magenta/Hot Pink   */
+            /* magenta     */
 
-            /* ── 1 achromatisches Modul ── */
+            /* ── 1 achromatic module ── */
             --mod-settings: oklch(55% 0.02 250);
-            /* ⚪  Neutral-Grau       */
+            /* slate       */
 
-            /* ── Light-Varianten ── */
-            --mod-recorder-light: oklch(77% 0.15 20);
-            --mod-birds-light: oklch(90% 0.17 80);
-            --mod-processor-light: oklch(77% 0.09 120);
-            --mod-dashboard-light: oklch(67% 0.12 155);
+            /* ── Light variants ── */
+            --mod-recorder-light: oklch(75% 0.15 25);
+            --mod-birds-light: oklch(90% 0.17 85);
+            --mod-processor-light: oklch(80% 0.10 130);
+            --mod-dashboard-light: oklch(67% 0.12 160);
             --mod-livesound-light: oklch(76% 0.08 200);
             --mod-weather-light: oklch(80% 0.10 245);
             --mod-bats-light: oklch(75% 0.13 290);
             --mod-uploader-light: oklch(80% 0.15 335);
             --mod-settings-light: oklch(70% 0.01 250);
 
-            --bg: oklch(22% 0.02 250);
-            --bg2: oklch(18% 0.02 250);
-            --bg3: oklch(26% 0.02 250);
-            --text: oklch(85% 0.01 250);
+            --bg: oklch(18% 0.015 160);
+            --bg2: oklch(13% 0.015 160);
+            --bg3: oklch(29% 0.02 160);
+            --text: oklch(90% 0.01 160);
             --text-dim: oklch(55% 0.01 250);
             --border: oklch(35% 0.02 250);
         }
@@ -403,12 +397,12 @@
         }
 
         html[data-theme="silvalight"] {
-            --bg: oklch(98% 0.005 250);
-            --bg2: oklch(95% 0.01 250);
-            --bg3: oklch(100% 0 0);
+            --bg: oklch(98% 0.005 160);
+            --bg2: oklch(92% 0.01 160);
+            --bg3: oklch(98% 0.005 160);
             --text: oklch(25% 0.02 250);
             --text-dim: oklch(55% 0.02 250);
-            --border: oklch(88% 0.01 250);
+            --border: oklch(86% 0.012 160);
         }
 
         table {
@@ -492,8 +486,8 @@
 
     <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
 
-    <h1>Silvasonic — Akzentfarben v4</h1>
-    <h2>8 Hues voll belegt • Birds = Gold • Uploader = Magenta • Settings = Grau</h2>
+    <h1>Silvasonic — Oktett v3 Palette</h1>
+    <h2>9 chromatic hues + slate • Standardized across all Arbosphere projects</h2>
 
     <!-- ═══════════════════════════════════ -->
     <!-- SECTION 0: DASHBOARD FARB-PICKER -->
@@ -588,43 +582,43 @@
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-recorder);"></span>Recorder</td>
-                <td style="color:var(--mod-recorder);font-weight:600;">Korallrot</td>
-                <td style="font-family:monospace;">20°</td>
+                <td style="color:var(--mod-recorder);font-weight:600;">Scarlet</td>
+                <td style="font-family:monospace;">25°</td>
                 <td>—</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-birds);"></span>Birds</td>
                 <td style="color:var(--mod-birds);font-weight:600;">Gold</td>
-                <td style="font-family:monospace;">80°</td>
+                <td style="font-family:monospace;">85°</td>
                 <td>🔄 55°→80°</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-processor);"></span>Processor</td>
-                <td style="color:var(--mod-processor);font-weight:600;">Frühlings-Grün</td>
-                <td style="font-family:monospace;">120°</td>
+                <td style="color:var(--mod-processor);font-weight:600;">Chartreuse</td>
+                <td style="font-family:monospace;">130°</td>
                 <td>🔄 110°→120°</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-dashboard);"></span>Dashboard</td>
-                <td style="color:var(--mod-dashboard);font-weight:600;">Smaragdgrün (kräftig)</td>
-                <td style="font-family:monospace;">155°</td>
+                <td style="color:var(--mod-dashboard);font-weight:600;">Emerald</td>
+                <td style="font-family:monospace;">160°</td>
                 <td>🔄 Dunkler/satter</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-livesound);"></span>Livesound</td>
-                <td style="color:var(--mod-livesound);font-weight:600;">Teal/Cyan</td>
+                <td style="color:var(--mod-livesound);font-weight:600;">Teal</td>
                 <td style="font-family:monospace;">200°</td>
                 <td>—</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-weather);"></span>Weather</td>
-                <td style="color:var(--mod-weather);font-weight:600;">Kornblumenblau</td>
+                <td style="color:var(--mod-weather);font-weight:600;">Cornflower</td>
                 <td style="font-family:monospace;">245°</td>
                 <td>—</td>
             </tr>
             <tr>
                 <td><span class="dot-inline" style="background:var(--mod-bats);"></span>Bats</td>
-                <td style="color:var(--mod-bats);font-weight:600;">Violett</td>
+                <td style="color:var(--mod-bats);font-weight:600;">Violet</td>
                 <td style="font-family:monospace;">290°</td>
                 <td>—</td>
             </tr>
@@ -636,7 +630,7 @@
             </tr>
             <tr style="border-top:2px solid var(--border);">
                 <td><span class="dot-inline" style="background:var(--mod-settings);"></span>Settings</td>
-                <td style="color:var(--mod-settings);font-weight:600;">Grau</td>
+                <td style="color:var(--mod-settings);font-weight:600;">Slate</td>
                 <td style="font-family:monospace;">—</td>
                 <td>—</td>
             </tr>
@@ -653,53 +647,53 @@
                 <div class="swatch-circle" style="background:var(--mod-recorder);border-color:var(--mod-recorder);">
                 </div>
                 <div class="swatch-label" style="color:var(--mod-recorder);">Recorder</div>
-                <div class="swatch-hue">20°</div>
+                <div class="swatch-hue">25° Scarlet</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-birds);border-color:var(--mod-birds);"></div>
                 <div class="swatch-label" style="color:var(--mod-birds);">Birds</div>
-                <div class="swatch-hue">80° Gold</div>
+                <div class="swatch-hue">85° Gold</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-processor);border-color:var(--mod-processor);">
                 </div>
                 <div class="swatch-label" style="color:var(--mod-processor);">Processor</div>
-                <div class="swatch-hue">110°</div>
+                <div class="swatch-hue">130° Chartreuse</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-dashboard);border-color:var(--mod-dashboard);">
                 </div>
                 <div class="swatch-label" style="color:var(--mod-dashboard);">Dashboard</div>
-                <div class="swatch-hue">155°</div>
+                <div class="swatch-hue">160° Emerald</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-livesound);border-color:var(--mod-livesound);">
                 </div>
                 <div class="swatch-label" style="color:var(--mod-livesound);">Livesound</div>
-                <div class="swatch-hue">200°</div>
+                <div class="swatch-hue">200° Teal</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-weather);border-color:var(--mod-weather);"></div>
                 <div class="swatch-label" style="color:var(--mod-weather);">Weather</div>
-                <div class="swatch-hue">245°</div>
+                <div class="swatch-hue">245° Cornflower</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-bats);border-color:var(--mod-bats);"></div>
                 <div class="swatch-label" style="color:var(--mod-bats);">Bats</div>
-                <div class="swatch-hue">290°</div>
+                <div class="swatch-hue">290° Violet</div>
             </div>
             <div class="color-swatch">
                 <div class="swatch-circle" style="background:var(--mod-uploader);border-color:var(--mod-uploader);">
                 </div>
                 <div class="swatch-label" style="color:var(--mod-uploader);">Uploader</div>
-                <div class="swatch-hue">335°</div>
+                <div class="swatch-hue">335° Magenta</div>
             </div>
             <div style="border-left:2px dashed var(--border);padding-left:1rem;">
                 <div class="color-swatch">
                     <div class="swatch-circle" style="background:var(--mod-settings);border-color:var(--mod-settings);">
                     </div>
                     <div class="swatch-label" style="color:var(--mod-settings);">Settings</div>
-                    <div class="swatch-hue">Grau</div>
+                    <div class="swatch-hue">250° Slate</div>
                 </div>
             </div>
         </div>

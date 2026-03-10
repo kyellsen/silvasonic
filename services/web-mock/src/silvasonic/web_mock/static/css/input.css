@@ -20,33 +20,63 @@
 @plugin "daisyui/theme" {
   name: "silvadark";
   color-scheme: dark;
-  --color-base-100: oklch(22% 0.02 250);
-  --color-base-200: oklch(18% 0.02 250);
-  --color-base-300: oklch(26% 0.02 250);
-  --color-base-content: oklch(85% 0.01 250);
+  --color-base-100: oklch(18% 0.015 160);
+  --color-base-200: oklch(13% 0.015 160);
+  --color-base-300: oklch(29% 0.02 160);
+  --color-base-content: oklch(90% 0.01 160);
 
-  --color-primary: oklch(65% 0.15 150);
-  --color-primary-content: oklch(20% 0.05 150);
-  --color-secondary: oklch(60% 0.20 310);
-  --color-secondary-content: oklch(95% 0.02 310);
-  --color-accent: oklch(75% 0.16 75);
-  --color-accent-content: oklch(20% 0.05 75);
+  --color-primary: oklch(65% 0.18 160);
+  --color-primary-content: oklch(18% 0.05 160);
+  --color-secondary: oklch(75% 0.13 290);
+  --color-secondary-content: oklch(18% 0.05 290);
+  --color-accent: oklch(82% 0.17 85);
+  --color-accent-content: oklch(20% 0.05 85);
+
+  --color-neutral: oklch(35% 0.02 250);
+  --color-neutral-content: oklch(90% 0.01 250);
+
+  --color-info: oklch(73% 0.1 245);
+  --color-info-content: oklch(18% 0.05 245);
+  --color-success: oklch(73% 0.13 130);
+  --color-success-content: oklch(18% 0.05 130);
+  --color-warning: oklch(82% 0.17 85);
+  --color-warning-content: oklch(20% 0.05 85);
+  --color-error: oklch(68% 0.17 25);
+  --color-error-content: oklch(18% 0.05 25);
+
+  --radius-box: 1rem;
+  --border: 1px;
 }
 
 @plugin "daisyui/theme" {
   name: "silvalight";
   color-scheme: light;
-  --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(96% 0.01 250);
-  --color-base-300: oklch(90% 0.01 250);
+  --color-base-100: oklch(98% 0.005 160);
+  --color-base-200: oklch(92% 0.01 160);
+  --color-base-300: oklch(86% 0.012 160);
   --color-base-content: oklch(25% 0.02 250);
 
-  --color-primary: oklch(60% 0.15 150);
-  --color-primary-content: oklch(98% 0.01 150);
-  --color-secondary: oklch(55% 0.20 310);
-  --color-secondary-content: oklch(98% 0.01 310);
-  --color-accent: oklch(70% 0.16 75);
-  --color-accent-content: oklch(20% 0.05 75);
+  --color-primary: oklch(52% 0.17 160);
+  --color-primary-content: oklch(98% 0 0);
+  --color-secondary: oklch(60% 0.18 290);
+  --color-secondary-content: oklch(98% 0 0);
+  --color-accent: oklch(75% 0.22 85);
+  --color-accent-content: oklch(25% 0.05 85);
+
+  --color-neutral: oklch(30% 0.02 250);
+  --color-neutral-content: oklch(95% 0.01 250);
+
+  --color-info: oklch(65% 0.15 245);
+  --color-info-content: oklch(98% 0 0);
+  --color-success: oklch(65% 0.16 130);
+  --color-success-content: oklch(25% 0.05 130);
+  --color-warning: oklch(75% 0.22 85);
+  --color-warning-content: oklch(25% 0.05 85);
+  --color-error: oklch(58% 0.22 25);
+  --color-error-content: oklch(98% 0 0);
+
+  --radius-box: 1rem;
+  --border: 1px;
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -55,33 +85,34 @@
    ────────────────────────────────────────────────────────── */
 
 @theme {
-  /* ═══ Module Accent Colors v4 ═══
-     Finalized color palette — 8 chromatic + 1 achromatic (Settings).
-     All colors in OKLCH.  Strong = dark-mode accent, regular = light variant.
-     Hue spacing:  20° → 80° → 120° → 155° → 200° → 245° → 290° → 335°
+  /* ═══ Module Accent Colors — Oktett v3 Palette ═══
+     Each module uses its Oktett palette color.
+     Strong = dark-mode accents, sidebar dots, card borders.
+     Light  = hover/bg tints, light-mode accents.
+     Hue spacing:  25° → 85° → 130° → 160° → 200° → 245° → 290° → 335°
   */
 
-  /* ── Strong variants (dark-mode accents, sidebar dots, card borders) ── */
-  --color-mod-recorder-strong:  oklch(62% 0.20 20);   /* 🔴  Korallrot          */
-  --color-mod-birds-strong:     oklch(75% 0.22 80);   /* 🟡  Gold               */
-  --color-mod-processor-strong: oklch(62% 0.14 120);  /* 🟢  Frühlings-Grün     */
-  --color-mod-dashboard-strong: oklch(52% 0.17 155);  /* 🟢  Smaragdgrün        */
-  --color-mod-livesound-strong: oklch(61% 0.13 200);  /* 🔵  Teal/Cyan          */
-  --color-mod-weather-strong:   oklch(65% 0.15 245);  /* 🔵  Kornblumenblau     */
-  --color-mod-bats-strong:      oklch(60% 0.18 290);  /* 🟣  Violett            */
-  --color-mod-uploader-strong:  oklch(65% 0.20 335);  /* 🩷  Magenta/Hot Pink   */
-  --color-mod-settings-strong:  oklch(55% 0.02 250);  /* ⚪  Neutral-Grau       */
+  /* ── Strong variants ── */
+  --color-mod-recorder-strong:  oklch(58% 0.22 25);   /* scarlet     */
+  --color-mod-birds-strong:     oklch(75% 0.22 85);   /* gold        */
+  --color-mod-processor-strong: oklch(65% 0.16 130);  /* chartreuse  */
+  --color-mod-dashboard-strong: oklch(52% 0.17 160);  /* emerald     */
+  --color-mod-livesound-strong: oklch(61% 0.16 200);  /* teal        */
+  --color-mod-weather-strong:   oklch(65% 0.15 245);  /* cornflower  */
+  --color-mod-bats-strong:      oklch(60% 0.18 290);  /* violet      */
+  --color-mod-uploader-strong:  oklch(65% 0.20 335);  /* magenta     */
+  --color-mod-settings-strong:  oklch(55% 0.02 250);  /* slate       */
 
-  /* ── Light variants (hover/bg tints, light-mode accents) ── */
-  --color-mod-recorder:  oklch(77% 0.15 20);
-  --color-mod-birds:     oklch(90% 0.17 80);
-  --color-mod-processor: oklch(77% 0.09 120);
-  --color-mod-dashboard: oklch(67% 0.12 155);
-  --color-mod-livesound: oklch(76% 0.08 200);
-  --color-mod-weather:   oklch(80% 0.10 245);
-  --color-mod-bats:      oklch(75% 0.13 290);
-  --color-mod-uploader:  oklch(80% 0.15 335);
-  --color-mod-settings:  oklch(70% 0.01 250);
+  /* ── Light variants ── */
+  --color-mod-recorder:  oklch(75% 0.15 25);   /* scarlet-light     */
+  --color-mod-birds:     oklch(90% 0.17 85);   /* gold-light        */
+  --color-mod-processor: oklch(80% 0.10 130);  /* chartreuse-light  */
+  --color-mod-dashboard: oklch(67% 0.12 160);  /* emerald-light     */
+  --color-mod-livesound: oklch(76% 0.08 200);  /* teal-light        */
+  --color-mod-weather:   oklch(80% 0.10 245);  /* cornflower-light  */
+  --color-mod-bats:      oklch(75% 0.13 290);  /* violet-light      */
+  --color-mod-uploader:  oklch(80% 0.15 335);  /* magenta-light     */
+  --color-mod-settings:  oklch(70% 0.01 250);  /* slate-light       */
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -146,6 +177,37 @@
 @theme {
   --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* ═══ Extended Palette — Oktett v3 + Amber ═══
+     9 chromatic + 1 achromatic, each with a light variant.
+     Usable as Tailwind utilities: bg-scarlet, text-gold, border-violet etc.
+  */
+
+  /* Chromatic */
+  --color-scarlet:    oklch(58% 0.22 25);
+  --color-amber:      oklch(55% 0.14 55);
+  --color-gold:       oklch(75% 0.22 85);
+  --color-chartreuse: oklch(65% 0.16 130);
+  --color-emerald:    oklch(52% 0.17 160);
+  --color-teal:       oklch(61% 0.16 200);
+  --color-cornflower: oklch(65% 0.15 245);
+  --color-violet:     oklch(60% 0.18 290);
+  --color-magenta:    oklch(65% 0.20 335);
+
+  /* Achromatic */
+  --color-slate:      oklch(55% 0.02 250);
+
+  /* Light variants */
+  --color-scarlet-light:    oklch(75% 0.15 25);
+  --color-amber-light:      oklch(70% 0.09 55);
+  --color-gold-light:       oklch(90% 0.17 85);
+  --color-chartreuse-light: oklch(80% 0.10 130);
+  --color-emerald-light:    oklch(67% 0.12 160);
+  --color-teal-light:       oklch(76% 0.08 200);
+  --color-cornflower-light: oklch(80% 0.10 245);
+  --color-violet-light:     oklch(75% 0.13 290);
+  --color-magenta-light:    oklch(80% 0.15 335);
+  --color-slate-light:      oklch(70% 0.01 250);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -231,3 +293,18 @@ body {
 .waveform-bar:nth-child(7n)   { animation-duration: 1.3s; animation-delay: -0.7s; }
 .waveform-bar:nth-child(11n)  { animation-duration: 1.0s; animation-delay: -0.4s; }
 .waveform-bar:nth-child(2n+1) { animation-duration: 0.7s; animation-delay: -0.9s; }
+
+/* ──────────────────────────────────────────────────────────
+   Accessibility: Reduced Motion
+   Respects user OS preference for reduced animations.
+   ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

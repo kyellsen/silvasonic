@@ -119,8 +119,8 @@ services:
       retries: 5
 
   # --- Web-Mock (Tier 1 Dev UI — v0.2.0) ---
-  # Full UI shell with hardcoded mock data. No DB or Redis dependency.
-  # Replace mock_data imports route-by-route with real DB queries for v0.8.0.
+  # Full UI shell with mock data for most views. Uses real DB for Settings
+  # persistence and Redis for heartbeat. Clone → web-interface at v0.8.0.
   web-mock:
     container_name: silvasonic-web-mock
     build:

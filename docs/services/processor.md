@@ -68,6 +68,11 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 > [!IMPORTANT]
 > The Processor is **Tier 1 (Infrastructure)** because the Janitor is critical for system survival — without it, the NVMe fills up and the Recorder halts. Despite being Tier 1, it follows the **Immutable Container** pattern like Tier 2 services (ADR-0019).
 
+> [!WARNING]
+> The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect, Uploader) mount it `:ro` per the Consumer Principle (ADR-0009).
+
+## 5. Configuration & Environment
+
 ### Static Configuration (Environment Variables)
 
 Configured via `settings.py` using `pydantic-settings`. All variables use the `SILVASONIC_` prefix.
@@ -99,9 +104,6 @@ As an **Immutable Container** (ADR-0019), the Processor reads these settings *on
 2. Frontend updates `system_config` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
 3. The Controller restarts the Processor container.
 4. The Processor reads the new settings from the database upon startup.
-
-> [!WARNING]
-> The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect, Uploader) mount it `:ro` per the Consumer Principle (ADR-0009).
 
 ## 6. Technology Stack
 

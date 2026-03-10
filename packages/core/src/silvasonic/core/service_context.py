@@ -40,6 +40,7 @@ See Also:
 
 from __future__ import annotations
 
+from http.server import HTTPServer
 from pathlib import Path
 from types import TracebackType
 
@@ -97,6 +98,7 @@ class ServiceContext:
         self.health: HealthMonitor = HealthMonitor()
         self._resource_collector: ResourceCollector | None = None
         self._heartbeat: HeartbeatPublisher | None = None
+        self._health_server: HTTPServer | None = None
 
     # ------------------------------------------------------------------
     # Public properties (for tests and external observers)
@@ -144,7 +146,7 @@ class ServiceContext:
         # 2. HTTP /healthy endpoint — skip for HTTP services (Uvicorn/FastAPI
         #    already owns the port and serves /healthy natively).
         if not self.skip_health_server:
-            start_health_server(port=self.service_port, monitor=self.health)
+            self._health_server = start_health_server(port=self.service_port, monitor=self.health)
         self.health.update_status("init", True, "starting up")
 
         # 3. Per-process resource monitoring (CPU, memory, optional NVMe)
@@ -169,6 +171,8 @@ class ServiceContext:
     async def teardown(self) -> None:
         """Gracefully shut down all infrastructure (heartbeat, Redis)."""
         logger.info("service_shutting_down", service=self.service_name)
+        if self._health_server is not None:
+            self._health_server.shutdown()
         if self._heartbeat:
             await self._heartbeat.stop()
         logger.info("service_stopped", service=self.service_name)
@@ -189,7 +193,7 @@ class ServiceContext:
             resources = self._resource_collector.collect()
             await self._heartbeat.publish_once(resources)
         except Exception:
-            pass
+            logger.debug("dying_gasp_failed", exc_info=True)
 
     def set_meta_provider(self, fn: MetaProvider) -> None:
         """Register a callable that returns service-specific heartbeat meta.

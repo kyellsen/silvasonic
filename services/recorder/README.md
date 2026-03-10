@@ -233,5 +233,5 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 - [Microphone Profiles](../../docs/arch/microphone_profiles.md) — Profile format (seed files live with the Controller)
 - [Port Allocation](../../docs/arch/port_allocation.md) — Recorder on port 9500
 - [Glossary](../../docs/glossary.md) — Dual/Triple Stream Architecture, Recorder definition
-- [User Stories — Recorder](../../docs/user_storys/recorder.md) — US-R01 through US-R07
+- [User Stories — Recorder](../../docs/user_stories/recorder.md) — US-R01 through US-R07
 - [ROADMAP.md](../../ROADMAP.md) — roadmap entries

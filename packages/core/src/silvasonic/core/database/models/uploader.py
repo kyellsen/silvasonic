@@ -29,7 +29,7 @@ class StorageRemote(Base):
     # Rclone configuration object (JSON)
     # This stores the fields required for rclone.conf
     # SENSITIVE: Values should be encrypted before storage
-    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default={})
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Is this remote currently enabled for sync?
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)

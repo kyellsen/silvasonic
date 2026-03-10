@@ -50,10 +50,18 @@ async def get_redis_connection(
         await redis.ping()  # type: ignore[misc]
         logger.info("redis_connected", url=url)
         return redis
+    except (ConnectionError, OSError, TimeoutError) as exc:
+        logger.warning(
+            "redis_connection_failed",
+            url=url,
+            error=str(exc),
+        )
+        return None
     except Exception as exc:
         logger.warning(
             "redis_connection_failed",
             url=url,
             error=str(exc),
+            error_type=type(exc).__name__,
         )
         return None

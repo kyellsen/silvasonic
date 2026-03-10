@@ -1,6 +1,6 @@
 # UI, UX & Design System
 
-> **Status:** Active · **Last Updated:** 2026-02-23
+> **Status:** Active · **Last Updated:** 2026-03-10 · **Palette:** Oktett v3
 
 This document defines the Silvasonic UI design system and usage guidelines.
 It is referenced by [ADR-0021](../../adr/0021-frontend-design-system.md).
@@ -24,31 +24,37 @@ stored in `localStorage` under `silvasonic-dark-mode`.
 
 ### Brand Colors
 
-| Role          | Purpose                       | Example Usage                    |
-| ------------- | ----------------------------- | -------------------------------- |
-| **primary**   | Main brand (Grün, hue 150)    | CTAs, logo, active nav highlight |
-| **secondary** | Tech accent (Violet, hue 310) | Module nav active, badges        |
-| **accent**    | Highlight (Amber, hue 75)     | Warnings-adjacent, rewards       |
+| Role          | Purpose                         | Example Usage                    |
+| ------------- | ------------------------------- | -------------------------------- |
+| **primary**   | Main brand (Emerald, hue 160°)  | CTAs, logo, active nav highlight |
+| **secondary** | Tech accent (Violet, hue 290°)  | Module nav active, badges        |
+| **accent**    | Highlight (Gold, hue 85°)       | Warnings-adjacent, rewards       |
 
 ### Status Colors
 
-`info`, `success`, `warning`, `error` are inherited from DaisyUI defaults —
-no custom overrides needed for now.
+`info` (cornflower), `success` (chartreuse), `warning` (gold), `error` (scarlet)
+are explicitly defined in both themes using Oktett v3 values.
 
 ## Module Accent Colors
 
 Each service module has a unique accent color, registered as Tailwind custom
 colors via `@theme { --color-mod-<name>: ... }`.
 
-| Module        | Tailwind Class     | Character         |
-| ------------- | ------------------ | ----------------- |
-| **Dashboard** | `bg-mod-dashboard` | Blau (Overview)   |
-| **Recorder**  | `bg-mod-recorder`  | Teal (Capture)    |
-| **Processor** | `bg-mod-processor` | Orange (Compute)  |
-| **Uploader**  | `bg-mod-uploader`  | Indigo (Transfer) |
-| **Birds**     | `bg-mod-birds`     | Gelb (Avian)      |
-| **Bats**      | `bg-mod-bats`      | Pink (Ultrasonic) |
-| **Weather**   | `bg-mod-weather`   | Hellblau (Env)    |
+| Module        | Tailwind Class     | Oktett Name  |
+| ------------- | ------------------ | ------------ |
+| **Dashboard** | `bg-mod-dashboard` | Emerald      |
+| **Recorder**  | `bg-mod-recorder`  | Scarlet      |
+| **Processor** | `bg-mod-processor` | Chartreuse   |
+| **Uploader**  | `bg-mod-uploader`  | Magenta      |
+| **Livesound** | `bg-mod-livesound` | Teal         |
+| **Birds**     | `bg-mod-birds`     | Gold         |
+| **Bats**      | `bg-mod-bats`      | Violet       |
+| **Weather**   | `bg-mod-weather`   | Cornflower   |
+| **Settings**  | `bg-mod-settings`  | Slate        |
+
+All module colors use the standardized **Oktett v3 palette** values.
+The full palette (including `bg-scarlet`, `text-emerald`, etc.) is also
+available as standalone Tailwind utilities via the extended `@theme` block.
 
 All module colors work with `bg-`, `text-`, `border-`, `ring-` prefixes.
 

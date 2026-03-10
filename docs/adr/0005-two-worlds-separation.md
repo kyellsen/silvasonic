@@ -27,7 +27,7 @@ This strict separation treats the application code as "firmware" — immutable a
 ### 3.1. Named Volume Exceptions
 Named Volumes are permitted **only** for services whose internal storage format is managed by a third-party image and must not be directly accessed by other services:
 *   **`database`** (TimescaleDB/PostgreSQL) — Uses the `db-data` named volume for `/var/lib/postgresql/data`.
-*   **`redis`** (future) — Will use a named volume for its append-only file (AOF) persistence.
+*   **`redis`** — Uses a named volume for ephemeral data (persistence disabled by default).
 
 All other services MUST use host bind mounts into the workspace.
 

@@ -1,6 +1,7 @@
 # Web Interface
 
 > **Tier:** 1 (Infrastructure) · **Status:** Planned — v0.8.0 · **Port:** 8000
+> **Prototype:** The `web-mock` service (v0.2.0, Port 8001) implements the full UI shell with mock data. See [web-mock README](../../services/web-mock/README.md).
 
 The Web-Interface is the local management console for the Silvasonic recording station. It provides a real-time system dashboard, device management, service configuration, and live audio monitoring — all from a browser, without SSH.
 
@@ -10,11 +11,7 @@ The Web-Interface is the local management console for the Silvasonic recording s
 
 ### 1.1 Core Philosophy — "Fast & Light"
 
-The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-frontend-architecture.md)). It uses a **Modern Monolith** (server-side rendering) instead of a Single-Page Application:
-
-- **Server-Side Rendering (SSR):** FastAPI + Jinja2 generates HTML server-side.
-- **HTMX:** Dynamic DOM swaps over the network — no full page reloads.
-- **Alpine.js:** Lightweight client-side state for interactivity (modals, toggles, sidebar collapse).
+The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-frontend-architecture.md)): Server-Side Rendering (FastAPI + Jinja2), HTMX for DOM swaps, Alpine.js for client-side interactivity.
 
 ### 1.2 Backend Stack
 
@@ -49,108 +46,40 @@ The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-f
 
 ### 1.5 Operational Constraints
 
-- **Database First, No Filesystem Scanning:** Recording and detection lists come exclusively from the database. `os.listdir` / `scandir` is forbidden.
+- **Database First, No Filesystem Scanning:** Recording and detection lists come exclusively from the database.
 - **Media Serving:** The `:ro` filesystem mount serves individual known files (WAV playback, spectrogram images) by their database-recorded path only.
-- **Stateless Container:** All state lives in the database and Redis. The container itself is stateless and freely restartable.
-- **Rootless:** Runs as a fully unprivileged container.
+- **Stateless Container:** All state lives in the database and Redis. The container is freely restartable.
 
 ---
 
-## 2. UI/UX & Design System
+## 2. Design System
 
-### 2.1 Design Principles
-
-- **IDE-Style Dashboard:** Dark mode, data-dense layouts, "Modern Soft-SaaS" aesthetic.
-- **Pure CSS Components:** DaisyUI provides semantic class names (`btn`, `card`, `table`) with zero JavaScript — HTMX DOM swaps work without re-initialization.
-- **Custom Theme:** All accent colors defined via DaisyUI's CSS Custom Property theme system. Each page and module has its own accent color; exact tokens are defined in the theme config.
-- **Offline Production:** All assets (fonts, icons, compiled CSS) are bundled in the container image. Development uses CDN for rapid iteration.
-
-### 2.2 Typography
-
-- **UI Text:** Geist — headings, labels, navigation, body copy.
-- **Data & Code:** Geist Mono — log lines, confidence values, timestamps, spectrogram axis labels. Tabular figures for column alignment.
-
-### 2.3 Iconography
-
-Lucide Icons — implemented as inline `<svg>` elements in Jinja2 templates. No icon font, no FOUT, stroke-width aligns with DaisyUI's rounded aesthetic.
-
-### 2.4 Data & Media Visualization
-
-- **Apache ECharts:** Canvas/WebGL rendering for time-series, heatmaps, histograms, and linked zoom/pan charts.
-- **Wavesurfer.js v7:** Audio waveform + spectrogram rendering. Plugins used: Regions (BirdNET/BatDetect annotation overlay), Timeline, Minimap. Supports pre-computed peaks for instant load of long recordings.
+- **Theme:** Custom DaisyUI themes (`silvadark` / `silvalight`), each module has its own accent color token.
+- **Typography:** Geist for UI text, Geist Mono for data values and log output.
+- **Icons:** Lucide, inline SVG in Jinja2 templates.
+- **Data Visualization (TO-BE):** Apache ECharts for time-series, heatmaps, histograms. Wavesurfer.js v7 with Regions plugin for BirdNET/BatDetect annotation overlay, Timeline, Minimap, pre-computed peaks.
+- **Offline:** All assets bundled in the container image. No CDN at runtime.
 
 ---
 
 ## 3. UX Concept
 
-### 3.1 Layout Zones
+### 3.1 Layout & Navigation
 
-The interface uses five fixed zones:
+Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. Sidebar has two groups: **System** (Dashboard, Recorders, Processor, Uploaders) and **Modules** (Livesound, Birds, Bats, Weather). Settings + About pinned to bottom.
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  HEADER: [☰] [Logo] [Station Name] | [●REC 2 · ☁1] | [🌙][⬛][👤][⚙]
-├────────┬─────────────────────────────────────┬───────────┤
-│        │                                     │           │
-│  NAV   │         MAIN VIEW                   │ INSPECTOR │
-│        │   (Bento-Grid or Tab content)        │  (right)  │
-│        │                                     │           │
-├────────┴─────────────────────────────────────┴───────────┤
-│  FOOTER: [● N Alerts · NVMe 68% · 🌡51°C · last event]  [▲Console]
-└──────────────────────────────────────────────────────────┘
-```
+> [!IMPORTANT]
+> **Conditional Module Rendering:** Module sidebar entries are only visible when the corresponding module is enabled in Settings → Modules. This is DB-driven and not yet implemented in the web-mock (which shows all modules always).
 
-| Zone          | Purpose                                                                                                                          |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Header**    | Instance counts only (`● REC 2 · ☁ 1`). Nav toggle, dark mode, inspector toggle, profile, settings.                              |
-| **Navigator** | Flat sidebar — top-level context switcher. No nested dropdowns. Settings + About pinned to bottom.                               |
-| **Main View** | Content area — Bento-Grid or horizontal Tabs depending on content type (see §3.2).                                               |
-| **Inspector** | Right-side panel. Opens on item click. Shows rich details, audio/spectrogram, config, actions. Raw data only via export buttons. |
-| **Footer**    | System health strip (NVMe, CPU temp, alerts, last event) + Console toggle.                                                       |
+### 3.2 Navigation Routing Rulebook
 
-### 3.2 Navigation Structure
-
-```
-SYSTEM
-  ◉ Dashboard
-  🎙 Recorders
-  ⚙  Processor
-  📤 Uploaders
-
-MODULES  ←— conditionally rendered (DB-driven)
-  🐦 Birds        (only if BirdNET enabled)
-  🦇 Bats         (only if BatDetect enabled)
-  🌦 Weather      (only if Weather enabled)
-
-────────────────  (pinned to bottom)
-  ⚙  Settings
-  ℹ  About Silvasonic
-```
-
-### 3.3 Navigation Routing Rulebook
-
-Navigation pattern is determined by the **nature of the content**:
-
-| Content Type                              | Pattern                    | Applies To                           |
-| ----------------------------------------- | -------------------------- | ------------------------------------ |
+| Content Type                             | Pattern                    | Applies To                           |
+| ---------------------------------------- | -------------------------- | ------------------------------------ |
 | Hardware/Service instances (hard-limited) | **Bento-Grid → Inspector** | Recorders (max 5), Uploaders (max 3) |
-| Worker results / data analyses            | **Horizontal Tabs**        | Birds, Bats, Weather                 |
-| Admin subsections                         | **Horizontal Tabs**        | Settings, Observability, Maintenance |
+| Worker results / data analyses           | **Horizontal Tabs**        | Birds, Bats, Weather                 |
+| Admin subsections                        | **Horizontal Tabs**        | Settings                             |
 
-### 3.4 Footer Console
-
-The **only** place to view service logs. One service at a time — never mixed:
-
-```
-Service: [ recorder#1 ▾ ]       [⏸] [↓] [✕]
-─────────────────────────────────────────────
-17:43:12 INFO  segment written: rec_001.wav
-17:43:15 WARN  dropped frames: 3
-```
-
-Selecting a service switches the SSE subscription server-side. Logs are fire-and-forget (no history stored in the UI).
-
-### 3.5 Action Risk Classification
+### 3.3 Action Risk Classification
 
 | Class                   | Badge | Mechanism                                                        |
 | ----------------------- | ----- | ---------------------------------------------------------------- |
@@ -162,68 +91,76 @@ Selecting a service switches the SSE subscription server-side. Logs are fire-and
 
 ## 4. Page Blueprints
 
+> **Implementation reference:** All pages below are prototyped in `web-mock/templates/`. The mock uses `mock_data.py`; the real interface replaces these with async DB queries route-by-route.
+
 ### 4.1 Dashboard
 
-Real-time operations overview. System function cards (always visible):
-- **Orchestration** (Controller): reconcile status, active containers, pending changes.
-- **Data Pipeline** (Processor): index freshness, ingestion backlog, janitor status.
-
-Compact ECharts: NVMe trend, CPU temp, upload throughput. Active Alerts card. Recent Events timeline.
+Bento-Grid of system function cards: Orchestration (Controller status), Data Pipeline (Processor status), SSD Storage, CPU, RAM, Uptime. Active Alerts. ECharts upload throughput chart (TO-BE).
 
 ### 4.2 Recorders (Bento-Grid, max 5)
 
-Grid of Recorder Cards. Each card: live level bar, sample rate, segment info, status dot.
+Grid of Recorder Cards: live level bar, sample rate, channels, segment, gain, status. Detail view via click. Inspector shows Wavesurfer.js audio preview (TO-BE).
 
-**Inspector:** Wavesurfer.js audio preview. Guarded config: gain, channel, sample rate. Actions: Test (Safe) · Apply at next segment (Guarded) · Restart (Forbidden while REC).
+### 4.3 Processor
 
-### 4.3 Processor (Tabs)
-
-`[ Pipeline ] [ Storage & Retention ] [ Index ]`
-
-Janitor UX: all deletion is policy-driven here only. Impact preview required. Pinned items override janitor.
+Single page (no tabs): Indexer file table + Retention event log. Storage & Retention configuration is managed in **Settings → Storage & Retention**.
 
 ### 4.4 Uploaders (Bento-Grid, max 3)
 
-Grid of Uploader Cards: queue size, throughput, last sync, throttle state.
-
-**Inspector:** Target type, auth, bandwidth throttling, schedule windows. Actions: Test · Sync Now · Pause · Re-Auth.
+Grid of Uploader Cards: queue size, throughput, last sync, status. Detail view with target type and auth.
 
 ### 4.5 Birds / Bats (Tabs)
 
 `[ Discovery ] [ Analyzer ] [ Statistics ]`
 
-- **Discovery:** Pokédex-style species cards (image, names, count).
-- **Analyzer:** Data table with filters (species, time range, mic, confidence). Row click → Inspector (Wavesurfer.js spectrogram + BirdNET/BatDetect annotation regions + export buttons).
-- **Statistics:** ECharts dashboards (detections/day, confidence histogram, per-mic breakdown).
+Discovery: Pokédex-style species cards. Analyzer: data table with filters, row click → Inspector (Wavesurfer.js spectrogram + annotation regions, TO-BE). Statistics: ECharts dashboards (TO-BE).
 
 ### 4.6 Weather (Tabs)
 
-`[ Current ] [ Correlations ] [ Export ]`
+`[ Overview ] [ Current ] [ Statistics ] [ Correlation ]`
 
-Correlations: ECharts dual Y-axis — detections over time overlaid with weather parameters.
+ECharts time-series for temperature, precipitation, humidity, pressure, wind. Correlation: dual Y-axis — detections overlaid with weather parameters (TO-BE).
 
 ### 4.7 Settings (Tabs)
 
-`[ General ] [ Modules ] [ Recording Policy ] [ Network ] [ Access ] [ Integrations ]`
+`[ General ] [ Modules ] [ Storage & Retention ] [ Remotes ] [ Network ] [ User ]`
 
-- **Modules:** Toggle per module with Impact Preview. Apply now or scheduled. Module state toggles drive sidebar visibility via DB → Controller → HTMX sidebar refresh.
-- **Access:** Password, session management, Tailscale node info, API keys.
+- **Modules:** Toggle per module with system reload. Module state drives sidebar visibility.
+- **Remotes:** Per-target configuration (Nextcloud, S3). Test Connection + Save.
+- **Network:** WLAN Hotspot + Tailscale VPN status and config.
+- **User:** Password management for local admin.
 
-### 4.8 Observability (Tabs)
+### 4.8 Observability (TO-BE)
 
 `[ Metrics ] [ Events ]`
 
-Metrics: per-service CPU/RAM/NVMe I/O (ECharts). Events: human-readable audit trail. Logs are exclusively in the footer Console.
+Per-service CPU/RAM/NVMe I/O charts (ECharts). Human-readable audit trail. Logs exclusively in Footer Console.
 
-### 4.9 Maintenance (Tabs)
+### 4.9 Maintenance (TO-BE)
 
 `[ Updates ] [ Backup & Export ]`
 
-Updates require REC = IDLE. Storage & Retention control lives in Processor (§4.3).
+Updates require REC = IDLE.
 
 ---
 
-## 5. Scope Boundaries
+## 5. Migration Path: Web-Mock → Web-Interface (v0.8.0)
+
+The `web-mock` service is the **clonable base** for this service. Migration steps:
+
+1. **Clone:** `cp -r services/web-mock → services/web-interface`. Rename package to `silvasonic-web-interface`, update port to `8000`.
+2. **Delete `mock_data.py`:** All mock data is replaced by async DB queries.
+3. **Replace route-by-route:** Each route changes one line — `mock_data.X` → `await db_query(session)`. Templates, static assets, and routing remain unchanged.
+4. **SSE Console:** Replace `FAKE_LOG_LINES` cycling generator with real `SUBSCRIBE silvasonic:logs` from Redis.
+5. **Conditional Sidebar:** Add DB-driven module visibility (show Birds/Bats/Weather only when enabled in Settings → Modules).
+6. **Retire web-mock:** Move to `profiles: ["dev"]` in compose or remove entirely.
+
+> [!NOTE]
+> The `ServiceContext` lifespan, `get_station()`, `get_settings()`, and `POST /settings/general` are **already production-ready** in the web-mock and can be kept as-is.
+
+---
+
+## 6. Scope Boundaries
 
 - **No Orchestration:** Does not start or stop containers — that is the Controller's job.
 - **No Media Processing:** Does not record audio, run ML inference, or process signals.
@@ -232,9 +169,10 @@ Updates require REC = IDLE. Storage & Retention control lives in Processor (§4.
 
 ---
 
-## 6. See Also
+## 7. See Also
 
 - [ADR-0003: Frontend Architecture](../adr/0003-frontend-architecture.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 - [ADR-0021: Frontend Design System](../adr/0021-frontend-design-system.md)
 - [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
+- [Web-Mock README](../../services/web-mock/README.md) — living prototype

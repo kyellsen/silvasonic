@@ -1,6 +1,6 @@
 # Messaging Patterns & Protocols
 
-> **Status:** Normative (Mandatory) · **Implemented:** Partial (since v0.1.0) — Critical Path (§1.1) is AS-IS; Redis / Interactive Path (§1.2, §3–§6) is TO-BE (v0.2.0)
+> **Status:** Normative (Mandatory) · **Implemented:** Partial (since v0.1.0) — Critical Path (§1.1) is AS-IS; Redis / Interactive Path (§1.2, §3–§6) is AS-IS (since v0.2.0)
 > **Scope:** System-wide inter-service communication
 
 This document defines the communication standards within Silvasonic — how services discover work, exchange status, and receive commands.
@@ -46,7 +46,7 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 ## 3. Redis Usage — Minimal and Unified
 
-> **Status:** Planned (v0.2.0)
+> **Status:** Implemented (since v0.2.0)
 
 Redis serves exactly **three purposes** for Silvasonic:
 
@@ -86,7 +86,7 @@ This solves the inherent problem of Pub/Sub (fire-and-forget): if the Web-Interf
 
 ## 5. Heartbeat Payload Schema
 
-> **Status:** Planned (v0.2.0)
+> **Status:** Implemented (since v0.2.0)
 
 **Every** service uses the same JSON schema, published by the `SilvaService` base class. The canonical schema definition is in [ADR-0019 §2.4](../adr/0019-unified-service-infrastructure.md). All payloads **MUST** be valid JSON and validated via Pydantic models ([ADR-0012](../adr/0012-use-pydantic.md)).
 

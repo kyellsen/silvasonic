@@ -17,6 +17,7 @@ class SystemSettings(BaseModel):
     max_recorders: int = 5
     max_uploaders: int = 3
     station_name: str = "Silvasonic Dev"
+    auto_enrollment: bool = True
 
 
 class BirdnetSettings(BaseModel):

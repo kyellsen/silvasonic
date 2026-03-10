@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="Silvasonic Web Mock",
-    description="UI shell with hardcoded mock data — no DB or Redis required.",
+    description="UI shell with mock data for most views. Real DB for Settings persistence.",
     version="0.2.0",
     lifespan=lifespan,
 )

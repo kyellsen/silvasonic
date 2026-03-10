@@ -188,10 +188,11 @@
 
 - [ ] Standard-Konfiguration wird beim Start geladen (nur wenn noch nicht vorhanden).
 - [ ] Standard-Mikrofonprofile werden aus YAML-Seed-Dateien geladen und aktualisiert (ADR-0016).
+- [ ] Ein Standard-Admin-Account wird beim Start angelegt, falls nicht vorhanden (ADR-0023 §2.4). Passwort wird mit bcrypt gehasht.
 - [ ] Bereits geänderte Werte und nutzererstellte Profile werden niemals überschrieben.
 - [ ] Nach einer Datenbank-Zurücksetzung werden alle Standards beim nächsten Start automatisch wiederhergestellt.
 
-> **Hinweis:** Das Anlegen eines Standard-Admin-Accounts gehört zum Web-Interface, nicht zum Controller.
+> **Hinweis:** Das Standard-Passwort muss in der Produktion über die Web-Oberfläche geändert werden.
 
 ### Referenzen
 

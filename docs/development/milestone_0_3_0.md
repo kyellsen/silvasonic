@@ -12,13 +12,13 @@
 
 ### Tasks
 
-- [ ] Add `podman-py` as dependency to `services/controller/pyproject.toml`
-- [ ] Create `silvasonic/controller/podman_client.py` — PodmanClient wrapper
+- [x] Add `podman-py` as dependency to `services/controller/pyproject.toml`
+- [x] Create `silvasonic/controller/podman_client.py` — PodmanClient wrapper
   - Connect to socket (`CONTAINER_SOCKET` env var, default `/var/run/container.sock`)
   - `ping()` health check on startup
   - Reconnect logic (socket may not be available immediately)
-- [ ] Verify socket mount works in `compose.yml` (`${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`)
-- [ ] Unit test: mock PodmanClient, verify connection logic
+- [x] Verify socket mount works in `compose.yml` (`${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`)
+- [x] Unit test: mock PodmanClient, verify connection logic
 - [ ] Integration test: Controller container connects to host Podman, lists containers
 
 ### Config Changes (✅ Already Applied)
@@ -36,16 +36,16 @@
 
 ### Tasks
 
-- [ ] Create `silvasonic/controller/seeder.py` — Startup Seeding Logic
-- [ ] Implement `ConfigSeeder`:
+- [x] Create `silvasonic/controller/seeder.py` — Startup Seeding Logic
+- [x] Implement `ConfigSeeder`:
   - Populates `system_config` table with missing defaults (e.g., `auto_enrollment: true`).
   - Does not overwrite values changed by the user.
-- [ ] Implement `ProfileBootstrapper`:
+- [x] Implement `ProfileBootstrapper`:
   - Reads YAML seed files from bundled `profiles/` directory.
   - Checks if a profile with the same `slug` exists in `microphone_profiles` table.
   - If it exists → skip. If not → insert.
   - Validate all seeded profiles against the `MicrophoneProfile` Pydantic schema before insertion.
-- [ ] Unit tests: Verify idempotence of seeders and that existing overrides are protected.
+- [x] Unit tests: Verify idempotence of seeders and that existing overrides are protected.
 
 ---
 
@@ -55,14 +55,14 @@
 
 ### Tasks — Container Management
 
-- [ ] Create Pydantic model `Tier2ServiceSpec` defining:
+- [x] Create Pydantic model `Tier2ServiceSpec` defining:
   - Image name, container name pattern
   - Labels (auto-populated: `io.silvasonic.tier`, `.owner`, `.service`, `.device_id`, `.profile`)
   - Environment variables, devices, mounts (with RO/RW distinction per ADR-0009)
   - Restart policy (`on-failure`, max 5 retries)
   - Network name (from `SILVASONIC_NETWORK`)
   - Resource limits: `memory_limit`, `cpu_limit`, `oom_score_adj` (ADR-0020). Recorder gets `oom_score_adj=-999`.
-- [ ] Create `silvasonic/controller/container_manager.py`:
+- [x] Create `silvasonic/controller/container_manager.py`:
   - `start(spec: Tier2ServiceSpec) → Container` — calls `podman.containers.run()` with resource limits
   - `stop(name: str)` — sends SIGTERM, waits for graceful shutdown
   - `list_managed() → list[Container]` — queries `io.silvasonic.owner=controller`
@@ -70,12 +70,12 @@
 
 ### Tasks — State Reconciliation & Nudge Subscriber (US-C03, US-C07)
 
-- [ ] Implement Device State Evaluation logic (reconcile only starts a Recorder if: `status == "online" AND enabled == true AND enrollment_status == "enrolled" AND profile_slug IS NOT NULL`).
-- [ ] Implement Reconciliation Loop (async, ~30s interval) to enforce the above logic.
-- [ ] Create `silvasonic/controller/nudge_subscriber.py`:
+- [x] Implement Device State Evaluation logic (reconcile only starts a Recorder if: `status == "online" AND enabled == true AND enrollment_status == "enrolled" AND profile_slug IS NOT NULL`).
+- [x] Implement Reconciliation Loop (async, ~30s interval) to enforce the above logic.
+- [x] Create `silvasonic/controller/nudge_subscriber.py`:
   - Subscribe to Redis channel `silvasonic:nudge`.
   - On receiving `"reconcile"`, immediately trigger the reconciliation logic to execute web-interface commands (e.g., enable/disable microphone).
-- [ ] Unit tests: mock `podman-py` & DB, verify state evaluation and start/stop/reconcile logic.
+- [x] Unit tests: mock `podman-py` & DB, verify state evaluation and start/stop/reconcile logic.
 
 ---
 

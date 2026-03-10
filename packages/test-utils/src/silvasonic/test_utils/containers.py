@@ -27,12 +27,12 @@ from testcontainers.redis import RedisContainer
 def _get_repo_root() -> Path:
     """Return the repository root directory.
 
-    This file lives at:
-        packages/test-utils/src/silvasonic/test_utils/containers.py
-
-    So the root is 5 levels up from here.
+    Walks up until a ``.git`` directory is found (repo root anchor).
     """
-    return Path(__file__).resolve().parents[5]
+    for parent in Path(__file__).resolve().parents:
+        if (parent / ".git").exists():
+            return parent
+    return Path(__file__).resolve().parents[5]  # Fallback
 
 
 @pytest.fixture(scope="session")

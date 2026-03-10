@@ -2,8 +2,6 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.2.0 — Service Infrastructure
-
 ---
 
 ## Core Philosophy: Data Capture Integrity

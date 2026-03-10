@@ -2,7 +2,7 @@
 
 > **Status:** Partial (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 >
-> 📋 **User Stories:** [controller.md](../../docs/user_storys/controller.md)
+> 📋 **User Stories:** [controller.md](../../docs/user_stories/controller.md)
 
 **AS-IS:** The Controller is the central orchestration service of the Silvasonic system. It detects USB microphones, evaluates the device inventory against the configuration catalog, and manages Tier 2 container lifecycles (start / stop / reconcile) via the Podman REST API (`podman-py`). It follows the **State Reconciliation Pattern** — a pure Listener + Actor with no HTTP API beyond `/healthy`.
 
@@ -35,7 +35,7 @@ The Controller reads both tables and decides which Recorders to start.
 
 ## Startup & Seeding
 
-> **Status:** 🔮 Planned (v0.3.0) · **User Stories:** [US-C06](../../docs/user_storys/controller.md#us-c06-mikrofon-profile-verwalten-), [US-C08](../../docs/user_storys/controller.md#us-c08-funktioniert-sofort-nach-installation-)
+> **Status:** ✅ Implemented · **User Stories:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-), [US-C08](../../docs/user_stories/controller.md#us-c08-funktioniert-sofort-nach-installation-)
 
 On every startup, the Controller runs two idempotent seeders in sequence:
 
@@ -61,7 +61,7 @@ If the database is wiped, the next Controller startup restores all defaults auto
 
 ## Device State Evaluation
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 2)
+> **Status:** ✅ Implemented
 
 The Controller starts a Recorder for a Device **only** when all of the following conditions are met:
 
@@ -95,7 +95,7 @@ If any condition is not met, the Controller will not start (or will stop) the Re
 
 ## USB Detection & HotPlug
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 3)
+> **Status:** 🔮 Planned
 
 The Controller detects **all** USB audio devices on the host — not only those with a known Microphone Profile. Detection uses a two-layer architecture:
 
@@ -142,7 +142,7 @@ Devices **without** a USB parent (e.g., the Raspberry Pi's built-in `bcm2835` au
 
 ## Device Identity & Stable Naming
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 3) · **User Story:** [US-C01](../../docs/user_storys/controller.md#us-c01-mikrofon-einstecken--sofort-erkannt-️)
+> **Status:** 🔮 Planned · **User Story:** [US-C01](../../docs/user_stories/controller.md#us-c01-mikrofon-einstecken--sofort-erkannt-️)
 
 Re-plugging a microphone must re-activate the same Recorder with the same workspace, storage, and identity — no duplicate Recorders. Each physical microphone is identified by a **stable device ID** that survives unplugging and re-plugging:
 
@@ -165,7 +165,7 @@ This ensures that **re-plugging a microphone re-activates the same Recorder** wi
 
 ## Profile Matching & Auto-Enrollment
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 3)
+> **Status:** 🔮 Planned
 
 When a new USB device is detected, the Controller matches it against all `microphone_profiles` using structured `MatchCriteria`:
 
@@ -198,7 +198,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 ## Reconciliation Loop
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 2)
+> **Status:** ✅ Implemented
 
 The Controller runs a periodic reconciliation loop (~30 s) that compares **desired state** (from `devices` + `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
 
@@ -214,13 +214,13 @@ io.silvasonic.profile: <profile_slug>
 
 On startup, the Controller queries all containers with `io.silvasonic.owner=controller` and adopts them without restarting — ensuring Data Capture Integrity across Controller restarts.
 
-> **TO-BE:** (v0.3.0) — See [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md).
+> See [Milestone v0.3.0](../../docs/development/milestone_0_3_0.md) for implementation details.
 
 ---
 
 ## Profile Injection & Management
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 2) · **User Story:** [US-C06](../../docs/user_storys/controller.md#us-c06-mikrofon-profile-verwalten-)
+> **Status:** ✅ Implemented · **User Story:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-)
 
 The Recorder has **no database access** (ADR-0013). The Controller injects the Microphone Profile configuration into Recorder containers via environment variables at container creation time:
 
@@ -242,7 +242,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 ## Shutdown Semantics
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 2)
+> **Status:** ✅ Implemented
 
 | Scenario                      | Behavior                                                                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------ |
@@ -256,7 +256,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 ## Reconcile-Nudge Subscriber
 
-> **Status:** 🔮 Planned (v0.3.0)
+> **Status:** ✅ Implemented
 
 The Controller follows the **State Reconciliation Pattern** (inspired by Kubernetes Operators). It has **no HTTP API** beyond `/healthy` — control is exclusively declarative:
 
@@ -271,13 +271,13 @@ The Controller follows the **State Reconciliation Pattern** (inspired by Kuberne
 
 See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
 
-> **TO-BE:** (v0.3.0)
+
 
 ---
 
 ## Redis: Heartbeat & Host Metrics
 
-> **Status:** ✅ Implemented (v0.2.0) · **User Story:** [US-C05](../../docs/user_storys/controller.md#us-c05-systemstatus-im-dashboard-)
+> **Status:** ✅ Implemented · **User Story:** [US-C05](../../docs/user_stories/controller.md#us-c05-systemstatus-im-dashboard-)
 
 The Controller publishes its own heartbeat like every service (via `SilvaService`, see [ADR-0019](../../docs/adr/0019-unified-service-infrastructure.md)).
 
@@ -295,7 +295,7 @@ This enables the Web-Interface dashboard to display system-wide resource gauges 
 
 ## Live Log Streaming
 
-> **Status:** 🔮 Planned (v0.3.0) · **User Story:** [US-C09](../../docs/user_storys/controller.md#us-c09-dienst-logs-live-im-browser-)
+> **Status:** 🔮 Planned · **User Story:** [US-C09](../../docs/user_stories/controller.md#us-c09-dienst-logs-live-im-browser-)
 
 The Controller forwards Tier 2 container logs to the Web-Interface via Redis Pub/Sub ([ADR-0022](../../docs/adr/0022-live-log-streaming.md)):
 
@@ -312,7 +312,7 @@ Service → stdout (structlog JSON) → Controller (podman logs --follow) → PU
 
 ## Resource Limits & QoS Enforcement
 
-> **Status:** 🔮 Planned (v0.3.0 Phase 2)
+> **Status:** ✅ Implemented
 
 The Controller enforces **mandatory resource limits** on every Tier 2 container it spawns:
 
@@ -347,19 +347,20 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 
 ## Implementation Status
 
-| Feature                              | Status                                                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Health monitoring                    | ✅ Implemented (database connectivity, recorder spawn placeholder)                                       |
-| Redis heartbeat + host metrics       | ✅ Implemented (SilvaService base, host_resources via HostResourceCollector)                             |
-| Podman socket connection             | 🔮 Planned (v0.3.0 Phase 1)                                                                              |
-| Container lifecycle mgmt             | 🔮 Planned (v0.3.0 Phase 2)                                                                              |
-| Reconciliation loop                  | 🔮 Planned (v0.3.0 Phase 2)                                                                              |
-| Config seeder + profile bootstrapper | 🔮 Planned (v0.3.0, ADR-0016/0023) — System defaults + profile seeds, no admin account (→ Web-Interface) |
-| USB detection (`pyudev`)             | 🔮 Planned (v0.3.0 Phase 3)                                                                              |
-| HotPlug Monitor (`pyudev`)           | 🔮 Planned (v0.3.0 Phase 3)                                                                              |
-| Profile matching + enroll            | 🔮 Planned (v0.3.0 Phase 3)                                                                              |
-| Reconcile-nudge subscriber           | 🔮 Planned (v0.3.0)                                                                                      |
-| Log forwarding (Podman→Redis)        | 🔮 Planned (v0.3.0, ADR-0022)                                                                            |
+| Feature                              | Status                                                      |
+| ------------------------------------ | ----------------------------------------------------------- |
+| Health monitoring                    | ✅ Implemented                                               |
+| Redis heartbeat + host metrics       | ✅ Implemented                                               |
+| Podman socket connection             | ✅ Implemented                                               |
+| Container lifecycle mgmt             | ✅ Implemented                                               |
+| Reconciliation loop                  | ✅ Implemented                                               |
+| Config seeder + profile bootstrapper | ✅ Implemented (ADR-0016/0023)                               |
+| Reconcile-nudge subscriber           | ✅ Implemented                                               |
+| Resource limits & QoS enforcement    | ✅ Implemented (ADR-0020)                                    |
+| USB detection (`pyudev`)             | 🔮 Planned                                                   |
+| HotPlug Monitor (`pyudev`)           | 🔮 Planned                                                   |
+| Profile matching + auto-enroll       | 🔮 Planned                                                   |
+| Log forwarding (Podman→Redis)        | 🔮 Planned (ADR-0022)                                        |
 
 ---
 

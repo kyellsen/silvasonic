@@ -5,8 +5,19 @@ not at import time.  This eliminates import side-effects, improves
 testability, and follows the Zen of Python: *Explicit is better than
 implicit.*
 
-In tests, call ``_get_engine.cache_clear()`` and
-``_get_session_factory.cache_clear()`` to reset singletons between runs.
+For **integration tests**, use ``override_engine(engine)`` to inject
+a test-managed engine (e.g. from testcontainers).  Call ``reset_engine()``
+in teardown to restore default behaviour.
+
+Example (conftest.py)::
+
+    @pytest.fixture(scope="session")
+    def db_engine(postgres_container):
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        override_engine(engine)
+        yield engine
+        reset_engine()
 """
 
 import os
@@ -22,10 +33,49 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+# ---------------------------------------------------------------------------
+# Engine override for tests (Audit T-1)
+# ---------------------------------------------------------------------------
+_engine_override: AsyncEngine | None = None
 
+
+def override_engine(engine: AsyncEngine) -> None:
+    """Inject a pre-configured engine (for integration tests).
+
+    After calling this, all ``get_session()`` / ``get_db()`` calls will use
+    the provided engine instead of creating one from env vars.
+
+    Also clears the session-factory cache so new sessions pick up the
+    override immediately.
+    """
+    global _engine_override
+    _engine_override = engine
+    _get_session_factory.cache_clear()
+
+
+def reset_engine() -> None:
+    """Reset to default engine (re-reads env vars on next call).
+
+    Should be called in test teardown to avoid leaking state between
+    test sessions.
+    """
+    global _engine_override
+    _engine_override = None
+    _get_engine.cache_clear()
+    _get_session_factory.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# Lazy singletons
+# ---------------------------------------------------------------------------
 @lru_cache(maxsize=1)
 def _get_engine() -> AsyncEngine:
-    """Create the async SQLAlchemy engine lazily on first use (cached singleton)."""
+    """Create the async SQLAlchemy engine lazily on first use (cached singleton).
+
+    If ``override_engine()`` was called, returns the override instead.
+    """
+    if _engine_override is not None:
+        return _engine_override
     settings = DatabaseSettings()
     return create_async_engine(
         settings.database_url,

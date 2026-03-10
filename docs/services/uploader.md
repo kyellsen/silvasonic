@@ -48,7 +48,7 @@
 | **State**        | Stateless (runtime) — upload progress not persisted           |
 | **Privileges**   | Rootless (ADR-0007)                                           |
 | **Resources**    | Medium — FLAC encoding is CPU-intensive for large files       |
-| **QoS Priority** | `oom_score_adj=200` — expendable, below recording priority    |
+| **QoS Priority** | `oom_score_adj=250` — expendable, below recording priority (ADR-0020) |
 
 > [!NOTE]
 > Each Uploader instance is managed by the Controller as a Tier 2 container. The Controller creates one Uploader per `storage_remotes` entry (similar to one Recorder per Device).

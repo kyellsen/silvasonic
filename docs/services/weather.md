@@ -48,14 +48,14 @@
 
 ## 5. Configuration & Environment
 
-| Variable / Mount        | Description              | Default / Example                                                                   |
-| ----------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
-| Health port             | Internal health endpoint | `9500`                                                                              |
-| `WEATHER_PROVIDER`      | API provider             | `openmeteo`                                                                         |
-| `WEATHER_LATITUDE`      | Station latitude         | `51.9607`                                                                           |
-| `WEATHER_LONGITUDE`     | Station longitude        | `7.6261`                                                                            |
-| `WEATHER_POLL_INTERVAL` | Seconds between fetches  | `900` (15 min)                                                                      |
-| `WEATHER_VARIABLES`     | OpenMeteo Hourly Vars    | `temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,precipitation` |
+| Variable / Mount                    | Description              | Default / Example                                                                   |
+| ----------------------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
+| `SILVASONIC_WEATHER_PORT`           | Internal health endpoint | `9500`                                                                              |
+| `SILVASONIC_WEATHER_PROVIDER`       | API provider             | `openmeteo`                                                                         |
+| `SILVASONIC_WEATHER_LATITUDE`       | Station latitude         | `51.9607`                                                                           |
+| `SILVASONIC_WEATHER_LONGITUDE`      | Station longitude        | `7.6261`                                                                            |
+| `SILVASONIC_WEATHER_POLL_INTERVAL`  | Seconds between fetches  | `900` (15 min)                                                                      |
+| `SILVASONIC_WEATHER_VARIABLES`      | OpenMeteo Hourly Vars    | `temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,precipitation` |
 
 ## 6. Technology Stack
 

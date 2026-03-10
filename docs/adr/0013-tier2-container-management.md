@@ -22,12 +22,11 @@ The Controller (Tier 1) must dynamically manage **Tier 2 services** (Recorder, U
 *   **Native REST API (libpod):** `podman-py` communicates directly with the Podman socket via HTTP — no CLI binary needed inside the Controller container, no subprocess overhead, no CLI output parsing, no version skew between CLI and host engine.
 *   **No Compose at Runtime:** The Controller speaks directly to the Podman API for `containers.run()`, `containers.list()`, `containers.stop()`, etc. This avoids the well-documented incompatibilities between `podman-compose` and Docker Compose V2 semantics. Compose remains for Tier 1 (static infrastructure) only.
 *   **systemd Integration:** Podman's tight integration with systemd (socket activation, Quadlet) ensures Tier 2 containers survive Controller restarts, and the Controller can reconcile desired vs. actual state on startup.
-*   **Complexity Reduction:** Removing Docker as a runtime target eliminates engine-detection logic, binary-selection ternaries, and dual code paths throughout the codebase (see Section 6).
 
 > [!NOTE]
 > This ADR governs the **Controller's runtime Tier 2 management** only. The static `compose.yml` for Tier 1 services is managed via `podman-compose` (see ADR-0004).
 
-**Architecture:**
+### 2.1. Architecture
 
 ```
 Controller (podman-py → Podman REST API)
@@ -45,214 +44,54 @@ Host Podman Socket (/var/run/container.sock — mounted into Controller)
 Podman Engine → Tier 2 Containers (sibling containers on host)
 ```
 
-**Ownership & Reconciliation via Labels:**
+### 2.2. Ownership & Reconciliation via Labels
 
-Every Tier 2 container is tagged with labels for lifecycle management:
+Every Tier 2 container is tagged with OCI labels for lifecycle management: `io.silvasonic.tier`, `io.silvasonic.owner`, `io.silvasonic.service`, `io.silvasonic.device_id`, `io.silvasonic.profile`. On startup, the Controller reconciles desired vs. actual state by querying containers with `io.silvasonic.owner=controller`.
 
-```python
-labels = {
-    "io.silvasonic.tier": "2",
-    "io.silvasonic.owner": "controller",
-    "io.silvasonic.service": "recorder",
-    "io.silvasonic.device_id": device_id,
-    "io.silvasonic.profile": profile_name,
-}
-```
+### 2.3. Network Strategy
 
-On startup, the Controller reconciles desired vs. actual state by querying containers with `io.silvasonic.owner=controller`.
+Tier 2 containers join the **same custom network** as Tier 1 services (`SILVASONIC_NETWORK` env var). This enables health endpoint access, database/Redis connectivity, and unified heartbeat publishing (see [ADR-0019](0019-unified-service-infrastructure.md)). Pods were rejected — Podman Pods share a network namespace, making independent lifecycle management impossible.
 
-**Network Strategy:**
+### 2.4. Restart Policy & Crash Recovery
 
-Tier 2 containers join the **same custom network** as Tier 1 services. This is required because:
-
-*   The Controller must reach Tier 2 health endpoints (container-internal IP + port, **no host port exposure**).
-*   Future Tier 2 services (Uploader, BirdNET, BatDetect) need access to the database and Redis. All Tier 2 services publish heartbeats to Redis via the unified `SilvaService` pattern (see [ADR-0019](0019-unified-service-infrastructure.md)).
-*   The Recorder itself has minimal network needs (health endpoint only), but a unified network simplifies the architecture.
-
-The network name is passed to the Controller via the `SILVASONIC_NETWORK` environment variable. The `compose.yml` sets an explicit `name:` on the network definition to prevent Compose project-prefix ambiguity.
-
-> [!NOTE]
-> **Pods were rejected.** Podman Pods share a network namespace — all containers in a pod must start/stop together. This is incompatible with independently managed Tier 2 lifecycles (e.g., stopping a single Recorder without affecting others).
-
-**Restart Policy:**
-
-Every `containers.run()` call sets a restart policy:
-
-```python
-restart_policy={"Name": "on-failure", "MaximumRetryCount": 5}
-```
-
-*   **Podman handles immediate crash recovery** — a crashed Recorder is restarted within seconds.
+*   **Podman handles immediate crash recovery** — restart policy `on-failure` (max 5 retries) is set on every `containers.run()` call.
 *   **The Controller runs a periodic reconciliation loop** (~30s) as a safety net — detecting orphaned, stuck, or missing containers and correcting the state.
-*   This dual approach ensures resilience: Podman covers fast restarts, the Controller covers state drift.
-
-**Shutdown Semantics:**
-
-*   **Deliberate Controller stop** (SIGTERM): The Controller sends SIGTERM to all owned Tier 2 containers, waits for graceful shutdown (configurable timeout), then exits.
-*   **Controller crash or restart**: Tier 2 containers **keep running** — the restart policy keeps them alive independently. On restart, the Controller reconciles via label query, adopts existing containers without restarting them, and resumes monitoring.
+*   **Controller crash or restart:** Tier 2 containers **keep running** independently. On restart, the Controller reconciles via label query, adopts existing containers without restarting them.
 *   **Priority:** Data Capture Integrity > Clean Shutdown. A Recorder must never be interrupted by a Controller restart.
 
-**Logging:**
+### 2.5. Resource Limits & QoS
 
-Tier 2 container logs are accessed via `podman-py` (`container.logs()`), **not** via the filesystem. The Controller can stream or poll logs for error detection and forwarding to the central logging pipeline. Tier 2 containers write to stdout/stderr as usual; Podman captures these logs natively.
+Every `containers.run()` call **MUST** include resource limit parameters (`memory_limit`, `cpu_quota`, `oom_score_adj`). See [ADR-0020](0020-resource-limits-qos.md) for the full resource budget and OOM priority hierarchy.
+
+### 2.6. Logging
+
+Tier 2 container logs are accessed via `podman-py` (`container.logs()`), **not** via the filesystem. Tier 2 containers write to stdout/stderr; Podman captures these logs natively.
 
 ## 3. Options Considered
 
-*   **`python-on-whales` (CLI-Wrapper, engine-agnostic):** Rejected. While offering explicit Podman + Docker support via `client_call`, it wraps the CLI via subprocess — requiring the CLI binary installed inside the Controller container. Its Compose integration relies on Docker Compose V2 semantics, which are not guaranteed to work identically with `podman-compose`. For a single-engine edge device, the added complexity of engine abstraction provides no benefit.
-*   **`docker-py` + Podman Docker-compat socket:** Rejected. Podman's Docker-compatible API is "best effort" — critical features for Silvasonic (device mapping, `privileged`, `group_add`) have known subtle differences. No Compose support.
-*   **Dual-SDK (`podman-py` + `docker-py`):** Rejected. Requires two SDKs, two APIs, and a custom abstraction layer. Disproportionate complexity.
+*   **`python-on-whales` (CLI-Wrapper, engine-agnostic):** Rejected. Wraps CLI via subprocess — requires CLI binary inside the Controller container. Engine abstraction provides no benefit for a single-engine edge device.
+*   **`docker-py` + Podman Docker-compat socket:** Rejected. Podman's Docker-compatible API has known subtle differences for device mapping, `privileged`, and `group_add`.
+*   **Dual-SDK (`podman-py` + `docker-py`):** Rejected. Disproportionate complexity for zero benefit.
 *   **Raw `subprocess` calls:** Rejected. No type safety, fragile string parsing, poor error handling.
 
 ## 4. Consequences
 
 *   **Positive:**
     *   Single engine, single API — deterministic behavior for years of autonomous operation.
-    *   No CLI binary needed inside the Controller container — smaller image, no version skew.
+    *   No CLI binary needed inside the Controller container.
     *   Direct HTTP communication via socket — no subprocess overhead.
-    *   `SILVASONIC_CONTAINER_ENGINE` variable removed — complexity reduction across scripts.
     *   Label-based ownership enables clean reconciliation and garbage collection without Compose.
-    *   Compose profiles in `compose.yml` remain as documentation/templates for Tier 2 service configuration.
 *   **Negative:**
-    *   Contributors must have Podman installed to test the Controller's Tier 2 management logic locally.
+    *   Contributors must have Podman installed to test the Controller locally.
     *   `podman-py` becomes a runtime dependency of the Controller service.
-    *   The host Podman socket must be mounted into the Controller container (elevated privileges, mitigated by existing `privileged: true`).
+    *   The host Podman socket must be mounted into the Controller container.
     *   Podman socket activation (`podman.socket` systemd unit) must be enabled on the host.
 
-## 5. Implementation Notes
+## 5. Configuration
 
-### Controller `compose.yml` Changes
-
-```yaml
-controller:
-    volumes:
-      # Existing volumes...
-      - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
-    environment:
-      CONTAINER_SOCKET: /var/run/container.sock
-      SILVASONIC_NETWORK: silvasonic-net
-```
-
-### `.env` Additions
-
-```bash
-# Podman socket (mounted into Controller for Tier 2 management)
-# Rootless (default) — adjust UID if necessary:
-SILVASONIC_PODMAN_SOCKET=/run/user/1000/podman/podman.sock
-
-# Network name for Tier 2 containers (must match compose.yml network name)
-SILVASONIC_NETWORK=silvasonic-net
-```
-
-### Python Usage Pattern — Recorder (Producer, RW workspace)
-
-```python
-import os
-
-from podman import PodmanClient
-
-SOCKET = os.environ.get("CONTAINER_SOCKET", "/var/run/container.sock")
-NETWORK = os.environ.get("SILVASONIC_NETWORK", "silvasonic-net")
-
-# Connect to host Podman via mounted socket
-podman = PodmanClient(base_url=f"unix://{SOCKET}")
-
-# Standard single-instance launch — Recorder (data producer)
-container = podman.containers.run(
-    image="silvasonic-recorder:latest",
-    name="silvasonic-recorder-mic1",
-    detach=True,
-    network=NETWORK,
-    environment={"RECORDER_DEVICE": "hw:1,0", "RECORDER_PROFILE": "48kHz-stereo"},
-    devices=["/dev/snd:/dev/snd"],
-    group_add=["audio"],
-    # Recorder OWNS its workspace → RW (Zero-Trust: ADR-0009)
-    mounts=[{"type": "bind", "source": "/mnt/data/workspace/recorder", "target": "/app/workspace"}],
-    labels={
-        "io.silvasonic.tier": "2",
-        "io.silvasonic.owner": "controller",
-        "io.silvasonic.service": "recorder",
-        "io.silvasonic.device_id": "mic1",
-    },
-    restart_policy={"Name": "on-failure", "MaximumRetryCount": 5},
-    privileged=True,
-    # Resource Limits & QoS (ADR-0020)
-    mem_limit="512m",
-    cpu_quota=100_000,       # 1.0 CPU
-    oom_score_adj=-999,      # Protected: OOM Killer kills this LAST
-)
-```
-
-### Python Usage Pattern — BirdNET (Consumer, RO recorder data)
-
-```python
-# BirdNET consumes Recorder data → RO mount (Zero-Trust: ADR-0009)
-container = podman.containers.run(
-    image="silvasonic-birdnet:latest",
-    name="silvasonic-birdnet",
-    detach=True,
-    network=NETWORK,
-    environment={"DATABASE_HOST": "silvasonic-database"},
-    mounts=[
-        # Own workspace → RW
-        {"type": "bind", "source": "/mnt/data/workspace/birdnet", "target": "/app/workspace"},
-        # Recorder data → RO (Zero-Trust: Consumer Principle)
-        {"type": "bind", "source": "/mnt/data/workspace/recorder", "target": "/app/recorder-data",
-         "read_only": True},
-    ],
-    labels={
-        "io.silvasonic.tier": "2",
-        "io.silvasonic.owner": "controller",
-        "io.silvasonic.service": "birdnet",
-    },
-    restart_policy={"Name": "on-failure", "MaximumRetryCount": 5},
-    # Resource Limits & QoS (ADR-0020)
-    mem_limit="1g",
-    cpu_quota=100_000,       # 1.0 CPU
-    oom_score_adj=500,       # Expendable: OOM Killer kills this FIRST
-)
-```
-
-### Reconciliation on Startup
-
-```python
-# Reconcile on startup — query all owned containers, adopt without restart
-managed = podman.containers.list(
-    filters={"label": ["io.silvasonic.owner=controller"]}
-)
-for container in managed:
-    service = container.labels.get("io.silvasonic.service", "unknown")
-    # Register in Controller's internal state without restarting
-    log.info("Adopted existing Tier 2 container", name=container.name, service=service)
-```
-
-### Accessing Tier 2 Logs
-
-```python
-# Access Tier 2 container logs via podman-py (not filesystem)
-logs = container.logs(stdout=True, stderr=True, tail=100)
-for line in logs:
-    log.debug("tier2_log", container=container.name, line=line.decode())
-```
-
-### Resource Limits & QoS
-
-Every `containers.run()` call **MUST** include resource limit parameters. The Controller enforces memory caps (`mem_limit`), CPU quotas (`cpu_quota`), and OOM priority (`oom_score_adj`) on all Tier 2 containers. This prevents analysis workers (BirdNET, BatDetect) from exhausting system memory and triggering the Linux OOM Killer against the Recorder.
-
-See [ADR-0020](0020-resource-limits-qos.md) for the full resource budget, OOM priority hierarchy, and rationale.
-
-## 6. Codebase Simplification (Podman-Only) — ✅ Completed
-
-All engine-detection logic has been removed. The following changes were applied:
-
-| File                    | Change                                                                  | Status |
-| ----------------------- | ----------------------------------------------------------------------- | ------ |
-| `scripts/compose.py`    | Removed `get_container_engine()`, hardcoded `podman-compose`            | ✅      |
-| `scripts/build.py`      | Removed `get_container_engine()`, uses `"podman"` directly              | ✅      |
-| `scripts/prune.py`      | Removed engine ternary, uses `"podman"` directly                        | ✅      |
-| `scripts/nuke.py`       | Removed engine detection, uses `"podman"` directly                      | ✅      |
-| `scripts/init.py`       | Simplified `check_container_engine()` to check for `podman` only        | ✅      |
-| `.env` / `.env.example` | Removed `SILVASONIC_CONTAINER_ENGINE`, added `SILVASONIC_PODMAN_SOCKET` | ✅      |
-| `justfile`              | Updated comment "Podman / Docker" → "Podman"                            | ✅      |
-| `compose.yml`           | Updated header comment                                                  | ✅      |
-| ADR-0004                | Removed Docker-compat references                                        | ✅      |
-| ADR-0007                | Simplified — Docker references removed                                  | ✅      |
+| File | Config | Value |
+| --- | --- | --- |
+| `compose.yml` | Socket mount | `${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z` |
+| `compose.yml` | Network env | `SILVASONIC_NETWORK=silvasonic-net` |
+| `.env` | Podman socket | `SILVASONIC_PODMAN_SOCKET=/run/user/1000/podman/podman.sock` |
+| `.env` | Network name | `SILVASONIC_NETWORK=silvasonic-net` |

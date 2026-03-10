@@ -33,6 +33,11 @@ class PodmanConnectionError(Exception):
     """Raised when the Podman socket cannot be reached after retries."""
 
 
+def _container_info(c: Any) -> dict[str, object]:
+    """Extract standard info dict from a Podman container object."""
+    return {"id": c.id, "name": c.name, "status": c.status, "labels": c.labels}
+
+
 class SilvasonicPodmanClient:
     """Managed Podman client with reconnect logic.
 
@@ -78,6 +83,23 @@ class SilvasonicPodmanClient:
         """Return the ``unix://`` URL used for the Podman socket."""
         return f"unix://{self._socket_path}"
 
+    @property
+    def socket_path(self) -> str:
+        """Return the filesystem path to the Podman socket."""
+        return self._socket_path
+
+    @property
+    def containers(self) -> Any:
+        """Expose the Podman containers API.
+
+        Raises:
+            RuntimeError: If not connected (call ``connect()`` first).
+        """
+        if self._client is None:
+            msg = "PodmanClient is not connected — call connect() first"
+            raise RuntimeError(msg)
+        return self._client.containers
+
     def connect(self) -> None:
         """Connect to the Podman socket with retry logic.
 
@@ -105,12 +127,22 @@ class SilvasonicPodmanClient:
                     return
                 msg = "Podman ping returned False"
                 raise ConnectionError(msg)
-            except Exception:
+            except (ConnectionError, OSError) as e:
                 log.warning(
                     "podman.connect_failed",
                     socket=self._socket_path,
                     attempt=attempt,
                     max_retries=self._max_retries,
+                    error_type=type(e).__name__,
+                )
+            except Exception as e:
+                log.warning(
+                    "podman.connect_failed.unexpected",
+                    socket=self._socket_path,
+                    attempt=attempt,
+                    max_retries=self._max_retries,
+                    error_type=type(e).__name__,
+                    exc_info=True,
                 )
                 if attempt < self._max_retries:
                     time.sleep(self._retry_delay)
@@ -134,7 +166,11 @@ class SilvasonicPodmanClient:
             result: bool = self._client.ping()
             self._connected = result
             return result
-        except Exception:
+        except (ConnectionError, OSError):
+            self._connected = False
+            return False
+        except Exception as e:
+            log.warning("podman.ping_failed", error_type=type(e).__name__)
             self._connected = False
             return False
 
@@ -152,17 +188,12 @@ class SilvasonicPodmanClient:
             return []
         try:
             containers = self._client.containers.list(filters=filters if filters else None)
-            return [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "status": c.status,
-                    "labels": c.labels,
-                }
-                for c in containers
-            ]
-        except Exception:
-            log.warning("podman.list_containers_failed")
+            return [_container_info(c) for c in containers]
+        except (ConnectionError, OSError) as e:
+            log.warning("podman.list_containers_failed", error_type=type(e).__name__)
+            return []
+        except Exception as e:
+            log.warning("podman.list_containers_failed.unexpected", error_type=type(e).__name__)
             return []
 
     def list_managed_containers(self) -> list[dict[str, object]]:

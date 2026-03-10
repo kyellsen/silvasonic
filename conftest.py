@@ -5,10 +5,8 @@ session-scoped container fixtures available to every test in ``testpaths``
 (packages/*, services/*, tests/*) without explicit imports.
 """
 
-from silvasonic.test_utils.containers import (
+from silvasonic.test_utils.containers import (  # noqa: F401
     postgres_container,
     redis_container,
     shared_network,
 )
-
-__all__ = ["postgres_container", "redis_container", "shared_network"]

@@ -14,7 +14,7 @@ For the database schema, see:
 
 ## YAML Profile Format
 
-System profiles are maintained as YAML files in `packages/core/config/profiles/` and seeded into the database by the Controller's `ProfileBootstrapper` on every startup (see [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md)).
+System profiles are maintained as YAML files in `services/controller/config/profiles/` and seeded into the database by the Controller's `ProfileBootstrapper` on every startup (see [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md)).
 
 ```yaml
 ---
@@ -98,7 +98,7 @@ for d in ctx.list_devices(subsystem='sound'):
 
 | Phase                       | Actor                              | How                                                                             |
 | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
-| **System Profile creation** | Developer                          | Adds YAML file to `packages/core/config/profiles/`                              |
+| **System Profile creation** | Developer                          | Adds YAML file to `services/controller/config/profiles/`                        |
 | **Seed into DB**            | Controller (ProfileBootstrapper)   | Upserts on startup (`is_system=true`). Overwrites DB values for system profiles |
 | **User Profile creation**   | User (Web-Interface)               | CRUD via Web-Interface → DB (`is_system=false`). Never overwritten by seed      |
 | **Profile assignment**      | Controller (auto) or User (manual) | Device enrollment via `devices.profile_slug` FK                                 |

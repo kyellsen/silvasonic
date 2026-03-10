@@ -2,15 +2,15 @@
 
 > **Tier:** 1 (Infrastructure) · **Status:** Implemented · **Port:** 8001
 
-Development UI scaffold for the Silvasonic Web Interface. Serves the **complete UI shell** (FastAPI + Jinja2 + HTMX + Alpine.js + Tailwind CSS + DaisyUI) with hardcoded mock data — no database or Redis connection required.
+Development UI scaffold for the Silvasonic Web Interface. Serves the **complete UI shell** (FastAPI + Jinja2 + HTMX + Alpine.js + Tailwind CSS + DaisyUI) with mock data for most views. Uses the **real database** for Settings persistence and station identity, and **Redis** for heartbeat publishing.
 
 ## Purpose
 
-- Iterate on UI/UX without a running database
+- Iterate on UI/UX with realistic layout and interactions
 - Validate the full layout: header, sidebar, main, inspector, footer console
-- Serve as the authoritative skeleton for the real `web-interface` (v0.8.0)
+- Serve as the **clonable base** for the real `web-interface` (v0.8.0)
 
-When building the real web-interface, replace `mock_data` imports route-by-route with real async DB queries. The `ServiceContext` lifespan pattern and all templates transfer without modification.
+When building the real web-interface, clone this service and replace `mock_data` imports route-by-route with real async DB queries. The `ServiceContext` lifespan pattern, templates, static assets, and routing transfer without modification.
 
 ## CSS Development
 

@@ -2,7 +2,7 @@
 
 > **Status:** Accepted • **Date:** 2026-01-31
 
-> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services (planned for v0.3.0+). Currently, only `recorder` and `controller` exist.
+> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services. Currently, only `recorder` and `controller` exist.
 
 ## 1. Context & Problem
 The system supports various hardware microphones with different native capabilities (e.g., Dodotronic Ultramic at 384kHz, standard USB mics at 48kHz). Previously, we used terminology like "High Res" and "Low Res" or hardcoded 384kHz/48kHz assumptions. This is brittle and does not scale to different hardware configurations.

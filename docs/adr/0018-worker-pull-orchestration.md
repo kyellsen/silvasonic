@@ -2,7 +2,7 @@
 
 > **Status:** Accepted • **Date:** 2026-02-18
 
-> **NOTE:** References to `birdnet`, `batdetect`, or `processor` refer to future services (planned for v0.3.0+). Currently, only `recorder` and `controller` exist.
+> **NOTE:** References to `birdnet`, `batdetect`, or `processor` refer to future services. Currently, only `recorder` and `controller` exist.
 
 ## 1. Context & Problem
 

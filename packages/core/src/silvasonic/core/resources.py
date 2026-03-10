@@ -102,6 +102,9 @@ class ResourceCollector:
                     ) = disk
 
             return resources.model_dump(exclude_none=True)
+        except (psutil.Error, OSError) as exc:
+            logger.debug("resource_collection_failed", error=type(exc).__name__)
+            return {}
         except Exception:
             logger.debug("resource_collection_failed", exc_info=True)
             return {}
@@ -146,6 +149,9 @@ class HostResourceCollector:
                     ) = disk
 
             return resources.model_dump(exclude_none=True)
+        except (psutil.Error, OSError) as exc:
+            logger.debug("host_resource_collection_failed", error=type(exc).__name__)
+            return {}
         except Exception:
             logger.debug("host_resource_collection_failed", exc_info=True)
             return {}

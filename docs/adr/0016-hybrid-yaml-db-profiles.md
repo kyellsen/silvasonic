@@ -43,7 +43,7 @@ The database schema is implemented:
 *   SQLAlchemy model: [`profiles.py`](../../packages/core/src/silvasonic/core/database/models/profiles.py) — `microphone_profiles` table with `slug`, `name`, `description`, `match_pattern`, `config` (JSONB), `is_system` (Boolean).
 *   Device FK: [`system.py`](../../packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`.
 
-The ProfileBootstrapper and YAML seed files are planned but not yet implemented.
+The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`seeder.py`](../../services/controller/src/silvasonic/controller/seeder.py).
 
 ## 3. Options Considered
 *   **YAML-Only (No Database):**

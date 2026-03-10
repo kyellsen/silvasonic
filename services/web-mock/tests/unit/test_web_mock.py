@@ -40,12 +40,6 @@ async def _mock_get_db() -> AsyncGenerator[AsyncMock, None]:
     yield session
 
 
-# Apply overrides globally for this test module
-app.dependency_overrides[get_station] = _mock_station
-app.dependency_overrides[get_settings] = _mock_settings
-app.dependency_overrides[get_db] = _mock_get_db
-
-
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------
@@ -53,7 +47,14 @@ app.dependency_overrides[get_db] = _mock_get_db
 
 @pytest.fixture()
 def client() -> TestClient:
-    """Create a TestClient without starting the full lifespan (no Redis needed)."""
+    """Create a TestClient without starting the full lifespan (no Redis needed).
+
+    Re-applies dependency overrides on every test invocation to survive
+    ``app.dependency_overrides.clear()`` calls in integration tests.
+    """
+    app.dependency_overrides[get_station] = _mock_station
+    app.dependency_overrides[get_settings] = _mock_settings
+    app.dependency_overrides[get_db] = _mock_get_db
     return TestClient(app, raise_server_exceptions=True)
 
 

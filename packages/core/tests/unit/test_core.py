@@ -102,6 +102,40 @@ class TestHealthMonitor:
         assert status["status"] == "ok"
         assert status["components"] == {}
 
+    def test_optional_unhealthy_does_not_affect_overall(self) -> None:
+        """An optional (required=False) unhealthy component keeps status 'ok'."""
+        hm = HealthMonitor()
+        hm.update_status("main", True, "running")
+        hm.update_status("podman", False, "no socket", required=False)
+        status = hm.get_status()
+
+        assert status["status"] == "ok"
+        assert status["components"]["podman"]["healthy"] is False
+        assert status["components"]["podman"]["required"] is False
+
+    def test_required_unhealthy_causes_error(self) -> None:
+        """A required (default) unhealthy component causes status 'error'."""
+        hm = HealthMonitor()
+        hm.update_status("main", True, "running")
+        hm.update_status("database", False, "down")
+        status = hm.get_status()
+
+        assert status["status"] == "error"
+        assert status["components"]["database"]["required"] is True
+
+    def test_optional_component_included_in_output(self) -> None:
+        """Optional components appear in the components dict with required=False."""
+        hm = HealthMonitor()
+        hm.update_status("a", True, "ok")
+        hm.update_status("b", False, "unavailable", required=False)
+        status = hm.get_status()
+
+        assert "b" in status["components"]
+        assert status["components"]["b"]["required"] is False
+        assert status["components"]["b"]["healthy"] is False
+        # Overall still ok because b is optional
+        assert status["status"] == "ok"
+
 
 # ---------------------------------------------------------------------------
 # §3 — ResourceCollector Tests

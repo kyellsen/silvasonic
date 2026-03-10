@@ -4,7 +4,7 @@
 
 
 ## 1. Context & Problem
-> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services (planned for v0.3.0+). Currently, only `recorder` and `controller` exist.
+> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services. Currently, only `recorder` and `controller` exist.
 In a microservice architecture sharing a file system, there is a risk of a "Spaghetti" data layout where multiple services read/write to common directories. This leads to race conditions, accidental data deletion ("Noisy Neighbor"), and unclear ownership responsibilities. We need a layout that enforces ownership and structure.
 
 ## 2. Decision

@@ -1,0 +1,15 @@
+# Factory defaults — seeded into system_config on Controller startup (ADR-0023).
+# Values are inserted with ON CONFLICT DO NOTHING: user-modified values are never
+# overwritten. After a database reset, all defaults are restored automatically.
+
+system:
+  latitude: 53.55
+  longitude: 9.99
+  max_recorders: 5
+  max_uploaders: 3
+  station_name: "Silvasonic Dev"
+  auto_enrollment: true
+
+auth:
+  default_username: "admin"
+  default_password: "silvasonic"  # MUST be changed in production!

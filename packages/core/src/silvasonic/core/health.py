@@ -45,12 +45,31 @@ class HealthMonitor:
         self._last_touch: float = 0.0
         self._liveness_enabled: bool = False
 
-    def update_status(self, component: str, is_healthy: bool, details: str = "") -> None:
-        """Update the health status of a component."""
+    def update_status(
+        self,
+        component: str,
+        is_healthy: bool,
+        details: str = "",
+        *,
+        required: bool = True,
+    ) -> None:
+        """Update the health status of a component.
+
+        Args:
+            component: Name of the component (e.g. ``"database"``).
+            is_healthy: Whether the component is currently healthy.
+            details: Human-readable details string.
+            required: If ``False``, this component is **optional** and
+                will not affect the aggregated ``status`` field.  Use
+                this for external dependencies that may be unavailable
+                in certain environments (e.g. Podman socket in smoke
+                tests).  Default: ``True``.
+        """
         with self._lock:
             self._components[component] = {
                 "healthy": is_healthy,
                 "details": details,
+                "required": required,
             }
 
     def touch(self) -> None:
@@ -76,12 +95,20 @@ class HealthMonitor:
             return (time.monotonic() - self._last_touch) < self._liveness_timeout
 
     def get_status(self) -> dict[str, Any]:
-        """Get the current health status of all monitored components."""
+        """Get the current health status of all monitored components.
+
+        The aggregated ``status`` is ``"ok"`` only when **all required
+        components** are healthy *and* the liveness watchdog has not
+        timed out.  Optional components (``required=False``) are
+        included in the ``components`` dict but do **not** influence
+        the top-level ``status``.
+        """
         with self._lock:
             components = self._components.copy()
 
         live = self.is_live()
-        all_healthy = all(c["healthy"] for c in components.values())
+        required = [c for c in components.values() if c.get("required", True)]
+        all_healthy = all(c["healthy"] for c in required) if required else True
 
         return {
             "status": "ok" if (all_healthy and live) else "error",

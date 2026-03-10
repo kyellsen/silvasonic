@@ -5,6 +5,20 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 
+class MatchCriteria(BaseModel):
+    """How to match a USB device to this profile (microphone_profiles.md)."""
+
+    usb_vendor_id: str | None = Field(
+        default=None, description="USB Vendor ID (stable, from pyudev)"
+    )
+    usb_product_id: str | None = Field(
+        default=None, description="USB Product ID (stable, from pyudev)"
+    )
+    alsa_name_contains: str | None = Field(
+        default=None, description="Case-insensitive ALSA card name substring"
+    )
+
+
 class AudioConfig(BaseModel):
     """Low-level audio capture settings."""
 
@@ -15,9 +29,13 @@ class AudioConfig(BaseModel):
     format: Literal["S16LE", "S24LE", "S32LE"] = Field(
         default="S16LE", description="Audio sample format (bit depth)"
     )
-    # Generic hardware pattern to auto-detect this mic (Optional)
+    # Legacy field — kept for backward compatibility
     match_pattern: str | None = Field(
-        default=None, description="Regex or substring to match ALSA card name"
+        default=None, description="Regex or substring to match ALSA card name (legacy)"
+    )
+    # Structured match criteria (replaces match_pattern)
+    match: MatchCriteria | None = Field(
+        default=None, description="Structured USB/ALSA match criteria for auto-detection"
     )
 
 

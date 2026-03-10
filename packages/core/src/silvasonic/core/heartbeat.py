@@ -124,6 +124,9 @@ class HeartbeatPublisher:
         if self._health_fn:
             try:
                 health = self._health_fn()
+            except (TypeError, ValueError, KeyError, AttributeError) as exc:
+                logger.warning("health_provider_error", error=type(exc).__name__)
+                health = {"status": "error", "components": {}}
             except Exception:
                 health = {"status": "error", "components": {}}
 
@@ -133,6 +136,8 @@ class HeartbeatPublisher:
                 extra = self._meta_fn()
                 if isinstance(extra, dict):
                     meta.update(extra)
+            except (TypeError, ValueError, KeyError, AttributeError) as exc:
+                logger.warning("meta_provider_error", error=type(exc).__name__)
             except Exception:
                 logger.debug("meta_provider_failed", exc_info=True)
 
