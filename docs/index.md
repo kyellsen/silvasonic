@@ -13,6 +13,7 @@
 - [Filesystem Governance](arch/filesystem_governance.md)
 - [Messaging Patterns & Protocols](arch/messaging_patterns.md)
 - [Port Allocation](arch/port_allocation.md)
+- [Microphone Profiles](arch/microphone_profiles.md)
 
 ## Services
 
