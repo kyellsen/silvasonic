@@ -12,10 +12,10 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Mikrofon wird innerhalb weniger Sekunden erkannt — Ziel ist ein Nahe-Echtzeit-Gefühl, kein 10-Sekunden-Polling.
-- [ ] Passendes Mikrofon-Profil (Sample Rate, Kanäle, Pegel) wird automatisch zugewiesen — bei Bedarf kann der Nutzer im Web-Interface nachsteuern.
-- [ ] Eine eigene Aufnahme-Instanz wird mit den korrekten Profil-Einstellungen gestartet.
-- [ ] Keine manuelle Konfiguration nötig — weder Konfigurationsdateien noch Umgebungsvariablen.
+- [x] Mikrofon wird innerhalb weniger Sekunden erkannt — Ziel ist ein Nahe-Echtzeit-Gefühl, kein 10-Sekunden-Polling.
+- [x] Passendes Mikrofon-Profil (Sample Rate, Kanäle, Pegel) wird automatisch zugewiesen — bei Bedarf kann der Nutzer im Web-Interface nachsteuern.
+- [x] Eine eigene Aufnahme-Instanz wird mit den korrekten Profil-Einstellungen gestartet.
+- [x] Keine manuelle Konfiguration nötig — weder Konfigurationsdateien noch Umgebungsvariablen.
 
 ### Milestone
 
@@ -76,8 +76,8 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Originalaufnahme: Hardware-native Sample Rate und Bittiefe → `recorders/{name}/data/raw/*.wav`.
-- [ ] Standardaufnahme: 48 kHz, 16-Bit → `recorders/{name}/data/processed/*.wav`.
+- [ ] Originalaufnahme: Hardware-native Sample Rate und Bittiefe → `recorder/{name}/data/raw/*.wav`.
+- [ ] Standardaufnahme: 48 kHz, 16-Bit → `recorder/{name}/data/processed/*.wav`.
 - [ ] Beide Streams werden gleichzeitig und ohne gegenseitige Beeinträchtigung geschrieben.
 - [ ] Unvollständige Segmente verbleiben in `.buffer/` — nur fertig geschriebene Dateien erscheinen in `data/`.
 
@@ -123,8 +123,8 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Pro Mikrofon läuft eine eigene, unabhängige Aufnahme-Instanz.
-- [ ] Jede Instanz hat einen eigenen Arbeitsbereich auf der Festplatte (`recorders/{name}/`).
+- [x] Pro Mikrofon läuft eine eigene, unabhängige Aufnahme-Instanz.
+- [x] Jede Instanz hat einen eigenen Arbeitsbereich auf der Festplatte (`recorder/{name}/`).
 
 > [!NOTE]
 > Einzel-Aktivierung/-Deaktivierung von Mikrofonen ist ein **Controller-Feature** (via Datenbank / Web-Interface) und wird dort dokumentiert.

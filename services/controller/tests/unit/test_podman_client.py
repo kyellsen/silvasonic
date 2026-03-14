@@ -21,9 +21,9 @@ class TestSilvasonicPodmanClientInit:
     """Tests for SilvasonicPodmanClient initialization."""
 
     def test_default_socket_path(self) -> None:
-        """Uses CONTAINER_SOCKET env var or default path."""
+        """Uses SILVASONIC_CONTAINER_SOCKET env var or default path."""
         with patch.dict(os.environ, {}, clear=True):
-            os.environ.pop("CONTAINER_SOCKET", None)
+            os.environ.pop("SILVASONIC_CONTAINER_SOCKET", None)
             client = SilvasonicPodmanClient()
             assert client.socket_url == "unix:///var/run/container.sock"
             assert not client.is_connected
@@ -34,8 +34,8 @@ class TestSilvasonicPodmanClientInit:
         assert client.socket_url == "unix:///custom/socket.sock"
 
     def test_env_var_socket_path(self) -> None:
-        """Reads CONTAINER_SOCKET from env."""
-        with patch.dict(os.environ, {"CONTAINER_SOCKET": "/env/podman.sock"}):
+        """Reads SILVASONIC_CONTAINER_SOCKET from env."""
+        with patch.dict(os.environ, {"SILVASONIC_CONTAINER_SOCKET": "/env/podman.sock"}):
             client = SilvasonicPodmanClient()
             assert client.socket_url == "unix:///env/podman.sock"
 

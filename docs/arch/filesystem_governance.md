@@ -43,10 +43,10 @@ The root of the Workspace must contain only folders matching the service names d
 *   **`recorder/`**:
     *   Internal structure is created **dynamically by the Controller** when a new microphone is registered.
     *   Creates a subdirectory per microphone: `recorder/{MIC_NAME}/`
-    *   Must contain `.buffer/recordings/raw` inside the mic folder.
-    *   Must contain `.buffer/recordings/processed` inside the mic folder.
-    *   Must contain `data/recordings/raw` inside the mic folder.
-    *   Must contain `data/recordings/processed` inside the mic folder.
+    *   Must contain `.buffer/raw` inside the mic folder.
+    *   Must contain `.buffer/processed` inside the mic folder.
+    *   Must contain `data/raw` inside the mic folder.
+    *   Must contain `data/processed` inside the mic folder.
 
 > **NOTE:** `database` uses a **Named Volume** and does not reside in the user-accessible Workspace to prevent permission errors and accidental corruption.
 
@@ -88,7 +88,7 @@ As the host is Fedora with SELinux, all container definitions must adhere to the
 ### SELinux Labeling
 *   All Bind Mounts in the Workspace must be suffixed with `:z` (lowercase).
 *   This marks content as "Shared Content", readable by multiple containers (Writer and Reader) and the host.
-*   **Prohibited:** The use of `:Z` (Private Content) is forbidden for shared data folders (like `recordings`) as it blocks access for other containers.
+*   **Prohibited:** The use of `:Z` (Private Content) is forbidden for shared data folders (like `data`) as it blocks access for other containers.
 
 ---
 

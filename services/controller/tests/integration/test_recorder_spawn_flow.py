@@ -161,7 +161,7 @@ stream:
         assert len(our_spec) == 1
         spec = our_spec[0]
         assert spec.name == "silvasonic-recorder-spawn-test-001"
-        assert spec.environment["RECORDER_PROFILE"] == "spawn_test"
+        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "spawn_test"
 
     async def test_evaluator_skips_offline_device(
         self,
@@ -352,7 +352,7 @@ auth:
         spec = specs[0]
         assert isinstance(spec, Tier2ServiceSpec)
         assert spec.name == "silvasonic-recorder-ultramic-384k-001"
-        assert spec.environment["RECORDER_PROFILE"] == "ultramic_384k"
+        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "ultramic_384k"
         assert spec.image == "localhost/silvasonic_recorder:latest"
         assert spec.oom_score_adj == -999  # Protected (ADR-0020)
 
@@ -385,7 +385,9 @@ auth:
         call_kwargs = mock_podman.containers.run.call_args
         assert call_kwargs.kwargs["image"] == "localhost/silvasonic_recorder:latest"
         assert call_kwargs.kwargs["name"] == "silvasonic-recorder-ultramic-384k-001"
-        assert call_kwargs.kwargs["environment"]["RECORDER_PROFILE"] == "ultramic_384k"
+        assert (
+            call_kwargs.kwargs["environment"]["SILVASONIC_RECORDER_PROFILE_SLUG"] == "ultramic_384k"
+        )
         assert call_kwargs.kwargs["labels"]["io.silvasonic.owner"] == "controller"
         assert call_kwargs.kwargs["labels"]["io.silvasonic.device_id"] == "16d0-0b40-FLOW-TEST-001"
 

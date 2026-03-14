@@ -2,6 +2,8 @@
 
 > **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop), Hardware Detection, State Reconciliation & Log Streaming
 >
+> **Progress:** Phases 1–4 ✅ Complete · Phase 5 (Log Streaming) & Phase 6 (Hardening) remaining
+>
 > **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](../../VISION.md), [Controller README](../../services/controller/README.md), [Recorder README](../../services/recorder/README.md)
 
 ---
@@ -14,7 +16,7 @@
 
 - [x] Add `podman-py` as dependency to `services/controller/pyproject.toml`
 - [x] Create `silvasonic/controller/podman_client.py` — PodmanClient wrapper
-  - Connect to socket (`CONTAINER_SOCKET` env var, default `/var/run/container.sock`)
+  - Connect to socket (`SILVASONIC_CONTAINER_SOCKET` env var, default `/var/run/container.sock`)
   - `ping()` health check on startup
   - Reconnect logic (socket may not be available immediately)
 - [x] Verify socket mount works in `compose.yml` (`${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`)
@@ -25,7 +27,7 @@
 
 | File                    | Change                                                                    |
 | ----------------------- | ------------------------------------------------------------------------- |
-| `compose.yml`           | Socket volume mount, `CONTAINER_SOCKET` and `SILVASONIC_NETWORK` env vars |
+| `compose.yml`           | Socket volume mount, `SILVASONIC_CONTAINER_SOCKET` and `SILVASONIC_NETWORK` env vars |
 | `.env` / `.env.example` | `SILVASONIC_PODMAN_SOCKET`, `SILVASONIC_NETWORK` activated                |
 
 ---
@@ -45,7 +47,14 @@
   - Checks if a profile with the same `slug` exists in `microphone_profiles` table.
   - If it exists → skip. If not → insert.
   - Validate all seeded profiles against the `MicrophoneProfile` Pydantic schema before insertion.
+- [x] Implement `AuthSeeder` (ADR-0023 §2.4, US-C08):
+  - Reads `auth` section from `config/defaults.yml` (default_username, default_password).
+  - Checks if user with same username already exists → skip.
+  - Hashes password with `bcrypt` before insertion into `users` table.
+  - Existing user accounts are **never** overwritten (idempotent).
 - [x] Unit tests: Verify idempotence of seeders and that existing overrides are protected.
+- [x] Unit tests: AuthSeeder — admin creation with bcrypt hash, skip existing, missing file, no auth section, invalid YAML (5 tests).
+- [x] Integration test: AuthSeeder inserts admin user with bcrypt hash into real PostgreSQL.
 
 ---
 
@@ -111,12 +120,12 @@
 
 - [x] Create `build_recorder_spec()` factory function in `container_spec.py`:
   - Image: `localhost/silvasonic_recorder:latest`
-  - Name pattern: `silvasonic-recorder-{device_id}`
+  - Name pattern: `silvasonic-recorder-{slug}-{suffix}` (z.B. `silvasonic-recorder-ultramic-384-evo-034f`)
   - Devices: `/dev/snd:/dev/snd`
   - Group add: `audio`
   - Privileged: `true` (see ADR-0007 §6)
   - Mounts: Recorder workspace = RW (producer), with `controller_source` for mkdir
-  - Env vars: `RECORDER_DEVICE`, `RECORDER_PROFILE`, `SILVASONIC_REDIS_URL` (Profile Injection, ADR-0013)
+  - Env vars: `SILVASONIC_RECORDER_DEVICE`, `SILVASONIC_RECORDER_PROFILE_SLUG`, `SILVASONIC_REDIS_URL`, `SILVASONIC_INSTANCE_ID` (Profile Injection, ADR-0013)
   - Resource limits from env vars with defaults (`512m`, `1.0` CPU, `oom_score_adj=-999`)
 - [x] Connect Recorder spawning to reconciliation loop (DeviceStateEvaluator → build_recorder_spec → ContainerManager.reconcile)
 - [x] Add Redis heartbeat to Recorder (fire-and-forget via `SilvaService` base class, ADR-0019)

@@ -20,7 +20,7 @@
 
 ### Inputs
 
-*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace (`/mnt/data/recordings/processed`). Mounted **read-only** (Consumer Principle, ADR-0009).
+*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace (`data/processed/`). Mounted **read-only** (Consumer Principle, ADR-0009).
 *   **Database Queue:** Polls the `recordings` table for unanalyzed files via Worker Pull Pattern (`SELECT … FOR UPDATE SKIP LOCKED`, ADR-0018).
 
 ### Processing
@@ -52,7 +52,7 @@
 | Variable / Mount                    | Description                            | Default / Example |
 | ----------------------------------- | -------------------------------------- | ----------------- |
 | `SILVASONIC_BIRDNET_PORT`           | Health endpoint port                   | `9500`            |
-| `/mnt/data/recordings/processed:ro` | Processed recordings (read-only mount) | —                 |
+| `${SILVASONIC_WORKSPACE_PATH}/recorder:ro` | Processed recordings (read-only mount) | —                 |
 | `POSTGRES_HOST`, `SILVASONIC_DB_*`  | Database connection                    | via `.env`        |
 
 ### Dynamic Configuration (Database)

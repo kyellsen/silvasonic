@@ -14,13 +14,13 @@
 | Health Server (`:9500/healthy`)        | ✅ Implemented | v0.2.0    | —          |
 | Signal Handling (Graceful Shutdown)    | ✅ Implemented | v0.2.0    | US-R02     |
 | Recording Health Monitor (Placeholder) | ✅ Implemented | v0.2.0    | —          |
-| Plug & Play Erkennung                  | 🔜 Planned     | v0.3.0    | US-R01     |
-| Multi-Mikrofon Instanzen               | 🔜 Planned     | v0.3.0    | US-R05     |
-| Audio Capture (FFmpeg Pipeline)        | 🔜 Planned     | v0.4.0    | US-R01     |
+| Plug & Play Detection                  | ✅ Implemented | v0.3.0    | US-R01     |
+| Multi-Microphone Instances             | ✅ Implemented | v0.3.0    | US-R05     |
+| Audio Capture (Python Pipeline)        | 🔜 Planned     | v0.4.0    | US-R01     |
 | Dual Stream (Raw + Processed)          | 🔜 Planned     | v0.4.0    | US-R03     |
-| Segment-Dauer via Profil               | 🔜 Planned     | v0.4.0    | US-R07     |
+| Segment Duration via Profile           | 🔜 Planned     | v0.4.0    | US-R07     |
 | Watchdog & Auto-Recovery               | 🔜 Planned     | v0.4.0    | US-R06     |
-| OOM-Schutz (`oom_score_adj=-999`)      | 🔜 Planned     | v0.4.0    | US-R02     |
+| OOM Protection (`oom_score_adj=-999`)  | 🔜 Planned     | v0.4.0    | US-R02     |
 | Live-Stream (Opus → Icecast)           | 🔮 Future      | v0.9.0    | US-R04     |
 
 ---
@@ -63,12 +63,12 @@ The Recorder is an **immutable Tier 2** service. This means:
 
 ### Processing
 
-*   **FFmpeg Pipeline:** Orchestrates a filter graph using `ffmpeg-python`. A single ALSA capture is split into multiple output streams.
+*   **Audio Pipeline:** Orchestrates a non-blocking audio capture stream using `sounddevice` and writes data using `soundfile`. A single ALSA capture is split into multiple output streams in the callback.
 *   **Dual Stream Architecture** 🔜 Planned (v0.4.0):
-    1.  **Raw:** Preserves original sample rate and bit depth (`pcm_s24le`).
-    2.  **Processed:** Resamples to 48 kHz (`pcm_s16le`) for consistent ML input.
+    1.  **Raw:** Preserves original sample rate and bit depth (direct write to native-format WAV).
+    2.  **Processed:** Resamples to 48 kHz (using `soxr.resample`) for consistent ML input.
 *   **Segment Writing:** Files are written in configurable segments (default: 10 seconds, configurable via Microphone Profile).
-*   **Buffer → Data Workflow:** While a segment is being actively written, it is stored in `.buffer/{stream}/`. Only when the segment is completely written and closed by FFmpeg is it moved to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
+*   **Buffer → Data Workflow:** While a segment is being actively written, it is stored in `.buffer/{stream}/`. Only when the segment is completely written and closed by `soundfile` is it moved to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
 *   **Triple Stream Architecture** 🔮 Future (v0.9.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 
@@ -82,22 +82,31 @@ The Recorder is an **immutable Tier 2** service. This means:
 
 ## Workspace & Path Structure
 
-Each Recorder instance gets its own isolated workspace directory, identified by a unique name (derived from the microphone profile):
+Each Recorder instance gets its own **isolated** workspace directory. The Controller mounts **only** the instance-specific subdirectory into the container — the Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
 
+**Host layout** (managed by Controller):
 ```
-workspace/
-└── recorders/
-    └── {recorder_name}/          # e.g. "ultramic-384"
-        ├── data/
-        │   ├── raw/              # pcm_s24le, native sample rate
-        │   │   └── *.wav
-        │   └── processed/        # pcm_s16le, 48 kHz
-        │       └── *.wav
-        └── .buffer/
-            ├── raw/
-            │   └── *.wav         # actively being written
-            └── processed/
-                └── *.wav
+workspace/recorder/
+└── {workspace_dir}/          # e.g. "ultramic-384-evo-034f"
+    ├── data/
+    │   ├── raw/              # pcm_s24le, native sample rate
+    │   │   └── *.wav
+    │   └── processed/        # pcm_s16le, 48 kHz
+    │       └── *.wav
+    └── .buffer/
+        ├── raw/
+        │   └── *.wav         # actively being written
+        └── processed/
+            └── *.wav
+```
+
+**Container view** (`/app/workspace`):
+```
+/app/workspace/
+├── data/raw/*.wav
+├── data/processed/*.wav
+├── .buffer/raw/*.wav
+└── .buffer/processed/*.wav
 ```
 
 > [!IMPORTANT]
@@ -121,8 +130,8 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 
 | Level | Mechanism                                                                                       | Scope                                      |
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| 1     | **Internal Watchdog** — monitors FFmpeg subprocess via `stderr` for errors, hangs, or death     | Restarts the pipeline within the container |
-| 2     | **Container Restart** — Docker `restart: unless-stopped` restarts the entire container          | Handles container-level crashes            |
+| 1     | **Internal Watchdog** — monitors audio callbacks and stream state for errors, hangs, or xruns   | Restarts the pipeline within the container |
+| 2     | **Container Restart** — Podman `restart: on-failure` (max 5 retries) restarts the entire container | Handles container-level crashes            |
 | 3     | **Controller Health Check** (reconciliation interval) — detects unresponsive Recorders and recreates them | Handles unrecoverable states               |
 
 ### Retry Limit
@@ -139,7 +148,7 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 ## Multi-Instance Operation
 
 *   One Recorder container per USB microphone.
-*   Each instance has its own isolated workspace (`recorders/{name}/`).
+*   Each instance has its own isolated workspace (`recorder/{name}/`).
 *   Instances are spawned by the Controller, each with its own profile injection.
 *   Activation/deactivation of individual microphones is a **Controller responsibility** (via database / web interface).
 
@@ -161,18 +170,18 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Configuration & Environment
 
-| Variable / Mount            | Description                | Default / Example                                         |
-| --------------------------- | -------------------------- | --------------------------------------------------------- |
-| `SILVASONIC_RECORDER_PORT`  | Health endpoint port       | `9500`                                                    |
-| `RECORDER_DEVICE`           | ALSA device identifier     | `hw:1,0`                                                  |
-| `RECORDER_PROFILE`          | Microphone Profile slug    | `ultramic_384_evo`                                        |
-| `RECORDER_SEGMENT_DURATION` | Segment duration (seconds) | `10`                                                      |
-| `SILVASONIC_ICECAST_URL`    | Target for Opus Stream     | `icecast://user:pass@host:port/mount`                     |
-| `/dev/snd`                  | ALSA audio device access   | (device mapping)                                          |
-| Workspace mount             | NVMe recording workspace   | `${SILVASONIC_WORKSPACE_PATH}/recorders:/app/workspace:z` |
+| Variable / Mount                    | Description                                        | Default / Example                                                      |
+| ----------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
+| `SILVASONIC_RECORDER_DEVICE`        | ALSA device identifier                             | `hw:1,0`                                                               |
+| `SILVASONIC_RECORDER_PROFILE_SLUG`  | Microphone Profile slug                            | `ultramic_384_evo`                                                     |
+| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile config (JSONB, serialized by Controller) | `{"audio":{"sample_rate":384000,...}}`                              |
+| `SILVASONIC_ICECAST_URL`            | Target for Opus Stream                             | `icecast://user:pass@host:port/mount`                                  |
+| `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
+| Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |
 
 > [!NOTE]
-> All `RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device.
+> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The `SILVASONIC_RECORDER_CONFIG_JSON` variable contains the full JSONB config block from the `microphone_profiles` table, serialized by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
 
 ---
 
@@ -182,10 +191,10 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 | ---------------- | ---------------------------------------------------------------------------------------- |
 | **Immutable**    | Yes — config at startup via env vars, restart to reconfigure (ADR-0019)                  |
 | **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
-| **Concurrency**  | Process-based — core work in FFmpeg subprocess, Python wrapper is threaded (Watchdog)    |
+| **Concurrency**  | Process-based — core work in C extensions (PortAudio/libsndfile), Python wrapper is threaded |
 | **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
 | **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
-| **Resources**    | Medium — continuous I/O to NVMe, FFmpeg CPU usage scales with sample rate                |
+| **Resources**    | Medium — continuous I/O to NVMe, dynamic resampling CPU usage scales with sample rate    |
 | **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
 | **Retry Limit**  | Max 5 restart retries before giving up — prevents infinite restart loops                 |
 
@@ -193,9 +202,10 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Technology Stack
 
-*   **Audio Pipeline:** FFmpeg (system binary) + `ffmpeg-python` (graph construction)
-*   **Audio Codecs:** `pcm_s24le` (Raw), `pcm_s16le` (Processed), Opus/Ogg (Live)
-*   **System Dependencies:** `ffmpeg`, `alsa-utils`
+*   **Audio Capture:** `sounddevice` (PortAudio wrapper)
+*   **Audio I/O:** `soundfile` (libsndfile wrapper)
+*   **Audio Resampling:** `soxr` (libsoxr — industry-standard audio resampling)
+*   **System Dependencies:** `libportaudio2`, `libsndfile1`, `alsa-utils`
 *   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
 *   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
 
@@ -217,7 +227,6 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Open Questions & Future Ideas
 
-*   FFmpeg vs. GStreamer — GStreamer offers lower-latency ALSA integration but more complex pipeline syntax
 *   Automatic gain control based on ambient noise levels
 
 ---

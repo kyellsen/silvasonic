@@ -38,7 +38,7 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: database
-      CONTAINER_SOCKET: /var/run/container.sock
+      SILVASONIC_CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
       SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
       SILVASONIC_REDIS_URL: redis://redis:6379/0

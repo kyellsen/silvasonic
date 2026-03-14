@@ -89,8 +89,8 @@ class TestPodmanLifecycle:
             name=container_name,
             network="silvasonic-net",
             environment={
-                "RECORDER_DEVICE": "hw:99,0",
-                "RECORDER_PROFILE": "test_profile",
+                "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
+                "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
                 "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
             },
             labels={

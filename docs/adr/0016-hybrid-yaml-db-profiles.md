@@ -30,9 +30,9 @@ Previously, profiles were loaded directly from YAML files at startup. This made 
     *   YAML files MUST be parsed using `pyYAML` with strict `safe_load` (see AGENTS.md §5).
     *   On every Controller startup, a `ProfileBootstrapper`:
         *   Reads the YAML files.
-        *   **Upserts** (Insert or Update) them into the database.
+        *   **Inserts** them into the database if they do not exist (`ON CONFLICT DO NOTHING`).
         *   Marks them as `is_system=True`.
-    *   This ensures "Repo is Truth" for system profiles — changes in the git repository automatically propagate to deployments on update/restart.
+    *   This ensures "Repo is Truth" for initial system profiles, but protects user modifications (e.g., custom gain settings) from being overwritten on restart.
 
 3.  **Strict Device Linking:**
     *   The `devices` table has a Foreign Key (`profile_slug`) to `microphone_profiles.slug`.
@@ -60,7 +60,7 @@ The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`se
     *   **Data Integrity:** Foreign keys prevent deleting a profile that is in use by a device.
     *   **Two-Worlds Alignment:** Seed data (World A) bootstraps runtime state (World B).
 *   **Negative:**
-    *   **Precedence Complexity:** YAML "wins" on startup — the bootstrapper overwrites DB changes to system profiles (`is_system=True`). This is intentional to enforce "Repo is Truth" for system profiles. User-created profiles (`is_system=False`) are never overwritten.
+    *   **Precedence Complexity:** YAML seeds only apply if the profile does not exist. If a system profile needs a mandatory bugfix update from the repository, an explicit migration script or manual user deletion is required to force a re-seed.
     *   **Startup Penalty:** Small overhead to parse YAMLs and sync to PostgreSQL on every boot (negligible for expected profile counts < 100).
 
 ## 5. References

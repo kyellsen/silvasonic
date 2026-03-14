@@ -62,7 +62,7 @@ class SilvasonicPodmanClient:
     * ``list_containers()`` — thin wrapper with sensible defaults.
     * ``close()`` — safe disconnect.
 
-    The socket path is read from the ``CONTAINER_SOCKET`` environment
+    The socket path is read from the ``SILVASONIC_CONTAINER_SOCKET`` environment
     variable (set in ``compose.yml``), falling back to
     ``/var/run/container.sock``.
     """
@@ -77,11 +77,13 @@ class SilvasonicPodmanClient:
 
         Args:
             socket_path: Path to the Podman socket.  Defaults to
-                ``CONTAINER_SOCKET`` env var or ``/var/run/container.sock``.
+                ``SILVASONIC_CONTAINER_SOCKET`` env var or ``/var/run/container.sock``.
             max_retries: Number of connection attempts before giving up.
             retry_delay: Seconds to wait between retries.
         """
-        self._socket_path = socket_path or os.environ.get("CONTAINER_SOCKET", DEFAULT_SOCKET_PATH)
+        self._socket_path = socket_path or os.environ.get(
+            "SILVASONIC_CONTAINER_SOCKET", DEFAULT_SOCKET_PATH
+        )
         self._max_retries = max_retries
         self._retry_delay = retry_delay
         self._client: Any = None  # podman.PodmanClient instance

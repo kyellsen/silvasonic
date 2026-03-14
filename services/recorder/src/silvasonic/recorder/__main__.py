@@ -33,7 +33,7 @@ class RecorderService(SilvaService):
     def __init__(self) -> None:
         """Initialize with Redis URL from environment."""
         super().__init__(
-            instance_id="recorder",
+            instance_id=os.environ.get("SILVASONIC_INSTANCE_ID", "recorder"),
             redis_url=os.environ.get("SILVASONIC_REDIS_URL", "redis://localhost:6379/0"),
         )
 

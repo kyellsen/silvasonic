@@ -108,7 +108,7 @@ As an **Immutable Container** (ADR-0019), the Processor reads these settings *on
 ## 6. Technology Stack
 
 *   **Language**: Python 3.11
-*   **Base Image**: `python:3.11-slim-bookworm` (with `libsndfile1`, `ffmpeg`)
+*   **Base Image**: `python:3.11-slim-bookworm` (with `libsndfile1`)
 *   **Python:** `silvasonic-core` (SilvaService, database models, health monitoring), `structlog` (JSON logging)
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 *   **Filesystem:** `pathlib`, `soundfile` (WAV metadata extraction)

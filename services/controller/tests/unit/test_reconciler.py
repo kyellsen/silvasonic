@@ -60,6 +60,7 @@ class TestDeviceStateEvaluator:
 
         profile = MagicMock()
         profile.slug = "test_profile"
+        profile.config = {"sample_rate": 48000, "channels": 1}
 
         result_mock = MagicMock()
         result_mock.scalars.return_value.all.return_value = [device]

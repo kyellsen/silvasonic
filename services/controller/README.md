@@ -221,8 +221,8 @@ On startup, the Controller queries all containers with `io.silvasonic.owner=cont
 The Recorder has **no database access** (ADR-0013). The Controller injects the Microphone Profile configuration into Recorder containers via environment variables at container creation time:
 
 ```
-RECORDER_DEVICE=hw:1,0
-RECORDER_PROFILE=ultramic_384_evo
+SILVASONIC_RECORDER_DEVICE=hw:1,0
+SILVASONIC_RECORDER_PROFILE_SLUG=ultramic_384_evo
 ```
 
 ### Seed & Protection Logic
@@ -386,7 +386,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | Variable / Mount             | Description                               | Default / Example                                                 |
 | ---------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
 | `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                                                            |
-| `CONTAINER_SOCKET`           | Podman socket path inside container       | `/var/run/container.sock`                                         |
+| `SILVASONIC_CONTAINER_SOCKET` | Podman socket path inside container       | `/var/run/container.sock`                                         |
 | `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`                                                  |
 | Workspace mount              | Controller workspace                      | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
 | Recorder workspace mount     | Recorder workspace (for provisioning)     | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |

@@ -43,7 +43,7 @@ stream:
   raw_enabled: true                  # Archive full native sample rate
   processed_enabled: true            # Downsample to 48kHz for analysis
   live_stream_enabled: true          # Enable Opus stream to Icecast
-  segment_duration_s: 15             # File rotation interval (seconds)
+  segment_duration_s: 15             # Profile-specific override; system default is 10s
 ```
 
 ---
@@ -109,10 +109,10 @@ for card in sorted(Path('/sys/class/sound').glob('card*')):
 | Phase                       | Actor                              | How                                                                             |
 | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
 | **System Profile creation** | Developer                          | Adds YAML file to `services/controller/config/profiles/`                        |
-| **Seed into DB**            | Controller (ProfileBootstrapper)   | Upserts on startup (`is_system=true`). Overwrites DB values for system profiles |
+| **Seed into DB**            | Controller (ProfileBootstrapper)   | Inserts on startup (`is_system=true`). Skips if slug already exists — user profiles are never overwritten |
 | **User Profile creation**   | User (Web-Interface)               | CRUD via Web-Interface → DB (`is_system=false`). Never overwritten by seed      |
 | **Profile assignment**      | Controller (auto) or User (manual) | Device enrollment via `devices.profile_slug` FK                                 |
-| **Profile injection**       | Controller                         | Env vars `RECORDER_DEVICE`, `RECORDER_PROFILE` at `containers.run()`            |
+| **Profile injection**       | Controller                         | Env vars `SILVASONIC_RECORDER_DEVICE`, `SILVASONIC_RECORDER_PROFILE_SLUG`, `SILVASONIC_RECORDER_CONFIG_JSON` at `containers.run()`  |
 
 ---
 

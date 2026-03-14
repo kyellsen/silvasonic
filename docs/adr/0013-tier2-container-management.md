@@ -92,6 +92,7 @@ Tier 2 container logs are accessed via `podman-py` (`container.logs()`), **not**
 | File | Config | Value |
 | --- | --- | --- |
 | `compose.yml` | Socket mount | `${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z` |
-| `compose.yml` | Network env | `SILVASONIC_NETWORK=silvasonic-net` |
+| `compose.yml` | Socket env   | `SILVASONIC_CONTAINER_SOCKET=/var/run/container.sock` |
+| `compose.yml` | Network env  | `SILVASONIC_NETWORK=silvasonic-net` |
 | `.env` | Podman socket | `SILVASONIC_PODMAN_SOCKET=/run/user/1000/podman/podman.sock` |
 | `.env` | Network name | `SILVASONIC_NETWORK=silvasonic-net` |

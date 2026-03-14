@@ -7,6 +7,7 @@ mounts, and restart policies.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -195,11 +196,13 @@ def build_recorder_spec(
         name=container_name,
         network=network,
         environment={
-            "RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
-            "RECORDER_PROFILE": profile.slug,
+            "SILVASONIC_RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
+            "SILVASONIC_RECORDER_PROFILE_SLUG": profile.slug,
+            "SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(profile.config),
             "SILVASONIC_REDIS_URL": os.environ.get(
                 "SILVASONIC_REDIS_URL", "redis://localhost:6379/0"
             ),
+            "SILVASONIC_INSTANCE_ID": device_id,
         },
         labels={
             "io.silvasonic.tier": "2",

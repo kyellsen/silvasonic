@@ -1,5 +1,7 @@
 """Unit tests for Tier2ServiceSpec, build_recorder_spec, and ContainerManager.
 
+Note: import json is used inside test_build_recorder_spec to verify CONFIG_JSON.
+
 Covers spec validation, recorder spec factory, start/stop/remove/reconcile
 operations, and edge cases (not connected, not found, connection errors).
 """
@@ -87,6 +89,8 @@ class TestBuildRecorderSpec:
 
     def test_build_recorder_spec(self) -> None:
         """build_recorder_spec creates a valid spec from Device + Profile."""
+        import json
+
         device = MagicMock()
         device.name = "0869-0389-00000000034F"
         device.config = {
@@ -96,14 +100,19 @@ class TestBuildRecorderSpec:
 
         profile = MagicMock()
         profile.slug = "ultramic_384_evo"
+        profile.config = {"audio": {"sample_rate": 384000, "channels": 1}}
 
         spec = build_recorder_spec(device, profile)
 
         # Human-readable name: slug + last 4 hex of serial
         assert spec.name == "silvasonic-recorder-ultramic-384-evo-034f"
         assert spec.image == "localhost/silvasonic_recorder:latest"
-        assert spec.environment["RECORDER_DEVICE"] == "hw:2,0"
-        assert spec.environment["RECORDER_PROFILE"] == "ultramic_384_evo"
+        assert spec.environment["SILVASONIC_RECORDER_DEVICE"] == "hw:2,0"
+        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "ultramic_384_evo"
+        # CONFIG_JSON contains the full profile config (ADR-0016, Option C)
+        assert "SILVASONIC_RECORDER_CONFIG_JSON" in spec.environment
+        parsed = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
+        assert parsed == {"audio": {"sample_rate": 384000, "channels": 1}}
         assert spec.labels["io.silvasonic.service"] == "recorder"
         # device_id label still uses stable_device_id (DB primary key)
         assert spec.labels["io.silvasonic.device_id"] == "0869-0389-00000000034F"

@@ -31,6 +31,7 @@ For concrete, phase-level implementation tasks see:
 
 - **[Milestone v0.2.0](docs/development/milestone_0_2_0.md)** — Phases & tasks for Service Infrastructure
 - **[Milestone v0.3.0](docs/development/milestone_0_3_0.md)** — Phases & tasks for Tier 2 Container Management
+- **[Milestone v0.4.0](docs/development/milestone_0_4_0.md)** — Phases & tasks for Audio Recording (Dual Stream)
 
 ---
 

@@ -26,8 +26,8 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   **Format**: `WAV` (linear PCM).
     *   **Motivation**: Minimal CPU overhead for writing; instant availability for local seeking/reading without decoding latency.
     *   **Structure** (see [Filesystem Governance](../arch/filesystem_governance.md) for full directory layout):
-        *   `data/recordings/raw/*.wav`
-        *   `data/recordings/processed/*.wav`
+        *   `data/raw/*.wav`
+        *   `data/processed/*.wav`
 
 4.  **Cloud Storage Format**:
     *   **Format**: `FLAC` (Free Lossless Audio Codec).
@@ -45,7 +45,7 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   **Downstream Compatibility**: Services like BirdNET can blindly consume the `processed` folder knowing it is always 48kHz, removing the need for internal resampling.
     *   **Hardware Independence**: Replacing a 384kHz mic with a 96kHz mic requires no code changes in downstream consumers, as `processed` remains 48kHz, and `raw` is just handled as "the archival file".
     *   **Database Schema**: The `recordings` table uses `file_raw` and `file_processed` columns.
-    *   **Filesystem**: The workspace directory structure uses `data/recordings/raw` and `data/recordings/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
+    *   **Filesystem**: The workspace directory structure uses `data/raw` and `data/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
 *   **Negative:**
     *   Requires double the storage for local recordings (raw + processed).
     *   CPU overhead for real-time resampling to produce the processed stream.
