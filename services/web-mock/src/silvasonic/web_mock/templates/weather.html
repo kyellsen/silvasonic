@@ -17,35 +17,35 @@
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
             <!-- 8 specific metrics -->
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Temp</div>
                 <div class="text-lg font-bold">{{ current.temperature }}°C</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">24h Mean</div>
                 <div class="text-lg font-bold">{{ current.temperature_24h }}°C</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Precipitation</div>
                 <div class="text-lg font-bold">{{ current.precipitation }} mm</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Humidity</div>
                 <div class="text-lg font-bold">{{ current.humidity }}%</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Pressure</div>
                 <div class="text-lg font-bold">{{ current.pressure }} hPa</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Wind Speed</div>
                 <div class="text-lg font-bold">{{ current.wind }} m/s</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Peak Gusts</div>
                 <div class="text-lg font-bold">{{ current.wind_gust }} m/s</div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 p-4 text-center">
+            <div class="silva-card p-4 text-center">
                 <div class="text-sm text-base-content/50 mb-1">Sunshine</div>
                 <div class="text-lg font-bold">{{ current.sunshine }} min</div>
             </div>
@@ -60,42 +60,42 @@
             <p class="text-xs text-base-content/50 mt-0.5">Historical trends (10-minute intervals)</p>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Temperature & 24h Mean</h3>
                     <div id="chart-temperature"
                         class="h-64 w-full border border-dashed border-base-content/10 rounded-xl"></div>
                 </div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Wind Speed & Peak Gusts</h3>
                     <div id="chart-wind" class="h-64 w-full border border-dashed border-base-content/10 rounded-xl">
                     </div>
                 </div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Precipitation</h3>
                     <div id="chart-precipitation"
                         class="h-48 w-full border border-dashed border-base-content/10 rounded-xl"></div>
                 </div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Sunshine</h3>
                     <div id="chart-sunshine" class="h-48 w-full border border-dashed border-base-content/10 rounded-xl">
                     </div>
                 </div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Humidity</h3>
                     <div id="chart-humidity" class="h-48 w-full border border-dashed border-base-content/10 rounded-xl">
                     </div>
                 </div>
             </div>
-            <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+            <div class="silva-card">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Pressure</h3>
                     <div id="chart-pressure" class="h-48 w-full border border-dashed border-base-content/10 rounded-xl">
@@ -113,7 +113,7 @@
             <p class="text-xs text-base-content/50 mt-0.5">Trends vs external factors</p>
         </div>
         <div
-            class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            class="silva-card-static">
             <div class="card-body p-5">
                 <h3 class="text-sm font-semibold mb-3">Detections vs. Temperature (dual Y-axis)</h3>
                 <div

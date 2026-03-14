@@ -56,8 +56,8 @@ The `match` block inside `audio` defines how the Controller matches a physically
 
 | Field                | Source                    | Stability                   | Purpose                                   |
 | -------------------- | ------------------------- | --------------------------- | ----------------------------------------- |
-| `usb_vendor_id`      | `pyudev` → `ID_VENDOR_ID` | ✅ Registered, never changes | Primary identification                    |
-| `usb_product_id`     | `pyudev` → `ID_MODEL_ID`  | ✅ Registered, never changes | Together with vendor = unique device type |
+| `usb_vendor_id`      | `sysfs` → `idVendor`   | ✅ Registered, never changes | Primary identification                    |
+| `usb_product_id`     | `sysfs` → `idProduct`  | ✅ Registered, never changes | Together with vendor = unique device type |
 | `alsa_name_contains` | `/proc/asound/cards`      | ⚠️ May vary between kernels  | Fallback / secondary confirmation         |
 
 ### Matching Algorithm
@@ -81,14 +81,24 @@ To create a profile for new hardware, connect the microphone and run:
 lsusb
 # Example output: Bus 001 Device 005: ID 2578:0001 Dodotronic Ultramic 384 EVO
 
-# Or via pyudev:
+# Or via sysfs (direct read, no external dependencies):
 python3 -c "
-import pyudev
-ctx = pyudev.Context()
-for d in ctx.list_devices(subsystem='sound'):
-    p = d.find_parent('usb', 'usb_device')
-    if p:
-        print(f'{p.get(\"ID_VENDOR_ID\")}:{p.get(\"ID_MODEL_ID\")} — {p.get(\"ID_MODEL\")}')
+from pathlib import Path
+import os
+for card in sorted(Path('/sys/class/sound').glob('card*')):
+    real = card.resolve()
+    cur = real
+    while cur != cur.parent:
+        sub = cur / 'subsystem'
+        if sub.is_symlink() and Path(os.readlink(sub)).name == 'usb':
+            uevent = (cur / 'uevent').read_text()
+            if 'DEVTYPE=usb_device' in uevent:
+                vid = (cur / 'idVendor').read_text().strip()
+                pid = (cur / 'idProduct').read_text().strip()
+                prod = (cur / 'product').read_text().strip() if (cur / 'product').exists() else '?'
+                print(f'{vid}:{pid} — {prod}')
+                break
+        cur = cur.parent
 "
 ```
 

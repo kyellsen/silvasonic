@@ -46,6 +46,7 @@ from typing import Any
 
 import structlog
 from silvasonic.core.health import HealthMonitor
+from silvasonic.core.heartbeat import DEFAULT_HEARTBEAT_INTERVAL_S
 from silvasonic.core.service_context import ServiceContext
 
 logger = structlog.get_logger()
@@ -79,7 +80,7 @@ class SilvaService:
         instance_id: str = "default",
         workspace_path: str | Path | None = None,
         redis_url: str = "redis://localhost:6379/0",
-        heartbeat_interval: float = 10.0,
+        heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL_S,
     ) -> None:
         """Initialize the service."""
         self._ctx = ServiceContext(

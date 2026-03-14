@@ -15,10 +15,10 @@
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
     <!-- Status Card -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2">
+    <div class="silva-card col-span-2">
         <div class="card-body p-5 flex flex-row items-center justify-between">
             <div>
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Status</h2>
+                <h2 class="silva-label mb-2">Status</h2>
                 <div class="flex items-center gap-2">
                     {{ status_badge(recorder.status) }}
                 </div>
@@ -28,7 +28,7 @@
                 <label class="flex items-center gap-2 cursor-pointer group">
                     <span
                         class="text-xs font-semibold text-base-content/60 group-hover:text-base-content transition-colors">On/Off</span>
-                    <input type="checkbox" class="toggle toggle-primary" {% if recorder.status !='offline' and
+                    <input type="checkbox" class="toggle toggle-sm toggle-primary" {% if recorder.status !='offline' and
                         recorder.status !='error' %}checked{% endif %} />
                 </label>
             </div>
@@ -36,10 +36,10 @@
     </div>
 
     <!-- Level Card -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2">
+    <div class="silva-card col-span-2">
         <div class="card-body p-5">
             <div class="flex justify-between items-center mb-2">
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">Live Level</h2>
+                <h2 class="silva-label">Live Level</h2>
                 <span class="text-xs font-mono">{{ recorder.level_pct }}%</span>
             </div>
             <progress
@@ -53,9 +53,9 @@
     </div>
 
     <!-- Configuration -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+    <div class="silva-card">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-3">Audio Config</h2>
+            <h2 class="silva-label mb-3">Audio Config</h2>
             <div class="space-y-2 text-sm font-mono">
                 <div class="flex justify-between"><span class="text-base-content/50">Sample Rate</span><span>{{
                         "{:,}".format(recorder.sample_rate) }} Hz</span></div>
@@ -69,9 +69,9 @@
     </div>
 
     <!-- Storage Policy -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+    <div class="silva-card">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-3">Storage Policy</h2>
+            <h2 class="silva-label mb-3">Storage Policy</h2>
             <div class="space-y-2 text-sm font-mono">
                 <div class="flex justify-between"><span class="text-base-content/50">Segment</span><span>{{
                         recorder.segment_s }}s</span></div>
@@ -84,9 +84,9 @@
 
     <!-- Shared system metric cards can be adapted or simply omit to focus on the device -->
     <!-- NVMe card -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200">
+    <div class="silva-card-static">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">System NVMe</h2>
+            <h2 class="silva-label mb-2">System NVMe</h2>
             <div
                 class="text-2xl font-bold {% if metrics.nvme_used_pct > 80 %}text-error{% elif metrics.nvme_used_pct > 65 %}text-warning{% else %}text-success{% endif %}">
                 {{ metrics.nvme_used_pct }}%
@@ -97,9 +97,9 @@
         </div>
     </div>
 
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200">
+    <div class="silva-card-static">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Upload Queue</h2>
+            <h2 class="silva-label mb-2">Upload Queue</h2>
             <div class="text-2xl font-bold text-info">
                 {{ active_uploaders }} active
             </div>

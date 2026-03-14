@@ -47,6 +47,7 @@ dev = [
     "mypy>=1.14.0",
     "pre-commit>=4.0.0",
     "pip-audit>=2.7.0",
+    "rich>=13.0.0",               # Pretty logging in interactive dev terminals (not needed in prod containers)
     "ruff>=0.8.0",
     "yamlfix>=1.19.1",
 

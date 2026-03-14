@@ -12,7 +12,7 @@
 <div class="flex flex-col gap-5">
     {% for rec in recorders %}
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 relative">
+        class="silva-card-interactive relative">
         <a href="/recorders/{{ rec.id }}" class="absolute inset-0 z-0 rounded-xl"></a>
         <div class="card-body p-5 relative z-10 pointer-events-none">
             <div class="flex items-center justify-between mb-3">

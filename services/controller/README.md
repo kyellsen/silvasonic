@@ -16,8 +16,8 @@
 
 ## User Benefit
 
-*   **Plug-and-Play:** Automatically detects connected microphones within **≤ 1 second** (via `pyudev` HotPlug events) and spins up the appropriate Recorder containers with the correct configuration (Profile Injection).
-*   **Resilience:** Automatically repairs broken services via the reconciliation loop (~30s). A disconnected microphone is detected within 1 second and its Recorder is stopped cleanly.
+*   **Plug-and-Play:** Automatically detects connected microphones within **≤ 1 second** (via polling in the reconciliation loop) and spins up the appropriate Recorder containers with the correct configuration (Profile Injection).
+*   **Resilience:** Automatically repairs broken services via the reconciliation loop. A disconnected microphone is detected within 1 second and its Recorder is stopped cleanly.
 *   **Control:** Allows enabling/disabling features via the Web-Interface to save power, CPU, or storage — all routed through DB desired state, never direct commands.
 
 ---
@@ -93,47 +93,43 @@ If any condition is not met, the Controller will not start (or will stop) the Re
 
 ---
 
-## USB Detection & HotPlug
+## USB Detection
 
-> **Status:** 🔮 Planned
+> **Status:** ✅ Implemented
 
-The Controller detects **all** USB audio devices on the host — not only those with a known Microphone Profile. Detection uses a two-layer architecture:
+The Controller detects **all** USB audio devices on the host — not only those with a known Microphone Profile.
 
-### Layer 1: Event-Driven HotPlug (Primary, ≤ 1 s)
+### Polling-Based Detection (≤ 1 s)
 
-A `pyudev.Monitor` (subsystem `sound`) runs as a dedicated `asyncio.Task` and listens for Linux kernel `udev` events:
-
-*   **`add` event:** A new ALSA sound card appears → Controller scans the device, correlates USB metadata, writes to DB, and triggers an immediate reconciliation.
-*   **`remove` event:** An ALSA card disappears → Controller sets `status=offline`, stops the associated Recorder (SIGTERM), and triggers reconciliation.
-
-**Timing:** USB plug → kernel detects (~50 ms) → udev event (~100 ms) → `pyudev.Monitor` receives (~150 ms) → DB write + reconcile trigger (~300 ms) → **total < 1 second**.
-
-### Layer 2: Full Scan (Fallback, ~30 s)
-
-A `DeviceScanner` runs inside the existing reconciliation loop as a safety net:
+A `DeviceScanner` runs inside the reconciliation loop (interval: 1 second):
 
 *   Enumerates all ALSA cards via `/proc/asound/cards`.
-*   Correlates each card with its USB parent via `pyudev` / `sysfs`.
-*   Detects devices that the Monitor may have missed (e.g., devices plugged in before the Controller started, or if `udev` is unavailable inside the container).
+*   Correlates each card with its USB parent via `sysfs` to extract stable identifiers (VID, PID, Serial).
+*   Detects new devices → DB write + profile matching + recorder spawning.
+*   Detects removed devices → sets `status=offline` + stops recorder.
 
-> **Graceful Degradation:** If the `pyudev.Monitor` fails to start (e.g., `/run/udev` not mounted), the Controller falls back to polling-only mode with a warning in the log. HotPlug latency increases to ~30 s, but functionality is preserved.
+**Timing:** USB plug → kernel detects (~50 ms) → next poll cycle (≤ 1 s) → DB write + reconcile → **total ≤ 1 second**.
+
+> **Design Decision:** Polling was chosen over event-driven udev monitoring (Netlink) because Netlink sockets do not function in rootless Podman containers (User-Namespace limitation). USB metadata is read directly from `sysfs` attribute files (`pathlib`) — no external libraries required.
 
 ### USB ↔ ALSA Correlation
 
-For each ALSA card, the Controller walks the `sysfs` tree via `pyudev` to extract stable USB identifiers:
+For each ALSA card, the Controller walks the `sysfs` tree via `pathlib` to extract stable USB identifiers:
 
 ```python
-# Pseudocode: correlate ALSA card with USB device
-context = pyudev.Context()
-device = pyudev.Devices.from_sys_path(context, f"/sys/class/sound/card{idx}")
-usb_parent = device.find_parent('usb', 'usb_device')
+# Pseudocode: correlate ALSA card with USB device via sysfs
+card_path = Path(f"/sys/class/sound/card{idx}").resolve()
 
-if usb_parent:
-    vendor_id  = usb_parent.get('ID_VENDOR_ID')     # e.g., "2578"
-    product_id = usb_parent.get('ID_MODEL_ID')       # e.g., "0001"
-    serial     = usb_parent.get('ID_SERIAL_SHORT')   # e.g., "ABC123" (may be None!)
-    vendor     = usb_parent.get('ID_VENDOR')          # e.g., "Dodotronic"
-    model      = usb_parent.get('ID_MODEL')           # e.g., "Ultramic_384K"
+# Walk up to find USB parent (subsystem=usb, DEVTYPE=usb_device)
+current = card_path
+while current != current.parent:
+    if (current / "subsystem").is_symlink():
+        if Path(os.readlink(current / "subsystem")).name == "usb":
+            vendor_id  = (current / "idVendor").read_text().strip()   # e.g., "2578"
+            product_id = (current / "idProduct").read_text().strip()  # e.g., "0001"
+            serial     = (current / "serial").read_text().strip()     # may be empty
+            break
+    current = current.parent
 ```
 
 Devices **without** a USB parent (e.g., the Raspberry Pi's built-in `bcm2835` audio) are registered as `pending` but will never match a profile — the user can set them to `ignored` via the Web-Interface.
@@ -142,7 +138,7 @@ Devices **without** a USB parent (e.g., the Raspberry Pi's built-in `bcm2835` au
 
 ## Device Identity & Stable Naming
 
-> **Status:** 🔮 Planned · **User Story:** [US-C01](../../docs/user_stories/controller.md#us-c01-mikrofon-einstecken--sofort-erkannt-️)
+> **Status:** ✅ Implemented · **User Story:** [US-C01](../../docs/user_stories/controller.md#us-c01-mikrofon-einstecken--sofort-erkannt-️)
 
 Re-plugging a microphone must re-activate the same Recorder with the same workspace, storage, and identity — no duplicate Recorders. Each physical microphone is identified by a **stable device ID** that survives unplugging and re-plugging:
 
@@ -165,7 +161,7 @@ This ensures that **re-plugging a microphone re-activates the same Recorder** wi
 
 ## Profile Matching & Auto-Enrollment
 
-> **Status:** 🔮 Planned
+> **Status:** ✅ Implemented
 
 When a new USB device is detected, the Controller matches it against all `microphone_profiles` using structured `MatchCriteria`:
 
@@ -200,7 +196,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 > **Status:** ✅ Implemented
 
-The Controller runs a periodic reconciliation loop (~30 s) that compares **desired state** (from `devices` + `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
+The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices` + `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
 
 Every Tier 2 container is tagged with labels for lifecycle management:
 
@@ -267,7 +263,7 @@ The Controller follows the **State Reconciliation Pattern** (inspired by Kuberne
 ### Control Flow
 
 *   **All state changes** (enable/disable, change profile, emergency stop): Web-Interface → DB write → Redis nudge → Controller reconciles immediately
-*   **Timer fallback**: If the nudge is lost (Controller restarting), the 30s reconciliation timer catches up automatically. The DB desired state is never lost.
+*   **Timer fallback**: If the nudge is lost (Controller restarting), the reconciliation timer catches up automatically. The DB desired state is never lost.
 
 See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging Patterns](../../docs/arch/messaging_patterns.md).
 
@@ -357,9 +353,8 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | Config seeder + profile bootstrapper | ✅ Implemented (ADR-0016/0023)                               |
 | Reconcile-nudge subscriber           | ✅ Implemented                                               |
 | Resource limits & QoS enforcement    | ✅ Implemented (ADR-0020)                                    |
-| USB detection (`pyudev`)             | 🔮 Planned                                                   |
-| HotPlug Monitor (`pyudev`)           | 🔮 Planned                                                   |
-| Profile matching + auto-enroll       | 🔮 Planned                                                   |
+| USB detection (polling, 1s)          | ✅ Implemented                                               |
+| Profile matching + auto-enroll       | ✅ Implemented                                               |
 | Log forwarding (Podman→Redis)        | 🔮 Planned (ADR-0022)                                        |
 
 ---
@@ -367,7 +362,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 ## Technology Stack
 
 *   **Container Management:** `podman-py` (Podman REST API client)
-*   **Hardware Detection:** `pyudev` (Linux `udev` / `libudev` bindings for USB enumeration + HotPlug monitoring)
+*   **Hardware Detection:** Direct `sysfs` reads via `pathlib` (USB metadata extraction — zero external dependencies)
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
 *   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
@@ -393,8 +388,6 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                                                            |
 | `CONTAINER_SOCKET`           | Podman socket path inside container       | `/var/run/container.sock`                                         |
 | `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`                                                  |
-| Socket mount                 | Host Podman socket bind mount             | `${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`           |
-| udev mount                   | Host udev runtime for HotPlug events      | `/run/udev:/run/udev:ro`                                          |
 | Workspace mount              | Controller workspace                      | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
 | Recorder workspace mount     | Recorder workspace (for provisioning)     | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
 

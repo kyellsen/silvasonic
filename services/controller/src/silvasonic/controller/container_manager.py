@@ -7,6 +7,8 @@ and should be called via ``asyncio.to_thread()`` from async code.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import structlog
 from podman.errors import NotFound as _NotFound
 from silvasonic.controller.container_spec import Tier2ServiceSpec
@@ -31,7 +33,7 @@ class ContainerManager:
         Returns container info dict on success, None on failure.
         """
         if not self._podman.is_connected:
-            log.error("container_manager.start.not_connected")
+            log.warning("container_manager.start.not_connected")
             return None
 
         # Check if container already exists
@@ -56,26 +58,47 @@ class ContainerManager:
                 for m in spec.mounts
             ]
 
-            container = self._podman.containers.run(
-                image=spec.image,
-                name=spec.name,
-                detach=True,
-                network=spec.network,
-                environment=spec.environment,
-                labels=spec.labels,
-                mounts=mounts,
-                devices=spec.devices if spec.devices else None,
-                group_add=spec.group_add if spec.group_add else None,
-                privileged=spec.privileged,
-                restart_policy={
+            # Ensure bind-mount source directories exist on the HOST.
+            # Use controller_source (controller-local path via bind mount)
+            # so mkdir goes through to the host filesystem.
+            for mount_spec in spec.mounts:
+                mkdir_path = Path(mount_spec.controller_source or mount_spec.source)
+                if not mount_spec.read_only and not mkdir_path.exists():
+                    mkdir_path.mkdir(parents=True, exist_ok=True)
+                    log.info(
+                        "container_manager.mkdir",
+                        path=str(mkdir_path),
+                        name=spec.name,
+                    )
+
+            run_kwargs: dict[str, object] = {
+                "image": spec.image,
+                "name": spec.name,
+                "detach": True,
+                "network_mode": "bridge",
+                "networks": {spec.network: {}},
+                "environment": spec.environment,
+                "labels": spec.labels,
+                "mounts": mounts,
+                "privileged": spec.privileged,
+                "restart_policy": {
                     "Name": spec.restart_policy.name,
                     "MaximumRetryCount": spec.restart_policy.max_retry_count,
                 },
                 # Resource Limits (ADR-0020)
-                mem_limit=spec.memory_limit,
-                cpu_quota=int(spec.cpu_limit * 100_000),
-                oom_score_adj=spec.oom_score_adj,
-            )
+                "mem_limit": spec.memory_limit,
+                "cpu_quota": int(spec.cpu_limit * 100_000),
+                "oom_score_adj": spec.oom_score_adj,
+            }
+
+            # Only pass devices/group_add when non-empty; podman-py
+            # crashes with TypeError if either is None.
+            if spec.devices:
+                run_kwargs["devices"] = spec.devices
+            if spec.group_add:
+                run_kwargs["group_add"] = spec.group_add
+
+            container = self._podman.containers.run(**run_kwargs)
 
             log.info(
                 "container_manager.started",
@@ -176,9 +199,10 @@ class ContainerManager:
             else:
                 log.debug("reconciler.already_running", name=spec.name)
 
-        # Stop orphaned containers
+        # Stop and remove orphaned containers (ADR-0017: immutable → recreate)
         for container in actual:
             name = str(container.get("name", ""))
             if name not in desired_names:
                 log.info("reconciler.stopping_orphaned", name=name)
                 self.stop(name)
+                self.remove(name)

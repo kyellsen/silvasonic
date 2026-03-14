@@ -79,14 +79,20 @@ def configure_logging(service_name: str) -> None:
     root_logger.handlers.clear()  # Wipe any existing handlers
 
     if dev_mode and is_interactive:
-        # Interactive terminal: use RichHandler for beautiful output
-        from rich.logging import RichHandler
+        # Interactive terminal: use RichHandler for beautiful output (dev-only dep)
+        try:
+            from rich.logging import RichHandler
 
-        rich_handler = RichHandler(
-            rich_tracebacks=True, tracebacks_show_locals=True, show_time=True
-        )
-        rich_handler.setFormatter(formatter)
-        root_logger.addHandler(rich_handler)
+            rich_handler = RichHandler(
+                rich_tracebacks=True, tracebacks_show_locals=True, show_time=True
+            )
+            rich_handler.setFormatter(formatter)
+            root_logger.addHandler(rich_handler)
+        except ImportError:
+            # rich not installed (production container) — fall back to plain handler
+            stdout_handler = logging.StreamHandler(sys.stdout)
+            stdout_handler.setFormatter(formatter)
+            root_logger.addHandler(stdout_handler)
     else:
         # Container / CI / prod: plain StreamHandler to stdout (never blocks)
         stdout_handler = logging.StreamHandler(sys.stdout)

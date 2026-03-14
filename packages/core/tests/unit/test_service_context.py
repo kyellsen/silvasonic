@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from silvasonic.core.heartbeat import DEFAULT_HEARTBEAT_INTERVAL_S
 from silvasonic.core.service_context import ServiceContext
 
 
@@ -18,7 +19,7 @@ class TestServiceContextInit:
             instance_id="inst-01",
             workspace_path="/data",
             redis_url="redis://redis:6379/1",
-            heartbeat_interval=5.0,
+            heartbeat_interval=DEFAULT_HEARTBEAT_INTERVAL_S,
             skip_health_server=True,
         )
         assert ctx.service_name == "test"
@@ -26,7 +27,7 @@ class TestServiceContextInit:
         assert ctx.instance_id == "inst-01"
         assert ctx.workspace_path == "/data"
         assert ctx.redis_url == "redis://redis:6379/1"
-        assert ctx.heartbeat_interval == 5.0
+        assert ctx.heartbeat_interval == DEFAULT_HEARTBEAT_INTERVAL_S
         assert ctx.skip_health_server is True
 
     def test_defaults(self) -> None:
@@ -34,7 +35,7 @@ class TestServiceContextInit:
         ctx = ServiceContext(service_name="svc", service_port=8000)
         assert ctx.instance_id == "default"
         assert ctx.workspace_path is None
-        assert ctx.heartbeat_interval == 10.0
+        assert ctx.heartbeat_interval == DEFAULT_HEARTBEAT_INTERVAL_S
         assert ctx.skip_health_server is False
 
     def test_heartbeat_initially_none(self) -> None:

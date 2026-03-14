@@ -26,7 +26,7 @@ rarest — rarest species dict
             <h1 class="text-xl font-bold">{{ module_name }} — Overview</h1>
             <p class="text-xs text-base-content/50 mt-0.5">Summary of {{ detector_name }} activity</p>
         </div>
-        <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5">
+        <div class="silva-card">
             <div class="card-body p-5">
                 <p class="text-sm text-base-content/50">Overview metrics will be displayed here.</p>
             </div>
@@ -41,7 +41,7 @@ rarest — rarest species dict
             <p class="text-xs text-base-content/50 mt-0.5">Filter and review detections</p>
         </div>
         <div
-            class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+            class="silva-card-static">
             <div class="card-body p-5">
                 <div class="flex gap-3 mb-4">
                     <select class="select select-bordered focus:select-primary transition-all w-36">
@@ -115,7 +115,7 @@ rarest — rarest species dict
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
             <!-- Top 10 Bar Chart -->
             <div
-                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10 lg:col-span-2">
+                class="silva-card-static lg:col-span-2">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-4">Top 10 Species Frequency</h3>
                     <div class="space-y-3">
@@ -137,7 +137,7 @@ rarest — rarest species dict
 
             <!-- Rarest Species Stat Card -->
             <div
-                class="card bg-secondary/10 text-secondary-content rounded-xl shadow-sm border border-secondary/20 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                class="card bg-secondary/10 text-secondary-content rounded-xl shadow-sm border border-secondary/20 transition-all duration-300 hover:shadow-lg hover:shadow-secondary/15 hover:-translate-y-1">
                 <div class="card-body p-5 flex flex-col justify-center text-center">
                     <h3 class="text-sm font-bold uppercase tracking-wider text-secondary/70 mb-2">Rarest Species</h3>
                     <div class="text-5xl mb-2">💎</div>
@@ -154,7 +154,7 @@ rarest — rarest species dict
         <h3 class="text-base font-bold mb-4 mt-8">Temporal Trends</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div
-                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                class="silva-card-static">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">{% if module_key == 'bats' %}Nightly activity{% else
                         %}Detections per day{% endif %}</h3>
@@ -164,7 +164,7 @@ rarest — rarest species dict
             </div>
             {% if module_key == 'birds' %}
             <div
-                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+                class="silva-card-static">
                 <div class="card-body p-5">
                     <h3 class="text-sm font-semibold mb-3">Confidence histogram</h3>
                     {{ chart_placeholder('[ ECharts histogram ]', 'h-36') }}
@@ -185,7 +185,7 @@ rarest — rarest species dict
         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
             {% for sp in species %}
             <a href="{{ detail_prefix }}{{ sp.id }}"
-                class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-secondary/30 block">
+                class="silva-card-interactive overflow-hidden block">
                 {% if sp.image_url %}
                 <figure class="aspect-4/3 w-full m-0 bg-base-200">
                     <img src="{{ sp.image_url }}" alt="{{ sp.species_en }}" class="w-full h-full object-cover" />

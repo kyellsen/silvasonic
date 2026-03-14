@@ -31,7 +31,6 @@ This is the correct tradeoff for a service that is a pure UI shell.
 
 from __future__ import annotations
 
-import os
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -39,10 +38,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from silvasonic.web_mock import mock_data
-
-# Allow skipping in CI environments that cannot bind ports
-_SKIP = os.getenv("SILVASONIC_SKIP_INTEGRATION", "").lower() in ("1", "true", "yes")
-
 
 # ---------------------------------------------------------------------------
 # DB dependency stubs — same pattern as the unit tests
@@ -107,7 +102,6 @@ def lifespan_client() -> Generator[TestClient, None, None]:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(_SKIP, reason="SILVASONIC_SKIP_INTEGRATION=1")
 class TestWebMockLifespan:
     """Lifespan integration tests — real startup/shutdown, only Redis mocked."""
 

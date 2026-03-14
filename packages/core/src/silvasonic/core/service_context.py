@@ -46,7 +46,11 @@ from types import TracebackType
 
 import structlog
 from silvasonic.core.health import HealthMonitor, start_health_server
-from silvasonic.core.heartbeat import HeartbeatPublisher, MetaProvider
+from silvasonic.core.heartbeat import (
+    DEFAULT_HEARTBEAT_INTERVAL_S,
+    HeartbeatPublisher,
+    MetaProvider,
+)
 from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis import get_redis_connection
 from silvasonic.core.resources import ResourceCollector
@@ -82,7 +86,7 @@ class ServiceContext:
         instance_id: str = "default",
         workspace_path: str | Path | None = None,
         redis_url: str = _REDIS_DEFAULT,
-        heartbeat_interval: float = 10.0,
+        heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL_S,
         skip_health_server: bool = False,
     ) -> None:
         """Initialize the service context (does not connect yet — call setup())."""

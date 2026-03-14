@@ -49,6 +49,7 @@ def cmd_unit() -> list[str]:
         str(PYTEST_WORKERS),
         "--tb=short",
         "-q",
+        "-rs",
         *discover_cov_args(),
         "--cov-report=term-missing",
     ]
@@ -64,6 +65,7 @@ def cmd_integration() -> list[str]:
         "integration",
         "--tb=short",
         "-q",
+        "-rs",
         *discover_cov_args(),
         "--cov-report=term-missing",
     ]
@@ -117,6 +119,7 @@ def cmd_all() -> list[str]:
         "unit or integration",
         "--tb=short",
         "-q",
+        "-rs",
         *discover_cov_args(),
         "--cov-report=term-missing",
     ]

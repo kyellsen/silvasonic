@@ -19,7 +19,7 @@
   - Reconnect logic (socket may not be available immediately)
 - [x] Verify socket mount works in `compose.yml` (`${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z`)
 - [x] Unit test: mock PodmanClient, verify connection logic
-- [ ] Integration test: Controller container connects to host Podman, lists containers
+- [x] Integration test: Controller container connects to host Podman, lists containers
 
 ### Config Changes (✅ Already Applied)
 
@@ -71,7 +71,7 @@
 ### Tasks — State Reconciliation & Nudge Subscriber (US-C03, US-C07)
 
 - [x] Implement Device State Evaluation logic (reconcile only starts a Recorder if: `status == "online" AND enabled == true AND enrollment_status == "enrolled" AND profile_slug IS NOT NULL`).
-- [x] Implement Reconciliation Loop (async, ~30s interval) to enforce the above logic.
+- [x] Implement Reconciliation Loop (async, configurable interval) to enforce the above logic.
 - [x] Create `silvasonic/controller/nudge_subscriber.py`:
   - Subscribe to Redis channel `silvasonic:nudge`.
   - On receiving `"reconcile"`, immediately trigger the reconciliation logic to execute web-interface commands (e.g., enable/disable microphone).
@@ -79,48 +79,48 @@
 
 ---
 
-## Phase 4: USB Detection, HotPlug & Recorder Spawning
+## Phase 4: USB Detection & Recorder Spawning
 
-**Goal:** Controller detects USB microphones in near-realtime (≤ 1 s), matches profiles, and starts Recorder containers dynamically (US-C01, US-R01, US-R05).
+**Goal:** Controller detects USB microphones within ≤ 1 s (polling), matches profiles, and starts Recorder containers dynamically (US-C01, US-R01, US-R05).
 
-### Tasks — USB Detection & HotPlug
+### Tasks — USB Detection
 
-- [ ] Add `pyudev` as dependency to `services/controller/pyproject.toml`
-- [ ] Create `silvasonic/controller/device_scanner.py` — `DeviceScanner`
+- [x] Create `silvasonic/controller/device_scanner.py` — `DeviceScanner`
   - Enumerate ALSA cards via `/proc/asound/cards`
-  - Correlate each card with USB parent via `pyudev` / `sysfs` (→ `DeviceInfo`)
+  - Correlate each card with USB parent via `sysfs` / `pathlib` (→ `DeviceInfo`)
   - Extract: `usb_vendor_id`, `usb_product_id`, `usb_serial`, `alsa_name`, `alsa_device`
-- [ ] Create `silvasonic/controller/hotplug_monitor.py` — `HotPlugMonitor`
-  - `pyudev.Monitor` (subsystem `sound`) as dedicated `asyncio.Task`
-  - On `add`: scan single device, write to DB (`status=online`, `pending`), trigger reconciliation
-  - On `remove`: set `status=offline`, trigger reconciliation (which will stop the recorder)
-  - Latency target: ≤ 1 second. Graceful fallback to `DeviceScanner` polling if `/run/udev` missing.
-- [ ] Implement stable device identity (`devices.name` as PK):
+- [x] Implement stable device identity (`devices.name` as PK):
   - With USB serial: `{vendor_id}-{product_id}-{serial}` (globally unique)
   - Without serial: `{vendor_id}-{product_id}-port{bus_path}` (port-bound)
+  - Fallback: `alsa-card{index}` (unstable across reboots)
+- [x] Implement `upsert_device()` — insert-or-update device in `devices` table
+- [x] Integrate hardware rescan into Reconciliation Loop (`_rescan_hardware()` — runs every cycle)
+- [x] Implement disconnect detection: devices no longer found are marked `status=offline`
+- [x] Unit tests: `DeviceInfo.stable_device_id`, `parse_asound_cards`, `DeviceScanner.scan_all`, `upsert_device` (22 tests, all passing)
 
 ### Tasks — Profile Matching & Auto-Enrollment (US-C06)
 
-- [ ] Create `silvasonic/controller/profile_matcher.py` — `ProfileMatcher`
+- [x] Create `silvasonic/controller/profile_matcher.py` — `ProfileMatcher`
   - Score 100: USB Vendor+Product ID match → Auto-Enroll (if `auto_enrollment` is true)
   - Score 50: ALSA name substring match → suggest profile (set as pending)
   - Score 0: no match → pending
-- [ ] Integrate reading `auto_enrollment` flag from `system_config` table on each evaluation cycle.
+- [x] Integrate reading `auto_enrollment` flag from `system_config` table on each evaluation cycle.
+- [x] Unit tests: exact match, ALSA match, no match, auto_enrollment=false, case-insensitive, empty profiles (7 tests)
 
 ### Tasks — Recorder Spawning (US-R01)
 
-- [ ] Replace `SIMULATE_RECORDER_SPAWN` placeholder in `controller/__main__.py`
-- [ ] Create `Tier2ServiceSpec` for Recorder:
-  - Image: `silvasonic-recorder:latest`
+- [x] Create `build_recorder_spec()` factory function in `container_spec.py`:
+  - Image: `localhost/silvasonic_recorder:latest`
   - Name pattern: `silvasonic-recorder-{device_id}`
   - Devices: `/dev/snd:/dev/snd`
   - Group add: `audio`
   - Privileged: `true` (see ADR-0007 §6)
-  - Mounts: Recorder workspace = RW (producer)
-  - Env vars: `RECORDER_DEVICE`, `RECORDER_PROFILE` (Profile Injection, ADR-0013)
-- [ ] Connect `monitor_recorder_spawn()` to actual container health checks via `podman-py`
-- [ ] Add Redis heartbeat to Recorder (fire-and-forget via `SilvaService`, ADR-0019)
-- [ ] Integration test: Controller spawns Recorder container, verifies health, stops it.
+  - Mounts: Recorder workspace = RW (producer), with `controller_source` for mkdir
+  - Env vars: `RECORDER_DEVICE`, `RECORDER_PROFILE`, `SILVASONIC_REDIS_URL` (Profile Injection, ADR-0013)
+  - Resource limits from env vars with defaults (`512m`, `1.0` CPU, `oom_score_adj=-999`)
+- [x] Connect Recorder spawning to reconciliation loop (DeviceStateEvaluator → build_recorder_spec → ContainerManager.reconcile)
+- [x] Add Redis heartbeat to Recorder (fire-and-forget via `SilvaService` base class, ADR-0019)
+- [x] Integration test: Controller spawns Recorder container, verifies health, stops it.
 
 ---
 
@@ -144,13 +144,13 @@
 
 ### Tasks
 
-- [ ] Implement graceful shutdown handler in Controller (`main()`)
+- [x] Implement graceful shutdown handler in Controller (`run()`)
   - On SIGTERM: stop all owned Tier 2 containers, then exit
+  - `_stop_all_tier2()` method queries `list_managed()` and stops each container before closing the Podman client.
 - [ ] Test crash recovery: kill Controller, verify Recorder keeps running (Podman manages restart limit).
 - [ ] Test reconciliation: restart Controller, verify it adopts existing Recorder without restarting it.
 - [ ] Test multi-instance: start 2 Recorders for different devices, verify labels and isolated file structures.
 - [ ] Update smoke tests to verify Controller ↔ Recorder lifecycle.
-- [ ] Update `ROADMAP.md`: mark v0.3.0 as 🔨 In Progress.
 
 ---
 
@@ -164,9 +164,10 @@
 | Quadlet generation for production               | v1.0.0         |
 
 > **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 3 as part of the `Tier2ServiceSpec` model. See [ADR-0020](../adr/0020-resource-limits-qos.md).
->
-> **Note:** USB HotPlug detection (≤ 1 s latency via `pyudev.Monitor`) is now **in scope** for Phase 4.
+
 >
 > **Note:** Live Log Streaming via Redis Pub/Sub has been added as Phase 5.
 >
 > **Note:** Configuration Seeding (DB bootstrapper) has been added as Phase 2.
+>
+> **Note:** USB detection uses `sysfs` / `pathlib` directly (no `pyudev` dependency).

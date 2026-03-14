@@ -9,10 +9,10 @@ class MatchCriteria(BaseModel):
     """How to match a USB device to this profile (microphone_profiles.md)."""
 
     usb_vendor_id: str | None = Field(
-        default=None, description="USB Vendor ID (stable, from pyudev)"
+        default=None, description="USB Vendor ID (stable, from sysfs)"
     )
     usb_product_id: str | None = Field(
-        default=None, description="USB Product ID (stable, from pyudev)"
+        default=None, description="USB Product ID (stable, from sysfs)"
     )
     alsa_name_contains: str | None = Field(
         default=None, description="Case-insensitive ALSA card name substring"

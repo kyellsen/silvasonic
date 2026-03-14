@@ -9,7 +9,7 @@
 ## 1. The Problem / The Gap
 
 *   **No Real-Time Status:** Without Redis, the Web-Interface has no way to display live service health — it would need to poll each service individually.
-*   **No Immediate Control:** The State Reconciliation Pattern requires a wake-up signal (`nudge`) so the Controller acts immediately instead of waiting for its 30s timer.
+*   **No Immediate Control:** The State Reconciliation Pattern requires a wake-up signal (`nudge`) so the Controller acts immediately instead of waiting for its reconciliation timer.
 
 ## 2. User Benefit
 
@@ -20,12 +20,12 @@
 
 ### Inputs
 
-*   Heartbeat payloads from all services via `SET silvasonic:status:<id> <json> EX 30`.
+*   Heartbeat payloads from all services via `SET silvasonic:status:<id> <json> EX <TTL>` (see `heartbeat.py` for TTL value).
 *   Nudge signal from Web-Interface via `PUBLISH silvasonic:nudge "reconcile"`.
 
 ### Processing
 
-*   Key expiry (TTL) — keys auto-expire after 30s if a service stops publishing.
+*   Key expiry (TTL) — keys auto-expire after the configured TTL if a service stops publishing.
 *   Pub/Sub message relay — zero processing, pure message passthrough.
 
 ### Outputs

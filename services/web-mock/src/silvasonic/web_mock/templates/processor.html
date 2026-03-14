@@ -13,7 +13,7 @@
 
     <!-- Storage Card -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5">
             <h2 class="text-lg font-bold mb-4">Storage (SSD)</h2>
             <div class="flex items-start gap-6">
@@ -25,7 +25,7 @@
 
                 <div class="flex-1 space-y-4">
                     <div>
-                        <div class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-1">Capacity
+                        <div class="silva-label mb-1">Capacity
                         </div>
                         <div class="font-mono text-sm">
                             <span class="font-bold text-base-content">{{ metrics.nvme_used_gb }} GB</span>
@@ -35,7 +35,7 @@
                     </div>
 
                     <div>
-                        <div class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-1">Estimated
+                        <div class="silva-label mb-1">Estimated
                             runway</div>
                         <div class="flex items-center gap-2 font-mono text-sm">
                             {% set remaining_gb = metrics.nvme_total_gb - metrics.nvme_used_gb %}
@@ -68,7 +68,7 @@
 
     <!-- Indexer Card -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold">Indexer</h2>
@@ -117,7 +117,7 @@
 
     <!-- Retention Card -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold">Retention (Janitor)</h2>
@@ -127,7 +127,7 @@
                 </div>
             </div>
 
-            <h3 class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-3">Recently Deleted</h3>
+            <h3 class="silva-label mb-3">Recently Deleted</h3>
 
             <div class="overflow-x-auto">
                 <table class="table table-sm text-sm">

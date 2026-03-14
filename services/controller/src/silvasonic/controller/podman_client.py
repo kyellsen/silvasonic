@@ -34,8 +34,22 @@ class PodmanConnectionError(Exception):
 
 
 def _container_info(c: Any) -> dict[str, object]:
-    """Extract standard info dict from a Podman container object."""
-    return {"id": c.id, "name": c.name, "status": c.status, "labels": c.labels}
+    """Extract standard info dict from a Podman container object.
+
+    Handles podman-py sparse mode (default in v5.7+) where ``attrs["State"]``
+    is a plain string (e.g. ``"running"``) instead of a dict
+    ``{"Status": "running"}``.
+    """
+    # Podman API may prefix names with "/" — normalize for consistent matching.
+    name = c.name.lstrip("/") if isinstance(c.name, str) else c.name
+
+    # In sparse mode (default), attrs["State"] is a string like "running".
+    # In full mode, attrs["State"] is a dict like {"Status": "running"}.
+    # c.status accesses attrs["State"]["Status"] which crashes in sparse mode.
+    state = c.attrs.get("State", "")
+    status = state if isinstance(state, str) else state.get("Status", "unknown")
+
+    return {"id": c.id, "name": name, "status": status, "labels": c.labels}
 
 
 class SilvasonicPodmanClient:
@@ -113,7 +127,8 @@ class SilvasonicPodmanClient:
 
         for attempt in range(1, self._max_retries + 1):
             try:
-                log.info(
+                log_fn = log.info if attempt == 1 else log.debug
+                log_fn(
                     "podman.connecting",
                     socket=self._socket_path,
                     attempt=attempt,
@@ -135,6 +150,8 @@ class SilvasonicPodmanClient:
                     max_retries=self._max_retries,
                     error_type=type(e).__name__,
                 )
+                if attempt < self._max_retries:
+                    time.sleep(self._retry_delay)
             except Exception as e:
                 log.warning(
                     "podman.connect_failed.unexpected",
@@ -205,7 +222,7 @@ class SilvasonicPodmanClient:
         Returns:
             List of managed container info dicts.
         """
-        return self.list_containers(label=["io.silvasonic.owner=controller"])
+        return self.list_containers(label="io.silvasonic.owner=controller")
 
     def close(self) -> None:
         """Disconnect from the Podman socket."""

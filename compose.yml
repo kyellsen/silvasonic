@@ -40,6 +40,7 @@ services:
       POSTGRES_HOST: database
       CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
+      SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
       - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
@@ -47,6 +48,7 @@ services:
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
       - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
+      - ./services/controller/config:/app/config:ro,z  # Factory defaults + microphone profiles
     depends_on:
       database:
         condition: service_healthy

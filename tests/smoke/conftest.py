@@ -7,6 +7,7 @@ the dev stack or any other running containers.
 No host-filesystem writes: workspace volumes use tmpfs.
 """
 
+import subprocess
 import time
 from collections.abc import Generator
 
@@ -46,6 +47,20 @@ def _wait_for_log(container: DockerContainer, message: str, timeout: float = 60)
     raise TimeoutError(msg)
 
 
+def _require_image(image: str) -> None:
+    """Skip the test if a container image is not available locally.
+
+    Uses ``podman image exists`` to check. Produces a clear skip reason
+    instead of a cryptic container-start failure.
+    """
+    result = subprocess.run(
+        ["podman", "image", "exists", image],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Image '{image}' not found — run 'just build' first")
+
+
 # ── Shared Network ────────────────────────────────────────────────────────────
 
 
@@ -69,6 +84,7 @@ def database_container(smoke_network: Network) -> Generator[DockerContainer]:
     Session-scoped: shared across all smoke tests for performance.
     Uses tmpfs for the data directory to avoid host-filesystem writes.
     """
+    _require_image("silvasonic_database")
     container = (
         DockerContainer("silvasonic_database")
         .with_exposed_ports(5432)
@@ -127,6 +143,7 @@ def controller_container(
     'test-redis' alias on the shared smoke_network.
     Uses tmpfs for workspace directories.
     """
+    _require_image("silvasonic_controller")
     # Ensure fixtures are used (dependency ordering)
     _ = database_container
     _ = redis_container_smoke
@@ -166,6 +183,7 @@ def recorder_container(
     alias on the shared smoke_network.
     Uses tmpfs for workspace directory.
     """
+    _require_image("silvasonic_recorder")
     _ = redis_container_smoke
 
     container = (
@@ -194,6 +212,7 @@ def web_mock_container() -> Generator[DockerContainer]:
     No database connection needed — web-mock serves hardcoded mock data.
     No shared network needed.
     """
+    _require_image("silvasonic_web-mock")
     container = DockerContainer("silvasonic_web-mock").with_exposed_ports(8001)
     container.start()
     host = container.get_container_host_ip()

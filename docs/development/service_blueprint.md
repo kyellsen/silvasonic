@@ -106,7 +106,7 @@ The `SilvaService` base class handles the full lifecycle automatically:
 2. **Health Server** — HTTP `/healthy` on `:service_port` (Podman probes)
 3. **Resource Collector** — per-process CPU/memory/threads via `psutil`
 4. **Redis Connection** — best-effort via `get_redis_connection()` (skipped if unavailable)
-5. **Heartbeat Loop** — fire-and-forget, every 10s (`SET` + `PUBLISH` to Redis)
+5. **Heartbeat Loop** — fire-and-forget, periodic (`SET` + `PUBLISH` to Redis, interval: see `DEFAULT_HEARTBEAT_INTERVAL_S` in `heartbeat.py`)
 6. **`run()`** — your service logic (override this)
 7. **Graceful Shutdown** — SIGTERM / SIGINT → `_shutdown_event.set()`
 

@@ -9,7 +9,7 @@
 {% block content %}
 
 <!-- Header Card: Image banner + Stats grid -->
-<div class="card bg-base-100 shadow-sm border border-base-content/5 overflow-hidden mb-6">
+<div class="silva-card overflow-hidden mb-6">
     {% if species.image_url %}
     <figure class="w-full h-32 md:h-48 bg-base-200 relative">
         <img src="{{ species.image_url }}" alt="{{ species.species_en }}"
@@ -47,7 +47,7 @@
 </div>
 
 <!-- About This Species Card -->
-<div class="card bg-base-100 shadow-sm border border-base-content/5 mb-6 relative overflow-hidden group">
+<div class="silva-card mb-6 relative overflow-hidden group">
     <div
         class="absolute right-8 top-1/2 -translate-y-1/2 text-9xl opacity-[0.03] font-serif select-none pointer-events-none transition-transform group-hover:scale-110 group-hover:opacity-5">
         i</div>
@@ -88,7 +88,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Daily Activity Pattern -->
     <div class="lg:col-span-2 flex flex-col gap-6">
-        <div class="card bg-base-100 shadow-sm border border-base-content/5 h-full">
+        <div class="silva-card h-full">
             <div class="card-body p-5">
                 <h2 class="card-title flex items-center gap-2 mb-4 text-base">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24"
@@ -109,7 +109,7 @@
 
     <!-- Right: Recent Sightings -->
     <div class="lg:col-span-1 flex flex-col gap-6">
-        <div class="card bg-base-100 shadow-sm border border-base-content/5 h-full">
+        <div class="silva-card h-full">
             <div class="card-body p-5">
                 <h2 class="card-title mb-4 text-base">Recent Sightings</h2>
 

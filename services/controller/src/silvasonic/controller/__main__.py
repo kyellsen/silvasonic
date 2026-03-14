@@ -10,17 +10,21 @@ publishes **host-level** resource metrics (CPU, RAM) via ``get_extra_meta()``
 so the Web-Interface dashboard can display system-wide utilisation.
 
 v0.3.0: Connects to the host Podman engine via ``SilvasonicPodmanClient``,
-seeds default configuration (ADR-0023), and runs the reconciliation loop
-with nudge subscriber for Tier 2 container lifecycle management (ADR-0013).
+seeds default configuration (ADR-0023), runs the reconciliation loop
+with nudge subscriber (ADR-0013), and detects USB microphones via
+sysfs-based USB detection (Phase 4).
 """
 
 import asyncio
 import os
+from pathlib import Path
 from typing import Any, NoReturn
 
 from silvasonic.controller.container_manager import ContainerManager
+from silvasonic.controller.device_scanner import DeviceScanner, upsert_device
 from silvasonic.controller.nudge_subscriber import NudgeSubscriber
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
+from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import ReconciliationLoop
 from silvasonic.controller.seeder import run_all_seeders
 from silvasonic.core.database.check import check_database_connection
@@ -52,7 +56,14 @@ class ControllerService(SilvaService):
         self._host_resources = HostResourceCollector()
         self._podman_client = SilvasonicPodmanClient()
         self._container_manager = ContainerManager(self._podman_client)
-        self._reconciliation_loop = ReconciliationLoop(self._container_manager)
+        # Phase 4: USB device detection
+        self._device_scanner = DeviceScanner()
+        self._profile_matcher = ProfileMatcher()
+        self._reconciliation_loop = ReconciliationLoop(
+            self._container_manager,
+            device_scanner=self._device_scanner,
+            profile_matcher=self._profile_matcher,
+        )
         self._nudge_subscriber = NudgeSubscriber(
             self._reconciliation_loop,
             redis_url=redis_url,
@@ -71,6 +82,9 @@ class ControllerService(SilvaService):
         """
         async with get_session() as session:
             await run_all_seeders(session)
+
+        # Phase 4: Initial device scan after seeding
+        await self._initial_device_scan()
 
     async def run(self) -> None:
         """Main orchestration loop.
@@ -97,7 +111,39 @@ class ControllerService(SilvaService):
         finally:
             for task in tasks:
                 task.cancel()
+            # Phase 6: Graceful Shutdown — stop all owned Tier 2 containers
+            await self._stop_all_tier2()
             self._podman_client.close()
+
+    async def _stop_all_tier2(self) -> None:
+        """Stop all owned Tier 2 containers on shutdown (Phase 6).
+
+        Called during graceful shutdown to ensure all Recorder instances
+        are cleanly stopped before the Controller exits.  Best-effort:
+        if Podman is unreachable, logs a warning and continues.
+        """
+        import structlog
+
+        _log = structlog.get_logger()
+
+        try:
+            containers = await asyncio.to_thread(
+                self._container_manager.list_managed,
+            )
+            for container in containers:
+                name = str(container.get("name", ""))
+                if name:
+                    _log.info("controller.shutdown.stopping", name=name)
+                    await asyncio.to_thread(
+                        self._container_manager.stop,
+                        name,
+                    )
+            _log.info(
+                "controller.shutdown.all_stopped",
+                count=len(containers),
+            )
+        except Exception:
+            _log.exception("controller.shutdown.failed")
 
     async def _monitor_database(self) -> NoReturn:
         """Periodically check database connectivity and update health status."""
@@ -121,7 +167,7 @@ class ControllerService(SilvaService):
         affect the aggregated health status.
         """
         socket_path = self._podman_client.socket_path
-        if not os.path.exists(socket_path):
+        if not Path(socket_path).exists():
             self.health.update_status(
                 "podman",
                 False,
@@ -153,6 +199,38 @@ class ControllerService(SilvaService):
                     f"{len(containers)} managed containers",
                 )
             await asyncio.sleep(10)
+
+    async def _initial_device_scan(self) -> None:
+        """Scan for connected USB audio devices and persist to DB.
+
+        Called once during ``load_config()`` to populate the ``devices``
+        table with any microphones that were already connected at boot.
+        """
+        import structlog
+
+        _log = structlog.get_logger()
+
+        devices = await asyncio.to_thread(self._device_scanner.scan_all)
+        if not devices:
+            _log.info("controller.initial_scan", devices_found=0)
+            return
+
+        async with get_session() as session:
+            for device_info in devices:
+                match_result = await self._profile_matcher.match(device_info, session)
+
+                profile_slug = match_result.profile_slug if match_result.auto_enroll else None
+                enrollment = "enrolled" if match_result.auto_enroll else "pending"
+
+                await upsert_device(
+                    device_info,
+                    session,
+                    profile_slug=profile_slug,
+                    enrollment_status=enrollment,
+                )
+            await session.commit()
+
+        _log.info("controller.initial_scan", devices_found=len(devices))
 
 
 if __name__ == "__main__":

@@ -45,16 +45,19 @@
   --color-error-content: oklch(18% 0.05 25);
 
   --radius-box: 1rem;
+  --radius-btn: 2rem;
+  --radius-field: 1rem;
+  --radius-selector: 2rem;
   --border: 1px;
 }
 
 @plugin "daisyui/theme" {
   name: "silvalight";
   color-scheme: light;
-  --color-base-100: oklch(98% 0.005 160);
-  --color-base-200: oklch(92% 0.01 160);
-  --color-base-300: oklch(86% 0.012 160);
-  --color-base-content: oklch(25% 0.02 250);
+  --color-base-100: oklch(99.5% 0.002 160);  /* cards — near-white              */
+  --color-base-200: oklch(96% 0.005 160);    /* sidebar/header — very light     */
+  --color-base-300: oklch(93% 0.008 160);    /* body bg — soft warm white       */
+  --color-base-content: oklch(22% 0.02 250); /* text — slightly deeper          */
 
   --color-primary: oklch(52% 0.17 160);
   --color-primary-content: oklch(98% 0 0);
@@ -76,6 +79,9 @@
   --color-error-content: oklch(98% 0 0);
 
   --radius-box: 1rem;
+  --radius-btn: 2rem;
+  --radius-field: 1rem;
+  --radius-selector: 2rem;
   --border: 1px;
 }
 
@@ -293,6 +299,99 @@ body {
 .waveform-bar:nth-child(7n)   { animation-duration: 1.3s; animation-delay: -0.7s; }
 .waveform-bar:nth-child(11n)  { animation-duration: 1.0s; animation-delay: -0.4s; }
 .waveform-bar:nth-child(2n+1) { animation-duration: 0.7s; animation-delay: -0.9s; }
+
+/* ──────────────────────────────────────────────────────────
+   Module gradient backgrounds + accent variable
+   Applied to .zone-main via Jinja active variable.
+   --mod-accent powers all silva-card hover colors automatically.
+   ────────────────────────────────────────────────────────── */
+
+.gradient-dashboard  { --mod-accent: var(--color-mod-dashboard-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 6%) 0%, transparent 55%); }
+.gradient-recorders  { --mod-accent: var(--color-mod-recorder-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 6%) 0%, transparent 55%); }
+.gradient-processor  { --mod-accent: var(--color-mod-processor-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 6%) 0%, transparent 55%); }
+.gradient-uploaders  { --mod-accent: var(--color-mod-uploader-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 6%) 0%, transparent 55%); }
+.gradient-livesound  { --mod-accent: var(--color-mod-livesound-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 6%) 0%, transparent 55%); }
+.gradient-birds      { --mod-accent: var(--color-mod-birds-strong);      background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 6%) 0%, transparent 55%); }
+.gradient-bats       { --mod-accent: var(--color-mod-bats-strong);       background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 6%) 0%, transparent 55%); }
+.gradient-weather    { --mod-accent: var(--color-mod-weather-strong);    background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.15 245 / 6%) 0%, transparent 55%); }
+.gradient-settings   { --mod-accent: var(--color-mod-settings-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(55% 0.02 250 / 6%) 0%, transparent 55%); }
+.gradient-about      { --mod-accent: var(--color-mod-dashboard-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 6%) 0%, transparent 55%); }
+
+/* Dark mode: reduced glow */
+[data-theme="silvadark"] .gradient-dashboard  { background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-recorders  { background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-processor  { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-uploaders  { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-livesound  { background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-birds      { background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-bats       { background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-weather    { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.15 245 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-settings   { background: radial-gradient(ellipse at 15% 10%, oklch(55% 0.02 250 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-about      { background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 4%) 0%, transparent 55%); }
+
+/* ──────────────────────────────────────────────────────────
+   Silva Card Component Classes
+   Reusable card shells — hover colors auto-adapt to --mod-accent.
+   Usage in templates:
+     <div class="silva-card-interactive col-span-2">
+     <div class="silva-card-static">
+     <div class="silva-card-form">
+   ────────────────────────────────────────────────────────── */
+
+/* Shared base for all card variants */
+.silva-card,
+.silva-card-interactive,
+.silva-card-static,
+.silva-card-form {
+  @apply card bg-base-100 rounded-xl shadow-sm border border-base-content/5;
+}
+
+/* Interactive — clickable cards that lift on hover */
+.silva-card-interactive {
+  @apply cursor-pointer transition-all duration-300;
+}
+.silva-card-interactive:hover {
+  @apply -translate-y-1;
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 40%, transparent);
+  box-shadow:
+    0 10px 15px -3px color-mix(in oklch, var(--mod-accent, var(--color-primary)) 10%, transparent),
+    0 4px 6px -4px color-mix(in oklch, var(--mod-accent, var(--color-primary)) 6%, transparent);
+}
+
+/* Static — non-clickable with subtle border hover */
+.silva-card-static {
+  @apply transition-colors duration-200;
+}
+.silva-card-static:hover {
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 30%, transparent);
+}
+
+/* Form — settings/config cards with overflow-hidden */
+.silva-card-form {
+  @apply overflow-hidden transition-all;
+}
+.silva-card-form:hover {
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 30%, transparent);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Silva Label — uppercase section headings inside cards
+   Usage:  <h2 class="silva-label mb-2">Section Name</h2>
+   Note:   Add mb-* as needed per context (mb-1, mb-2, mb-3).
+   ────────────────────────────────────────────────────────── */
+
+.silva-label {
+  @apply text-xs font-semibold text-base-content/60 uppercase tracking-wide;
+}
+
+/* ──────────────────────────────────────────────────────────
+   NOTE: DaisyUI form classes (input-bordered, select-bordered,
+   input-primary, select-primary) cannot be used with @apply
+   in Tailwind CSS v4. Use them directly in templates:
+     <input class="input input-bordered focus:input-primary transition-all" />
+     <select class="select select-bordered focus:select-primary transition-all">
+   ────────────────────────────────────────────────────────── */
 
 /* ──────────────────────────────────────────────────────────
    Accessibility: Reduced Motion

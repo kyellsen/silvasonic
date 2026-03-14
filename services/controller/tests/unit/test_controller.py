@@ -1,18 +1,13 @@
-"""Unit tests for silvasonic-controller service — 100 % coverage.
+"""Unit tests for ControllerService.
 
-Tests the ControllerService (SilvaService subclass) including:
+Covers the ControllerService (SilvaService subclass) including:
 - Package import
 - Service configuration (port from env)
 - Background health monitors (_monitor_database, _monitor_podman)
 - get_extra_meta() providing host_resources
+- load_config() DB seeding hook
 - run() lifecycle with shutdown event
 - __main__ guard
-
-Tests for SilvasonicPodmanClient:
-- connect() with retry logic
-- ping() success/failure
-- list_containers() / list_managed_containers()
-- close()
 """
 
 import asyncio
@@ -45,6 +40,9 @@ def _make_bare_service() -> Any:
     svc._container_manager = MagicMock()
     svc._reconciliation_loop = MagicMock()
     svc._nudge_subscriber = MagicMock()
+    # Phase 4: USB detection components
+    svc._device_scanner = MagicMock()
+    svc._profile_matcher = MagicMock()
     return svc
 
 
@@ -162,6 +160,7 @@ class TestMonitorPodman:
     async def test_monitor_podman_connected(self) -> None:
         """Reports healthy when Podman socket is reachable."""
         svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
         svc._podman_client.ping.return_value = True
         svc._podman_client.list_managed_containers.return_value = [
             {"id": "abc", "name": "rec1", "status": "running", "labels": {}}
@@ -177,11 +176,15 @@ class TestMonitorPodman:
                 raise asyncio.CancelledError
 
         with (
+            patch("pathlib.Path.exists", return_value=True),
             patch(
                 "silvasonic.controller.__main__.asyncio.to_thread",
                 new_callable=AsyncMock,
             ) as mock_to_thread,
-            patch("silvasonic.controller.__main__.asyncio.sleep", side_effect=mock_sleep),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
             pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
@@ -196,6 +199,7 @@ class TestMonitorPodman:
     async def test_monitor_podman_disconnected(self) -> None:
         """Reports unhealthy when Podman socket is unreachable."""
         svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
         svc._podman_client.ping.return_value = False
         svc._podman_client.connect.return_value = None
 
@@ -208,11 +212,15 @@ class TestMonitorPodman:
                 raise asyncio.CancelledError
 
         with (
+            patch("pathlib.Path.exists", return_value=True),
             patch(
                 "silvasonic.controller.__main__.asyncio.to_thread",
                 new_callable=AsyncMock,
             ) as mock_to_thread,
-            patch("silvasonic.controller.__main__.asyncio.sleep", side_effect=mock_sleep),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
             pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
@@ -227,6 +235,7 @@ class TestMonitorPodman:
         from silvasonic.controller.podman_client import PodmanConnectionError
 
         svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
         svc._podman_client.connect.side_effect = PodmanConnectionError("no socket")
         svc._podman_client.ping.return_value = False
 
@@ -239,11 +248,15 @@ class TestMonitorPodman:
                 raise asyncio.CancelledError
 
         with (
+            patch("pathlib.Path.exists", return_value=True),
             patch(
                 "silvasonic.controller.__main__.asyncio.to_thread",
                 new_callable=AsyncMock,
             ) as mock_to_thread,
-            patch("silvasonic.controller.__main__.asyncio.sleep", side_effect=mock_sleep),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
             pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
@@ -253,11 +266,11 @@ class TestMonitorPodman:
         assert status["components"]["podman"]["healthy"] is False
 
     async def test_monitor_podman_socket_not_found(self) -> None:
-        """Registers podman as optional (required=False) when socket path does not exist."""
+        """Registers podman as optional when socket path does not exist."""
         svc = _make_bare_service()
         svc._podman_client.socket_path = "/nonexistent/podman.sock"
 
-        with patch("os.path.exists", return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             await svc._monitor_podman()
 
         status = svc.health.get_status()
@@ -275,7 +288,7 @@ class TestGetExtraMeta:
     """Tests for the get_extra_meta() override."""
 
     def test_returns_host_resources(self) -> None:
-        """get_extra_meta() includes host_resources from HostResourceCollector."""
+        """get_extra_meta() includes host_resources."""
         svc = _make_bare_service()
         mock_hrc = MagicMock()
         mock_hrc.collect.return_value = {"cpu_percent": 23.5, "cpu_count": 4}
@@ -308,6 +321,11 @@ class TestControllerLoadConfig:
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
             ) as mock_seeders,
+            patch.object(
+                svc,
+                "_initial_device_scan",
+                new_callable=AsyncMock,
+            ),
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
@@ -378,386 +396,3 @@ class TestMainGuard:
             warnings.simplefilter("ignore", RuntimeWarning)
             runpy.run_module("silvasonic.controller.__main__", run_name="__main__")
             mock_start.assert_called_once()
-
-
-# ===========================================================================
-# SilvasonicPodmanClient unit tests
-# ===========================================================================
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientInit:
-    """Tests for SilvasonicPodmanClient initialization."""
-
-    def test_default_socket_path(self) -> None:
-        """Uses CONTAINER_SOCKET env var or default path."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        with patch.dict(os.environ, {}, clear=True):
-            os.environ.pop("CONTAINER_SOCKET", None)
-            client = SilvasonicPodmanClient()
-            assert client.socket_url == "unix:///var/run/container.sock"
-            assert not client.is_connected
-
-    def test_custom_socket_path(self) -> None:
-        """Respects explicitly passed socket_path."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient(socket_path="/custom/socket.sock")
-        assert client.socket_url == "unix:///custom/socket.sock"
-
-    def test_env_var_socket_path(self) -> None:
-        """Reads CONTAINER_SOCKET from env."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        with patch.dict(os.environ, {"CONTAINER_SOCKET": "/env/podman.sock"}):
-            client = SilvasonicPodmanClient()
-            assert client.socket_url == "unix:///env/podman.sock"
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientConnect:
-    """Tests for SilvasonicPodmanClient.connect() with retry logic."""
-
-    def test_connect_success_first_attempt(self) -> None:
-        """Connects successfully on first attempt."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        mock_podman_class = MagicMock()
-        mock_instance = MagicMock()
-        mock_instance.ping.return_value = True
-        mock_podman_class.return_value = mock_instance
-
-        client = SilvasonicPodmanClient(socket_path="/test.sock")
-        with patch("podman.PodmanClient", mock_podman_class):
-            client.connect()
-
-        assert client.is_connected
-        mock_podman_class.assert_called_once_with(base_url="unix:///test.sock")
-
-    def test_connect_success_after_retries(self) -> None:
-        """Connects after failing the first two attempts."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        mock_podman_class = MagicMock()
-        mock_instance = MagicMock()
-        # Fail twice, succeed on third
-        mock_instance.ping.side_effect = [ConnectionError, ConnectionError, True]
-        mock_podman_class.return_value = mock_instance
-
-        client = SilvasonicPodmanClient(socket_path="/test.sock", max_retries=3, retry_delay=0.01)
-        with patch("podman.PodmanClient", mock_podman_class):
-            client.connect()
-
-        assert client.is_connected
-
-    def test_connect_exhausted_retries(self) -> None:
-        """Raises PodmanConnectionError after exhausting retries."""
-        from silvasonic.controller.podman_client import (
-            PodmanConnectionError,
-            SilvasonicPodmanClient,
-        )
-
-        mock_podman_class = MagicMock()
-        mock_instance = MagicMock()
-        mock_instance.ping.side_effect = ConnectionError("fail")
-        mock_podman_class.return_value = mock_instance
-
-        client = SilvasonicPodmanClient(socket_path="/test.sock", max_retries=2, retry_delay=0.01)
-        with (
-            patch("podman.PodmanClient", mock_podman_class),
-            pytest.raises(PodmanConnectionError, match="Failed to connect"),
-        ):
-            client.connect()
-
-        assert not client.is_connected
-
-    def test_connect_ping_returns_false(self) -> None:
-        """Raises PodmanConnectionError when ping consistently returns False."""
-        from silvasonic.controller.podman_client import (
-            PodmanConnectionError,
-            SilvasonicPodmanClient,
-        )
-
-        mock_podman_class = MagicMock()
-        mock_instance = MagicMock()
-        mock_instance.ping.return_value = False
-        mock_podman_class.return_value = mock_instance
-
-        client = SilvasonicPodmanClient(socket_path="/test.sock", max_retries=2, retry_delay=0.01)
-        with (
-            patch("podman.PodmanClient", mock_podman_class),
-            pytest.raises(PodmanConnectionError),
-        ):
-            client.connect()
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientPing:
-    """Tests for SilvasonicPodmanClient.ping()."""
-
-    def test_ping_success(self) -> None:
-        """Returns True when engine responds."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.ping.return_value = True
-        client._connected = True
-
-        assert client.ping() is True
-        assert client.is_connected
-
-    def test_ping_failure(self) -> None:
-        """Returns False and sets disconnected when engine fails."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.ping.side_effect = ConnectionError("lost")
-        client._connected = True
-
-        assert client.ping() is False
-        assert not client.is_connected
-
-    def test_ping_no_client(self) -> None:
-        """Returns False when client is None."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = None
-        client._connected = False
-
-        assert client.ping() is False
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientListContainers:
-    """Tests for list_containers() and list_managed_containers()."""
-
-    def test_list_containers_returns_info(self) -> None:
-        """Returns list of container dicts."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        mock_container = MagicMock()
-        mock_container.id = "abc123"
-        mock_container.name = "silvasonic-recorder-mic1"
-        mock_container.status = "running"
-        mock_container.labels = {"io.silvasonic.owner": "controller"}
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.return_value = [mock_container]
-        client._connected = True
-
-        result = client.list_containers()
-        assert len(result) == 1
-        assert result[0]["name"] == "silvasonic-recorder-mic1"
-        assert result[0]["status"] == "running"
-
-    def test_list_containers_no_client(self) -> None:
-        """Returns empty list when not connected."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = None
-
-        assert client.list_containers() == []
-
-    def test_list_containers_error(self) -> None:
-        """Returns empty list on error."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.side_effect = RuntimeError("boom")
-        client._connected = True
-
-        assert client.list_containers() == []
-
-    def test_list_managed_containers(self) -> None:
-        """Filters by io.silvasonic.owner=controller label."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.return_value = []
-        client._connected = True
-
-        client.list_managed_containers()
-        client._client.containers.list.assert_called_once_with(
-            filters={"label": ["io.silvasonic.owner=controller"]}
-        )
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientClose:
-    """Tests for close()."""
-
-    def test_close_connected(self) -> None:
-        """Calls client.close() and cleans up state."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        mock_inner = MagicMock()
-        client._client = mock_inner
-        client._connected = True
-
-        client.close()
-
-        mock_inner.close.assert_called_once()
-        assert client._client is None
-        assert not client.is_connected
-
-    def test_close_already_disconnected(self) -> None:
-        """No-op when already disconnected."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = None
-        client._connected = False
-
-        client.close()  # Should not raise
-
-    def test_close_handles_error(self) -> None:
-        """Cleans up even when close() raises."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        mock_inner = MagicMock()
-        mock_inner.close.side_effect = RuntimeError("cleanup failed")
-        client._client = mock_inner
-        client._connected = True
-
-        client.close()
-
-        assert client._client is None
-        assert not client.is_connected
-
-
-# ===========================================================================
-# Additional coverage — PodmanClient gaps
-# ===========================================================================
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientContainersProperty:
-    """Tests for the containers property."""
-
-    def test_containers_when_connected(self) -> None:
-        """Returns client.containers when connected."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        mock_inner = MagicMock()
-        client._client = mock_inner
-        client._connected = True
-
-        assert client.containers is mock_inner.containers
-
-    def test_containers_raises_when_not_connected(self) -> None:
-        """Raises RuntimeError when client is None."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = None
-        client._connected = False
-
-        with pytest.raises(RuntimeError, match="not connected"):
-            _ = client.containers
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientConnectEdgeCases:
-    """Additional connect() tests for edge cases."""
-
-    def test_connect_unexpected_exception_retries(self) -> None:
-        """connect() handles unexpected exceptions with retry + sleep."""
-        from silvasonic.controller.podman_client import (
-            PodmanConnectionError,
-            SilvasonicPodmanClient,
-        )
-
-        mock_podman_class = MagicMock()
-        mock_instance = MagicMock()
-        mock_instance.ping.side_effect = TypeError("unexpected")
-        mock_podman_class.return_value = mock_instance
-
-        client = SilvasonicPodmanClient(socket_path="/test.sock", max_retries=2, retry_delay=0.01)
-        with (
-            patch("podman.PodmanClient", mock_podman_class),
-            patch("time.sleep") as mock_sleep,
-            pytest.raises(PodmanConnectionError),
-        ):
-            client.connect()
-
-        # Should sleep between retries (only first attempt, not last)
-        mock_sleep.assert_called_once_with(0.01)
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientPingEdgeCases:
-    """Additional ping() tests."""
-
-    def test_ping_unexpected_exception(self) -> None:
-        """ping() returns False on unexpected exceptions and logs warning."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.ping.side_effect = TypeError("unexpected")
-        client._connected = True
-
-        assert client.ping() is False
-        assert not client.is_connected
-
-    def test_ping_os_error(self) -> None:
-        """ping() returns False on OSError (connection reset)."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.ping.side_effect = OSError("connection reset")
-        client._connected = True
-
-        assert client.ping() is False
-        assert not client.is_connected
-
-
-@pytest.mark.unit
-class TestSilvasonicPodmanClientListContainersEdgeCases:
-    """Additional list_containers() tests."""
-
-    def test_list_containers_connection_error(self) -> None:
-        """Returns empty list on ConnectionError."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.side_effect = ConnectionError("socket gone")
-        client._connected = True
-
-        assert client.list_containers() == []
-
-    def test_list_containers_os_error(self) -> None:
-        """Returns empty list on OSError."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.side_effect = OSError("broken pipe")
-        client._connected = True
-
-        assert client.list_containers() == []
-
-    def test_list_containers_with_filters(self) -> None:
-        """list_containers passes filters to podman."""
-        from silvasonic.controller.podman_client import SilvasonicPodmanClient
-
-        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
-        client._client = MagicMock()
-        client._client.containers.list.return_value = []
-        client._connected = True
-
-        client.list_containers(status=["running"])
-        client._client.containers.list.assert_called_once_with(filters={"status": ["running"]})

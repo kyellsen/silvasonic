@@ -51,9 +51,9 @@ async def main() -> None:
     #    If Redis is unreachable: logs warning, continues without heartbeat
     await service.connect_redis()
 
-    # 4. Heartbeat Loop — fire-and-forget, every 10 seconds
+    # 4. Heartbeat Loop — fire-and-forget, periodic
     #    Two Redis operations per heartbeat (both with 50ms timeout):
-    #      SET silvasonic:status:<instance_id> <payload> EX 30
+    #      SET silvasonic:status:<instance_id> <payload> EX <TTL>
     #      PUBLISH silvasonic:status <payload>
     service.start_heartbeat()
 

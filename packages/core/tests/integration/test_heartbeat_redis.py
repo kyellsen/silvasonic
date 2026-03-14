@@ -21,7 +21,11 @@ from typing import Any, cast
 import pytest
 from redis.asyncio import Redis
 from silvasonic.core.health import HealthMonitor
-from silvasonic.core.heartbeat import HeartbeatPublisher
+from silvasonic.core.heartbeat import (
+    DEFAULT_HEARTBEAT_INTERVAL_S,
+    DEFAULT_HEARTBEAT_TTL_S,
+    HeartbeatPublisher,
+)
 from silvasonic.core.redis import get_redis_connection
 from silvasonic.core.service_context import ServiceContext
 from silvasonic.test_utils.helpers import build_redis_url
@@ -58,7 +62,7 @@ class TestHeartbeatPublishRedis:
             redis=redis,
             service_name="test-integration",
             instance_id="int-01",
-            interval=10.0,
+            interval=DEFAULT_HEARTBEAT_INTERVAL_S,
         )
 
         # Wire up a real health monitor
@@ -81,9 +85,11 @@ class TestHeartbeatPublishRedis:
         assert "meta" in payload
         assert payload["meta"]["resources"]["cpu_percent"] == 5.0
 
-        # Verify TTL is set (should be ≤ 30s)
+        # Verify TTL is set (should be ≤ DEFAULT_HEARTBEAT_TTL_S)
         ttl = await redis.ttl(key)
-        assert 0 < ttl <= 30, f"Expected TTL 1-30s, got {ttl}"
+        assert 0 < ttl <= DEFAULT_HEARTBEAT_TTL_S, (
+            f"Expected TTL 1-{DEFAULT_HEARTBEAT_TTL_S}s, got {ttl}"
+        )
 
         await cast(Any, redis).aclose()
 
@@ -105,7 +111,7 @@ class TestHeartbeatPublishRedis:
             redis=redis,
             service_name="test-pubsub",
             instance_id="pubsub-01",
-            interval=10.0,
+            interval=DEFAULT_HEARTBEAT_INTERVAL_S,
         )
         await pub.publish_once({"cpu_percent": 1.0})
 

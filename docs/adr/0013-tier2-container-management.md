@@ -7,7 +7,7 @@
 The Controller (Tier 1) must dynamically manage **Tier 2 services** (Recorder, Uploader, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:
 
 *   **Immutable Tier 2 containers:** Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (Uploader, BirdNET, etc.) may access the database.
-*   **Multi-instance support:** Multiple Recorder instances may run concurrently (one per USB microphone, HotPlug). One Uploader per Cloud Storage Account.
+*   **Multi-instance support:** Multiple Recorder instances may run concurrently (one per USB microphone). One Uploader per Cloud Storage Account.
 *   **Pre-built images:** All images are built before deployment (`just build`). The Controller never builds images at runtime.
 *   **Container-in-Container (DooD):** The Controller itself runs in a container and manages sibling containers on the host engine via the host's Podman socket (Docker-out-of-Docker pattern).
 *   **Years of autonomous operation:** Minimal moving parts, deterministic behavior, no runtime dependencies on Compose semantics.
@@ -55,7 +55,7 @@ Tier 2 containers join the **same custom network** as Tier 1 services (`SILVASON
 ### 2.4. Restart Policy & Crash Recovery
 
 *   **Podman handles immediate crash recovery** — restart policy `on-failure` (max 5 retries) is set on every `containers.run()` call.
-*   **The Controller runs a periodic reconciliation loop** (~30s) as a safety net — detecting orphaned, stuck, or missing containers and correcting the state.
+*   **The Controller runs a periodic reconciliation loop** as a safety net — detecting orphaned, stuck, or missing containers and correcting the state.
 *   **Controller crash or restart:** Tier 2 containers **keep running** independently. On restart, the Controller reconciles via label query, adopts existing containers without restarting them.
 *   **Priority:** Data Capture Integrity > Clean Shutdown. A Recorder must never be interrupted by a Controller restart.
 

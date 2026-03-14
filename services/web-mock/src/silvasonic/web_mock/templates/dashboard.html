@@ -14,7 +14,7 @@
 
     <!-- Orchestration card (interactive) -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
+        class="silva-card-interactive col-span-2">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="card-title text-sm font-semibold">Orchestration</h2>
@@ -39,7 +39,7 @@
 
     <!-- Data Pipeline card (interactive) -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 cursor-pointer">
+        class="silva-card-interactive col-span-2">
         <div class="card-body p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="card-title text-sm font-semibold">Data Pipeline</h2>
@@ -64,10 +64,10 @@
 
     <!-- SSD Storage card (static) — radial progress -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5 flex flex-row items-center justify-between">
             <div class="flex flex-col justify-between h-full w-full">
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-1">SSD Storage</h2>
+                <h2 class="silva-label mb-1">SSD Storage</h2>
 
                 <div class="flex flex-col mt-2">
                     <div class="text-sm text-base-content/40 font-mono mt-1 mb-2">{{ metrics.nvme_used_gb }} / {{
@@ -86,11 +86,11 @@
 
     <!-- CPU card (static) -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5 flex flex-col justify-between">
             <div>
                 <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">CPU</h2>
+                    <h2 class="silva-label">CPU</h2>
                     <div class="text-xs text-base-content/50 font-mono flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -127,10 +127,10 @@
 
     <!-- RAM card (static) -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5 flex flex-row items-center justify-between">
             <div class="flex flex-col justify-between h-full w-full">
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-1">RAM</h2>
+                <h2 class="silva-label mb-1">RAM</h2>
 
                 <div class="flex flex-col mt-2">
                     <div class="text-sm text-base-content/40 font-mono mt-1 mb-2">{{ metrics.ram_used_mb }} / {{
@@ -151,10 +151,10 @@
 
     <!-- Uptime card (static) -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+        class="silva-card-static">
         <div class="card-body p-5 flex flex-col justify-between">
             <div>
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Uptime</h2>
+                <h2 class="silva-label mb-2">Uptime</h2>
                 <div class="text-3xl font-bold text-base-content mb-1">{{ metrics.uptime_h }}<span
                         class="text-xl text-base-content/40 ml-1 font-normal">h</span></div>
                 <div class="text-sm text-base-content/40 font-mono">since last restart</div>
@@ -197,7 +197,7 @@
 
 <!-- ECharts placeholder (static) -->
 <div
-    class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-colors duration-200 hover:border-base-content/10">
+    class="silva-card-static">
     <div class="card-body p-5">
         <h2 class="text-sm font-semibold mb-2">Upload Throughput</h2>
         {{ chart_placeholder('[ ECharts time-series chart — mock placeholder ]') }}

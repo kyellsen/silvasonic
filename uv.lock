@@ -1612,6 +1612,7 @@ dev = [
     { name = "pytest-playwright" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "silvasonic-test-utils" },
     { name = "structlog" },
@@ -1653,6 +1654,7 @@ dev = [
     { name = "pytest-playwright", specifier = ">=0.5.0" },
     { name = "pytest-timeout", specifier = ">=2.3.1" },
     { name = "pytest-xdist", specifier = ">=3.5.0" },
+    { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", specifier = ">=0.8.0" },
     { name = "silvasonic-test-utils", editable = "packages/test-utils" },
     { name = "structlog", specifier = ">=24.1.0" },
@@ -1669,6 +1671,7 @@ name = "silvasonic-controller"
 source = { editable = "services/controller" }
 dependencies = [
     { name = "bcrypt" },
+    { name = "cryptography" },
     { name = "podman" },
     { name = "pyyaml" },
     { name = "silvasonic-core" },
@@ -1677,6 +1680,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bcrypt", specifier = ">=4.0" },
+    { name = "cryptography", specifier = ">=46.0.5" },
     { name = "podman", specifier = ">=5.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "silvasonic-core", editable = "packages/core" },
@@ -1687,12 +1691,10 @@ name = "silvasonic-core"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "asyncpg" },
-    { name = "cryptography" },
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "redis", extra = ["hiredis"] },
-    { name = "rich" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
 ]
@@ -1705,12 +1707,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "cryptography", specifier = ">=46.0.5" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.0.0" },
-    { name = "rich", specifier = ">=13.0.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.0" },
     { name = "structlog", specifier = ">=24.0.0" },
 ]
@@ -1748,6 +1748,7 @@ name = "silvasonic-web-mock"
 version = "0.2.0"
 source = { editable = "services/web-mock" }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "python-multipart" },
@@ -1758,6 +1759,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=46.0.5" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },

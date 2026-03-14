@@ -52,7 +52,7 @@ Redis serves exactly **three purposes** for Silvasonic:
 
 | Mechanism                     | Redis Command                             | Purpose                                                     |
 | :---------------------------- | :---------------------------------------- | :---------------------------------------------------------- |
-| **Current Status** (snapshot) | `SET silvasonic:status:<id> <json> EX 30` | Readable anytime. 30s TTL — key disappears if service stops |
+| **Current Status** (snapshot) | `SET silvasonic:status:<id> <json> EX <TTL>` | Readable anytime. TTL auto-expires key if service stops (see `DEFAULT_HEARTBEAT_TTL_S` in `heartbeat.py`) |
 | **Live Updates** (push)       | `PUBLISH silvasonic:status <json>`        | Real-time notification for subscribers (Web-Interface)      |
 | **Live Logs** (push)          | `PUBLISH silvasonic:logs <json>`          | Container log streaming for Web-Interface (ADR-0022)        |
 
@@ -107,7 +107,7 @@ Control is **declarative** (DB desired state), not imperative (HTTP commands). T
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The nudge is a simple wake-up signal — not a command. If the nudge is lost (Controller restarting), the 30s reconciliation timer catches up. The DB desired state is never lost.
+The nudge is a simple wake-up signal — not a command. If the nudge is lost (Controller restarting), the reconciliation timer catches up. The DB desired state is never lost.
 
 > [!NOTE]
 > Immutable services (Recorder, Workers, Processor) do not process runtime commands. To change their configuration, the Controller stops and restarts them with updated environment variables.

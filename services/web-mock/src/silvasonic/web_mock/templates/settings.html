@@ -102,7 +102,7 @@
 
                 <!-- Station Identity Card -->
                 <div
-                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    class="silva-card-form">
                     <div class="p-6 border-b border-base-content/5">
                         <h3 class="font-semibold text-base">Station Identity</h3>
                     </div>
@@ -130,7 +130,7 @@
 
                 <!-- Location & Time Card -->
                 <div
-                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    class="silva-card-form">
                     <div class="p-6 border-b border-base-content/5">
                         <h3 class="font-semibold text-base">Location & Time</h3>
                     </div>
@@ -147,14 +147,14 @@
                                 <label class="label py-1"><span
                                         class="label-text font-medium text-sm">Latitude</span></label>
                                 <input type="number" step="0.0001"
-                                    class="input input-bordered focus:input-primary font-mono transition-all"
+                                    class="input input-bordered focus:input-primary transition-all font-mono"
                                     value="{{ settings.latitude }}" />
                             </div>
                             <div class="form-control">
                                 <label class="label py-1"><span
                                         class="label-text font-medium text-sm">Longitude</span></label>
                                 <input type="number" step="0.0001"
-                                    class="input input-bordered focus:input-primary font-mono transition-all"
+                                    class="input input-bordered focus:input-primary transition-all font-mono"
                                     value="{{ settings.longitude }}" />
                             </div>
                         </div>
@@ -163,14 +163,14 @@
 
                 <!-- Power Management Card -->
                 <div
-                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                    class="silva-card-form">
                     <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h3 class="font-semibold text-base">Poweroff on Low Battery</h3>
                             <p class="text-sm text-base-content/60 mt-1">Safely shutdown the system to prevent SD card
                                 corruption when battery level is critically low.</p>
                         </div>
-                        <input type="checkbox" class="toggle toggle-primary shadow-sm" {% if
+                        <input type="checkbox" class="toggle toggle-sm toggle-primary shadow-sm" {% if
                             settings.poweroff_on_low_battery %}checked{% endif %} />
                     </div>
                 </div>
@@ -192,7 +192,7 @@
             </div>
 
             <div
-                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                class="silva-card-form">
                 <div class="p-6 bg-info/5 border-b border-info/10">
                     <div class="flex items-start gap-3 text-info">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -249,7 +249,7 @@
                                 <p class="text-sm text-base-content/60">{{ desc }}</p>
                             </div>
                         </div>
-                        <input type="checkbox" class="toggle toggle-primary shadow-sm" {% if enabled %}checked{% endif
+                        <input type="checkbox" class="toggle toggle-sm toggle-primary shadow-sm" {% if enabled %}checked{% endif
                             %} />
                     </div>
                     {% endfor %}
@@ -279,7 +279,7 @@
             </div>
 
             <div
-                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10">
+                class="silva-card-form">
                 <div class="p-6 border-b border-base-content/5">
                     <h3 class="font-semibold text-base flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -300,7 +300,7 @@
                             <label class="label py-1"><span class="label-text font-medium text-sm">Max File Age
                                     (Days)</span></label>
                             <input type="number"
-                                class="input input-bordered focus:input-primary text-lg font-mono transition-all"
+                                class="input input-bordered focus:input-primary transition-all text-lg font-mono"
                                 value="30" />
                             <label class="label py-1"><span class="label-text-alt text-base-content/50">Files older than
                                     this will be deleted to free space.</span></label>
@@ -309,7 +309,7 @@
                             <label class="label py-1"><span class="label-text font-medium text-sm">Min Free Space Buffer
                                     (GB)</span></label>
                             <input type="number"
-                                class="input input-bordered focus:input-primary text-lg font-mono transition-all"
+                                class="input input-bordered focus:input-primary transition-all text-lg font-mono"
                                 value="{{ settings.recording_policy.min_free_gb }}" />
                             <label class="label py-1"><span class="label-text-alt text-base-content/50">Urgent cleanup
                                     triggers below this threshold.</span></label>
@@ -358,7 +358,7 @@
             {% for remote in settings.remotes %}
             <div x-show="activeRemote === '{{ remote.id }}'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
-                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all"
+                class="silva-card-form"
                 style="display: none;">
                 <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
                     <h3 class="font-bold text-lg flex items-center gap-3">
@@ -379,7 +379,7 @@
                     <div class="form-control">
                         <label class="label py-1"><span class="label-text font-medium text-sm">Server URL</span></label>
                         <input type="text"
-                            class="input input-bordered focus:input-primary font-mono transition-all w-full"
+                            class="input input-bordered focus:input-primary transition-all font-mono w-full"
                             value="{{ remote.url }}" />
                     </div>
 
@@ -387,7 +387,7 @@
                         <div class="form-control">
                             <label class="label py-1"><span class="label-text font-medium text-sm">Username / Key
                                     ID</span></label>
-                            <input type="text" class="input input-bordered focus:input-primary font-mono transition-all"
+                            <input type="text" class="input input-bordered focus:input-primary transition-all font-mono"
                                 value="{{ remote.username }}" />
                         </div>
                         <div class="form-control">
@@ -405,7 +405,7 @@
                             <span
                                 class="bg-base-200 border border-base-content/20 border-r-0 rounded-l-lg px-4 flex items-center justify-center text-base-content/60 font-mono text-sm leading-none m-0 h-12">/</span>
                             <input type="text"
-                                class="input input-bordered focus:input-primary font-mono transition-all flex-1 rounded-l-none"
+                                class="input input-bordered focus:input-primary transition-all font-mono flex-1 rounded-l-none"
                                 value="silvasonic-archives/{{ settings.station_name }}/" />
                         </div>
                     </div>
@@ -434,7 +434,7 @@
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <!-- WLAN Access Point -->
                 <div
-                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 flex flex-col">
+                    class="silva-card-form flex flex-col">
                     <div class="p-6 border-b border-base-content/5 flex items-start justify-between">
                         <div class="flex items-center gap-3">
                             <div
@@ -453,7 +453,7 @@
                                 <span class="badge badge-success badge-sm badge-outline mt-1 font-mono">ACTIVE</span>
                             </div>
                         </div>
-                        <input type="checkbox" class="toggle toggle-primary" checked="checked" />
+                        <input type="checkbox" class="toggle toggle-sm toggle-primary" checked="checked" />
                     </div>
 
                     <div class="p-6 space-y-3 flex-1 bg-base-200/20">
@@ -490,7 +490,7 @@
 
                 <!-- Tailscale VPN -->
                 <div
-                    class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 flex flex-col">
+                    class="silva-card-form flex flex-col">
                     <div class="p-6 border-b border-base-content/5 flex items-start justify-between">
                         <div class="flex items-center gap-3">
                             <div
@@ -507,7 +507,7 @@
                                 <span class="badge badge-success badge-sm badge-outline mt-1 font-mono">CONNECTED</span>
                             </div>
                         </div>
-                        <input type="checkbox" class="toggle toggle-primary" checked="checked" />
+                        <input type="checkbox" class="toggle toggle-sm toggle-primary" checked="checked" />
                     </div>
 
                     <div class="p-6 space-y-3 flex-1 bg-base-200/20">
@@ -556,7 +556,7 @@
             </div>
 
             <div
-                class="card bg-base-100 shadow-sm border border-base-content/5 rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-base-content/10 max-w-2xl">
+                class="silva-card-form max-w-2xl">
                 <div class="p-6 border-b border-base-content/5 flex items-center gap-4">
                     <div class="avatar placeholder">
                         <div class="bg-primary text-primary-content rounded-full w-12 text-xl font-bold">

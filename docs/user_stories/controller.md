@@ -13,14 +13,13 @@
 
 #### Hardware-Erkennung
 - [ ] **Alle** USB-Audio-Geräte am Host werden erkannt — nicht nur solche mit bekanntem Profil.
-- [ ] Erkennung basiert auf `pyudev` (Linux `udev` / `libudev`) für stabile USB-Identifikation (Vendor-ID, Product-ID, Serial).
+- [ ] Stabile USB-Identifikation (Vendor-ID, Product-ID, Serial) erfolgt über direktes `sysfs`-Auslesen (`pathlib`) — keine externen Abhängigkeiten.
 - [ ] ALSA-Karten werden über `/proc/asound/cards` korreliert, um den ALSA-Gerätenamen (z.B. `hw:2,0`) zu ermitteln.
 
 #### Einstecken & Entfernen
-- [ ] **Reaktionszeit ≤ 1 Sekunde** — ein Kernel-Event-Listener erkennt Änderungen und löst sofort eine Zustandsprüfung aus.
+- [ ] **Reaktionszeit ≤ 1 Sekunde** — der Reconciliation-Loop pollt alle 1 Sekunde nach Änderungen.
 - [ ] Ein neu erkanntes Mikrofon wird automatisch in der Geräteliste als `pending` / `status=online` angelegt.
 - [ ] Das Entfernen eines Mikrofons setzt `status=offline` und beendet die zugehörige Aufnahme sauber.
-- [ ] Ein Sicherheits-Timer (~30s) dient als **Fallback** — nicht als primärer Erkennungsmechanismus.
 
 #### Stabile Wiedererkennung
 - [ ] Ein erneut eingestecktes Mikrofon wird anhand seiner stabilen Geräte-ID wiedererkannt (Vendor-ID + Product-ID + Serial, bzw. Port-Fallback).
@@ -34,9 +33,8 @@
 
 ### Nicht-funktionale Anforderungen
 
-- Erkennung muss auf **allen gängigen Linux-Distributionen** funktionieren.
-- Der Listener läuft als eigenständige Hintergrundaufgabe und darf den regulären Prüfzyklus nicht blockieren.
-- Bei Fehler des Listeners (z.B. udev nicht verfügbar) → automatischer Rückfall auf Polling mit Warnung im Log.
+- Erkennung muss auf **allen gängigen Linux-Distributionen** und in Rootless-Podman-Containern funktionieren.
+- Polling läuft als Teil des Reconciliation-Loops und darf andere Controller-Funktionen nicht blockieren.
 
 ### Referenzen
 
@@ -53,7 +51,7 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Der regelmäßige Prüfzyklus (~30s) erkennt fehlende oder abgestürzte Dienste und startet sie neu.
+- [ ] Der regelmäßige Prüfzyklus erkennt fehlende oder abgestürzte Dienste und startet sie neu.
 - [ ] Container-Neustart-Richtlinie (`on-failure`, max 5) als erste schnelle Absicherung.
 - [ ] Bei Controller-Neustart werden bestehende Aufnahme-Instanzen adoptiert (nicht neu gestartet).
 - [ ] Bei Controller-Absturz laufen Aufnahme-Instanzen ungestört weiter.
@@ -78,7 +76,7 @@
 - [ ] Gewünschter Zustand aus `system_services` und `devices` wird korrekt ausgewertet.
 - [ ] Dienste werden je nach `enabled`-Flag gestartet oder gestoppt.
 - [ ] Bei Konfigurationsänderung: Dienst stoppen und mit neuen Einstellungen neu starten.
-- [ ] Falls ein Signal verloren geht (z.B. Controller-Neustart), fängt der 30s-Timer die Änderung auf.
+- [ ] Falls ein Signal verloren geht (z.B. Controller-Neustart), fängt der Reconciliation-Timer die Änderung auf.
 
 ### Referenzen
 
@@ -170,7 +168,7 @@
 
 - [ ] `enabled=false` auf Geräte-Ebene → sofortige Aufnahme-Abschaltung.
 - [ ] Der Stopp erfolgt unabhängig vom Zuweisungs-Status.
-- [ ] Änderungssignal sorgt für sofortige Reaktion; der Timer (30s) dient als Fallback.
+- [ ] Änderungssignal sorgt für sofortige Reaktion; der Reconciliation-Timer dient als Fallback.
 - [ ] Die Aufnahme wird sauber beendet (kein harter Abbruch).
 
 ### Referenzen

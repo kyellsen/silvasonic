@@ -4,7 +4,7 @@ Listens to the ``silvasonic:nudge`` Redis channel and triggers
 the reconciliation loop when a ``"reconcile"`` message is received.
 
 The nudge is a simple wake-up signal — not a command. If the subscriber
-is down or the message is lost, the 30s reconciliation timer catches up.
+is down or the message is lost, the reconciliation timer catches up.
 """
 
 from __future__ import annotations

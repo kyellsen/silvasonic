@@ -6,8 +6,8 @@ pattern, ADR-0017).
 
 Each heartbeat performs two Redis operations:
 
-1. ``SET silvasonic:status:<instance_id> <payload> EX 30`` — snapshot
-   readable anytime (30s TTL, auto-expires if service stops).
+1. ``SET silvasonic:status:<instance_id> <payload> EX <TTL>`` — snapshot
+   readable anytime (TTL: see ``DEFAULT_HEARTBEAT_TTL_S``).
 2. ``PUBLISH silvasonic:status <payload>`` — live push notification.
 
 Heartbeats are best-effort, fire-and-forget.  A failed publish does NOT
@@ -27,6 +27,12 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 
 logger = structlog.get_logger()
+
+DEFAULT_HEARTBEAT_INTERVAL_S: float = 10.0
+"""Default seconds between heartbeat publishes."""
+
+DEFAULT_HEARTBEAT_TTL_S: int = 30
+"""Default TTL (seconds) for heartbeat Redis keys (should be ≥ 3x interval)."""
 
 
 class HealthProvider(Protocol):
@@ -85,7 +91,7 @@ class HeartbeatPublisher:
         service_name: str,
         instance_id: str = "default",
         channel: str = "silvasonic:status",
-        interval: float = 10.0,
+        interval: float = DEFAULT_HEARTBEAT_INTERVAL_S,
     ) -> None:
         """Initialize the heartbeat publisher."""
         self._redis = redis
@@ -154,14 +160,14 @@ class HeartbeatPublisher:
         """Publish a single heartbeat. Best-effort, fire-and-forget.
 
         Performs two Redis operations (ADR-0017 Read+Subscribe pattern):
-        1. ``SET silvasonic:status:<instance_id> <payload> EX 30``
+        1. ``SET silvasonic:status:<instance_id> <payload> EX <TTL>``
         2. ``PUBLISH silvasonic:status <payload>``
         """
         payload = self._build_payload(resources)
         json_payload = json.dumps(payload.model_dump())
         key = f"silvasonic:status:{self._instance_id}"
         try:
-            await self._redis.set(key, json_payload, ex=30)
+            await self._redis.set(key, json_payload, ex=DEFAULT_HEARTBEAT_TTL_S)
             await self._redis.publish(self._channel, json_payload)
         except Exception as exc:
             logger.warning("heartbeat_publish_failed", error=str(exc))

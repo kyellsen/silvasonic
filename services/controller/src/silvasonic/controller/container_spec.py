@@ -8,6 +8,8 @@ mounts, and restart policies.
 from __future__ import annotations
 
 import os
+import re
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
@@ -20,9 +22,13 @@ from silvasonic.core.database.models.system import Device
 class MountSpec(BaseModel):
     """Bind mount specification (ADR-0009: Zero-Trust mounts)."""
 
-    source: str = Field(..., description="Host path")
+    source: str = Field(..., description="Host path (passed to Podman for spawned container)")
     target: str = Field(..., description="Container path")
     read_only: bool = Field(default=False, description="Mount as read-only (consumer)")
+    controller_source: str | None = Field(
+        default=None,
+        description="Controller-local path for mkdir (maps to host via bind mount)",
+    )
 
 
 class RestartPolicy(BaseModel):
@@ -88,6 +94,55 @@ class Tier2ServiceSpec(BaseModel):
 _RECORDER_OOM_SCORE_ADJ = -999  # Protected: OOM Killer kills this LAST
 
 
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _short_suffix(device: Device) -> str:
+    """Derive a short, unique suffix from the device's hardware identity.
+
+    Priority:
+    1. Last 4 hex chars of USB serial — globally unique per device.
+    2. USB bus path (dots/hyphens replaced) — unique per physical port.
+    3. ALSA card index — fallback (unstable across reboots).
+
+    Returns:
+        4-character lowercase string, e.g. ``"034f"``, ``"p1d3"``, ``"c002"``.
+    """
+    serial = device.config.get("usb_serial", "") or ""
+    if serial:
+        return serial[-4:].lower()
+
+    bus = device.config.get("usb_bus_path", "") or ""
+    if bus:
+        # "1-3.2" → "p1d3" (p=port, d=delimiter replacement)
+        return ("p" + bus.replace("-", "d").replace(".", "d"))[:4]
+
+    card_idx = device.config.get("alsa_card_index", 0)
+    return f"c{card_idx:03d}"
+
+
+def _container_name(profile_slug: str, suffix: str) -> str:
+    """Build a Podman-safe, human-readable container name.
+
+    Format: ``silvasonic-recorder-{slug}-{suffix}``
+
+    Slug is lowercased and stripped of non-alphanumeric characters
+    (underscores/special chars replaced by hyphens, consecutive hyphens
+    collapsed).
+
+    Examples::
+
+        >>> _container_name("ultramic_384_evo", "034f")
+        'silvasonic-recorder-ultramic-384-evo-034f'
+
+    Returns:
+        Valid Podman container name (lowercase alphanumeric + hyphens).
+    """
+    safe_slug = _SLUG_RE.sub("-", profile_slug.lower()).strip("-")
+    safe_suffix = _SLUG_RE.sub("", suffix.lower())
+    return f"silvasonic-recorder-{safe_slug}-{safe_suffix}"
+
+
 def build_recorder_spec(
     device: Device,
     profile: MicProfileDB,
@@ -122,11 +177,22 @@ def build_recorder_spec(
     if cpu_limit is None:
         cpu_limit = float(os.environ.get("SILVASONIC_RECORDER_CPU_LIMIT", "1.0"))
 
+    # Controller-local workspace path (for mkdir inside the controller container).
+    # In container: SILVASONIC_RECORDER_WORKSPACE_LOCAL=/app/recorder-workspace
+    # In tests/dev: falls back to workspace_path/recorder (direct host path).
+    recorder_local = os.environ.get(
+        "SILVASONIC_RECORDER_WORKSPACE_LOCAL",
+        str(Path(workspace_path) / "recorder"),
+    )
+
     device_id = device.name
+    container_name = _container_name(profile.slug, _short_suffix(device))
+    # Human-readable workspace dir matches container name (strip prefix)
+    workspace_dir = container_name.removeprefix("silvasonic-recorder-")
 
     return Tier2ServiceSpec(
-        image="silvasonic-recorder:latest",
-        name=f"silvasonic-recorder-{device_id}",
+        image="localhost/silvasonic_recorder:latest",
+        name=container_name,
         network=network,
         environment={
             "RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
@@ -144,9 +210,10 @@ def build_recorder_spec(
         },
         mounts=[
             MountSpec(
-                source=f"{workspace_path}/recorder/{device_id}",
+                source=str(Path(workspace_path) / "recorder" / workspace_dir),
                 target="/app/workspace",
                 read_only=False,  # Recorder is a producer → RW (ADR-0009)
+                controller_source=str(Path(recorder_local) / workspace_dir),
             ),
         ],
         devices=["/dev/snd:/dev/snd"],

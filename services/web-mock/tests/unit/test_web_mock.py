@@ -36,7 +36,7 @@ async def _mock_settings() -> dict[str, Any]:
 
 
 async def _mock_get_db() -> AsyncGenerator[AsyncMock, None]:
-    session = AsyncMock()
+    session = AsyncMock(add=MagicMock())
     yield session
 
 
@@ -133,7 +133,7 @@ class TestHealthEndpoints:
         mock_result.scalar_one_or_none.return_value = mock_saved
 
         async def _db_with_saved() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -157,7 +157,7 @@ class TestHealthEndpoints:
         mock_result.scalar_one_or_none.return_value = None
 
         async def _db_read_none() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -180,7 +180,7 @@ class TestHealthEndpoints:
         mock_result.scalar_one_or_none.return_value = mock_saved
 
         async def _db_no_key() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -295,7 +295,7 @@ class TestSettingsPost:
         mock_result.scalar_one_or_none.return_value = None
 
         async def _db_new_setting() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -321,7 +321,7 @@ class TestSettingsPost:
         mock_result.scalar_one_or_none.return_value = existing
 
         async def _db_existing() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -347,7 +347,7 @@ class TestSettingsPost:
         mock_result.scalar_one_or_none.return_value = existing
 
         async def _db_none_val() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -372,7 +372,7 @@ class TestSettingsPost:
         mock_result.scalar_one_or_none.return_value = existing
 
         async def _db_str_val() -> AsyncGenerator[AsyncMock, None]:
-            session = AsyncMock()
+            session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session
 
@@ -468,7 +468,7 @@ class TestDependencyFunctions:
         """get_station returns mock data when DB has no record."""
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         # Import the original function (not the override)
@@ -484,7 +484,7 @@ class TestDependencyFunctions:
         saved.value = {"station_name": "DB-Station"}
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = saved
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_station as _real_get_station
@@ -499,7 +499,7 @@ class TestDependencyFunctions:
         saved.value = "just-a-string"
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = saved
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_station as _real_get_station
@@ -514,7 +514,7 @@ class TestDependencyFunctions:
         saved.value = {"timezone": "Europe/Berlin"}
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = saved
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_station as _real_get_station
@@ -527,7 +527,7 @@ class TestDependencyFunctions:
         """get_settings returns mock data when DB has no record."""
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_settings as _real_get_settings
@@ -542,7 +542,7 @@ class TestDependencyFunctions:
         saved.value = {"station_name": "DB-Station", "language": "en"}
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = saved
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_settings as _real_get_settings
@@ -558,7 +558,7 @@ class TestDependencyFunctions:
         saved.value = "string-value"
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = saved
-        session = AsyncMock()
+        session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
         from silvasonic.web_mock.__main__ import get_settings as _real_get_settings

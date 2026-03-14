@@ -12,8 +12,8 @@ audio:
   channels: 1
   format: S16LE # Hardware native
   match:
-    usb_vendor_id: "2578"
-    usb_product_id: "0001"
+    usb_vendor_id: "0869"
+    usb_product_id: "0389"
     alsa_name_contains: "ultramic"
 processing:
   gain_db: 12.0 # Often needs boost for distant bats

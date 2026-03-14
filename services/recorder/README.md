@@ -123,7 +123,7 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | 1     | **Internal Watchdog** — monitors FFmpeg subprocess via `stderr` for errors, hangs, or death     | Restarts the pipeline within the container |
 | 2     | **Container Restart** — Docker `restart: unless-stopped` restarts the entire container          | Handles container-level crashes            |
-| 3     | **Controller Health Check** (~30s interval) — detects unresponsive Recorders and recreates them | Handles unrecoverable states               |
+| 3     | **Controller Health Check** (reconciliation interval) — detects unresponsive Recorders and recreates them | Handles unrecoverable states               |
 
 ### Retry Limit
 

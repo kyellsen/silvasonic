@@ -35,7 +35,7 @@ For multi-instance Tier 2 services, the Controller derives desired state from do
 
 Runtime health and activity is **ephemeral** and stored in Redis via two complementary mechanisms:
 
-1.  **`SET silvasonic:status:<instance_id>`** with 30s TTL — current status snapshot, readable anytime.
+1.  **`SET silvasonic:status:<instance_id>`** with TTL — current status snapshot, readable anytime (TTL: see `DEFAULT_HEARTBEAT_TTL_S` in `heartbeat.py`).
 2.  **`PUBLISH silvasonic:status`** — live updates for subscribers (Web-Interface).
 
 This is the **Read + Subscribe Pattern:** The Web-Interface reads all `silvasonic:status:*` keys on page load for the initial state, then subscribes to `silvasonic:status` for live updates. No missed heartbeats, no polling.
@@ -57,7 +57,7 @@ This is the **Read + Subscribe Pattern:** The Web-Interface reads all `silvasoni
 Control flows through the **Database** (desired state), not through HTTP API or Redis commands:
 
 1.  The Web-Interface writes the desired state to the database (e.g., `enabled=false` in `system_services`).
-2.  A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller immediately (instead of waiting for the 30s timer).
+2.  A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller immediately (instead of waiting for the reconciliation timer).
 3.  The Controller reads the DB, compares desired vs. actual state, and acts via `podman-py`.
 
 This follows the **Kubernetes Operator Pattern** (State Reconciliation) adapted for a single-node system:

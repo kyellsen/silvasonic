@@ -15,10 +15,10 @@
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
     <!-- Status Card -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2">
+    <div class="silva-card col-span-2">
         <div class="card-body p-5 flex flex-row items-center justify-between">
             <div>
-                <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">Status</h2>
+                <h2 class="silva-label mb-2">Status</h2>
                 <div class="flex items-center gap-2">
                     {{ status_badge(uploader.status) }}
                 </div>
@@ -32,9 +32,9 @@
     </div>
 
     <!-- Performance Card -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2">
+    <div class="silva-card col-span-2">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-3">Metrics</h2>
+            <h2 class="silva-label mb-3">Metrics</h2>
             <div class="grid grid-cols-2 gap-4 text-center">
                 <div>
                     <div class="text-2xl font-bold text-warning">{{ uploader.queue_files }}</div>
@@ -49,9 +49,9 @@
     </div>
 
     <!-- Configuration -->
-    <div class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2">
+    <div class="silva-card col-span-2">
         <div class="card-body p-5">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-3">Sync Configuration</h2>
+            <h2 class="silva-label mb-3">Sync Configuration</h2>
             <div class="space-y-2 text-sm font-mono">
                 <div class="flex justify-between border-b border-base-content/5 pb-1"><span
                         class="text-base-content/50">Target Type</span><span>{{ uploader.target_type }}</span></div>
@@ -66,7 +66,7 @@
 
     <!-- ECharts placeholder for specific uploader -->
     <div
-        class="card bg-base-100 rounded-xl shadow-sm border border-base-content/5 col-span-2 transition-colors duration-200">
+        class="silva-card-static col-span-2">
         <div class="card-body p-5">
             <h2 class="text-sm font-semibold mb-2">Throughput History</h2>
             <div

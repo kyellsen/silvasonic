@@ -149,7 +149,7 @@
 ### Akzeptanzkriterien
 
 - [ ] Die Aufnahme-Pipeline wird bei erkannten Fehlern (Absturz, Hänger, Prozess-Tod) automatisch neu gestartet.
-- [ ] Mehrere Absicherungs-Stufen: interner Watchdog → Container-Neustart → Controller-Prüfung (~30s).
+- [ ] Mehrere Absicherungs-Stufen: interner Watchdog → Container-Neustart → Controller-Prüfung (Reconciliation-Intervall).
 - [ ] Fehlstarts werden begrenzt (max. 5 Neuversuche), um Endlosschleifen zu vermeiden.
 
 ### Milestone
