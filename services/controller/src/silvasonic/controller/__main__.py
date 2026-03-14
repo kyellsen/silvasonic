@@ -16,7 +16,6 @@ sysfs-based USB detection (Phase 4).
 """
 
 import asyncio
-import os
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -27,6 +26,7 @@ from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import ReconciliationLoop
 from silvasonic.controller.seeder import run_all_seeders
+from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.session import get_session
 from silvasonic.core.resources import HostResourceCollector
@@ -46,12 +46,11 @@ class ControllerService(SilvaService):
 
     def __init__(self) -> None:
         """Initialize with Redis URL and Podman client from environment."""
-        # Read env var at instantiation time, not import time (Audit Z-1)
-        self.service_port = int(os.environ.get("SILVASONIC_CONTROLLER_PORT", "9100"))
-        redis_url = os.environ.get("SILVASONIC_REDIS_URL", "redis://localhost:6379/0")
+        cfg = ControllerSettings()
+        self.service_port = cfg.CONTROLLER_PORT
         super().__init__(
             instance_id="controller",
-            redis_url=redis_url,
+            redis_url=cfg.REDIS_URL,
         )
         self._host_resources = HostResourceCollector()
         self._podman_client = SilvasonicPodmanClient()
@@ -66,7 +65,7 @@ class ControllerService(SilvaService):
         )
         self._nudge_subscriber = NudgeSubscriber(
             self._reconciliation_loop,
-            redis_url=redis_url,
+            redis_url=cfg.REDIS_URL,
         )
 
     def get_extra_meta(self) -> dict[str, Any]:

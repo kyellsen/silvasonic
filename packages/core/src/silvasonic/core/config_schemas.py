@@ -48,3 +48,10 @@ class UploaderSettings(BaseModel):
     # --- Future implementation details (v0.6.0) ---
     # retry_max_attempts: int = 5
     # batch_burst_limit: int = 50
+
+
+class AuthDefaults(BaseModel):
+    """Default admin credentials (key: ``auth``)."""
+
+    default_username: str = "admin"
+    default_password: str = "silvasonic"

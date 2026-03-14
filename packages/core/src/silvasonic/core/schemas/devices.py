@@ -52,11 +52,13 @@ class ProcessingConfig(BaseModel):
 class StreamConfig(BaseModel):
     """Stream splitting configuration."""
 
-    raw_enabled: bool = Field(default=True, description="Save Raw (High-Res) stream?")
+    raw_enabled: bool = Field(default=True, description="Save Raw stream (native hardware SR)?")
     processed_enabled: bool = Field(default=True, description="Save Processed (48kHz) stream?")
-    live_stream_enabled: bool = Field(default=False, description="Enable Icecast MP3 stream?")
+    live_stream_enabled: bool = Field(
+        default=False, description="Enable Icecast Opus stream? (v0.9.0)"
+    )
     segment_duration_s: PositiveInt = Field(
-        default=15, description="File rotation interval in seconds"
+        default=10, description="File rotation interval in seconds"
     )
 
 

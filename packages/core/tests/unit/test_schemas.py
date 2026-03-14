@@ -73,7 +73,7 @@ class TestStreamConfig:
         assert cfg.raw_enabled is True
         assert cfg.processed_enabled is True
         assert cfg.live_stream_enabled is False
-        assert cfg.segment_duration_s == 15
+        assert cfg.segment_duration_s == 10
 
 
 @pytest.mark.unit

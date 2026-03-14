@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -29,6 +28,7 @@ from silvasonic.core.database.models.system import SystemConfig
 from silvasonic.core.database.session import get_db
 from silvasonic.core.service_context import ServiceContext
 from silvasonic.web_mock import mock_data
+from silvasonic.web_mock.settings import WebMockSettings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
@@ -39,8 +39,9 @@ logger = structlog.get_logger()
 # Config
 # ---------------------------------------------------------------------------
 
-WEB_MOCK_PORT = int(os.environ.get("SILVASONIC_WEB_MOCK_PORT", "8001"))
-REDIS_URL = os.environ.get("SILVASONIC_REDIS_URL", "redis://redis:6379/0")
+_settings = WebMockSettings()
+WEB_MOCK_PORT = _settings.WEB_MOCK_PORT
+REDIS_URL = _settings.REDIS_URL
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -49,8 +50,8 @@ REDIS_URL = os.environ.get("SILVASONIC_REDIS_URL", "redis://redis:6379/0")
 _HERE = Path(__file__).parent
 # When running from installed package the templates are next to the module.
 # In dev hot-reload the override mounts /app/templates → same path wins via uvicorn.
-_TEMPLATES_DIR = Path(os.environ.get("SILVASONIC_TEMPLATES_DIR", str(_HERE / "templates")))
-_STATIC_DIR = Path(os.environ.get("SILVASONIC_STATIC_DIR", str(_HERE / "static")))
+_TEMPLATES_DIR = _settings.TEMPLATES_DIR
+_STATIC_DIR = _settings.STATIC_DIR
 
 # ---------------------------------------------------------------------------
 # Lifespan — ServiceContext as async context manager

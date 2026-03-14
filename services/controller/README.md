@@ -149,9 +149,11 @@ Re-plugging a microphone must re-activate the same Recorder with the same worksp
 
 The stable device ID is stored as `devices.name` (primary key) and determines:
 
-*   **Recorder container name:** `silvasonic-recorder-{device_id}`
-*   **Workspace directory:** `workspace/recorder/{device_id}/`
+*   **Recorder container name:** `silvasonic-recorder-{slug}-{suffix}` (e.g. `silvasonic-recorder-ultramic-384-evo-034f`)
+*   **Workspace directory:** `workspace/recorder/{slug}-{suffix}/`
 *   **Redis instance ID:** `silvasonic:status:{device_id}`
+
+The **suffix** is derived from the device's hardware identity (last 4 chars of USB serial, USB bus path, or ALSA card index). The **slug** comes from the assigned Microphone Profile.
 
 This ensures that **re-plugging a microphone re-activates the same Recorder** with the same workspace, storage, and identity — no duplicate Recorders are created.
 
@@ -218,12 +220,7 @@ On startup, the Controller queries all containers with `io.silvasonic.owner=cont
 
 > **Status:** ✅ Implemented · **User Story:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-)
 
-The Recorder has **no database access** (ADR-0013). The Controller injects the Microphone Profile configuration into Recorder containers via environment variables at container creation time:
-
-```
-SILVASONIC_RECORDER_DEVICE=hw:1,0
-SILVASONIC_RECORDER_PROFILE_SLUG=ultramic_384_evo
-```
+The Recorder has **no database access** (ADR-0013). The Controller injects all configuration into Recorder containers via environment variables at container creation time: `SILVASONIC_RECORDER_DEVICE`, `SILVASONIC_RECORDER_PROFILE_SLUG`, `SILVASONIC_RECORDER_CONFIG_JSON`, `SILVASONIC_REDIS_URL`, and `SILVASONIC_INSTANCE_ID`. See [`build_recorder_spec()`](src/silvasonic/controller/container_spec.py) for the canonical implementation.
 
 ### Seed & Protection Logic
 

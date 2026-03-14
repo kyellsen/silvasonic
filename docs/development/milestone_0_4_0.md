@@ -15,7 +15,8 @@
 ### Tasks
 
 - [ ] Add `sounddevice`, `soundfile`, and `soxr` as dependencies to `services/recorder/pyproject.toml`
-- [ ] Add `libportaudio2`, `libsndfile1`, and `libsoxr-dev` as system dependencies in Recorder `Containerfile`
+- [ ] Add `libportaudio2` and `libsndfile1` as system dependencies in Recorder `Containerfile` (already present since v0.3.0)
+  - `soxr` bundles its own `libsoxr` in the Python wheel — no `libsoxr-dev` system package needed
 - [ ] Create `silvasonic/recorder/pipeline.py` — Audio pipeline builder
   - Use `sounddevice.InputStream` with callback for non-blocking capture
   - Input: ALSA device (e.g., `hw:1,0`)
@@ -36,6 +37,7 @@
   > container (e.g. `workspace/recorder/{workspace_dir}:/app/workspace:z`).
   > The Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
 - [ ] Read `SILVASONIC_RECORDER_DEVICE` from environment (ALSA device ID, e.g. `hw:1,0`)
+  - `SILVASONIC_INSTANCE_ID` is also available (injected by Controller since v0.3.0, used for SilvaService heartbeats)
 - [ ] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into the existing `MicrophoneProfile` Pydantic model (`silvasonic.core.schemas.devices`) at startup
   - The Controller serializes the `config` JSONB column from the `microphone_profiles` table and passes it as a single environment variable (ADR-0016)
   - The Recorder has **no database access** and **no YAML files** — all configuration arrives via env vars (ADR-0013)

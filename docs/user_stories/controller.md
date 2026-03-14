@@ -143,7 +143,7 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Der Controller sammelt systemweite Metriken (CPU, RAM, Speicher).
+- [x] Der Controller sammelt systemweite Metriken (CPU, RAM, Speicher).
 - [ ] Die Metriken werden regelmäßig an die Web-Oberfläche übertragen.
 - [ ] Die Web-Oberfläche zeigt sowohl Einzel-Dienst- als auch Gesamt-System-Metriken an.
 
@@ -244,7 +244,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.3.0
+- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.8.0 (Web-Anzeige)
 
 ### Referenzen
 

@@ -8,11 +8,11 @@ mounts, and restart policies.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
 
@@ -95,6 +95,19 @@ class Tier2ServiceSpec(BaseModel):
 _RECORDER_OOM_SCORE_ADJ = -999  # Protected: OOM Killer kills this LAST
 
 
+class RecorderEnvConfig(BaseSettings):
+    """Environment-based defaults for Recorder container specs."""
+
+    model_config = SettingsConfigDict(env_prefix="SILVASONIC_")
+
+    NETWORK: str = "silvasonic-net"
+    WORKSPACE_PATH: str = "/mnt/data/workspace"
+    RECORDER_MEMORY_LIMIT: str = "512m"
+    RECORDER_CPU_LIMIT: float = 1.0
+    RECORDER_WORKSPACE_LOCAL: str | None = None
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -169,22 +182,18 @@ def build_recorder_spec(
     Returns:
         Complete spec ready for ``ContainerManager.start()``.
     """
-    # Read env vars at call time — not import time (Audit Z-1)
-    network = network or os.environ.get("SILVASONIC_NETWORK", "silvasonic-net")
-    workspace_path = workspace_path or os.environ.get(
-        "SILVASONIC_WORKSPACE_PATH", "/mnt/data/workspace"
-    )
-    memory_limit = memory_limit or os.environ.get("SILVASONIC_RECORDER_MEMORY_LIMIT", "512m")
+    # Read env vars via Pydantic BaseSettings (validated, type-safe)
+    env = RecorderEnvConfig()
+    network = network or env.NETWORK
+    workspace_path = workspace_path or env.WORKSPACE_PATH
+    memory_limit = memory_limit or env.RECORDER_MEMORY_LIMIT
     if cpu_limit is None:
-        cpu_limit = float(os.environ.get("SILVASONIC_RECORDER_CPU_LIMIT", "1.0"))
+        cpu_limit = env.RECORDER_CPU_LIMIT
 
     # Controller-local workspace path (for mkdir inside the controller container).
     # In container: SILVASONIC_RECORDER_WORKSPACE_LOCAL=/app/recorder-workspace
     # In tests/dev: falls back to workspace_path/recorder (direct host path).
-    recorder_local = os.environ.get(
-        "SILVASONIC_RECORDER_WORKSPACE_LOCAL",
-        str(Path(workspace_path) / "recorder"),
-    )
+    recorder_local = env.RECORDER_WORKSPACE_LOCAL or str(Path(workspace_path) / "recorder")
 
     device_id = device.name
     container_name = _container_name(profile.slug, _short_suffix(device))
@@ -199,9 +208,7 @@ def build_recorder_spec(
             "SILVASONIC_RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
             "SILVASONIC_RECORDER_PROFILE_SLUG": profile.slug,
             "SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(profile.config),
-            "SILVASONIC_REDIS_URL": os.environ.get(
-                "SILVASONIC_REDIS_URL", "redis://localhost:6379/0"
-            ),
+            "SILVASONIC_REDIS_URL": env.REDIS_URL,
             "SILVASONIC_INSTANCE_ID": device_id,
         },
         labels={

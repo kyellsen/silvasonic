@@ -19,7 +19,13 @@ import bcrypt
 import structlog
 import yaml
 from pydantic import ValidationError
-from silvasonic.core.config_schemas import SystemSettings
+from silvasonic.core.config_schemas import (
+    AuthDefaults,
+    BirdnetSettings,
+    ProcessorSettings,
+    SystemSettings,
+    UploaderSettings,
+)
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import SystemConfig, User
 from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
@@ -97,6 +103,9 @@ class ConfigSeeder:
         # Only seed keys that have a Pydantic schema mapping
         schema_map: dict[str, type] = {
             "system": SystemSettings,
+            "birdnet": BirdnetSettings,
+            "processor": ProcessorSettings,
+            "uploader": UploaderSettings,
         }
 
         for key, value in raw.items():
@@ -234,9 +243,14 @@ class AuthSeeder:
             log.debug("seeder.auth.no_auth_section")
             return
 
-        auth = raw["auth"]
-        username = auth.get("default_username", "admin")
-        password = auth.get("default_password", "silvasonic")
+        try:
+            auth = AuthDefaults(**raw["auth"])
+        except ValidationError as exc:
+            log.error("seeder.auth.validation_failed", errors=exc.error_count())
+            return
+
+        username = auth.default_username
+        password = auth.default_password
 
         # Check if user already exists
         result = await session.execute(select(User).where(User.username == username))

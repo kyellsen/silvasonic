@@ -10,10 +10,10 @@ shutdown.
 """
 
 import asyncio
-import os
 from typing import NoReturn
 
 from silvasonic.core.service import SilvaService
+from silvasonic.recorder.settings import RecorderSettings
 
 # TODO(placeholder): Replace with actual recording-health detection logic.
 SIMULATE_RECORDING_HEALTH = True
@@ -32,9 +32,10 @@ class RecorderService(SilvaService):
 
     def __init__(self) -> None:
         """Initialize with Redis URL from environment."""
+        cfg = RecorderSettings()
         super().__init__(
-            instance_id=os.environ.get("SILVASONIC_INSTANCE_ID", "recorder"),
-            redis_url=os.environ.get("SILVASONIC_REDIS_URL", "redis://localhost:6379/0"),
+            instance_id=cfg.INSTANCE_ID,
+            redis_url=cfg.REDIS_URL,
         )
 
     async def run(self) -> None:

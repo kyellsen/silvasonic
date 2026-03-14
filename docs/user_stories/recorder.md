@@ -39,9 +39,9 @@
 ### Akzeptanzkriterien
 
 #### Robustheit der Aufnahme
-- [ ] Der Aufnahme-Dienst wird vom System als letzter beendet — bei Speicherknappheit werden zuerst Analyse-Dienste gestoppt.
-- [ ] Ein Ausfall der Status-Übertragung (Redis) stoppt nicht die Aufnahme.
-- [ ] Ein Ausfall des Controllers → Aufnahme läuft ungestört weiter.
+- [x] Der Aufnahme-Dienst wird vom System als letzter beendet — bei Speicherknappheit werden zuerst Analyse-Dienste gestoppt.
+- [x] Ein Ausfall der Status-Übertragung (Redis) stoppt nicht die Aufnahme.
+- [x] Ein Ausfall des Controllers → Aufnahme läuft ungestört weiter.
 - [ ] Bei Fehlern in der Aufnahme-Pipeline erfolgt ein automatischer Neustart.
 
 #### Isolation von anderen Diensten
@@ -56,7 +56,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.4.0
+- **Milestone:** v0.3.0 (Robustheit) + v0.4.0 (Watchdog & Auto-Recovery)
 
 ### Referenzen
 
