@@ -10,14 +10,12 @@ Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
     ProfileBootstrapper,
-    run_all_seeders,
 )
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy import text
@@ -234,13 +232,13 @@ class TestRunAllSeedersIntegration:
         yml = _make_defaults_yml(tmp_path)
         profiles_dir = _make_profile_yml(tmp_path)
 
-        # Patch the module-level paths to use our test files
-        with (
-            patch("silvasonic.controller.seeder._DEFAULTS_YML", yml),
-            patch("silvasonic.controller.seeder._PROFILES_DIR", profiles_dir),
-        ):
-            async with session_factory() as session:
-                await run_all_seeders(session)
+        # Instantiate seeders with explicit test paths (no module-level
+        # constants to patch — paths are resolved via cached functions).
+        async with session_factory() as session:
+            await ConfigSeeder(defaults_path=yml).seed(session)
+            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
+            await AuthSeeder(defaults_path=yml).seed(session)
+            await session.commit()
 
         # Verify all three tables have data
         async with session_factory() as session:

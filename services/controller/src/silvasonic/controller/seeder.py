@@ -12,6 +12,7 @@ user-modified values are **never** overwritten.
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -46,33 +47,22 @@ def _find_service_root(start: Path = Path(__file__).resolve()) -> Path:
     return start.parent  # Fallback: same directory
 
 
-_CONFIG_DIR: Path | None = None
-_DEFAULTS_YML: Path | None = None
-_PROFILES_DIR: Path | None = None
-
-
+@cache
 def _get_config_dir() -> Path:
     """Return config dir, resolved lazily on first call."""
-    global _CONFIG_DIR
-    if _CONFIG_DIR is None:
-        _CONFIG_DIR = _find_service_root() / "config"
-    return _CONFIG_DIR
+    return _find_service_root() / "config"
 
 
+@cache
 def _get_defaults_yml() -> Path:
     """Return defaults.yml path, resolved lazily on first call."""
-    global _DEFAULTS_YML
-    if _DEFAULTS_YML is None:
-        _DEFAULTS_YML = _get_config_dir() / "defaults.yml"
-    return _DEFAULTS_YML
+    return _get_config_dir() / "defaults.yml"
 
 
+@cache
 def _get_profiles_dir() -> Path:
     """Return profiles dir, resolved lazily on first call."""
-    global _PROFILES_DIR
-    if _PROFILES_DIR is None:
-        _PROFILES_DIR = _get_config_dir() / "profiles"
-    return _PROFILES_DIR
+    return _get_config_dir() / "profiles"
 
 
 # ---------------------------------------------------------------------------

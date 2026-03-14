@@ -401,7 +401,7 @@ class TestContainerManager:
             {"name": "silvasonic-recorder-orphan", "status": "running"},
         ]
 
-        mgr.reconcile(desired, actual)
+        mgr.sync_state(desired, actual)
 
         # Should start "new"
         client.containers.run.assert_called_once()
@@ -421,7 +421,7 @@ class TestContainerManager:
             {"name": "silvasonic-recorder-active", "status": "running"},
         ]
 
-        mgr.reconcile(desired, actual)
+        mgr.sync_state(desired, actual)
 
         # Should NOT start or stop anything
         client.containers.run.assert_not_called()
@@ -441,7 +441,7 @@ class TestContainerManager:
             {"name": "silvasonic-recorder-old", "status": "running"},
         ]
 
-        mgr.reconcile(desired, actual)
+        mgr.sync_state(desired, actual)
 
         # Should stop+remove the orphan, should NOT start anything
         orphan_container.stop.assert_called_once()
@@ -467,7 +467,7 @@ class TestContainerManager:
         desired = [_make_spec(name="silvasonic-recorder-new")]
         actual: list[dict[str, object]] = []
 
-        mgr.reconcile(desired, actual)
+        mgr.sync_state(desired, actual)
 
         # Should start "new", nothing to stop
         client.containers.run.assert_called_once()
@@ -478,7 +478,7 @@ class TestContainerManager:
         client.is_connected = True
         mgr = ContainerManager(client)
 
-        mgr.reconcile([], [])
+        mgr.sync_state([], [])
 
         client.containers.run.assert_not_called()
         client.containers.get.assert_not_called()

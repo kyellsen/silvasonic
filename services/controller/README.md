@@ -288,7 +288,7 @@ This enables the Web-Interface dashboard to display system-wide resource gauges 
 
 ## Live Log Streaming
 
-> **Status:** 🔮 Planned · **User Story:** [US-C09](../../docs/user_stories/controller.md#us-c09-dienst-logs-live-im-browser-)
+> **Status:** ✅ Implemented · **User Story:** [US-C09](../../docs/user_stories/controller.md#us-c09-dienst-logs-live-im-browser-)
 
 The Controller forwards Tier 2 container logs to the Web-Interface via Redis Pub/Sub ([ADR-0022](../../docs/adr/0022-live-log-streaming.md)):
 
@@ -352,7 +352,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 | Resource limits & QoS enforcement    | ✅ Implemented (ADR-0020)                                    |
 | USB detection (polling, 1s)          | ✅ Implemented                                               |
 | Profile matching + auto-enroll       | ✅ Implemented                                               |
-| Log forwarding (Podman→Redis)        | 🔮 Planned (ADR-0022)                                        |
+| Log forwarding (Podman→Redis)        | ✅ Implemented (ADR-0022)                                    |
 
 ---
 

@@ -19,8 +19,10 @@ import asyncio
 from pathlib import Path
 from typing import Any, NoReturn
 
+import structlog
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.device_scanner import DeviceScanner, upsert_device
+from silvasonic.controller.log_forwarder import LogForwarder
 from silvasonic.controller.nudge_subscriber import NudgeSubscriber
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
@@ -31,6 +33,8 @@ from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.session import get_session
 from silvasonic.core.resources import HostResourceCollector
 from silvasonic.core.service import SilvaService
+
+log = structlog.get_logger()
 
 
 class ControllerService(SilvaService):
@@ -67,6 +71,11 @@ class ControllerService(SilvaService):
             self._reconciliation_loop,
             redis_url=cfg.REDIS_URL,
         )
+        # Phase 5: Live Log Streaming (ADR-0022)
+        self._log_forwarder = LogForwarder(
+            self._podman_client,
+            redis_url=cfg.REDIS_URL,
+        )
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Include host-level resource metrics in heartbeat (ADR-0019 §2.4)."""
@@ -100,6 +109,7 @@ class ControllerService(SilvaService):
             asyncio.create_task(self._monitor_podman()),
             asyncio.create_task(self._reconciliation_loop.run()),
             asyncio.create_task(self._nudge_subscriber.run()),
+            asyncio.create_task(self._log_forwarder.run()),
         ]
         try:
             while not self._shutdown_event.is_set():
@@ -121,10 +131,6 @@ class ControllerService(SilvaService):
         are cleanly stopped before the Controller exits.  Best-effort:
         if Podman is unreachable, logs a warning and continues.
         """
-        import structlog
-
-        _log = structlog.get_logger()
-
         try:
             containers = await asyncio.to_thread(
                 self._container_manager.list_managed,
@@ -132,17 +138,17 @@ class ControllerService(SilvaService):
             for container in containers:
                 name = str(container.get("name", ""))
                 if name:
-                    _log.info("controller.shutdown.stopping", name=name)
+                    log.info("controller.shutdown.stopping", name=name)
                     await asyncio.to_thread(
                         self._container_manager.stop,
                         name,
                     )
-            _log.info(
+            log.info(
                 "controller.shutdown.all_stopped",
                 count=len(containers),
             )
         except Exception:
-            _log.exception("controller.shutdown.failed")
+            log.exception("controller.shutdown.failed")
 
     async def _monitor_database(self) -> NoReturn:
         """Periodically check database connectivity and update health status."""
@@ -205,13 +211,9 @@ class ControllerService(SilvaService):
         Called once during ``load_config()`` to populate the ``devices``
         table with any microphones that were already connected at boot.
         """
-        import structlog
-
-        _log = structlog.get_logger()
-
         devices = await asyncio.to_thread(self._device_scanner.scan_all)
         if not devices:
-            _log.info("controller.initial_scan", devices_found=0)
+            log.info("controller.initial_scan", devices_found=0)
             return
 
         async with get_session() as session:
@@ -229,7 +231,7 @@ class ControllerService(SilvaService):
                 )
             await session.commit()
 
-        _log.info("controller.initial_scan", devices_found=len(devices))
+        log.info("controller.initial_scan", devices_found=len(devices))
 
 
 if __name__ == "__main__":

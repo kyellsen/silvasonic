@@ -237,9 +237,9 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Der Controller liest die Logs aller verwalteten Dienste.
+- [x] Der Controller liest die Logs aller verwalteten Dienste.
 - [ ] Logs werden in Echtzeit an die Web-Oberfläche weitergeleitet.
-- [ ] Bei keinem aktiven Zuschauer werden Logs einfach verworfen (kein Ressourcenverbrauch).
+- [x] Bei keinem aktiven Zuschauer werden Logs einfach verworfen (kein Ressourcenverbrauch).
 - [ ] Die Web-Oberfläche zeigt Logs mit Auto-Scroll an.
 
 ### Milestone

@@ -2,9 +2,11 @@
 
 > **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop), Hardware Detection, State Reconciliation & Log Streaming
 >
-> **Progress:** Phases 1–4 ✅ Complete · Phase 5 (Log Streaming) & Phase 6 (Hardening) remaining
+> **Status:** 🔨 In Progress — Phases 1–5 ✅ Complete · Phase 6 (Hardening) remaining
 >
 > **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](../../VISION.md), [Controller README](../../services/controller/README.md), [Recorder README](../../services/recorder/README.md)
+>
+> **User Stories:** [US-C01](../user_stories/controller.md#us-c01), [US-C02](../user_stories/controller.md#us-c02), [US-C03](../user_stories/controller.md#us-c03), [US-C04](../user_stories/controller.md#us-c04), [US-C06](../user_stories/controller.md#us-c06), [US-C07](../user_stories/controller.md#us-c07), [US-C08](../user_stories/controller.md#us-c08), [US-C09](../user_stories/controller.md#us-c09), [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R05](../user_stories/recorder.md#us-r05)
 
 ---
 
@@ -139,7 +141,7 @@
 
 ### Tasks
 
-- [ ] Create `silvasonic/controller/log_forwarder.py`
+- [x] Create `silvasonic/controller/log_forwarder.py`
   - Continuously follow logs of running Tier 2 containers via `container.logs(stream=True)`.
   - Publish log lines as JSON to Redis channel `silvasonic:logs`.
   - Design to be resilient: automatically reconnect string if container restarts.

@@ -176,7 +176,7 @@ class ReconciliationLoop:
 
         # Step 4: Reconcile desired vs. actual
         await asyncio.to_thread(
-            self._manager.reconcile,
+            self._manager.sync_state,
             desired,
             actual,
         )

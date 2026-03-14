@@ -128,6 +128,8 @@ class TestDeviceScanner:
 
     def test_scan_all_with_usb_card(self, tmp_path: Any) -> None:
         """scan_all returns DeviceInfo for USB-Audio cards."""
+        from silvasonic.controller.device_scanner import UsbInfo
+
         cards_file = tmp_path / "cards"
         cards_file.write_text(
             " 0 [PCH             ]: HDA-Intel - HDA Intel PCH\n"
@@ -138,12 +140,12 @@ class TestDeviceScanner:
 
         with patch(
             "silvasonic.controller.device_scanner._get_usb_info_for_card",
-            return_value={
-                "vendor_id": "16d0",
-                "product_id": "0b40",
-                "serial": "ABC",
-                "bus_path": "1-2",
-            },
+            return_value=UsbInfo(
+                vendor_id="16d0",
+                product_id="0b40",
+                serial="ABC",
+                bus_path="1-2",
+            ),
         ):
             devices = scanner.scan_all()
 

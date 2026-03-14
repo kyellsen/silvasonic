@@ -65,6 +65,7 @@ class NudgeSubscriber:
         import redis.asyncio as aioredis
 
         while True:
+            client = None
             try:
                 client = aioredis.from_url(self._redis_url)
                 pubsub = client.pubsub()
@@ -79,3 +80,6 @@ class NudgeSubscriber:
             except Exception:
                 log.warning("nudge_subscriber.disconnected", reconnect_in=5)
                 await asyncio.sleep(5)
+            finally:
+                if client is not None:
+                    await client.aclose()

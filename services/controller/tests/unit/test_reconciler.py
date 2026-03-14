@@ -188,7 +188,7 @@ class TestReconciliationLoop:
         """_reconcile_once() calls evaluate and reconcile."""
         mgr = MagicMock()
         mgr.list_managed.return_value = []
-        mgr.reconcile = MagicMock()
+        mgr.sync_state = MagicMock()
 
         reconciler = ReconciliationLoop(mgr, interval=1.0)
 
@@ -285,8 +285,8 @@ class TestReconciliationLoop:
 
             await loop._reconcile_once()
 
-        mgr.reconcile.assert_called_once()
-        args = mgr.reconcile.call_args[0]
+        mgr.sync_state.assert_called_once()
+        args = mgr.sync_state.call_args[0]
         assert args[0] == [mock_spec]
         assert args[1] == [{"name": "existing"}]
 

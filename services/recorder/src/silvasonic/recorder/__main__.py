@@ -10,13 +10,9 @@ shutdown.
 """
 
 import asyncio
-from typing import NoReturn
 
 from silvasonic.core.service import SilvaService
 from silvasonic.recorder.settings import RecorderSettings
-
-# TODO(placeholder): Replace with actual recording-health detection logic.
-SIMULATE_RECORDING_HEALTH = True
 
 
 class RecorderService(SilvaService):
@@ -29,13 +25,15 @@ class RecorderService(SilvaService):
 
     service_name = "recorder"
     service_port = 9500
+    # TODO(placeholder): Replace with actual recording-health detection logic.
+    _recording_active: bool = True
 
     def __init__(self) -> None:
         """Initialize with Redis URL from environment."""
         cfg = RecorderSettings()
         super().__init__(
-            instance_id=cfg.INSTANCE_ID,
-            redis_url=cfg.REDIS_URL,
+            instance_id=cfg.instance_id,
+            redis_url=cfg.redis_url,
         )
 
     async def run(self) -> None:
@@ -60,7 +58,7 @@ class RecorderService(SilvaService):
         finally:
             rec_task.cancel()
 
-    async def _monitor_recording(self) -> NoReturn:
+    async def _monitor_recording(self) -> None:
         """Periodically check recording status.
 
         TODO(placeholder): Currently uses a hardcoded boolean. Will be replaced
@@ -68,7 +66,7 @@ class RecorderService(SilvaService):
         once the recording pipeline is implemented (v0.4.0).
         """
         while True:
-            is_recording = SIMULATE_RECORDING_HEALTH
+            is_recording = self._recording_active
             self.health.update_status(
                 "recording",
                 is_recording,

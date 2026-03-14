@@ -144,24 +144,15 @@ class SilvasonicPodmanClient:
                     return
                 msg = "Podman ping returned False"
                 raise ConnectionError(msg)
-            except (ConnectionError, OSError) as e:
+            except Exception as e:
+                expected = isinstance(e, (ConnectionError, OSError))
                 log.warning(
                     "podman.connect_failed",
                     socket=self._socket_path,
                     attempt=attempt,
                     max_retries=self._max_retries,
                     error_type=type(e).__name__,
-                )
-                if attempt < self._max_retries:
-                    time.sleep(self._retry_delay)
-            except Exception as e:
-                log.warning(
-                    "podman.connect_failed.unexpected",
-                    socket=self._socket_path,
-                    attempt=attempt,
-                    max_retries=self._max_retries,
-                    error_type=type(e).__name__,
-                    exc_info=True,
+                    exc_info=not expected,
                 )
                 if attempt < self._max_retries:
                     time.sleep(self._retry_delay)
@@ -208,11 +199,13 @@ class SilvasonicPodmanClient:
         try:
             containers = self._client.containers.list(filters=filters if filters else None)
             return [_container_info(c) for c in containers]
-        except (ConnectionError, OSError) as e:
-            log.warning("podman.list_containers_failed", error_type=type(e).__name__)
-            return []
         except Exception as e:
-            log.warning("podman.list_containers_failed.unexpected", error_type=type(e).__name__)
+            expected = isinstance(e, (ConnectionError, OSError))
+            log.warning(
+                "podman.list_containers_failed",
+                error_type=type(e).__name__,
+                exc_info=not expected,
+            )
             return []
 
     def list_managed_containers(self) -> list[dict[str, object]]:

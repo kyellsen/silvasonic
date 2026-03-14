@@ -67,6 +67,15 @@ class DeviceInfo(BaseModel):
         return f"alsa-card{self.alsa_card_index}"
 
 
+class UsbInfo(BaseModel):
+    """USB parent device info extracted from sysfs."""
+
+    vendor_id: str | None = None
+    product_id: str | None = None
+    serial: str | None = None
+    bus_path: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # /proc/asound/cards parser
 # ---------------------------------------------------------------------------
@@ -106,23 +115,18 @@ def _read_sysfs(path: Path) -> str | None:
         return None
 
 
-def _get_usb_info_for_card(card_index: int) -> dict[str, str | None]:
+def _get_usb_info_for_card(card_index: int) -> UsbInfo:
     """Look up USB parent info for an ALSA card via sysfs.
 
     Resolves the ``/sys/class/sound/cardN`` symlink and walks up the
     directory tree to find the USB parent device (``subsystem=usb``,
     ``DEVTYPE=usb_device``).
 
-    Returns dict with keys: ``vendor_id``, ``product_id``, ``serial``,
-    ``bus_path``.  All values may be ``None`` if the card is not a USB
-    device or sysfs is unavailable.
+    Returns:
+        :class:`UsbInfo` with populated fields if the card is a USB
+        device, or all-``None`` defaults otherwise.
     """
-    result: dict[str, str | None] = {
-        "vendor_id": None,
-        "product_id": None,
-        "serial": None,
-        "bus_path": None,
-    }
+    result = UsbInfo()
 
     card_path = Path(f"/sys/class/sound/card{card_index}")
     if not card_path.exists():
@@ -142,10 +146,10 @@ def _get_usb_info_for_card(card_index: int) -> dict[str, str | None]:
                     # Check devtype via uevent file
                     uevent = _read_sysfs(current / "uevent")
                     if uevent and "DEVTYPE=usb_device" in uevent:
-                        result["vendor_id"] = _read_sysfs(current / "idVendor")
-                        result["product_id"] = _read_sysfs(current / "idProduct")
-                        result["serial"] = _read_sysfs(current / "serial")
-                        result["bus_path"] = current.name  # e.g. "1-3.2"
+                        result.vendor_id = _read_sysfs(current / "idVendor")
+                        result.product_id = _read_sysfs(current / "idProduct")
+                        result.serial = _read_sysfs(current / "serial")
+                        result.bus_path = current.name  # e.g. "1-3.2"
                         return result
             current = current.parent
     except Exception:
@@ -196,10 +200,10 @@ class DeviceScanner:
                 alsa_card_index=index,
                 alsa_name=str(card["name"]),
                 alsa_device=f"hw:{index},0",
-                usb_vendor_id=usb["vendor_id"] or None,
-                usb_product_id=usb["product_id"] or None,
-                usb_serial=usb["serial"],
-                usb_bus_path=usb["bus_path"],
+                usb_vendor_id=usb.vendor_id,
+                usb_product_id=usb.product_id,
+                usb_serial=usb.serial,
+                usb_bus_path=usb.bus_path,
             )
             devices.append(info)
 

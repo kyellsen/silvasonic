@@ -2,7 +2,11 @@
 
 > **Target:** v0.2.0 — Service Infrastructure
 >
+> **Status:** ✅ Done
+>
 > **References:** [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md), [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md)
+>
+> **User Stories:** [US-C05](../user_stories/controller.md#us-c05)
 
 ---
 
@@ -60,3 +64,15 @@
 - [x] SSE console log stream with mock data
 - [x] Add to `compose.yml` with healthcheck
 - [x] Smoke test for web-mock container health
+
+---
+
+## Out of Scope (Deferred)
+
+| Item                                       | Target Version |
+| ------------------------------------------ | -------------- |
+| Tier 2 container management (Controller)   | v0.3.0         |
+| Audio recording (Recorder)                 | v0.4.0         |
+| Production Web-Interface (replaces Web-Mock) | v0.8.0         |
+| Dashboard live metrics display             | v0.8.0         |
+

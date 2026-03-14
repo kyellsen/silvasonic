@@ -291,14 +291,16 @@ auth:
         cards_file.write_text(MOCK_ASOUND_CARDS)
         scanner = DeviceScanner(cards_path=cards_file)
 
+        from silvasonic.controller.device_scanner import UsbInfo
+
         with patch(
             "silvasonic.controller.device_scanner._get_usb_info_for_card",
-            return_value={
-                "vendor_id": "16d0",
-                "product_id": "0b40",
-                "serial": "FLOW-TEST-001",
-                "bus_path": "1-2",
-            },
+            return_value=UsbInfo(
+                vendor_id="16d0",
+                product_id="0b40",
+                serial="FLOW-TEST-001",
+                bus_path="1-2",
+            ),
         ):
             devices = scanner.scan_all()
 
@@ -378,7 +380,7 @@ auth:
         actual = mgr.list_managed()
 
         # Reconcile: we pass the filtered specs (1 spec), actual 0 → should start 1
-        mgr.reconcile(desired=specs, actual=actual)
+        mgr.sync_state(desired=specs, actual=actual)
 
         # Verify the container was started with correct parameters
         mock_podman.containers.run.assert_called_once()
@@ -470,7 +472,7 @@ auth:
             }
         ]
 
-        mgr.reconcile(desired=all_specs, actual=fake_running)
+        mgr.sync_state(desired=all_specs, actual=fake_running)
 
         # Container should have been stopped
         mock_container_obj.stop.assert_called_once()

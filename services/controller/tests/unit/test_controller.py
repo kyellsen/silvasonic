@@ -43,6 +43,8 @@ def _make_bare_service() -> Any:
     # Phase 4: USB detection components
     svc._device_scanner = MagicMock()
     svc._profile_matcher = MagicMock()
+    # Phase 5: Log forwarding
+    svc._log_forwarder = MagicMock()
     return svc
 
 
@@ -354,6 +356,7 @@ class TestControllerServiceRun:
 
         svc._reconciliation_loop.run = MagicMock(side_effect=noop_forever)
         svc._nudge_subscriber.run = MagicMock(side_effect=noop_forever)
+        svc._log_forwarder.run = MagicMock(side_effect=noop_forever)
 
         with (
             patch.object(svc, "_monitor_database", side_effect=noop_forever),

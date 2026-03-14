@@ -50,7 +50,7 @@ class TestPodmanLifecycle:
         try:
             mgr = ContainerManager(client)
             # No desired specs, no actual containers → no action
-            mgr.reconcile(desired=[], actual=[])
+            mgr.sync_state(desired=[], actual=[])
             # Should not raise
         finally:
             client.close()

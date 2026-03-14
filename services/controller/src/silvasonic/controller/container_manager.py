@@ -173,12 +173,12 @@ class ContainerManager:
         """List all containers owned by this Controller."""
         return self._podman.list_managed_containers()
 
-    def reconcile(
+    def sync_state(
         self,
         desired: list[Tier2ServiceSpec],
         actual: list[dict[str, object]],
     ) -> None:
-        """Reconcile desired vs. actual container state (ADR-0017).
+        """Synchronize desired vs. actual container state (ADR-0017).
 
         - Start containers that are desired but not running.
         - Stop containers that are running but not desired.

@@ -22,7 +22,8 @@ if TYPE_CHECKING:
     from silvasonic.recorder.__main__ import RecorderService
 
 
-def _make_bare_service() -> "RecorderService":
+@pytest.fixture
+def bare_service() -> "RecorderService":
     """Create a bare RecorderService without triggering SilvaService.__init__.
 
     Sets up a mock _ctx with a real HealthMonitor so the `svc.health` property
@@ -97,15 +98,11 @@ class TestRecorderConfig:
 class TestMonitorRecording:
     """Tests for the _monitor_recording coroutine."""
 
-    async def test_recording_active(self) -> None:
-        """Reports healthy when SIMULATE_RECORDING_HEALTH is True."""
-        svc = _make_bare_service()
+    async def test_recording_active(self, bare_service: "RecorderService") -> None:
+        """Reports healthy when _recording_active is True."""
+        bare_service._recording_active = True
 
         with (
-            patch(
-                "silvasonic.recorder.__main__.SIMULATE_RECORDING_HEALTH",
-                True,
-            ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
@@ -113,21 +110,17 @@ class TestMonitorRecording:
             ),
             pytest.raises(asyncio.CancelledError),
         ):
-            await svc._monitor_recording()
+            await bare_service._monitor_recording()
 
-        status = svc.health.get_status()
+        status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is True
         assert status["components"]["recording"]["details"] == "Recording active"
 
-    async def test_recording_failed(self) -> None:
-        """Reports unhealthy when SIMULATE_RECORDING_HEALTH is False."""
-        svc = _make_bare_service()
+    async def test_recording_failed(self, bare_service: "RecorderService") -> None:
+        """Reports unhealthy when _recording_active is False."""
+        bare_service._recording_active = False
 
         with (
-            patch(
-                "silvasonic.recorder.__main__.SIMULATE_RECORDING_HEALTH",
-                False,
-            ),
             patch(
                 "silvasonic.recorder.__main__.asyncio.sleep",
                 new_callable=AsyncMock,
@@ -135,9 +128,9 @@ class TestMonitorRecording:
             ),
             pytest.raises(asyncio.CancelledError),
         ):
-            await svc._monitor_recording()
+            await bare_service._monitor_recording()
 
-        status = svc.health.get_status()
+        status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is False
         assert status["components"]["recording"]["details"] == "Recording failed"
 
@@ -149,33 +142,33 @@ class TestMonitorRecording:
 class TestRecorderServiceRun:
     """Tests for the run() coroutine."""
 
-    async def test_run_starts_monitor_and_exits_on_shutdown(self) -> None:
+    async def test_run_starts_monitor_and_exits_on_shutdown(
+        self, bare_service: "RecorderService"
+    ) -> None:
         """run() starts background task and exits when shutdown_event is set."""
-        svc = _make_bare_service()
-        svc._shutdown_event = asyncio.Event()
+        bare_service._shutdown_event = asyncio.Event()
 
         # Mock the monitor method to be a no-op
         async def noop_rec() -> None:
             await asyncio.Event().wait()
 
-        with patch.object(svc, "_monitor_recording", side_effect=noop_rec):
+        with patch.object(bare_service, "_monitor_recording", side_effect=noop_rec):
             # Set shutdown after a short delay
             async def trigger_shutdown() -> None:
                 await asyncio.sleep(0.05)
-                svc._shutdown_event.set()
+                bare_service._shutdown_event.set()
 
             shutdown_task = asyncio.create_task(trigger_shutdown())
-            await svc.run()
+            await bare_service.run()
             await shutdown_task
 
         # Health should have been initialized
-        status = svc.health.get_status()
+        status = bare_service.health.get_status()
         assert "recorder" in status["components"]
 
-    async def test_run_handles_cancellation(self) -> None:
+    async def test_run_handles_cancellation(self, bare_service: "RecorderService") -> None:
         """run() catches CancelledError in the recording loop and exits cleanly."""
-        svc = _make_bare_service()
-        svc._shutdown_event = asyncio.Event()
+        bare_service._shutdown_event = asyncio.Event()
 
         async def noop_rec() -> None:
             await asyncio.Event().wait()
@@ -190,13 +183,13 @@ class TestRecorderServiceRun:
             # First call: let the loop iterate once
 
         with (
-            patch.object(svc, "_monitor_recording", side_effect=noop_rec),
+            patch.object(bare_service, "_monitor_recording", side_effect=noop_rec),
             patch("silvasonic.recorder.__main__.asyncio.sleep", side_effect=sleep_then_cancel),
         ):
-            await svc.run()
+            await bare_service.run()
 
         # run() should have exited cleanly (CancelledError caught internally)
-        status = svc.health.get_status()
+        status = bare_service.health.get_status()
         assert "recorder" in status["components"]
 
 

@@ -12,5 +12,5 @@ class RecorderSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="SILVASONIC_")
 
-    INSTANCE_ID: str = "recorder"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    instance_id: str = "recorder"
+    redis_url: str = "redis://localhost:6379/0"
