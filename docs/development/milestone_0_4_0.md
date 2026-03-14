@@ -36,7 +36,7 @@
   > container (e.g. `workspace/recorder/{workspace_dir}:/app/workspace:z`).
   > The Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
 - [ ] Read `SILVASONIC_RECORDER_DEVICE` from environment (ALSA device ID, e.g. `hw:1,0`)
-- [ ] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into a Pydantic model at startup
+- [ ] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into the existing `MicrophoneProfile` Pydantic model (`silvasonic.core.schemas.devices`) at startup
   - The Controller serializes the `config` JSONB column from the `microphone_profiles` table and passes it as a single environment variable (ADR-0016)
   - The Recorder has **no database access** and **no YAML files** — all configuration arrives via env vars (ADR-0013)
   - All capture parameters come from this model: `audio.sample_rate`, `audio.channels`, `audio.format`, `processing.gain_db`, `stream.segment_duration_s` (default: 10s, US-R07)
