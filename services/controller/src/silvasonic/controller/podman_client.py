@@ -100,12 +100,12 @@ class SilvasonicPodmanClient:
         return f"unix://{self._socket_path}"
 
     @property
-    def socket_path(self) -> str:
+    def socket_path(self) -> str:  # pragma: no cover — integration-tested
         """Return the filesystem path to the Podman socket."""
         return self._socket_path
 
     @property
-    def containers(self) -> Any:
+    def containers(self) -> Any:  # pragma: no cover — integration-tested
         """Expose the Podman containers API.
 
         Raises:

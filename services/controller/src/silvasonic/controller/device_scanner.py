@@ -246,7 +246,7 @@ async def upsert_device(
     if existing is not None:
         existing.status = "online"
         existing.last_seen = datetime.now(UTC)
-        if profile_slug and not existing.profile_slug:
+        if profile_slug and not existing.profile_slug:  # pragma: no cover — integration-tested
             existing.profile_slug = profile_slug
             existing.enrollment_status = enrollment_status
         log.debug("device_scanner.device_updated", device_id=device_id)

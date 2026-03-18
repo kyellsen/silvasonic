@@ -64,11 +64,11 @@ fix:
 lint:
     @{{ BOOTSTRAP_PYTHON }} scripts/lint.py
 
-# 🔍 Code Quality: Ruff, Mypy, Unit & Integration Tests (Fast)
+# 🔍 Code Quality: Lock, Ruff, Mypy, Unit Tests (Fast, keine Container)
 check:
     @{{ BOOTSTRAP_PYTHON }} scripts/check.py
 
-# 🧬 Full CI Pipeline: Lint → Type → Unit → Integration → Clear → Build → Smoke → E2E
+# 🧬 Full CI Pipeline: Lint → Type → Unit → Int → Containerfile → Build → System → Smoke → E2E
 check-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/check_all.py
 
@@ -88,12 +88,20 @@ test-int:
 test-smoke:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py smoke
 
-# 🏭 Führt alle Tests aus (Unit + Integration, ohne E2E/Smoke)
-test-all:
-    @{{ BOOTSTRAP_PYTHON }} scripts/test.py all
+# 🔧 System Lifecycle Tests (Podman + gebaute Images, keine Hardware nötig)
+test-system:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system
 
-# 🧪 Alias für test-all
+# 🎤 Hardware System Tests (echtes USB-Mikrofon erforderlich)
+test-hw:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw
+
+# 🧪 Quick Dev Tests (Unit + Integration, ohne System/Smoke/E2E)
 test:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py test
+
+# 🏭 Alle Tests außer Hardware (Unit + Int + System + Smoke + E2E)
+test-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py all
 
 # 🕸️  Führt End-to-End Playwright Tests aus

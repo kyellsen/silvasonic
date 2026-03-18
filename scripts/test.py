@@ -8,16 +8,26 @@ targets (just test-unit, just test-int, …) and the CI pipeline scripts
 Usage:
     python3 scripts/test.py unit          # fast mocked tests
     python3 scripts/test.py integration   # testcontainers DB tests
+    python3 scripts/test.py system        # full-stack lifecycle (Podman, no HW)
+    python3 scripts/test.py system_hw     # hardware system tests (USB mic)
     python3 scripts/test.py smoke         # container smoke tests
     python3 scripts/test.py e2e           # Playwright browser tests
-    python3 scripts/test.py all           # unit + integration
+    python3 scripts/test.py all           # all non-HW tests (unit+int+system+smoke+e2e)
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-from common import discover_cov_args, ensure_initialized, print_error, print_header, print_success
+from common import (
+    Colors,
+    discover_cov_args,
+    ensure_initialized,
+    print_error,
+    print_header,
+    print_success,
+)
 
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -90,6 +100,45 @@ def cmd_smoke() -> list[str]:
     ]
 
 
+def cmd_system() -> list[str]:
+    """Build the pytest command for system lifecycle tests."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "system",
+        "-p",
+        "no:cov",
+        "--override-ini",
+        "addopts=",
+        "--override-ini",
+        "timeout=120",
+        "--tb=short",
+        "-v",
+    ]
+
+
+def cmd_system_hw() -> list[str]:
+    """Build the pytest command for hardware system tests."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "system_hw",
+        "-s",  # Disable capture — interactive input() in hot-plug tests
+        "-p",
+        "no:cov",
+        "--override-ini",
+        "addopts=",
+        "--override-ini",
+        "timeout=120",
+        "--tb=short",
+        "-v",
+    ]
+
+
 def cmd_e2e() -> list[str]:
     """Build the pytest command for E2E tests."""
     return [
@@ -109,8 +158,8 @@ def cmd_e2e() -> list[str]:
     ]
 
 
-def cmd_all() -> list[str]:
-    """Build the pytest command for all (unit + integration) tests."""
+def cmd_test() -> list[str]:
+    """Build the pytest command for quick dev tests (unit + integration)."""
     return [
         "uv",
         "run",
@@ -122,6 +171,25 @@ def cmd_all() -> list[str]:
         "-rs",
         *discover_cov_args(),
         "--cov-report=term-missing",
+    ]
+
+
+def cmd_all() -> list[str]:
+    """Build the pytest command for all tests (excl. system_hw)."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "unit or integration or system or smoke or e2e",
+        "-p",
+        "no:cov",
+        "--override-ini",
+        "addopts=",
+        "--override-ini",
+        "timeout=120",
+        "--tb=short",
+        "-v",
     ]
 
 
@@ -143,13 +211,116 @@ def run_smoke() -> int:
     return _pytest("Smoke", cmd_smoke())
 
 
+def run_system() -> int:
+    """Run system lifecycle tests. Returns exit code."""
+    return _pytest("System", cmd_system())
+
+
+def _preflight_hw() -> None:
+    """Print a pre-flight diagnostic banner for hardware tests."""
+    sep = "═" * 58
+    thin = "─" * 58
+    h = f"{Colors.BOLD}{Colors.HEADER}"
+    e = Colors.ENDC
+    ok = f"{Colors.OKGREEN}✅{e}"
+    fail = f"{Colors.FAIL}❌{e}"
+
+    print(f"\n{h}\n{sep}")
+    print("  🎤  Hardware Test Pre-Flight Check (UltraMic 384K)")
+    print(f"{sep}{e}")
+
+    # 1. USB-Audio device
+    usb_found = False
+    usb_detail = "NOT FOUND"
+    cards_path = Path("/proc/asound/cards")
+    try:
+        text = cards_path.read_text()
+        if "USB-Audio" in text:
+            usb_found = True
+            # Extract name from the card line
+            for line in text.splitlines():
+                if "USB-Audio" in line:
+                    usb_detail = line.split("- ", 1)[-1].strip()
+                    break
+    except (FileNotFoundError, PermissionError):
+        pass
+
+    icon = ok if usb_found else fail
+    print(f"  {icon}  USB-Audio device .... {usb_detail}")
+
+    # 2. Podman socket
+    default_socket = f"/run/user/{os.getuid()}/podman/podman.sock"
+    socket_path = os.environ.get(
+        "SILVASONIC_PODMAN_SOCKET",
+        default_socket,
+    )
+    socket_ok = Path(socket_path).exists()
+    icon = ok if socket_ok else fail
+    print(f"  {icon}  Podman socket ...... {socket_path}")
+
+    # 3. Recorder image
+    image = "localhost/silvasonic_recorder:latest"
+    image_ok = (
+        subprocess.run(
+            ["podman", "image", "exists", image],
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+    icon = ok if image_ok else fail
+    print(f"  {icon}  Recorder image ..... {image}")
+
+    print(f"  {thin}")
+
+    if usb_found and socket_ok and image_ok:
+        print(
+            f"  {Colors.OKGREEN}{Colors.BOLD}"
+            f"✅ All prerequisites met — running full test suite."
+            f"{e}",
+        )
+    else:
+        hints: list[str] = []
+        if not usb_found:
+            hints.append(
+                "  → Connect UltraMic 384K (VID:0869 PID:0389)\n"
+                "  → Verify: cat /proc/asound/cards | grep USB-Audio",
+            )
+        if not socket_ok:
+            hints.append(
+                "  → Start Podman: systemctl --user start podman.socket",
+            )
+        if not image_ok:
+            hints.append("  → Build images: just build")
+
+        print(
+            f"  {Colors.WARNING}{Colors.BOLD}"
+            f"⚠️  Some prerequisites missing — tests will be skipped."
+            f"{e}",
+        )
+        for hint in hints:
+            print(hint)
+
+    print(f"{h}{sep}{e}\n")
+
+
+def run_system_hw() -> int:
+    """Run hardware system tests. Returns exit code."""
+    _preflight_hw()
+    return _pytest("System-HW", cmd_system_hw())
+
+
 def run_e2e() -> int:
     """Run E2E tests. Returns exit code."""
     return _pytest("E2E", cmd_e2e())
 
 
+def run_test() -> int:
+    """Run quick dev tests (unit + integration). Returns exit code."""
+    return _pytest("Test", cmd_test())
+
+
 def run_all() -> int:
-    """Run all tests (unit + integration). Returns exit code."""
+    """Run all non-HW tests (unit+int+system+smoke+e2e). Returns exit code."""
     return _pytest("All", cmd_all())
 
 
@@ -159,8 +330,11 @@ SUITES = {
     "unit": run_unit,
     "integration": run_integration,
     "int": run_integration,
+    "system": run_system,
+    "system_hw": run_system_hw,
     "smoke": run_smoke,
     "e2e": run_e2e,
+    "test": run_test,
     "all": run_all,
 }
 

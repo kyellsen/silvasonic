@@ -290,6 +290,198 @@ class TestReconciliationLoop:
         assert args[0] == [mock_spec]
         assert args[1] == [{"name": "existing"}]
 
+    async def test_reconcile_once_with_scanner_calls_rescan(self) -> None:
+        """_reconcile_once() calls _rescan_hardware when scanner is present."""
+        mgr = MagicMock()
+        mgr.list_managed.return_value = []
+        mgr.sync_state = MagicMock()
+
+        scanner = MagicMock()
+        matcher = MagicMock()
+        loop = ReconciliationLoop(mgr, device_scanner=scanner, profile_matcher=matcher)
+
+        with (
+            patch.object(
+                loop._evaluator,
+                "evaluate",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_session,
+            patch.object(
+                loop,
+                "_rescan_hardware",
+                new_callable=AsyncMock,
+            ) as mock_rescan,
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+            await loop._reconcile_once()
+
+        mock_rescan.assert_awaited_once()
+
+    async def test_rescan_hardware_upserts_devices_with_matcher(self) -> None:
+        """_rescan_hardware upserts detected devices with profile matching."""
+        from silvasonic.controller.device_scanner import DeviceInfo
+        from silvasonic.controller.profile_matcher import MatchResult
+
+        mgr = MagicMock()
+        scanner = MagicMock()
+        matcher = MagicMock()
+
+        device_info = DeviceInfo(
+            alsa_card_index=2,
+            alsa_name="UltraMic 384K",
+            alsa_device="hw:2,0",
+            usb_vendor_id="16d0",
+            usb_product_id="0b40",
+            usb_serial="ABC",
+        )
+        scanner.scan_all.return_value = [device_info]
+
+        match_result = MatchResult(
+            profile_slug="ultramic_384",
+            score=100,
+            auto_enroll=True,
+        )
+        matcher.match = AsyncMock(return_value=match_result)
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=matcher,
+            interval=1.0,
+        )
+
+        mock_session = AsyncMock()
+        # Mock online devices query for offline-marking
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.upsert_device",
+                new_callable=AsyncMock,
+            ) as mock_upsert,
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+            await loop._rescan_hardware()
+
+        mock_upsert.assert_awaited_once()
+        # Should have been called with profile_slug from matcher
+        call_kwargs = mock_upsert.call_args
+        assert call_kwargs.kwargs["profile_slug"] == "ultramic_384"
+        assert call_kwargs.kwargs["enrollment_status"] == "enrolled"
+
+    async def test_rescan_hardware_without_matcher(self) -> None:
+        """_rescan_hardware upserts devices with pending status when no matcher."""
+        from silvasonic.controller.device_scanner import DeviceInfo
+
+        mgr = MagicMock()
+        scanner = MagicMock()
+
+        device_info = DeviceInfo(
+            alsa_card_index=0,
+            alsa_name="Generic USB",
+            alsa_device="hw:0,0",
+        )
+        scanner.scan_all.return_value = [device_info]
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=None,
+            interval=1.0,
+        )
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.upsert_device",
+                new_callable=AsyncMock,
+            ) as mock_upsert,
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+            await loop._rescan_hardware()
+
+        call_kwargs = mock_upsert.call_args
+        assert call_kwargs.kwargs["profile_slug"] is None
+        assert call_kwargs.kwargs["enrollment_status"] == "pending"
+
+    async def test_rescan_hardware_marks_offline(self) -> None:
+        """_rescan_hardware marks devices offline when no longer detected."""
+        mgr = MagicMock()
+        scanner = MagicMock()
+        scanner.scan_all.return_value = []  # No devices found
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=None,
+            interval=1.0,
+        )
+
+        # Simulate one device currently online in DB
+        mock_device = MagicMock()
+        mock_device.name = "old-device-001"
+        mock_device.status = "online"
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_device]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+            await loop._rescan_hardware()
+
+        assert mock_device.status == "offline"
+        mock_session.commit.assert_awaited_once()
+
+    async def test_rescan_hardware_no_scanner(self) -> None:
+        """_rescan_hardware is a no-op when scanner is None."""
+        mgr = MagicMock()
+        loop = ReconciliationLoop(mgr, device_scanner=None, interval=1.0)
+
+        # Should return immediately without errors
+        await loop._rescan_hardware()
+
 
 # ===================================================================
 # NudgeSubscriber

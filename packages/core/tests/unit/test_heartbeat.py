@@ -200,6 +200,52 @@ class TestHeartbeatPublisher:
 
         assert collector.collect.call_count >= 1
 
+    def test_build_payload_health_fn_raises_known_error(self) -> None:
+        """Known error types (ValueError etc.) trigger warning branch (lines 133-135)."""
+        pub, _ = self._make_publisher()
+
+        def bad_health() -> dict[str, Any]:
+            raise ValueError("bad value")
+
+        pub.set_health_provider(bad_health)
+        payload = pub._build_payload({})
+
+        assert payload.health["status"] == "error"
+
+    def test_build_payload_meta_fn_raises_known_error(self) -> None:
+        """Known error types in meta_fn trigger warning branch (line 146)."""
+        pub, _ = self._make_publisher()
+
+        def bad_meta() -> dict[str, Any]:
+            raise AttributeError("missing attr")
+
+        pub.set_meta_provider(bad_meta)
+        payload = pub._build_payload({"cpu": 1.0})
+
+        assert "resources" in payload.meta
+
+    async def test_loop_continues_after_publish_error(self) -> None:
+        """Loop continues running after publish_once raises (line 182)."""
+        pub, _redis_mock = self._make_publisher()
+        collector = MagicMock()
+
+        call_count = 0
+
+        def side_effect() -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ValueError("oops")
+            return {"cpu": 1.0}
+
+        collector.collect = side_effect
+
+        pub.start(collector)
+        await asyncio.sleep(0.05)
+        await pub.stop()
+
+        assert call_count >= 2, "Loop must survive the first error"
+
 
 @pytest.mark.unit
 class TestGetRedisConnection:
@@ -225,6 +271,19 @@ class TestGetRedisConnection:
 
         mock_client = AsyncMock()
         mock_client.ping.side_effect = ConnectionError("unreachable")
+        mock_redis_cls.from_url.return_value = mock_client
+
+        result = await get_redis_connection("redis://localhost:6379/0")
+
+        assert result is None
+
+    @patch("silvasonic.core.redis.Redis")
+    async def test_unexpected_error_returns_none(self, mock_redis_cls: MagicMock) -> None:
+        """Returns None on unexpected (non-connection) errors."""
+        from silvasonic.core.redis import get_redis_connection
+
+        mock_client = AsyncMock()
+        mock_client.ping.side_effect = RuntimeError("unexpected")
         mock_redis_cls.from_url.return_value = mock_client
 
         result = await get_redis_connection("redis://localhost:6379/0")

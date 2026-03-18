@@ -11,40 +11,12 @@ import subprocess
 import time
 from collections.abc import Generator
 
-import httpx
 import pytest
+from silvasonic.test_utils.helpers import wait_for_http, wait_for_log
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 
 # ── Helper ────────────────────────────────────────────────────────────────────
-
-
-def _wait_for_http(host: str, port: int, path: str = "/healthy", timeout: float = 60) -> None:
-    """Poll an HTTP endpoint until it returns 200 or timeout expires."""
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        try:
-            resp = httpx.get(f"http://{host}:{port}{path}", timeout=3.0)
-            if resp.status_code == 200:
-                return
-        except httpx.HTTPError:
-            pass
-        time.sleep(2)
-    msg = f"Service on {host}:{port}{path} did not become healthy within {timeout}s"
-    raise TimeoutError(msg)
-
-
-def _wait_for_log(container: DockerContainer, message: str, timeout: float = 60) -> None:
-    """Wait for a log message to appear in the container logs."""
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        stdout, stderr = container.get_logs()
-        logs = (stdout or b"").decode(errors="replace") + (stderr or b"").decode(errors="replace")
-        if message in logs:
-            return
-        time.sleep(2)
-    msg = f"Log message '{message}' not found within {timeout}s"
-    raise TimeoutError(msg)
 
 
 def _require_image(image: str) -> None:
@@ -96,7 +68,7 @@ def database_container(smoke_network: Network) -> Generator[DockerContainer]:
         .with_kwargs(tmpfs={"/var/lib/postgresql/data": "rw"})
     )
     container.start()
-    _wait_for_log(container, "database system is ready to accept connections")
+    wait_for_log(container, "database system is ready to accept connections")
     # Small grace period for pg_isready
     time.sleep(2)
     yield container
@@ -122,7 +94,7 @@ def redis_container_smoke(smoke_network: Network) -> Generator[DockerContainer]:
         .with_network_aliases("test-redis")
     )
     container.start()
-    _wait_for_log(container, "Ready to accept connections")
+    wait_for_log(container, "Ready to accept connections")
     yield container
     container.stop()
 
@@ -163,7 +135,7 @@ def controller_container(
     container.start()
     host = container.get_container_host_ip()
     port = int(container.get_exposed_port(9100))
-    _wait_for_http(host, port)
+    wait_for_http(host, port)
     yield container
     container.stop()
 
@@ -196,7 +168,7 @@ def recorder_container(
     container.start()
     host = container.get_container_host_ip()
     port = int(container.get_exposed_port(9500))
-    _wait_for_http(host, port)
+    wait_for_http(host, port)
     yield container
     container.stop()
 
@@ -217,6 +189,6 @@ def web_mock_container() -> Generator[DockerContainer]:
     container.start()
     host = container.get_container_host_ip()
     port = int(container.get_exposed_port(8001))
-    _wait_for_http(host, port)
+    wait_for_http(host, port)
     yield container
     container.stop()

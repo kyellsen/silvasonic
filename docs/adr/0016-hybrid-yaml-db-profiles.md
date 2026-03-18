@@ -59,9 +59,19 @@ The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`se
     *   **GitOps Compatible:** Changes to system profiles in the repository automatically propagate on Controller restart.
     *   **Data Integrity:** Foreign keys prevent deleting a profile that is in use by a device.
     *   **Two-Worlds Alignment:** Seed data (World A) bootstraps runtime state (World B).
+    *   **Generic Fallback (v0.4.0+):** A `generic_usb` seed profile (48 kHz, 1 ch, S16LE, no processing) ensures that unknown microphones can record immediately with safe defaults. Users can switch to a better profile via the Web-Interface (v0.8.0+).
 *   **Negative:**
     *   **Precedence Complexity:** YAML seeds only apply if the profile does not exist. If a system profile needs a mandatory bugfix update from the repository, an explicit migration script or manual user deletion is required to force a re-seed.
     *   **Startup Penalty:** Small overhead to parse YAMLs and sync to PostgreSQL on every boot (negligible for expected profile counts < 100).
+
+### 4.1. Detection Strategy: Polling Only
+
+Device detection uses **1-second polling** (`/proc/asound/cards` + sysfs `pathlib`). Event-based detection (e.g., `pyudev.Monitor`) is **explicitly rejected** because:
+
+*   Polling is simpler, robust, and has no external C dependencies.
+*   Rootless Podman containers do not have access to the host udev socket.
+*   The ~1s detection latency is imperceptible for the use case (microphones are connected for hours/days).
+*   The `sysfs`/`pathlib` approach is pure Python and works on all Linux distributions without `libudev`.
 
 ## 5. References
 *   [Microphone Profiles Documentation](../arch/microphone_profiles.md)

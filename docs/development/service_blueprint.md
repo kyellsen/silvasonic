@@ -50,11 +50,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silvasonic-<name>"
-version = "0.1.0"
 description = "<one-line description>"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["silvasonic-core"]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "../../packages/core/src/silvasonic/core/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]
@@ -297,9 +300,13 @@ class TestMain:
 ```bash
 just test-unit     # Fast, mocked, parallel (4 workers)
 just test-int      # Integration (Testcontainers, needs Podman)
+just test-system   # System lifecycle (real Podman + built images, no HW)
+just test-hw       # Hardware system tests (real USB mic required)
 just test-smoke    # Against running stack (just start first)
-just test-all      # Unit + Integration
+just test-all      # All tests except hardware (Unit+Int+System+Smoke+E2E)
 ```
+
+> For full test marker documentation, see [Testing Guide](testing.md).
 
 
 ## 8. Naming Conventions Summary

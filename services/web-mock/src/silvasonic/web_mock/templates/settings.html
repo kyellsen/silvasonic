@@ -236,21 +236,75 @@
                     ] %}
 
                     {% for id, title, desc, enabled, text_color, bg_color, icon in module_items %}
-                    <div class="p-6 flex items-center justify-between gap-4 transition-colors hover:bg-base-200/30">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="w-10 h-10 rounded-xl flex items-center justify-center {{ bg_color }} {{ text_color }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">{{ icon | safe }}</svg>
+                    <div class="p-6 transition-colors hover:bg-base-200/30">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-xl flex items-center justify-center {{ bg_color }} {{ text_color }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">{{ icon | safe }}</svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-base">{{ title }}</h4>
+                                    <p class="text-sm text-base-content/60">{{ desc }}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 class="font-semibold text-base">{{ title }}</h4>
-                                <p class="text-sm text-base-content/60">{{ desc }}</p>
+                            <input type="checkbox" class="toggle toggle-sm toggle-primary shadow-sm" {% if enabled %}checked{% endif
+                                %} />
+                        </div>
+
+                        {% if id == 'birdnet' %}
+                        <div class="mt-4 ml-14 p-4 bg-base-200/40 rounded-xl space-y-4">
+                            <div class="form-control">
+                                <label class="label py-0"><span class="label-text text-xs font-medium">Min. Confidence Threshold</span></label>
+                                <div class="flex items-center gap-3">
+                                    <input type="range" min="0.1" max="1.0" step="0.05"
+                                        value="{{ settings.birdnet_min_confidence }}"
+                                        class="range range-xs range-primary flex-1" />
+                                    <span class="text-sm font-mono font-bold w-12 text-right">{{ settings.birdnet_min_confidence }}</span>
+                                </div>
+                                <label class="label py-0"><span class="label-text-alt text-base-content/50">Only detections above this threshold are shown.</span></label>
+                            </div>
+                            <div class="form-control">
+                                <label class="label py-0"><span class="label-text text-xs font-medium">Analysis Window</span></label>
+                                <div class="flex items-center gap-2">
+                                    <input type="time" class="input input-bordered input-sm focus:input-primary font-mono w-32"
+                                        value="{{ settings.birdnet_time_start }}" placeholder="--:--" />
+                                    <span class="text-base-content/40">–</span>
+                                    <input type="time" class="input input-bordered input-sm focus:input-primary font-mono w-32"
+                                        value="{{ settings.birdnet_time_end }}" placeholder="--:--" />
+                                </div>
+                                <label class="label py-0"><span class="label-text-alt text-base-content/50">Leave empty for 24/7 analysis.</span></label>
                             </div>
                         </div>
-                        <input type="checkbox" class="toggle toggle-sm toggle-primary shadow-sm" {% if enabled %}checked{% endif
-                            %} />
+                        {% endif %}
+
+                        {% if id == 'batdetect' %}
+                        <div class="mt-4 ml-14 p-4 bg-base-200/40 rounded-xl space-y-4">
+                            <div class="form-control">
+                                <label class="label py-0"><span class="label-text text-xs font-medium">Min. Confidence Threshold</span></label>
+                                <div class="flex items-center gap-3">
+                                    <input type="range" min="0.1" max="1.0" step="0.05"
+                                        value="{{ settings.batdetect_min_confidence }}"
+                                        class="range range-xs range-primary flex-1" />
+                                    <span class="text-sm font-mono font-bold w-12 text-right">{{ settings.batdetect_min_confidence }}</span>
+                                </div>
+                                <label class="label py-0"><span class="label-text-alt text-base-content/50">Only detections above this threshold are shown.</span></label>
+                            </div>
+                            <div class="form-control">
+                                <label class="label py-0"><span class="label-text text-xs font-medium">Analysis Window</span></label>
+                                <div class="flex items-center gap-2">
+                                    <input type="time" class="input input-bordered input-sm focus:input-primary font-mono w-32"
+                                        value="{{ settings.batdetect_time_start }}" placeholder="--:--" />
+                                    <span class="text-base-content/40">–</span>
+                                    <input type="time" class="input input-bordered input-sm focus:input-primary font-mono w-32"
+                                        value="{{ settings.batdetect_time_end }}" placeholder="--:--" />
+                                </div>
+                                <label class="label py-0"><span class="label-text-alt text-base-content/50">Leave empty for 24/7 analysis.</span></label>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -407,6 +461,28 @@
                             <input type="text"
                                 class="input input-bordered focus:input-primary transition-all font-mono flex-1 rounded-l-none"
                                 value="silvasonic-archives/{{ settings.station_name }}/" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Bandwidth Limit (KB/s)</span></label>
+                            <input type="number"
+                                class="input input-bordered focus:input-primary transition-all font-mono"
+                                value="{{ remote.bandwidth_limit_kbps or '' }}"
+                                placeholder="Unlimited" />
+                            <label class="label py-1"><span class="label-text-alt text-base-content/50">Leave empty for unlimited bandwidth.</span></label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text font-medium text-sm">Upload Window</span></label>
+                            <div class="flex items-center gap-2">
+                                <input type="time" class="input input-bordered input-sm focus:input-primary font-mono flex-1"
+                                    value="{{ remote.upload_window_start }}" />
+                                <span class="text-base-content/40">–</span>
+                                <input type="time" class="input input-bordered input-sm focus:input-primary font-mono flex-1"
+                                    value="{{ remote.upload_window_end }}" />
+                            </div>
+                            <label class="label py-1"><span class="label-text-alt text-base-content/50">Leave empty for 24/7 uploads.</span></label>
                         </div>
                     </div>
 

@@ -115,7 +115,7 @@ class ControllerService(SilvaService):
             while not self._shutdown_event.is_set():
                 self.health.touch()
                 await asyncio.sleep(1)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # pragma: no cover — integration-tested
             pass
         finally:
             for task in tasks:

@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
-from silvasonic.controller.device_scanner import DeviceScanner, upsert_device
+from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, UsbInfo, upsert_device
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
 from silvasonic.test_utils.helpers import build_postgres_url
@@ -34,34 +34,68 @@ pytestmark = [
 ]
 
 # -----------------------------------------------------------------------
-# Fixtures
+# Mock device constants — single source of truth for this test module.
+# These are *fictional* VID/PID values, intentionally different from the
+# real production seed (0869:0389) so unit/integration tests stay isolated.
 # -----------------------------------------------------------------------
+
+_MOCK_VID = "16d0"
+_MOCK_PID = "0b40"
+_MOCK_ALSA_NAME = "UltraMic 384K"
+_MOCK_PROFILE_SLUG = "ultramic_384k"
 
 MOCK_ASOUND_CARDS = (
     " 0 [PCH             ]: HDA-Intel - HDA Intel PCH\n"
     "                      HDA Intel PCH at 0xf7200000 irq 32\n"
-    " 2 [UltraMic384K    ]: USB-Audio - UltraMic 384K\n"
+    f" 2 [UltraMic384K    ]: USB-Audio - {_MOCK_ALSA_NAME}\n"
     "                      Dodotronic UltraMic384K at usb-0000:00:14-2\n"
 )
 
 
+def _device_id(serial: str) -> str:
+    """Build the expected stable_device_id for a mock device."""
+    return f"{_MOCK_VID}-{_MOCK_PID}-{serial}"
+
+
+def _make_device(serial: str, *, card_index: int = 2) -> DeviceInfo:
+    """Create a DeviceInfo with the module-level mock VID/PID constants."""
+    return DeviceInfo(
+        alsa_card_index=card_index,
+        alsa_name=_MOCK_ALSA_NAME,
+        alsa_device=f"hw:{card_index},0",
+        usb_vendor_id=_MOCK_VID,
+        usb_product_id=_MOCK_PID,
+        usb_serial=serial,
+    )
+
+
+def _mock_usb_info(serial: str) -> UsbInfo:
+    """Create a UsbInfo with the module-level mock VID/PID constants."""
+    return UsbInfo(
+        vendor_id=_MOCK_VID,
+        product_id=_MOCK_PID,
+        serial=serial,
+        bus_path="1-2",
+    )
+
+
 def _seed_matching_profile(tmp_path: Path) -> Path:
-    """Create a profile YAML that matches UltraMic 384K via USB VID/PID."""
+    """Create a profile YAML that matches the mock device via USB VID/PID."""
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir(exist_ok=True)
-    (profiles_dir / "ultramic_384k.yml").write_text(
-        """
+    (profiles_dir / f"{_MOCK_PROFILE_SLUG}.yml").write_text(
+        f"""
 schema_version: "1.0"
-slug: ultramic_384k
-name: UltraMic 384K
-description: Dodotronic UltraMic 384K USB microphone.
+slug: {_MOCK_PROFILE_SLUG}
+name: {_MOCK_ALSA_NAME}
+description: Dodotronic {_MOCK_ALSA_NAME} USB microphone.
 audio:
   sample_rate: 384000
   channels: 1
   format: S16LE
   match:
-    usb_vendor_id: "16d0"
-    usb_product_id: "0b40"
+    usb_vendor_id: "{_MOCK_VID}"
+    usb_product_id: "{_MOCK_PID}"
     alsa_name_contains: "UltraMic"
 processing:
   gain_db: 0.0
@@ -291,23 +325,16 @@ auth:
         cards_file.write_text(MOCK_ASOUND_CARDS)
         scanner = DeviceScanner(cards_path=cards_file)
 
-        from silvasonic.controller.device_scanner import UsbInfo
-
         with patch(
             "silvasonic.controller.device_scanner._get_usb_info_for_card",
-            return_value=UsbInfo(
-                vendor_id="16d0",
-                product_id="0b40",
-                serial="FLOW-TEST-001",
-                bus_path="1-2",
-            ),
+            return_value=_mock_usb_info("FLOW-TEST-001"),
         ):
             devices = scanner.scan_all()
 
         assert len(devices) == 1, f"Expected 1 USB device, got {len(devices)}"
         device_info = devices[0]
-        assert device_info.alsa_name == "UltraMic 384K"
-        assert device_info.stable_device_id == "16d0-0b40-FLOW-TEST-001"
+        assert device_info.alsa_name == _MOCK_ALSA_NAME
+        assert device_info.stable_device_id == _device_id("FLOW-TEST-001")
 
         # -- Step 3: Match against profiles in DB --
         matcher = ProfileMatcher()
@@ -317,7 +344,7 @@ auth:
         assert match_result.score == 100, (
             f"Expected exact USB match, got score={match_result.score}"
         )
-        assert match_result.profile_slug == "ultramic_384k"
+        assert match_result.profile_slug == _MOCK_PROFILE_SLUG
         assert match_result.auto_enroll is True
 
         # -- Step 4: Upsert device into real DB --
@@ -335,10 +362,10 @@ auth:
             device_enrollment = device.enrollment_status
             device_profile = device.profile_slug
 
-        assert device_name == "16d0-0b40-FLOW-TEST-001"
+        assert device_name == _device_id("FLOW-TEST-001")
         assert device_status == "online"
         assert device_enrollment == "enrolled"
-        assert device_profile == "ultramic_384k"
+        assert device_profile == _MOCK_PROFILE_SLUG
 
         # -- Step 5: Evaluate desired state from DB --
         evaluator = DeviceStateEvaluator()
@@ -348,13 +375,13 @@ auth:
         specs = [
             s
             for s in all_specs
-            if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-FLOW-TEST-001"
+            if s.labels.get("io.silvasonic.device_id") == _device_id("FLOW-TEST-001")
         ]
         assert len(specs) == 1, f"Expected 1 spec for FLOW-TEST-001, got {len(specs)}"
         spec = specs[0]
         assert isinstance(spec, Tier2ServiceSpec)
         assert spec.name == "silvasonic-recorder-ultramic-384k-001"
-        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "ultramic_384k"
+        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == _MOCK_PROFILE_SLUG
         assert spec.image == "localhost/silvasonic_recorder:latest"
         assert spec.oom_score_adj == -999  # Protected (ADR-0020)
 
@@ -388,10 +415,13 @@ auth:
         assert call_kwargs.kwargs["image"] == "localhost/silvasonic_recorder:latest"
         assert call_kwargs.kwargs["name"] == "silvasonic-recorder-ultramic-384k-001"
         assert (
-            call_kwargs.kwargs["environment"]["SILVASONIC_RECORDER_PROFILE_SLUG"] == "ultramic_384k"
+            call_kwargs.kwargs["environment"]["SILVASONIC_RECORDER_PROFILE_SLUG"]
+            == _MOCK_PROFILE_SLUG
         )
         assert call_kwargs.kwargs["labels"]["io.silvasonic.owner"] == "controller"
-        assert call_kwargs.kwargs["labels"]["io.silvasonic.device_id"] == "16d0-0b40-FLOW-TEST-001"
+        assert call_kwargs.kwargs["labels"]["io.silvasonic.device_id"] == _device_id(
+            "FLOW-TEST-001"
+        )
 
         await engine.dispose()
 
@@ -421,22 +451,13 @@ auth:
             await session.commit()
 
         # Create device, then set it offline
-        from silvasonic.controller.device_scanner import DeviceInfo
-
-        device_info = DeviceInfo(
-            alsa_card_index=2,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="OFFLINE-FLOW",
-        )
+        device_info = _make_device("OFFLINE-FLOW")
 
         async with session_factory() as session:
             device = await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             device.status = "offline"  # Simulate unplug
@@ -449,7 +470,7 @@ auth:
         specs = [
             s
             for s in all_specs
-            if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-OFFLINE-FLOW"
+            if s.labels.get("io.silvasonic.device_id") == _device_id("OFFLINE-FLOW")
         ]
         assert len(specs) == 0, "Offline device should not produce a spec"
 
@@ -498,7 +519,6 @@ class TestRecorderLifecycleEdgeCases:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -506,19 +526,12 @@ class TestRecorderLifecycleEdgeCases:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=10,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:10,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="DISABLED-001",
-        )
+        device_info = _make_device("DISABLED-001", card_index=10)
         async with sf() as session:
             device = await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             device.enabled = False  # Emergency stop (US-C07)
@@ -529,7 +542,9 @@ class TestRecorderLifecycleEdgeCases:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-DISABLED-001"
+            s
+            for s in specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("DISABLED-001")
         ]
         assert len(matching) == 0, "Disabled device must not produce a spec"
         await engine.dispose()
@@ -544,7 +559,6 @@ class TestRecorderLifecycleEdgeCases:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -552,14 +566,7 @@ class TestRecorderLifecycleEdgeCases:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=11,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:11,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="PENDING-001",
-        )
+        device_info = _make_device("PENDING-001", card_index=11)
         async with sf() as session:
             await upsert_device(
                 device_info,
@@ -574,7 +581,7 @@ class TestRecorderLifecycleEdgeCases:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-PENDING-001"
+            s for s in specs if s.labels.get("io.silvasonic.device_id") == _device_id("PENDING-001")
         ]
         assert len(matching) == 0, "Pending device must not produce a spec"
         await engine.dispose()
@@ -589,7 +596,6 @@ class TestRecorderLifecycleEdgeCases:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -597,61 +603,50 @@ class TestRecorderLifecycleEdgeCases:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=12,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:12,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="REPLUG-001",
-        )
+        device_info = _make_device("REPLUG-001", card_index=12)
 
         # First insert: online + enrolled
         async with sf() as session:
             device = await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             original_name = device.name
             await session.commit()
 
         # Simulate unplug: set offline
-        async with sf() as session:
-            from silvasonic.core.database.models.system import Device as DeviceModel
-            from sqlalchemy import select as sql_select
+        from silvasonic.core.database.models.system import Device
 
-            result = await session.execute(
-                sql_select(DeviceModel).where(DeviceModel.name == original_name)
-            )
-            dev = result.scalar_one()
-            dev.status = "offline"
+        async with sf() as session:
+            device_row = await session.get(Device, original_name)
+            assert device_row is not None
+            device_row.status = "offline"
             await session.commit()
 
-        # Re-plug: upsert again (same DeviceInfo → same stable_device_id)
+        # Replug: upsert same device again
         async with sf() as session:
             device = await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
+            await session.commit()
             replug_name = device.name
             replug_status = device.status
-            await session.commit()
 
-        # Same identity, back online
-        assert replug_name == original_name, "Re-plug must reuse same device entry"
-        assert replug_status == "online", "Re-plug must set status back to online"
+        assert replug_name == original_name, "Same serial → same device row"
+        assert replug_status == "online", "Re-plugged device must be online"
 
-        # Evaluator should produce a spec for this device
+        # Evaluate → should produce a spec again
         evaluator = DeviceStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-REPLUG-001"
+            s for s in specs if s.labels.get("io.silvasonic.device_id") == _device_id("REPLUG-001")
         ]
         assert len(matching) == 1, "Re-plugged device must produce exactly 1 spec"
         await engine.dispose()
@@ -666,7 +661,6 @@ class TestRecorderLifecycleEdgeCases:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
         from silvasonic.core.database.models.system import SystemConfig
 
@@ -690,14 +684,7 @@ class TestRecorderLifecycleEdgeCases:
             await session.commit()
 
         # Scan a matching device
-        device_info = DeviceInfo(
-            alsa_card_index=13,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:13,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="NOENROLL-001",
-        )
+        device_info = _make_device("NOENROLL-001", card_index=13)
 
         # Match profiles
         matcher = ProfileMatcher()
@@ -727,7 +714,9 @@ class TestRecorderLifecycleEdgeCases:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-NOENROLL-001"
+            s
+            for s in specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("NOENROLL-001")
         ]
         assert len(matching) == 0, "Pending device must not produce a spec"
 
@@ -756,7 +745,6 @@ class TestRecorderSpecIntegrity:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -764,19 +752,12 @@ class TestRecorderSpecIntegrity:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=20,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:20,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="RESLIM-001",
-        )
+        device_info = _make_device("RESLIM-001", card_index=20)
         async with sf() as session:
             await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             await session.commit()
@@ -786,7 +767,7 @@ class TestRecorderSpecIntegrity:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-RESLIM-001"
+            s for s in specs if s.labels.get("io.silvasonic.device_id") == _device_id("RESLIM-001")
         ]
         assert len(matching) == 1
         spec = matching[0]
@@ -829,7 +810,6 @@ class TestRecorderSpecIntegrity:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -837,19 +817,12 @@ class TestRecorderSpecIntegrity:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=21,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:21,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="RESTART-001",
-        )
+        device_info = _make_device("RESTART-001", card_index=21)
         async with sf() as session:
             await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             await session.commit()
@@ -859,7 +832,7 @@ class TestRecorderSpecIntegrity:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-RESTART-001"
+            s for s in specs if s.labels.get("io.silvasonic.device_id") == _device_id("RESTART-001")
         ]
         assert len(matching) == 1
         spec = matching[0]
@@ -902,7 +875,6 @@ class TestRecorderSpecIntegrity:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -910,19 +882,12 @@ class TestRecorderSpecIntegrity:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        device_info = DeviceInfo(
-            alsa_card_index=22,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:22,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="NAMECHK-001",
-        )
+        device_info = _make_device("NAMECHK-001", card_index=22)
         async with sf() as session:
             await upsert_device(
                 device_info,
                 session,
-                profile_slug="ultramic_384k",
+                profile_slug=_MOCK_PROFILE_SLUG,
                 enrollment_status="enrolled",
             )
             await session.commit()
@@ -932,7 +897,7 @@ class TestRecorderSpecIntegrity:
             specs = await evaluator.evaluate(session)
 
         matching = [
-            s for s in specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-NAMECHK-001"
+            s for s in specs if s.labels.get("io.silvasonic.device_id") == _device_id("NAMECHK-001")
         ]
         assert len(matching) == 1
         spec = matching[0]
@@ -951,7 +916,7 @@ class TestRecorderSpecIntegrity:
 
         # Must NOT contain the raw device_id
         assert "NAMECHK-001" not in workspace_dir
-        assert "16d0-0b40" not in workspace_dir
+        assert f"{_MOCK_VID}-{_MOCK_PID}" not in workspace_dir
 
         await engine.dispose()
 
@@ -965,7 +930,6 @@ class TestRecorderSpecIntegrity:
         engine = create_async_engine(url)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-        from silvasonic.controller.device_scanner import DeviceInfo
         from silvasonic.controller.seeder import ProfileBootstrapper
 
         profiles_dir = _seed_matching_profile(tmp_path)
@@ -974,29 +938,15 @@ class TestRecorderSpecIntegrity:
             await session.commit()
 
         # Two identical-model mics with different serial numbers
-        mic_a = DeviceInfo(
-            alsa_card_index=30,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:30,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="MULTI-AAA",
-        )
-        mic_b = DeviceInfo(
-            alsa_card_index=31,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:31,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="MULTI-BBB",
-        )
+        mic_a = _make_device("MULTI-AAA", card_index=30)
+        mic_b = _make_device("MULTI-BBB", card_index=31)
 
         async with sf() as session:
             await upsert_device(
-                mic_a, session, profile_slug="ultramic_384k", enrollment_status="enrolled"
+                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
             )
             await upsert_device(
-                mic_b, session, profile_slug="ultramic_384k", enrollment_status="enrolled"
+                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
             )
             await session.commit()
 
@@ -1005,10 +955,14 @@ class TestRecorderSpecIntegrity:
             all_specs = await evaluator.evaluate(session)
 
         specs_a = [
-            s for s in all_specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-MULTI-AAA"
+            s
+            for s in all_specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("MULTI-AAA")
         ]
         specs_b = [
-            s for s in all_specs if s.labels.get("io.silvasonic.device_id") == "16d0-0b40-MULTI-BBB"
+            s
+            for s in all_specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("MULTI-BBB")
         ]
 
         assert len(specs_a) == 1, "Mic A must produce exactly 1 spec"

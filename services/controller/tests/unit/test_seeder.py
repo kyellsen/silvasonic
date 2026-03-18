@@ -12,8 +12,80 @@ from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
     ProfileBootstrapper,
+    _find_service_root,
+    _get_config_dir,
+    _get_defaults_yml,
+    _get_profiles_dir,
     run_all_seeders,
 )
+
+# ===================================================================
+# Path Resolvers (A4)
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestPathResolvers:
+    """Tests for the @cache-decorated path resolver functions."""
+
+    def test_find_service_root_finds_pyproject(self, tmp_path: Path) -> None:
+        """_find_service_root walks up and finds pyproject.toml."""
+        # Create: tmp_path/pyproject.toml  +  tmp_path/src/silvasonic/controller/
+        (tmp_path / "pyproject.toml").write_text("[project]\nname='test'\n")
+        deep = tmp_path / "src" / "silvasonic" / "controller"
+        deep.mkdir(parents=True)
+
+        result = _find_service_root(start=deep / "seeder.py")
+        assert result == tmp_path
+
+    def test_find_service_root_fallback(self, tmp_path: Path) -> None:
+        """_find_service_root returns start.parent when no pyproject.toml found."""
+        # No pyproject.toml anywhere — uses /tmp which has no pyproject.toml above
+        leaf = tmp_path / "nowhere" / "deep" / "file.py"
+        leaf.parent.mkdir(parents=True)
+
+        result = _find_service_root(start=leaf)
+        # Fallback: start.parent
+        assert result == leaf.parent
+
+    def test_get_config_dir(self) -> None:
+        """_get_config_dir returns service_root/config."""
+        _get_config_dir.cache_clear()
+        try:
+            with patch(
+                "silvasonic.controller.seeder._find_service_root",
+                return_value=Path("/fake/root"),
+            ):
+                result = _get_config_dir()
+            assert result == Path("/fake/root/config")
+        finally:
+            _get_config_dir.cache_clear()
+
+    def test_get_defaults_yml(self) -> None:
+        """_get_defaults_yml returns config_dir/defaults.yml."""
+        _get_defaults_yml.cache_clear()
+        try:
+            with patch(
+                "silvasonic.controller.seeder._get_config_dir",
+                return_value=Path("/fake/config"),
+            ):
+                result = _get_defaults_yml()
+            assert result == Path("/fake/config/defaults.yml")
+        finally:
+            _get_defaults_yml.cache_clear()
+
+    def test_get_profiles_dir(self) -> None:
+        """_get_profiles_dir returns config_dir/profiles."""
+        _get_profiles_dir.cache_clear()
+        try:
+            with patch(
+                "silvasonic.controller.seeder._get_config_dir",
+                return_value=Path("/fake/config"),
+            ):
+                result = _get_profiles_dir()
+            assert result == Path("/fake/config/profiles")
+        finally:
+            _get_profiles_dir.cache_clear()
 
 
 # ---------------------------------------------------------------------------

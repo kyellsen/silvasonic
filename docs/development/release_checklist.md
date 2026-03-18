@@ -14,10 +14,13 @@ differ accordingly.
 Adds new functionality, changes behavior, or introduces new services. **All** of
 the following are **mandatory** before tagging:
 
+- [ ] **100 % Unit Test Coverage** — `uv run pytest -m unit --cov` must report **100 %** statement coverage. Code that is inherently not unit-testable (DB connectivity, Redis loops, `asyncio.run()` entry points, etc.) **must** be marked with `# pragma: no cover` plus an inline justification referencing the integration test that covers the code (e.g. `# pragma: no cover — integration-tested (test_database.py)`). New `pragma` exclusions require review.
 - [ ] **Unit Tests** — Every new feature has dedicated unit tests (`@pytest.mark.unit`)
 - [ ] **Integration Tests** — Database interactions, service-to-service communication, and adjacent-service contracts are covered (`@pytest.mark.integration`)
+- [ ] **System Tests** — Full-stack lifecycle tests pass with real Podman (`@pytest.mark.system`)
 - [ ] **Smoke Tests** — Every service included in the release has a passing smoke test (`@pytest.mark.smoke`)
 - [ ] **`just check-all` passes** — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly
+- [ ] **Hardware Tests** _(recommended)_ — If USB microphone hardware is available, run `just test-hw` (`@pytest.mark.system_hw`). These tests validate real device detection, profile matching, and container spawning with physical hardware. Not mandatory, but strongly recommended before any release that touches device detection or Recorder spawning.
 
 > [!CAUTION]
 > A Feature Release **MUST NOT** be tagged if any of the above gates fails.
@@ -59,11 +62,16 @@ This includes:
 
 - **Ruff** — Linting & Formatting
 - **Mypy** — Type Checking
-- **pytest** — Unit, Integration & Smoke Tests
+- **pytest** — Unit, Integration, System & Smoke Tests
 - **pip-audit** — Dependency Security Audit
 - **uv lock --check** — Lock File Consistency
 - **Containerfile Lint** — Hadolint
 - **Compose Validation** — Schema Check
+
+> [!TIP]
+> If you have a USB microphone connected, also run `just test-hw` to validate
+> hardware detection, profile matching, and Recorder spawning with real devices.
+> This is strongly recommended but not enforced by `just check-all`.
 
 If any check fails: **Fix → Commit → Re-run `just check-all`**.
 

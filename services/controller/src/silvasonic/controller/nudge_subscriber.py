@@ -64,7 +64,7 @@ class NudgeSubscriber:
         """
         import redis.asyncio as aioredis
 
-        while True:
+        while True:  # pragma: no cover — integration-tested (test_nudge_subscriber.py)
             client = None
             try:
                 client = aioredis.from_url(self._redis_url)

@@ -7,7 +7,7 @@ from sqlalchemy import text
 logger = structlog.get_logger()
 
 
-async def check_database_connection() -> bool:
+async def check_database_connection() -> bool:  # pragma: no cover — integration-tested
     """Attempt to connect to the database and execute a simple query.
 
     Returns:

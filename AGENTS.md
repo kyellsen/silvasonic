@@ -69,9 +69,10 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 | Tools    | `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit`                           |
 
 ## 6. Testing Rules
-1. **Explicit Markers:** Every test MUST have `@pytest.mark.unit`, `.integration`, `.e2e`, or `.smoke`.
+1. **Explicit Markers:** Every test MUST have `@pytest.mark.unit`, `.integration`, `.system`, `.system_hw`, `.e2e`, or `.smoke`.
 2. **Directory Structure:** Tests in `tests/unit/`, `tests/integration/`, etc. matching their marker.
 3. **Location:** Service-specific tests inside the service package. Only cross-cutting tests in root `tests/`.
+4. **Hardware Tests:** `@pytest.mark.system_hw` tests require real USB microphone hardware and are **never** run in CI or `just check-all`. Run manually via `just test-hw`.
 
 ## 7. Environment Variable Naming
 *   **Prefix Rule:** Every project variable **MUST** use `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`).

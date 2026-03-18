@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from silvasonic.core import __version__
+
 # ---------------------------------------------------------------------------
 # Station identity
 # ---------------------------------------------------------------------------
@@ -20,7 +22,7 @@ from typing import Any
 STATION = {
     "name": "Silvasonic-001",
     "location": "Teststandort Wald",
-    "version": "0.2.0-mock",
+    "version": f"{__version__}-mock",
 }
 
 # ---------------------------------------------------------------------------
@@ -190,6 +192,9 @@ class RecorderMock:
     gain_db: float
     level_pct: int  # 0-100 simulated live level
     last_segment: str
+    enrollment_status: str  # "enrolled" | "generic" | "pending"
+    watchdog_restarts: int
+    watchdog_max_restarts: int
 
 
 RECORDERS: list[RecorderMock] = [
@@ -204,6 +209,9 @@ RECORDERS: list[RecorderMock] = [
         gain_db=12.0,
         level_pct=72,
         last_segment="2026-02-23T17:43:00Z",
+        enrollment_status="enrolled",
+        watchdog_restarts=0,
+        watchdog_max_restarts=5,
     ),
     RecorderMock(
         id="mic_02",
@@ -216,6 +224,9 @@ RECORDERS: list[RecorderMock] = [
         gain_db=6.0,
         level_pct=45,
         last_segment="2026-02-23T17:43:05Z",
+        enrollment_status="generic",
+        watchdog_restarts=2,
+        watchdog_max_restarts=5,
     ),
     RecorderMock(
         id="mic_03",
@@ -228,6 +239,9 @@ RECORDERS: list[RecorderMock] = [
         gain_db=24.0,
         level_pct=0,
         last_segment="2026-02-23T17:00:00Z",
+        enrollment_status="pending",
+        watchdog_restarts=0,
+        watchdog_max_restarts=5,
     ),
 ]
 
@@ -248,6 +262,8 @@ class UploaderMock:
     throughput_kbps: int
     last_sync: str
     schedule: str
+    bandwidth_limit_kbps: int | None  # None = unlimited
+    upload_window: str  # "always" | "HH:MM-HH:MM"
 
 
 UPLOADERS: list[UploaderMock] = [
@@ -260,6 +276,8 @@ UPLOADERS: list[UploaderMock] = [
         throughput_kbps=320,
         last_sync="2026-02-23T17:45:00Z",
         schedule="*/5 * * * *",
+        bandwidth_limit_kbps=None,
+        upload_window="always",
     ),
     UploaderMock(
         id="upload_02",
@@ -270,6 +288,8 @@ UPLOADERS: list[UploaderMock] = [
         throughput_kbps=0,
         last_sync="2026-02-23T16:00:00Z",
         schedule="0 * * * *",
+        bandwidth_limit_kbps=None,
+        upload_window="always",
     ),
     UploaderMock(
         id="upload_03",
@@ -280,6 +300,8 @@ UPLOADERS: list[UploaderMock] = [
         throughput_kbps=50,
         last_sync="2026-02-23T17:35:00Z",
         schedule="0 0 * * *",
+        bandwidth_limit_kbps=512,
+        upload_window="02:00-06:00",
     ),
 ]
 
@@ -617,6 +639,12 @@ SETTINGS: dict[str, Any] = {
     "birdnet_enabled": True,
     "batdetect_enabled": True,
     "weather_enabled": False,
+    "birdnet_min_confidence": 0.75,
+    "birdnet_time_start": "",
+    "birdnet_time_end": "",
+    "batdetect_min_confidence": 0.70,
+    "batdetect_time_start": "",
+    "batdetect_time_end": "",
     "recording_policy": {
         "max_segment_s": 300,
         "min_free_gb": 20,
@@ -629,6 +657,9 @@ SETTINGS: dict[str, Any] = {
             "target_type": "nextcloud",
             "url": "https://cloud.example.org/remote.php/webdav/",
             "username": "station-01-sync",
+            "bandwidth_limit_kbps": None,
+            "upload_window_start": "",
+            "upload_window_end": "",
         },
         {
             "id": "remote_02",
@@ -636,12 +667,82 @@ SETTINGS: dict[str, Any] = {
             "target_type": "s3",
             "url": "s3.eu-central-1.amazonaws.com",
             "username": "AKIAIOSFODNN7EXAMPLE",
+            "bandwidth_limit_kbps": 512,
+            "upload_window_start": "02:00",
+            "upload_window_end": "06:00",
         },
     ],
     "user": {
         "username": "admin",
     },
 }
+
+# ---------------------------------------------------------------------------
+# Upload Audit Log (for uploader detail page)
+# ---------------------------------------------------------------------------
+
+UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
+    {
+        "uploader_id": "upload_01",
+        "filename": "20260223_174000_mic01.wav",
+        "target": "Nextcloud-Backup",
+        "status": "success",
+        "size_mb": 4.2,
+        "duration_s": 12,
+        "ts": "2026-02-23T17:44:30Z",
+        "error": None,
+    },
+    {
+        "uploader_id": "upload_01",
+        "filename": "20260223_173500_mic01.wav",
+        "target": "Nextcloud-Backup",
+        "status": "success",
+        "size_mb": 4.2,
+        "duration_s": 11,
+        "ts": "2026-02-23T17:39:15Z",
+        "error": None,
+    },
+    {
+        "uploader_id": "upload_03",
+        "filename": "20260223_173000_mic01.wav",
+        "target": "GCP-Cold-Storage",
+        "status": "failed",
+        "size_mb": 4.2,
+        "duration_s": 45,
+        "ts": "2026-02-23T17:35:00Z",
+        "error": "HTTP 503 Service Unavailable",
+    },
+    {
+        "uploader_id": "upload_03",
+        "filename": "20260223_173000_mic01.wav",
+        "target": "GCP-Cold-Storage",
+        "status": "retrying",
+        "size_mb": 4.2,
+        "duration_s": 0,
+        "ts": "2026-02-23T17:37:00Z",
+        "error": "Retry 1/3 scheduled",
+    },
+    {
+        "uploader_id": "upload_02",
+        "filename": "20260223_170000_mic02.wav",
+        "target": "Nextcloud-Archive",
+        "status": "success",
+        "size_mb": 4.1,
+        "duration_s": 18,
+        "ts": "2026-02-23T16:05:00Z",
+        "error": None,
+    },
+    {
+        "uploader_id": "upload_01",
+        "filename": "20260223_173000_mic02.wav",
+        "target": "Nextcloud-Backup",
+        "status": "success",
+        "size_mb": 0.8,
+        "duration_s": 3,
+        "ts": "2026-02-23T17:34:00Z",
+        "error": None,
+    },
+]
 
 # ---------------------------------------------------------------------------
 # Fake log lines (for SSE console stream)

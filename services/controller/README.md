@@ -1,6 +1,6 @@
 # silvasonic-controller
 
-> **Status:** Partial (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
+> **Status:** Partial (since v0.3.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 >
 > 📋 **User Stories:** [controller.md](../../docs/user_stories/controller.md)
 
@@ -37,7 +37,7 @@ The Controller reads both tables and decides which Recorders to start.
 
 > **Status:** ✅ Implemented · **User Stories:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-), [US-C08](../../docs/user_stories/controller.md#us-c08-funktioniert-sofort-nach-installation-)
 
-On every startup, the Controller runs two idempotent seeders in sequence:
+On every startup, the Controller runs three idempotent seeders in sequence:
 
 ### 1. Config Seeder
 
@@ -52,6 +52,14 @@ Reads YAML seed files from the bundled `profiles/` directory and writes them to 
 *   **Does not exist → insert** the system profile.
 
 All profiles (seed and user-created) are validated against the [`MicrophoneProfile` Pydantic schema](../../packages/core/src/silvasonic/core/schemas/devices.py) before being persisted. Invalid profiles are rejected with an error in the log.
+
+### 3. Auth Seeder
+
+Creates a default admin user on first startup ([ADR-0023 §2.4](../../docs/adr/0023-configuration-management.md)):
+
+*   Reads `default_username` and `default_password` from `config/defaults.yml`.
+*   If a user with the same username already exists → **skip** (existing accounts are never overwritten).
+*   Password is hashed with **bcrypt** before insertion into the `users` table.
 
 ### After a Database Reset
 

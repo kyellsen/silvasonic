@@ -31,7 +31,7 @@
         <div class="flex flex-col items-center justify-center p-6 text-center">
             <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">Max
                 Confidence</span>
-            <span class="text-3xl font-bold text-success">{{ "%.1f"|format(species.max_confidence * 100) }}%</span>
+            <span class="text-3xl font-bold text-mod-birds-strong">{{ "%.1f"|format(species.max_confidence * 100) }}%</span>
         </div>
         <div class="flex flex-col items-center justify-center p-6 text-center">
             <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">First Seen</span>
@@ -40,7 +40,7 @@
         </div>
         <div class="flex flex-col items-center justify-center p-6 text-center">
             <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">Last Seen</span>
-            <span class="text-xl font-bold text-warning">{{ species.last_seen[5:7] }}/{{ species.last_seen[8:10] }}/{{
+            <span class="text-xl font-bold text-base-content">{{ species.last_seen[5:7] }}/{{ species.last_seen[8:10] }}/{{
                 species.last_seen[0:4] }}</span>
         </div>
     </div>
@@ -54,7 +54,7 @@
 
     <div class="card-body p-5">
         <h2 class="card-title flex items-center gap-2 mb-4 text-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24"
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-mod-birds-strong" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -91,7 +91,7 @@
         <div class="silva-card h-full">
             <div class="card-body p-5">
                 <h2 class="card-title flex items-center gap-2 mb-4 text-base">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24"
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-mod-birds-strong" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />

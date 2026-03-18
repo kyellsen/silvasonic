@@ -1,12 +1,13 @@
-"""Full CI pipeline: Lock → Audit → Lint → Type → Unit → Int → Containerfile → Build → Smoke → E2E.
+"""Full CI pipeline.
 
-Dep Audit is skipped by default during development. Remove "Dep Audit" from
-SKIPPED_BY_DEFAULT to re-enable it (e.g. in CI).
+Lock → Audit → Lint → Type → Unit → Int → Containerfile → Build → System → Smoke → E2E.
+
+Dep Audit runs pip-audit to check for known vulnerabilities in dependencies.
 
 Usage:
     python3 scripts/check_all.py
 
-Orchestrates 11 stages in order and prints a unified final summary
+Orchestrates 12 stages in order and prints a unified final summary
 with colored pass/fail indicators.
 
 Non-critical stages (Lock-File Check, Dep Audit, Containerfile Lint)
@@ -29,13 +30,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from common import Colors, ensure_initialized, fmt_duration, print_error, print_success
-from test import cmd_e2e, cmd_integration, cmd_smoke, cmd_unit
+from test import cmd_e2e, cmd_integration, cmd_smoke, cmd_system, cmd_unit
 
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Total number of stages in the pipeline
-TOTAL_STAGES = 11
+TOTAL_STAGES = 12
 
 # Result type: (label, passed_or_none, elapsed)
 StageResult = tuple[str, bool | None, float]
@@ -89,7 +90,7 @@ ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Mypy"}
 
 # Stages that are skipped by default (dev convenience).
 # Remove a stage name from this set to re-enable it.
-SKIPPED_BY_DEFAULT: set[str] = {"Dep Audit"}
+SKIPPED_BY_DEFAULT: set[str] = set()
 
 
 # ── Stage Functions ───────────────────────────────────────────────────────────
@@ -137,6 +138,18 @@ def _stage_integration_tests() -> None:
         sys.exit(result.returncode)
 
 
+def _stage_system_tests() -> None:
+    """Stage 10: System lifecycle tests (real Podman, no hardware).
+
+    Requires a running Podman socket and built images. Tests the full
+    Controller lifecycle: seeding, device detection, reconciliation,
+    container start/stop.
+    """
+    result = subprocess.run(cmd_system(), cwd=PROJECT_ROOT)
+    if result.returncode != 0:
+        sys.exit(result.returncode)
+
+
 def _stage_containerfile_lint() -> None:
     """Stage 7: Lint Containerfiles with hadolint (skips if not installed)."""
     if not shutil.which("hadolint"):
@@ -175,7 +188,7 @@ def _stage_build() -> None:
 
 
 def _stage_smoke_tests() -> None:
-    """Stage 10: Smoke tests via testcontainers (self-contained).
+    """Stage 11: Smoke tests via testcontainers (self-contained).
 
     Testcontainers spins up isolated, ephemeral containers with
     random ports. No compose start/stop needed, no port conflicts.
@@ -185,9 +198,20 @@ def _stage_smoke_tests() -> None:
         sys.exit(result.returncode)
 
 
+# Pytest exit code 5 means "no tests collected" — not a failure.
+_PYTEST_NO_TESTS_COLLECTED = 5
+
+
 def _stage_e2e_tests() -> None:
-    """Stage 11: End-to-end browser tests via Playwright."""
+    """Stage 12: End-to-end browser tests via Playwright.
+
+    Gracefully handles the case where no E2E tests exist yet
+    (pytest exit code 5 = no tests collected).
+    """
     result = subprocess.run(cmd_e2e(), cwd=PROJECT_ROOT)
+    if result.returncode == _PYTEST_NO_TESTS_COLLECTED:
+        print("  ⚠️  No E2E tests collected — skipping (expected until v0.8.0).")
+        return
     if result.returncode != 0:
         sys.exit(result.returncode)
 
@@ -220,8 +244,9 @@ def main() -> None:
         ("Containerfile Lint", 7, _stage_containerfile_lint),
         ("Clear", 8, _stage_clear),
         ("Build Images", 9, _stage_build),
-        ("Smoke Tests", 10, _stage_smoke_tests),
-        ("E2E Tests", 11, _stage_e2e_tests),
+        ("System Tests", 10, _stage_system_tests),
+        ("Smoke Tests", 11, _stage_smoke_tests),
+        ("E2E Tests", 12, _stage_e2e_tests),
     ]
 
     # ── Run stages with always-run group support ──────────────────────
@@ -325,6 +350,13 @@ def _print_summary(
             f"⚠️  {skipped_count} stage(s) skipped due to earlier failures."
             f"{Colors.ENDC}\n"
         )
+
+    # Always remind about manual hardware tests
+    print(
+        f"  {Colors.WARNING}🎤 Hardware tests excluded from this pipeline.{Colors.ENDC}\n"
+        f"  {Colors.WARNING}   Run manually with USB microphone connected:"
+        f" {Colors.BOLD}just test-hw{Colors.ENDC}\n"
+    )
 
 
 if __name__ == "__main__":

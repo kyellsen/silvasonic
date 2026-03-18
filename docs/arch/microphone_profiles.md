@@ -30,8 +30,8 @@ audio:
   channels: 1                        # Number of audio channels
   format: S16LE                      # Sample format (S16LE, S24LE, S32LE)
   match:                             # ← MatchCriteria for auto-detection
-    usb_vendor_id: "2578"            # USB Vendor ID (stable, never changes)
-    usb_product_id: "0001"           # USB Product ID
+    usb_vendor_id: "0869"            # USB Vendor ID (stable, never changes)
+    usb_product_id: "0389"           # USB Product ID
     alsa_name_contains: "ultramic"   # Case-insensitive ALSA card name substring
 
 processing:
@@ -68,9 +68,13 @@ The Controller evaluates all profiles against a newly detected USB device and as
 | ------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
 | **100** | `usb_vendor_id` AND `usb_product_id` both match      | Auto-Enrollment (if `auto_enrollment` is `true` in `system_config`) |
 | **50**  | Only `alsa_name_contains` matches (case-insensitive) | Suggestion — user confirms in Web-Interface                         |
-| **0**   | No match                                             | Device stays `pending` — user selects profile manually              |
+| **0**   | No match                                             | v0.3.0: Device stays `pending`. v0.4.0+: Auto-assign `generic_usb` fallback profile |
 
 If multiple profiles match with the same score, the device remains `pending` (ambiguous match — user decides).
+
+> [!NOTE]
+> Starting with v0.4.0, a **`generic_usb`** seed profile (48 kHz, 1 ch, S16LE, no processing) ensures that
+> unknown microphones can record immediately with safe defaults. Users can switch to a better profile via the Web-Interface (v0.8.0+).
 
 ### Finding USB Vendor/Product IDs
 
@@ -79,7 +83,7 @@ To create a profile for new hardware, connect the microphone and run:
 ```bash
 # On the host (or inside Controller container)
 lsusb
-# Example output: Bus 001 Device 005: ID 2578:0001 Dodotronic Ultramic 384 EVO
+# Example output: Bus 001 Device 005: ID 0869:0389 Dodotronic Ultramic 384 EVO
 
 # Or via sysfs (direct read, no external dependencies):
 python3 -c "
@@ -104,6 +108,21 @@ for card in sorted(Path('/sys/class/sound').glob('card*')):
 
 ---
 
+## Detection Strategy: Polling (not Event-Based)
+
+Silvasonic uses **1-second polling** (`/proc/asound/cards` + sysfs) to detect USB device changes. This is an intentional design decision:
+
+| Approach | Pros | Cons |
+| --- | --- | --- |
+| **Polling (chosen)** | Simple, robust, works in rootless Podman without udev access, no external dependencies | ~1s detection latency (acceptable) |
+| Event-based (`pyudev`) | Instant detection | Requires udev socket access in container, additional C dependency, complex lifecycle management |
+
+> [!IMPORTANT]
+> Event-based detection (e.g., `pyudev.Monitor`) is **explicitly not planned**. Polling is simpler, container-friendly,
+> and the 1-second latency is imperceptible for the use case. See [ADR-0016 §4](../adr/0016-hybrid-yaml-db-profiles.md).
+
+---
+
 ## Profile Lifecycle
 
 | Phase                       | Actor                              | How                                                                             |
@@ -120,9 +139,9 @@ for card in sorted(Path('/sys/class/sound').glob('card*')):
 
 | Microphone                  | Profile Slug       | USB VID:PID | Native Sample Rate | Status           |
 | --------------------------- | ------------------ | ----------- | ------------------ | ---------------- |
-| Dodotronic Ultramic 384 EVO | `ultramic_384_evo` | `2578:0001` | 384 kHz            | ✅ Profile exists |
+| Dodotronic Ultramic 384 EVO | `ultramic_384_evo` | `0869:0389` | 384 kHz            | ✅ Profile exists |
 
-> **Note:** Additional profiles (e.g., RØDE NT-USB, generic USB) will be added as hardware is tested.
+> **Note:** A `generic_usb` fallback profile (48 kHz, 1 ch, S16LE) will be added in v0.4.0 to support unknown microphones out-of-the-box. Additional vendor profiles will be added as hardware is tested.
 
 ---
 

@@ -1,4 +1,4 @@
-"""Unit tests for Phase 4 — DeviceScanner, ProfileMatcher.
+"""Unit tests for DeviceScanner — device detection, parsing, and upsert.
 
 All hardware (sysfs, /proc/asound) and DB dependencies are mocked.
 """
@@ -12,10 +12,16 @@ import pytest
 from silvasonic.controller.device_scanner import (
     DeviceInfo,
     DeviceScanner,
+    UsbInfo,
+    _get_usb_info_for_card,
+    _read_sysfs,
     parse_asound_cards,
     upsert_device,
 )
-from silvasonic.controller.profile_matcher import ProfileMatcher
+
+# Fictional VID/PID for test isolation (not real hardware).
+_MOCK_VID = "16d0"
+_MOCK_PID = "0b40"
 
 
 # ===========================================================================
@@ -31,12 +37,12 @@ class TestDeviceInfo:
             alsa_card_index=2,
             alsa_name="UltraMic 384K",
             alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
+            usb_vendor_id=_MOCK_VID,
+            usb_product_id=_MOCK_PID,
             usb_serial="ABC123",
             usb_bus_path="1-3.2",
         )
-        assert info.stable_device_id == "16d0-0b40-ABC123"
+        assert info.stable_device_id == f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
 
     def test_stable_id_without_serial(self) -> None:
         """No serial → port-bound fallback."""
@@ -44,12 +50,12 @@ class TestDeviceInfo:
             alsa_card_index=2,
             alsa_name="UltraMic 384K",
             alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
+            usb_vendor_id=_MOCK_VID,
+            usb_product_id=_MOCK_PID,
             usb_serial=None,
             usb_bus_path="1-3.2",
         )
-        assert info.stable_device_id == "16d0-0b40-port1-3.2"
+        assert info.stable_device_id == f"{_MOCK_VID}-{_MOCK_PID}-port1-3.2"
 
     def test_stable_id_fallback(self) -> None:
         """No USB info → ALSA card index fallback."""
@@ -120,6 +126,130 @@ class TestParseAsoundCards:
 
 
 # ===========================================================================
+# _read_sysfs
+# ===========================================================================
+@pytest.mark.unit
+class TestReadSysfs:
+    """Tests for the _read_sysfs helper function."""
+
+    def test_read_existing_file(self, tmp_path: Any) -> None:
+        """Returns stripped content from an existing file."""
+        f = tmp_path / "idVendor"
+        f.write_text("  16d0\n")
+        assert _read_sysfs(f) == "16d0"
+
+    def test_read_missing_file(self, tmp_path: Any) -> None:
+        """Returns None when file does not exist."""
+        assert _read_sysfs(tmp_path / "nonexistent") is None
+
+    def test_read_empty_file(self, tmp_path: Any) -> None:
+        """Returns None when file is empty (after strip)."""
+        f = tmp_path / "serial"
+        f.write_text("   \n")
+        assert _read_sysfs(f) is None
+
+    def test_read_permission_error(self, tmp_path: Any) -> None:
+        """Returns None when file has no read permissions."""
+        f = tmp_path / "protected"
+        f.write_text("secret")
+        f.chmod(0o000)
+        try:
+            assert _read_sysfs(f) is None
+        finally:
+            f.chmod(0o644)  # Restore for cleanup
+
+
+# ===========================================================================
+# _get_usb_info_for_card
+# ===========================================================================
+@pytest.mark.unit
+class TestGetUsbInfoForCard:
+    """Tests for _get_usb_info_for_card (sysfs USB parent lookup)."""
+
+    def test_card_path_not_found(self) -> None:
+        """Returns empty UsbInfo when /sys/class/sound/cardN does not exist."""
+        with patch(
+            "silvasonic.controller.device_scanner.Path",
+        ) as mock_path_cls:
+            mock_card_path = MagicMock()
+            mock_card_path.exists.return_value = False
+            mock_path_cls.return_value = mock_card_path
+
+            result = _get_usb_info_for_card(99)
+
+        assert result.vendor_id is None
+        assert result.product_id is None
+
+    def test_usb_parent_found(self, tmp_path: Any) -> None:
+        """Returns populated UsbInfo when USB parent is found in sysfs tree."""
+        # Build a fake sysfs tree:
+        # tmp_path/1-3.2/sound/card2
+        usb_parent = tmp_path / "1-3.2"
+        card_dir = usb_parent / "sound" / "card2"
+        card_dir.mkdir(parents=True)
+
+        # USB parent has subsystem symlink → usb, uevent, and USB attrs
+        subsystem_target = tmp_path / "bus" / "usb"
+        subsystem_target.mkdir(parents=True)
+        (usb_parent / "subsystem").symlink_to(subsystem_target)
+        (usb_parent / "uevent").write_text("DEVTYPE=usb_device\nDRIVER=usb\n")
+        (usb_parent / "idVendor").write_text("16d0\n")
+        (usb_parent / "idProduct").write_text("0b40\n")
+        (usb_parent / "serial").write_text("ABC123\n")
+
+        with patch(
+            "silvasonic.controller.device_scanner.Path",
+        ) as mock_path_cls:
+            # First call: Path(f"/sys/...") → redirect to our fake card_dir
+            real_card_path = MagicMock()
+            real_card_path.exists.return_value = True
+            real_card_path.resolve.return_value = card_dir
+            mock_path_cls.side_effect = lambda p: (
+                real_card_path if "/sys/" in str(p) else type(card_dir)(p)
+            )
+
+            result = _get_usb_info_for_card(2)
+
+        assert result.vendor_id == "16d0"
+        assert result.product_id == "0b40"
+        assert result.serial == "ABC123"
+        assert result.bus_path == "1-3.2"
+
+    def test_no_usb_subsystem(self, tmp_path: Any) -> None:
+        """Returns empty UsbInfo when no USB subsystem is found."""
+        # card_dir is at root of tmp_path — no USB parent above
+        card_dir = tmp_path / "card0"
+        card_dir.mkdir()
+
+        with patch(
+            "silvasonic.controller.device_scanner.Path",
+        ) as mock_path_cls:
+            real_card_path = MagicMock()
+            real_card_path.exists.return_value = True
+            real_card_path.resolve.return_value = card_dir
+            mock_path_cls.return_value = real_card_path
+
+            result = _get_usb_info_for_card(0)
+
+        assert result.vendor_id is None
+
+    def test_exception_returns_empty(self) -> None:
+        """Returns empty UsbInfo on unexpected exceptions (logged)."""
+        with patch(
+            "silvasonic.controller.device_scanner.Path",
+        ) as mock_path_cls:
+            mock_card_path = MagicMock()
+            mock_card_path.exists.return_value = True
+            mock_card_path.resolve.side_effect = RuntimeError("unexpected")
+            mock_path_cls.return_value = mock_card_path
+
+            result = _get_usb_info_for_card(7)
+
+        assert result.vendor_id is None
+        assert result.product_id is None
+
+
+# ===========================================================================
 # DeviceScanner
 # ===========================================================================
 @pytest.mark.unit
@@ -128,8 +258,6 @@ class TestDeviceScanner:
 
     def test_scan_all_with_usb_card(self, tmp_path: Any) -> None:
         """scan_all returns DeviceInfo for USB-Audio cards."""
-        from silvasonic.controller.device_scanner import UsbInfo
-
         cards_file = tmp_path / "cards"
         cards_file.write_text(
             " 0 [PCH             ]: HDA-Intel - HDA Intel PCH\n"
@@ -141,8 +269,8 @@ class TestDeviceScanner:
         with patch(
             "silvasonic.controller.device_scanner._get_usb_info_for_card",
             return_value=UsbInfo(
-                vendor_id="16d0",
-                product_id="0b40",
+                vendor_id=_MOCK_VID,
+                product_id=_MOCK_PID,
                 serial="ABC",
                 bus_path="1-2",
             ),
@@ -151,7 +279,7 @@ class TestDeviceScanner:
 
         assert len(devices) == 1
         assert devices[0].alsa_name == "UltraMic 384K"
-        assert devices[0].usb_vendor_id == "16d0"
+        assert devices[0].usb_vendor_id == _MOCK_VID
         assert devices[0].alsa_device == "hw:2,0"
 
     def test_scan_all_no_usb_cards(self, tmp_path: Any) -> None:
@@ -182,8 +310,8 @@ class TestUpsertDevice:
             alsa_card_index=2,
             alsa_name="UltraMic 384K",
             alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
+            usb_vendor_id=_MOCK_VID,
+            usb_product_id=_MOCK_PID,
             usb_serial="ABC123",
         )
 
@@ -197,14 +325,14 @@ class TestUpsertDevice:
         device = await upsert_device(device_info, session)
 
         session.add.assert_called_once()
-        assert device.name == "16d0-0b40-ABC123"
+        assert device.name == f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
         assert device.status == "online"
         assert device.enrollment_status == "pending"
 
     async def test_upsert_updates_existing_device(self, device_info: DeviceInfo) -> None:
         """Known device gets status=online and updated last_seen."""
         existing = MagicMock()
-        existing.name = "16d0-0b40-ABC123"
+        existing.name = f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
         existing.profile_slug = "ultramic_384_evo"
 
         mock_result = MagicMock()
@@ -238,7 +366,7 @@ class TestUpsertDevice:
     ) -> None:
         """Existing profile slug is not overwritten."""
         existing = MagicMock()
-        existing.name = "16d0-0b40-ABC123"
+        existing.name = f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
         existing.profile_slug = "custom_profile"  # already assigned
 
         mock_result = MagicMock()
@@ -250,163 +378,3 @@ class TestUpsertDevice:
 
         # Should NOT overwrite existing profile
         assert device.profile_slug == "custom_profile"
-
-
-# ===========================================================================
-# ProfileMatcher
-# ===========================================================================
-@pytest.mark.unit
-class TestProfileMatcher:
-    """Tests for the ProfileMatcher scoring and auto-enrollment."""
-
-    def _make_profile(
-        self,
-        slug: str,
-        usb_vid: str | None = None,
-        usb_pid: str | None = None,
-        alsa_name: str | None = None,
-    ) -> MagicMock:
-        """Helper to create a mock MicrophoneProfile."""
-        profile = MagicMock()
-        profile.slug = slug
-        match: dict[str, str] = {}
-        if usb_vid:
-            match["usb_vendor_id"] = usb_vid
-        if usb_pid:
-            match["usb_product_id"] = usb_pid
-        if alsa_name:
-            match["alsa_name_contains"] = alsa_name
-        profile.config = {"audio": {"match": match}} if match else {}
-        return profile
-
-    @pytest.fixture()
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            alsa_card_index=2,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-        )
-
-    async def test_exact_usb_match_score_100(self, device_info: DeviceInfo) -> None:
-        """Exact USB VID+PID match → score 100."""
-        profile = self._make_profile("ultramic_384_evo", usb_vid="16d0", usb_pid="0b40")
-
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-        session.execute.return_value = mock_result
-
-        # Mock auto_enrollment config
-        config_result = MagicMock()
-        config_mock = MagicMock()
-        config_mock.value = {"auto_enrollment": True}
-        config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 100
-        assert result.profile_slug == "ultramic_384_evo"
-        assert result.auto_enroll is True
-
-    async def test_alsa_name_match_score_50(self, device_info: DeviceInfo) -> None:
-        """ALSA name substring match → score 50."""
-        profile = self._make_profile("generic_ultra", alsa_name="UltraMic")
-
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-        session.execute.return_value = mock_result
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 50
-        assert result.profile_slug == "generic_ultra"
-        assert result.auto_enroll is False  # Only score 100 gets auto_enroll
-
-    async def test_no_match_score_0(self, device_info: DeviceInfo) -> None:
-        """No matching profile → score 0."""
-        profile = self._make_profile("other_mic", usb_vid="aaaa", usb_pid="bbbb")
-
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-        session.execute.return_value = mock_result
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 0
-        assert result.profile_slug is None
-
-    async def test_no_profiles_in_db(self, device_info: DeviceInfo) -> None:
-        """Empty DB → no match."""
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        session.execute.return_value = mock_result
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 0
-
-    async def test_auto_enrollment_false(self, device_info: DeviceInfo) -> None:
-        """auto_enrollment=false in system_config → no auto-enroll even with score 100."""
-        profile = self._make_profile("ultramic_384_evo", usb_vid="16d0", usb_pid="0b40")
-
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-
-        config_result = MagicMock()
-        config_mock = MagicMock()
-        config_mock.value = {"auto_enrollment": False}
-        config_result.scalar_one_or_none.return_value = config_mock
-
-        session.execute.side_effect = [mock_result, config_result]
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 100
-        assert result.auto_enroll is False
-
-    async def test_usb_match_case_insensitive(self, device_info: DeviceInfo) -> None:
-        """USB VID/PID match is case-insensitive."""
-        profile = self._make_profile("ultramic", usb_vid="16D0", usb_pid="0B40")
-
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-
-        config_result = MagicMock()
-        config_mock = MagicMock()
-        config_mock.value = {"auto_enrollment": True}
-        config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(device_info, session)
-
-        assert result.score == 100
-
-    async def test_profile_without_match_criteria(self) -> None:
-        """Profile with empty config → score 0."""
-        profile = MagicMock()
-        profile.slug = "bare_profile"
-        profile.config = {}
-
-        info = DeviceInfo(alsa_card_index=0, alsa_name="Any", alsa_device="hw:0,0")
-        session = AsyncMock(add=MagicMock())
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [profile]
-        session.execute.return_value = mock_result
-
-        matcher = ProfileMatcher()
-        result = await matcher.match(info, session)
-        assert result.score == 0

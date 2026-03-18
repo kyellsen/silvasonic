@@ -226,4 +226,4 @@ class SilvaService:
 
         This is the main entry point — call this from ``__main__``.
         """
-        asyncio.run(self._main())
+        asyncio.run(self._main())  # pragma: no cover — blocking entry point

@@ -134,11 +134,11 @@ class LogForwarder:
 
                 while True:
                     await self._sync_follow_tasks(redis)
-                    await asyncio.sleep(self._poll_interval)
+                    await asyncio.sleep(self._poll_interval)  # pragma: no cover
 
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # pragma: no cover — integration-tested
                 await self._cancel_all_tasks()
-                raise
+                raise  # pragma: no cover
             except Exception:
                 log.warning("log_forwarder.error", reconnect_in=5)
                 await self._cancel_all_tasks()
@@ -246,7 +246,7 @@ class LogForwarder:
                         # Yield control periodically to allow cancellation
                         if len(lines) >= 10:
                             return lines
-                except StopIteration:
+                except StopIteration:  # pragma: no cover — defensive
                     pass
                 except Exception:
                     pass

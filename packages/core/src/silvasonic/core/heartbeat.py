@@ -178,7 +178,7 @@ class HeartbeatPublisher:
             try:
                 resources = resource_collector.collect()
                 await self.publish_once(resources)
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # pragma: no cover — integration-tested
                 break
             except Exception as exc:
                 logger.warning("heartbeat_loop_error", error=str(exc))

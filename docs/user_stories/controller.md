@@ -250,3 +250,37 @@
 
 - [ADR-0022: Live Log Streaming](file:///mnt/data/dev/apps/silvasonic/docs/adr/0022-live-log-streaming.md)
 - [ADR-0013 §Logging](file:///mnt/data/dev/apps/silvasonic/docs/adr/0013-tier2-container-management.md)
+
+---
+
+## US-C10: Unbekanntes Mikrofon funktioniert sofort 🎤
+
+> **Als Anwender** möchte ich ein beliebiges USB-Mikrofon einstecken und sofort aufnehmen können,
+> **damit** ich keine Konfiguration benötige und das System auch mit unbekannter Hardware sofort nützlich ist.
+
+### Akzeptanzkriterien
+
+#### Auto-Fallback-Profil
+- [ ] Ein `generic_usb` System-Profil wird beim Start geseedet (48 kHz, 1 ch, S16LE, Gain 0 dB).
+- [ ] Wenn kein Profil-Match (Score 0) gefunden wird, weist der Controller automatisch `generic_usb` zu.
+- [ ] Das Gerät erhält `enrollment_status=enrolled` und `profile_slug=generic_usb`.
+- [ ] Der Recorder startet sofort mit den Standard-Settings.
+
+#### Upgrade-Pfad
+- [ ] Der Nutzer kann über die Web-Oberfläche ein besseres Profil zuweisen oder ein eigenes erstellen (v0.8.0+).
+- [ ] Beim Profil-Wechsel wird der Recorder automatisch mit neuer Konfiguration neu gestartet.
+
+### Nicht-funktionale Anforderungen
+
+- Das Generic-Profil muss mit **jedem** USB-Audio-Gerät funktionieren (konservative Settings).
+- **Priorität: Aufnahme starten > optimale Qualität** — lieber mit 48 kHz aufnehmen als gar nicht.
+
+### Milestone
+
+- **Milestone:** v0.4.0
+
+### Referenzen
+
+- [ADR-0016: Hybrid YAML/DB Profile Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0016-hybrid-yaml-db-profiles.md)
+- [Microphone Profiles §Matching Algorithm](file:///mnt/data/dev/apps/silvasonic/docs/arch/microphone_profiles.md)
+- [Milestone v0.4.0](file:///mnt/data/dev/apps/silvasonic/docs/development/milestone_0_4_0.md)

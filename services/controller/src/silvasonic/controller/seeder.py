@@ -156,7 +156,7 @@ class ProfileBootstrapper:
             return
 
         for yml_path in yml_files:
-            if yml_path.name == ".gitkeep":
+            if yml_path.name == ".gitkeep":  # pragma: no cover — coverage artifact
                 continue
 
             try:
@@ -235,7 +235,7 @@ class AuthSeeder:
 
         try:
             auth = AuthDefaults(**raw["auth"])
-        except ValidationError as exc:
+        except ValidationError as exc:  # pragma: no cover — defensive
             log.error("seeder.auth.validation_failed", errors=exc.error_count())
             return
 

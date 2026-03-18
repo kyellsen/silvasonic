@@ -1,7 +1,7 @@
 # Web Interface
 
 > **Tier:** 1 (Infrastructure) · **Status:** Planned — v0.8.0 · **Port:** 8000
-> **Prototype:** The `web-mock` service (v0.2.0, Port 8001) implements the full UI shell with mock data. See [web-mock README](../../services/web-mock/README.md).
+> **Prototype:** The `web-mock` service (since v0.2.0, Port 8001) implements the full UI shell with mock data. See [web-mock README](../../services/web-mock/README.md).
 
 The Web-Interface is the local management console for the Silvasonic recording station. It provides a real-time system dashboard, device management, service configuration, and live audio monitoring — all from a browser, without SSH.
 

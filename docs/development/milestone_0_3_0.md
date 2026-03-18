@@ -2,7 +2,7 @@
 
 > **Target:** v0.3.0 — Controller manages Recorder lifecycle (start/stop), Hardware Detection, State Reconciliation & Log Streaming
 >
-> **Status:** 🔨 In Progress — Phases 1–5 ✅ Complete · Phase 6 (Hardening) remaining
+> **Status:** ✅ Complete — All Phases (1–6) done
 >
 > **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](../../VISION.md), [Controller README](../../services/controller/README.md), [Recorder README](../../services/recorder/README.md)
 >
@@ -146,6 +146,8 @@
   - Publish log lines as JSON to Redis channel `silvasonic:logs`.
   - Design to be resilient: automatically reconnect string if container restarts.
   - Implement fire-and-forget (if no subscribers, Redis discards the event).
+- [x] Unit tests: `_parse_log_line`, `_sync_follow_tasks`, `run()` main loop, `_follow_container` error handling, `_cancel_all_tasks` (26 tests, 98% coverage)
+- [x] Integration tests: LogForwarder ↔ real Redis Pub/Sub — publish, non-JSON fallback, container removal, graceful shutdown (4 tests)
 
 ---
 
@@ -158,10 +160,10 @@
 - [x] Implement graceful shutdown handler in Controller (`run()`)
   - On SIGTERM: stop all owned Tier 2 containers, then exit
   - `_stop_all_tier2()` method queries `list_managed()` and stops each container before closing the Podman client.
-- [ ] Test crash recovery: kill Controller, verify Recorder keeps running (Podman manages restart limit).
-- [ ] Test reconciliation: restart Controller, verify it adopts existing Recorder without restarting it.
-- [ ] Test multi-instance: start 2 Recorders for different devices, verify labels and isolated file structures.
-- [ ] Update smoke tests to verify Controller ↔ Recorder lifecycle.
+- [x] Test crash recovery: kill Controller, verify Recorder keeps running (Podman manages restart limit).
+- [x] Test reconciliation: restart Controller, verify it adopts existing Recorder without restarting it.
+- [x] Test multi-instance: start 2 Recorders for different devices, verify labels and isolated file structures.
+- [x] ~~Update smoke tests~~ — N/A: smoke test Controller lacks Podman socket (DooD). Lifecycle is fully covered by `test_crash_recovery.py` against real Podman (3 tests, 33s).
 
 ---
 

@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from silvasonic.core import __version__
 from silvasonic.core.database.session import get_db
 from silvasonic.web_mock import mock_data
 from silvasonic.web_mock.__main__ import (
@@ -91,13 +92,13 @@ class TestBaseContext:
     def test_base_ctx_returns_expected_keys(self) -> None:
         """_base_ctx produces all keys the templates expect."""
         request = MagicMock()
-        request.app.version = "0.2.0"
+        request.app.version = __version__
         station = {"name": "Test-Station"}
 
         ctx: dict[str, Any] = _base_ctx(request, station, active="dashboard")
 
         assert ctx["active"] == "dashboard"
-        assert ctx["version"] == "0.2.0"
+        assert ctx["version"] == __version__
         assert ctx["station"]["name"] == "Test-Station"
         assert "metrics" in ctx
         assert "active_recorders" in ctx
@@ -635,6 +636,9 @@ class TestMockDataIntegrity:
             assert rec.label
             assert 0 <= rec.level_pct <= 100
             assert rec.sample_rate > 0
+            assert rec.enrollment_status in ("enrolled", "generic", "pending")
+            assert 0 <= rec.watchdog_restarts <= rec.watchdog_max_restarts
+            assert rec.watchdog_max_restarts > 0
 
     def test_uploader_fields(self) -> None:
         """UploaderMock has required fields."""
@@ -643,6 +647,8 @@ class TestMockDataIntegrity:
             assert up.label
             assert up.target_type
             assert up.status
+            assert up.bandwidth_limit_kbps is None or up.bandwidth_limit_kbps > 0
+            assert up.upload_window  # must be non-empty string
 
     def test_fake_log_lines_are_valid_json(self) -> None:
         """All fake log lines are parseable as JSON."""
@@ -680,3 +686,33 @@ class TestMockDataIntegrity:
         for sp in mock_data.BAT_SPECIES_SUMMARY:
             assert "id" in sp
             assert sp["id"]
+
+    def test_upload_audit_log_structure(self) -> None:
+        """Upload audit log entries have expected keys and valid statuses."""
+        assert len(mock_data.UPLOAD_AUDIT_LOG) >= 1
+        for entry in mock_data.UPLOAD_AUDIT_LOG:
+            assert "uploader_id" in entry
+            assert "filename" in entry
+            assert "status" in entry
+            assert entry["status"] in ("success", "failed", "retrying")
+            assert "size_mb" in entry
+            assert "duration_s" in entry
+            assert "ts" in entry
+
+    def test_settings_confidence_fields(self) -> None:
+        """Settings contain confidence thresholds for BirdNET and BatDetect."""
+        assert 0.0 < mock_data.SETTINGS["birdnet_min_confidence"] <= 1.0
+        assert 0.0 < mock_data.SETTINGS["batdetect_min_confidence"] <= 1.0
+
+    def test_settings_analysis_time_windows(self) -> None:
+        """Settings contain analysis time window fields for BirdNET and BatDetect."""
+        for prefix in ("birdnet", "batdetect"):
+            assert isinstance(mock_data.SETTINGS[f"{prefix}_time_start"], str)
+            assert isinstance(mock_data.SETTINGS[f"{prefix}_time_end"], str)
+
+    def test_settings_remotes_bandwidth_fields(self) -> None:
+        """Remote targets contain bandwidth and window fields."""
+        for remote in mock_data.SETTINGS["remotes"]:
+            assert "bandwidth_limit_kbps" in remote
+            assert "upload_window_start" in remote
+            assert "upload_window_end" in remote

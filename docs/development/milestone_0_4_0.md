@@ -1,18 +1,20 @@
 # Milestone v0.4.0 — Audio Recording (Dual Stream)
 
-> **Target:** v0.4.0 — Recorder captures audio from USB microphones: Python/C pipeline (`sounddevice`+`soundfile`), segmented WAV output, Dual Stream (Raw + Processed), Watchdog & Auto-Recovery
+> **Target:** v0.4.0 — Recorder captures audio from USB microphones: Python/C pipeline (`sounddevice`+`soundfile`), segmented WAV output, Profile Injection, Generic USB Fallback, Dual Stream (Raw + Processed), Watchdog & Auto-Recovery
 >
 > **Status:** ⏳ Planned
 >
 > **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [Recorder README](../../services/recorder/README.md)
 >
-> **User Stories:** [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R03](../user_stories/recorder.md#us-r03), [US-R06](../user_stories/recorder.md#us-r06), [US-R07](../user_stories/recorder.md#us-r07)
+> **User Stories:** [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R03](../user_stories/recorder.md#us-r03), [US-R06](../user_stories/recorder.md#us-r06), [US-R07](../user_stories/recorder.md#us-r07), [US-C10](../user_stories/controller.md#us-c10)
 
 ---
 
-## Phase 1: Python Audio Pipeline & Single-Stream Capture
+## Phase 1: Audio Pipeline & Single-Stream Capture
 
 **Goal:** Recorder captures audio from an ALSA device using `sounddevice` and writes segmented WAV files using `soundfile`.
+
+**User Stories:** US-R01 (Aufnahme)
 
 ### Tasks
 
@@ -40,6 +42,19 @@
   > The Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
 - [ ] Read `SILVASONIC_RECORDER_DEVICE` from environment (ALSA device ID, e.g. `hw:1,0`)
   - `SILVASONIC_INSTANCE_ID` is also available (injected by Controller since v0.3.0, used for SilvaService heartbeats)
+- [ ] Unit tests: pipeline construction, segment naming, buffer-to-data promotion
+- [ ] Integration test: start Recorder with mock audio device, verify WAV files appear
+
+---
+
+## Phase 2: Profile Injection (Controller → Recorder)
+
+**Goal:** Controller serializes the microphone profile and injects it into the Recorder via environment variable. Recorder parses the profile and applies all capture parameters.
+
+**User Stories:** US-R01 (Profil-Settings), US-R07 (Segment-Dauer)
+
+### Tasks
+
 - [ ] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into the existing `MicrophoneProfile` Pydantic model (`silvasonic.core.schemas.devices`) at startup
   - The Controller serializes the `config` JSONB column from the `microphone_profiles` table and passes it as a single environment variable (ADR-0016)
   - The Recorder has **no database access** and **no YAML files** — all configuration arrives via env vars (ADR-0013)
@@ -53,14 +68,37 @@
   - `audio.format` → bit depth / format string
   - `processing.gain_db` → input gain
   - `stream.segment_duration_s` → segment length
-- [ ] Unit tests: pipeline construction, segment naming, buffer-to-data promotion, profile parsing and parameter mapping
-- [ ] Integration test: start Recorder with mock audio device, verify WAV files appear
+- [ ] Unit tests: profile parsing, parameter mapping, segment duration override
+- [ ] Integration test: Recorder starts with injected profile and uses correct sample rate
 
 ---
 
-## Phase 2: Dual Stream Architecture (Raw + Processed)
+## Phase 3: Generic USB Fallback & Auto-Enrollment
+
+**Goal:** Unknown microphones are auto-enrolled with a safe generic profile, enabling immediate recording without user configuration.
+
+**User Stories:** US-C10 (Unbekanntes Mikrofon funktioniert sofort)
+
+### Tasks
+
+- [ ] Create `generic_usb.yml` seed profile in `services/controller/config/profiles/`:
+  - 48 kHz, 1 ch, S16LE, Gain 0 dB, no highpass filter, no processing
+  - No `match` criteria (used as fallback only, never auto-matched by VID/PID)
+  - `is_system=true`, slug: `generic_usb`
+- [ ] Update `ProfileMatcher` / Reconciler: Score 0 → auto-assign `generic_usb` profile
+  - Device gets `enrollment_status=enrolled`, `profile_slug=generic_usb`
+  - Recorder starts immediately with safe defaults
+  - User can later switch to a better profile via Web-Interface (v0.8.0+)
+- [ ] Unit tests: Score-0 auto-fallback assigns `generic_usb`, verify Recorder starts
+- [ ] Integration test: unknown USB device → `generic_usb` profile → Recorder spawns
+
+---
+
+## Phase 4: Dual Stream Architecture (Raw + Processed)
 
 **Goal:** Recorder produces two simultaneous output streams from a single capture (ADR-0011, US-R03).
+
+**User Stories:** US-R03 (Originalformat und Standardformat gleichzeitig)
 
 ### Tasks
 
@@ -74,9 +112,11 @@
 
 ---
 
-## Phase 3: Watchdog & Auto-Recovery
+## Phase 5: Watchdog & Auto-Recovery
 
 **Goal:** Recorder detects pipeline failures and recovers automatically (US-R06).
+
+**User Stories:** US-R02 (Aufnahme läuft immer weiter), US-R06 (Automatische Wiederherstellung)
 
 ### Tasks
 
@@ -92,9 +132,11 @@
 
 ---
 
-## Phase 4: Robustness & Isolation
+## Phase 6: Robustness & Isolation
 
 **Goal:** Verify that the Recorder survives infrastructure failures and respects isolation (US-R02).
+
+**User Stories:** US-R02 (Isolation von anderen Diensten)
 
 ### Tasks
 

@@ -19,6 +19,13 @@
                 <div class="flex items-center gap-2">
                     {{ status_badge(rec.status) }}
                     <h2 class="font-semibold text-sm">{{ rec.label }}</h2>
+                    {% if rec.enrollment_status == 'enrolled' %}
+                    <span class="badge badge-success badge-outline badge-xs font-mono">enrolled</span>
+                    {% elif rec.enrollment_status == 'generic' %}
+                    <span class="badge badge-warning badge-outline badge-xs font-mono">generic</span>
+                    {% elif rec.enrollment_status == 'pending' %}
+                    <span class="badge badge-accent badge-outline badge-xs font-mono">pending</span>
+                    {% endif %}
                 </div>
                 <span class="text-xs text-base-content/40 font-mono">{{ rec.id }}</span>
             </div>

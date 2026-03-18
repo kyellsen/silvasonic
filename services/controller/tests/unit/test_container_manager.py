@@ -482,3 +482,60 @@ class TestContainerManager:
 
         client.containers.run.assert_not_called()
         client.containers.get.assert_not_called()
+
+    def test_start_passes_devices_and_group_add(self) -> None:
+        """start() passes devices and group_add to containers.run when non-empty."""
+        from podman.errors import NotFound
+
+        mock_container = MagicMock()
+        mock_container.id = "dev123"
+        mock_container.name = "silvasonic-recorder-test"
+        mock_container.status = "running"
+        mock_container.labels = {}
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.side_effect = NotFound("not found")
+        client.containers.run.return_value = mock_container
+        mgr = ContainerManager(client)
+
+        spec = _make_spec(
+            devices=["/dev/snd/pcmC2D0c"],
+            group_add=["audio"],
+        )
+        mgr.start(spec)
+
+        call_kwargs = client.containers.run.call_args.kwargs
+        assert call_kwargs["devices"] == ["/dev/snd/pcmC2D0c"]
+        assert call_kwargs["group_add"] == ["audio"]
+
+    def test_start_creates_bind_mount_dirs(self, tmp_path: "Any") -> None:
+        """start() creates bind-mount source directories that don't exist."""
+        from podman.errors import NotFound
+
+        mock_container = MagicMock()
+        mock_container.id = "dir123"
+        mock_container.name = "silvasonic-recorder-test"
+        mock_container.status = "running"
+        mock_container.labels = {}
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.side_effect = NotFound("not found")
+        client.containers.run.return_value = mock_container
+        mgr = ContainerManager(client)
+
+        mount_dir = tmp_path / "workspace" / "recorder" / "audio"
+        spec = _make_spec(
+            mounts=[
+                MountSpec(
+                    source=str(mount_dir),
+                    target="/workspace/recorder/audio",
+                    read_only=False,
+                    controller_source=str(mount_dir),
+                ),
+            ],
+        )
+        mgr.start(spec)
+
+        assert mount_dir.exists()

@@ -100,3 +100,33 @@ class TestConfigureLogging:
         # The mock has spec=Handler but no real 'level' attribute, which
         # would crash any subsequent logger.info() call.
         root.handlers = [h for h in root.handlers if h is not mock_handler]
+
+    def test_dev_tty_rich_import_error_falls_back_to_stream_handler(self) -> None:
+        """When rich is not installed, falls back to StreamHandler (lines 91-95)."""
+        import sys as _sys
+
+        from silvasonic.core.logging import configure_logging
+
+        class TtyStdout:
+            def __getattr__(self, name: str) -> object:
+                return getattr(_sys.__stdout__, name)
+
+            def isatty(self) -> bool:
+                return True
+
+        orig_stdout = _sys.stdout
+        orig_rich = _sys.modules.get("rich.logging")
+        try:
+            _sys.stdout = TtyStdout()
+            _sys.modules["rich.logging"] = None  # type: ignore[assignment]
+            with patch.dict(os.environ, {"SILVASONIC_DEVELOPMENT_MODE": "true"}):
+                configure_logging("fallback-test")
+        finally:
+            _sys.stdout = orig_stdout
+            if orig_rich is not None:
+                _sys.modules["rich.logging"] = orig_rich
+            else:
+                _sys.modules.pop("rich.logging", None)
+
+        root = logging.getLogger()
+        assert any(isinstance(h, logging.StreamHandler) for h in root.handlers)

@@ -137,12 +137,12 @@ rarest — rarest species dict
 
             <!-- Rarest Species Stat Card -->
             <div
-                class="card bg-secondary/10 text-secondary-content rounded-xl shadow-sm border border-secondary/20 transition-all duration-300 hover:shadow-lg hover:shadow-secondary/15 hover:-translate-y-1">
+                class="silva-card-static">
                 <div class="card-body p-5 flex flex-col justify-center text-center">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-secondary/70 mb-2">Rarest Species</h3>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-base-content/50 mb-2">Rarest Species</h3>
                     <div class="text-5xl mb-2">💎</div>
-                    <div class="text-3xl font-bold text-secondary mb-1">{{ rarest.count }} <span
-                            class="text-lg font-normal text-secondary/60">det.</span></div>
+                    <div class="text-3xl font-bold text-base-content mb-1">{{ rarest.count }} <span
+                            class="text-lg font-normal text-base-content/40">det.</span></div>
                     <div class="font-semibold text-lg text-base-content">{{ rarest.species_en }}</div>
                     <div class="text-[10px] text-base-content/50 italic">{{ rarest.species_sci }}</div>
                     <div class="text-[10px] text-base-content/40 font-mono mt-4">Last seen: {{ rarest.last_seen |
@@ -191,14 +191,14 @@ rarest — rarest species dict
                     <img src="{{ sp.image_url }}" alt="{{ sp.species_en }}" class="w-full h-full object-cover" />
                 </figure>
                 {% else %}
-                <figure class="aspect-4/3 w-full m-0 bg-secondary/10 flex items-center justify-center">
+                <figure class="aspect-4/3 w-full m-0 bg-base-200 flex items-center justify-center">
                     <span class="text-6xl">{{ emoji }}</span>
                 </figure>
                 {% endif %}
                 <div class="card-body items-center text-center p-5 pt-4">
                     <h3 class="font-semibold text-sm">{{ sp.species_en }}</h3>
                     <p class="text-xs text-base-content/50 italic">{{ sp.species_sci }}</p>
-                    <div class="badge badge-secondary badge-sm mt-1">{{ sp.count }} detections</div>
+                    <div class="badge badge-outline badge-sm mt-1 text-base-content/70">{{ sp.count }} detections</div>
                     <div class="text-[10px] text-base-content/40 font-mono mt-2">last: {{ sp.last_seen | truncate(16,
                         true, '') }}</div>
                 </div>

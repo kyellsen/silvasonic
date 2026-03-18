@@ -61,9 +61,23 @@ class TestResourceCollector:
 
     @patch("silvasonic.core.resources.psutil.Process")
     def test_collect_handles_exception(self, mock_process_cls: MagicMock) -> None:
-        """Returns empty dict on psutil errors."""
+        """Returns empty dict on generic errors."""
         proc = MagicMock()
         proc.cpu_percent.side_effect = [0.0, RuntimeError("no process")]
+        mock_process_cls.return_value = proc
+
+        rc = ResourceCollector()
+        result = rc.collect()
+
+        assert result == {}
+
+    @patch("silvasonic.core.resources.psutil.Process")
+    def test_collect_handles_psutil_error(self, mock_process_cls: MagicMock) -> None:
+        """Returns empty dict on psutil.Error (lines 105-107)."""
+        import psutil
+
+        proc = MagicMock()
+        proc.cpu_percent.side_effect = [0.0, psutil.Error("no such process")]
         mock_process_cls.return_value = proc
 
         rc = ResourceCollector()
@@ -104,7 +118,17 @@ class TestHostResourceCollector:
         side_effect=RuntimeError,
     )
     def test_collect_handles_exception(self, mock_cpu: MagicMock) -> None:
-        """Returns empty dict on errors."""
+        """Returns empty dict on generic errors."""
+        hrc = HostResourceCollector()
+        result = hrc.collect()
+        assert result == {}
+
+    @patch(
+        "silvasonic.core.resources.psutil.cpu_percent",
+        side_effect=OSError("filesystem error"),
+    )
+    def test_collect_handles_os_error(self, mock_cpu: MagicMock) -> None:
+        """Returns empty dict on OSError (lines 152-154)."""
         hrc = HostResourceCollector()
         result = hrc.collect()
         assert result == {}

@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from silvasonic.core.database.models.system import SystemConfig
 from silvasonic.core.database.session import get_db
 from silvasonic.core.service_context import ServiceContext
-from silvasonic.web_mock import mock_data
+from silvasonic.web_mock import __version__, mock_data
 from silvasonic.web_mock.settings import WebMockSettings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Silvasonic Web Mock",
     description="UI shell with mock data for most views. Real DB for Settings persistence.",
-    version="0.2.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -256,10 +256,12 @@ async def uploader_detail(
     uploader = next((u for u in mock_data.UPLOADERS if u.id == uploader_id), None)
     if not uploader:
         raise HTTPException(status_code=404, detail="Uploader not found")
+    audit_log = [e for e in mock_data.UPLOAD_AUDIT_LOG if e["uploader_id"] == uploader_id]
     ctx = {
         **_base_ctx(request, station, "uploaders"),
         "uploader": uploader,
         "metrics": mock_data.SYSTEM_METRICS,
+        "audit_log": audit_log,
     }
     return templates.TemplateResponse(request, "uploader_detail.html", ctx)
 

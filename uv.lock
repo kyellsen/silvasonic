@@ -1730,22 +1730,22 @@ requires-dist = [{ name = "silvasonic-core", editable = "packages/core" }]
 
 [[package]]
 name = "silvasonic-test-utils"
-version = "0.2.0"
 source = { editable = "packages/test-utils" }
 dependencies = [
     { name = "pytest" },
+    { name = "silvasonic-core" },
     { name = "testcontainers" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pytest", specifier = ">=8.3.0" },
+    { name = "silvasonic-core", editable = "packages/core" },
     { name = "testcontainers", specifier = ">=4.14.1" },
 ]
 
 [[package]]
 name = "silvasonic-web-mock"
-version = "0.2.0"
 source = { editable = "services/web-mock" }
 dependencies = [
     { name = "cryptography" },

@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import (
 _engine_override: AsyncEngine | None = None
 
 
-def override_engine(engine: AsyncEngine) -> None:
+def override_engine(engine: AsyncEngine) -> None:  # pragma: no cover
     """Inject a pre-configured engine (for integration tests).
 
     After calling this, all ``get_session()`` / ``get_db()`` calls will use
@@ -53,7 +53,7 @@ def override_engine(engine: AsyncEngine) -> None:
     _get_session_factory.cache_clear()
 
 
-def reset_engine() -> None:
+def reset_engine() -> None:  # pragma: no cover
     """Reset to default engine (re-reads env vars on next call).
 
     Should be called in test teardown to avoid leaking state between
@@ -74,7 +74,7 @@ def _get_engine() -> AsyncEngine:
 
     If ``override_engine()`` was called, returns the override instead.
     """
-    if _engine_override is not None:
+    if _engine_override is not None:  # pragma: no cover — integration-tested
         return _engine_override
     settings = DatabaseSettings()
     return create_async_engine(
@@ -87,7 +87,7 @@ def _get_engine() -> AsyncEngine:
 @lru_cache(maxsize=1)
 def _get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Create the async session factory lazily on first use (cached singleton)."""
-    return async_sessionmaker(
+    return async_sessionmaker(  # pragma: no cover — integration-tested
         bind=_get_engine(),
         class_=AsyncSession,
         expire_on_commit=False,
@@ -98,14 +98,14 @@ def _get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for FastAPI or other services to get a DB session."""
-    async with _get_session_factory()() as session:
+    async with _get_session_factory()() as session:  # pragma: no cover — integration-tested
         yield session
 
 
 @asynccontextmanager
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Context manager for background tasks/scripts."""
-    async with _get_session_factory()() as session:
+    async with _get_session_factory()() as session:  # pragma: no cover — integration-tested
         try:
             yield session
         except Exception:

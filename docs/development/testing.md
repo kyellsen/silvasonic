@@ -8,12 +8,18 @@
 
 Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests without a marker will be rejected in code review.
 
-| Marker        | Description                                          | External Deps              | Typical Duration |
-| ------------- | ---------------------------------------------------- | -------------------------- | ---------------- |
-| `unit`        | Fast, isolated tests without external dependencies   | None (mocks only)          | < 1s per test    |
-| `integration` | Tests with external services (DB, Redis)             | Testcontainers / Compose   | < 30s per test   |
-| `smoke`       | Health checks against running containers             | Full stack (`just start`)  | < 30s total      |
-| `e2e`         | Browser tests via Playwright                         | Full stack + Playwright    | < 60s per test   |
+| Marker      | Description                                          | External Deps                | Typical Duration | In `check-all` |
+| ----------- | ---------------------------------------------------- | ---------------------------- | ---------------- | -------------- |
+| `unit`      | Fast, isolated tests without external dependencies   | None (mocks only)            | < 1s per test    | ✅ Stage 5      |
+| `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 6      |
+| `system`    | Full-stack lifecycle tests with real Podman           | Podman socket + built images | < 60s per test   | ✅ Stage 10     |
+| `system_hw` | Hardware-dependent system tests                      | Podman + real USB microphone | < 60s per test   | ❌ Never        |
+| `smoke`     | Health checks against running containers             | Full stack (`just start`)    | < 30s total      | ✅ Stage 11     |
+| `e2e`       | Browser tests via Playwright                         | Full stack + Playwright      | < 60s per test   | ✅ Stage 12     |
+
+> [!IMPORTANT]
+> `system_hw` tests are **never** included in CI or `just check-all`. They require real USB
+> microphone hardware and must be run manually via `just test-hw`.
 
 ---
 
@@ -33,7 +39,9 @@ services/<svc>/tests/
 tests/                # Cross-cutting tests only
     smoke/          # @pytest.mark.smoke — stack health checks
     integration/    # @pytest.mark.integration — multi-service
-    e2e/            # @pytest.mark.e2e — browser tests (Playwright)
+    system/         # @pytest.mark.system — full-stack lifecycle (Podman)
+                    # @pytest.mark.system_hw — hardware system tests
+    e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.8.0+)
 ```
 
 > [!IMPORTANT]
@@ -43,14 +51,39 @@ tests/                # Cross-cutting tests only
 
 ## 3. Running Tests
 
+### Individual Suites
+
 ```bash
 just test-unit       # Unit tests only (no external deps)
 just test-int        # Integration tests (Testcontainers)
-just test-smoke      # Smoke tests (full stack must be running)
+just test-system     # System lifecycle tests (Podman + built images, no HW)
+just test-hw         # Hardware system tests (requires real USB microphone)
+just test-smoke      # Smoke tests (built images via Testcontainers)
 just test-e2e        # End-to-end browser tests (Playwright)
-just test-all        # Unit + Integration
-just test            # Alias for test-all
+just test            # Quick dev: Unit + Integration
+just test-all        # All tests except hardware (Unit+Int+System+Smoke+E2E)
 ```
+
+### Quality Gates
+
+```bash
+just check           # Fast dev check (4 stages):
+                     #   Lock + Ruff + Mypy + Unit Tests
+just check-all       # Full CI pipeline (12 stages):
+                     #   Lock → Audit → Lint → Type → Unit → Int
+                     #   → Containerfile → Build → System → Smoke → E2E
+```
+
+### When to Run What
+
+| Situation              | Command          | What it covers                                  |
+| ---------------------- | ---------------- | ----------------------------------------------- |
+| During development     | `just test`      | Unit + Integration (quick feedback)             |
+| Before every commit    | `just check`     | Lint, types, unit tests (no containers)         |
+| Thorough test run      | `just test-all`  | All test suites except hardware                 |
+| Before push / PR       | `just check-all` | Full 12-stage pipeline incl. build              |
+| Before release         | `just check-all` | All automated gates (see Release Checklist)     |
+| With USB mic connected | `just test-hw`   | Real hardware detection + spawning              |
 
 ---
 
@@ -68,6 +101,21 @@ just test            # Alias for test-all
 - Do **NOT** rely on the Compose stack — integration tests must be self-contained.
 - Use `polyfactory` for generating Pydantic model instances as test data.
 
+### System Tests (`@pytest.mark.system`)
+
+- Test the full Controller lifecycle pipeline with **real Podman** but **mocked hardware**.
+- Use `testcontainers` for DB + Redis, real `SilvasonicPodmanClient` for Podman.
+- Mock `/proc/asound/cards` and sysfs to simulate device detection without hardware.
+- Skip gracefully when Podman socket is absent or images aren't built.
+- Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop.
+
+### Hardware System Tests (`@pytest.mark.system_hw`)
+
+- Test device detection pipeline with **real USB microphone hardware**.
+- Require a USB-Audio device connected (e.g., UltraMic 384K).
+- Skip automatically when no USB-Audio device is detected.
+- **Never** included in CI pipelines — run manually via `just test-hw`.
+
 ### Smoke Tests
 
 - Require the full Compose stack to be running (`just start`).
@@ -79,10 +127,36 @@ just test            # Alias for test-all
 - Use Playwright for browser automation.
 - Test user-facing flows through the Web-Interface.
 - Screenshots on failure for debugging.
+- Planned for v0.8.0+ when the Web-Interface has sufficient coverage.
 
 ---
 
-## 5. Test Infrastructure
+## 5. `check-all` Pipeline Stages
+
+The `just check-all` command runs 12 stages in order:
+
+| Stage | Name               | Critical | Description                                      |
+| ----- | ------------------ | -------- | ------------------------------------------------ |
+| 1     | Lock-File Check    | No       | `uv lock --check`                                |
+| 2     | Dep Audit          | No       | `pip-audit` (skipped by default in dev)           |
+| 3     | Ruff Lint          | Yes      | Linting + formatting                              |
+| 4     | Mypy               | Yes      | Static type checking                              |
+| 5     | Unit Tests         | Yes      | `@pytest.mark.unit` (parallel, coverage)          |
+| 6     | Integration Tests  | Yes      | `@pytest.mark.integration` (testcontainers)       |
+| 7     | Containerfile Lint | No       | Hadolint (skipped if not installed)               |
+| 8     | Clear              | Always   | Clean workspace                                   |
+| 9     | Build Images       | Always   | `just build`                                      |
+| 10    | System Tests       | Yes      | `@pytest.mark.system` (real Podman, needs images) |
+| 11    | Smoke Tests        | Yes      | `@pytest.mark.smoke` (testcontainers)             |
+| 12    | E2E Tests          | Yes      | `@pytest.mark.e2e` (Playwright)                   |
+
+> [!NOTE]
+> `system_hw` tests are intentionally excluded from this pipeline.
+> Run `just test-hw` separately when hardware is available.
+
+---
+
+## 6. Test Infrastructure
 
 | Tool | Purpose |
 | --- | --- |
@@ -95,7 +169,7 @@ just test            # Alias for test-all
 
 ---
 
-## 6. Naming Conventions
+## 7. Naming Conventions
 
 | Element | Convention | Example |
 | --- | --- | --- |
@@ -111,3 +185,4 @@ Test names should describe the **expected behavior**, not the implementation det
 
 - [AGENTS.md §6](../../AGENTS.md) — Testing rules (markers, directory structure)
 - [AGENTS.md §5](../../AGENTS.md) — Approved test libraries
+- [Release Checklist](release_checklist.md) — Quality gates per release type

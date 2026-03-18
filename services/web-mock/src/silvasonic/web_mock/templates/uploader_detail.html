@@ -37,11 +37,11 @@
             <h2 class="silva-label mb-3">Metrics</h2>
             <div class="grid grid-cols-2 gap-4 text-center">
                 <div>
-                    <div class="text-2xl font-bold text-warning">{{ uploader.queue_files }}</div>
+                    <div class="text-2xl font-bold text-base-content">{{ uploader.queue_files }}</div>
                     <div class="text-xs text-base-content/50">Queue Files</div>
                 </div>
                 <div>
-                    <div class="text-2xl font-bold text-info">{{ uploader.throughput_kbps }}</div>
+                    <div class="text-2xl font-bold text-base-content">{{ uploader.throughput_kbps }}</div>
                     <div class="text-xs text-base-content/50">KB/s Throughput</div>
                 </div>
             </div>
@@ -57,8 +57,10 @@
                         class="text-base-content/50">Target Type</span><span>{{ uploader.target_type }}</span></div>
                 <div class="flex justify-between border-b border-base-content/5 pb-1"><span
                         class="text-base-content/50">Schedule</span><span>{{ uploader.schedule }}</span></div>
-                <div class="flex justify-between pb-1"><span class="text-base-content/50">Bandwidth
-                        Limit</span><span>None</span></div>
+                <div class="flex justify-between border-b border-base-content/5 pb-1"><span
+                        class="text-base-content/50">Bandwidth Limit</span><span>{% if uploader.bandwidth_limit_kbps %}{{ uploader.bandwidth_limit_kbps }} KB/s{% else %}Unlimited{% endif %}</span></div>
+                <div class="flex justify-between pb-1"><span class="text-base-content/50">Upload
+                        Window</span><span>{{ uploader.upload_window }}</span></div>
             </div>
             <button class="btn btn-outline btn-sm mt-4 w-max">Edit Settings</button>
         </div>
@@ -73,6 +75,51 @@
                 class="h-24 flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
                 [ Chart Placeholder ]
             </div>
+        </div>
+    </div>
+
+    <!-- Upload History (Audit Log) -->
+    <div class="silva-card col-span-2 lg:col-span-4">
+        <div class="card-body p-5">
+            <h2 class="text-sm font-semibold mb-3">Upload History</h2>
+            {% if audit_log %}
+            <div class="overflow-x-auto">
+                <table class="table table-xs font-mono">
+                    <thead>
+                        <tr class="text-base-content/50">
+                            <th>Timestamp</th>
+                            <th>File</th>
+                            <th>Status</th>
+                            <th class="text-right">Size</th>
+                            <th class="text-right">Duration</th>
+                            <th>Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in audit_log %}
+                        <tr class="hover">
+                            <td class="text-base-content/50">{{ entry.ts }}</td>
+                            <td>{{ entry.filename }}</td>
+                            <td>
+                                {% if entry.status == 'success' %}
+                                <span class="badge badge-success badge-xs">✓</span>
+                                {% elif entry.status == 'failed' %}
+                                <span class="badge badge-error badge-xs">✗</span>
+                                {% elif entry.status == 'retrying' %}
+                                <span class="badge badge-warning badge-xs">⏳</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">{{ entry.size_mb }} MB</td>
+                            <td class="text-right">{{ entry.duration_s }}s</td>
+                            <td class="text-base-content/50 text-xs">{{ entry.error or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-xs text-base-content/40 italic">No upload history for this target.</p>
+            {% endif %}
         </div>
     </div>
 </div>

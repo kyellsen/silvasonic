@@ -166,6 +166,8 @@ env_files = [".env"] # Tells pytest-dotenv where the single source of truth is
 markers = [
     "unit: fast, isolated tests without external dependencies.",
     "integration: requires external services (DB) to run.",
+    "system: full-stack lifecycle tests requiring Podman socket and built images.",
+    "system_hw: hardware-dependent system tests (USB mic required, never in CI).",
     "e2e: browser tests via playwright running against a full stack.",
     "smoke: quick health checks on built images or deployments.",
 ]
@@ -179,4 +181,4 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-omit = ["*/tests/*", "tests/*"]
+omit = ["*/tests/*", "tests/*", "*/test_utils/*"]
