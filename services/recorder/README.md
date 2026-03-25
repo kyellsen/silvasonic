@@ -16,9 +16,9 @@
 | Recording Health Monitor (Placeholder) | ✅ Implemented | v0.2.0    | —          |
 | Plug & Play Detection                  | ✅ Implemented | v0.3.0    | US-R01     |
 | Multi-Microphone Instances             | ✅ Implemented | v0.3.0    | US-R05     |
-| Audio Capture (Python Pipeline)        | 🔜 Planned     | v0.4.0    | US-R01     |
+| Audio Capture (Python Pipeline)        | ✅ Implemented | v0.4.0    | US-R01     |
 | Dual Stream (Raw + Processed)          | 🔜 Planned     | v0.4.0    | US-R03     |
-| Segment Duration via Profile           | 🔜 Planned     | v0.4.0    | US-R07     |
+| Segment Duration via Profile           | ✅ Implemented | v0.4.0    | US-R07     |
 | Watchdog & Auto-Recovery               | 🔜 Planned     | v0.4.0    | US-R06     |
 | OOM Protection (`oom_score_adj=-999`)  | 🔜 Planned     | v0.4.0    | US-R02     |
 | Live-Stream (Opus → Icecast)           | 🔮 Future      | v0.9.0    | US-R04     |

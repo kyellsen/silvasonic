@@ -18,18 +18,18 @@
 
 ### Tasks
 
-- [ ] Add `sounddevice`, `soundfile`, and `soxr` as dependencies to `services/recorder/pyproject.toml`
-- [ ] Add `libportaudio2` and `libsndfile1` as system dependencies in Recorder `Containerfile` (already present since v0.3.0)
+- [x] Add `sounddevice`, `soundfile`, and `soxr` as dependencies to `services/recorder/pyproject.toml`
+- [x] Add `libportaudio2` and `libsndfile1` as system dependencies in Recorder `Containerfile` (already present since v0.3.0)
   - `soxr` bundles its own `libsoxr` in the Python wheel — no `libsoxr-dev` system package needed
-- [ ] Create `silvasonic/recorder/pipeline.py` — Audio pipeline builder
+- [x] Create `silvasonic/recorder/pipeline.py` — Audio pipeline builder
   - Use `sounddevice.InputStream` with callback for non-blocking capture
   - Input: ALSA device (e.g., `hw:1,0`)
   - Output: segmented WAV files in `.buffer/raw/` using `soundfile.SoundFile`
   - Segment naming convention: `{ISO-timestamp}_{duration}s.wav`
-- [ ] Implement `.buffer/` → `data/` file promotion logic
+- [x] Implement `.buffer/` → `data/` file promotion logic
   - On segment close: atomically move from `.buffer/raw/` to `data/raw/`
   - Ensures Processor only sees complete files
-- [ ] Create workspace directory structure on startup:
+- [x] Create workspace directory structure on startup:
   ```
   /app/workspace/           # bind-mount: instance-specific directory on host
   ├── data/raw/
@@ -40,10 +40,10 @@
   > The Controller mounts **only** the instance-specific subdirectory into the
   > container (e.g. `workspace/recorder/{workspace_dir}:/app/workspace:z`).
   > The Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
-- [ ] Read `SILVASONIC_RECORDER_DEVICE` from environment (ALSA device ID, e.g. `hw:1,0`)
+- [x] Read `SILVASONIC_RECORDER_DEVICE` from environment (ALSA device ID, e.g. `hw:1,0`)
   - `SILVASONIC_INSTANCE_ID` is also available (injected by Controller since v0.3.0, used for SilvaService heartbeats)
-- [ ] Unit tests: pipeline construction, segment naming, buffer-to-data promotion
-- [ ] Integration test: start Recorder with mock audio device, verify WAV files appear
+- [x] Unit tests: pipeline construction, segment naming, buffer-to-data promotion
+- [x] Integration test: start Recorder with mock audio device, verify WAV files appear
 
 ---
 
@@ -55,21 +55,21 @@
 
 ### Tasks
 
-- [ ] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into the existing `MicrophoneProfile` Pydantic model (`silvasonic.core.schemas.devices`) at startup
+- [x] Parse `SILVASONIC_RECORDER_CONFIG_JSON` into the existing `MicrophoneProfile` Pydantic model (`silvasonic.core.schemas.devices`) at startup
   - The Controller serializes the `config` JSONB column from the `microphone_profiles` table and passes it as a single environment variable (ADR-0016)
   - The Recorder has **no database access** and **no YAML files** — all configuration arrives via env vars (ADR-0013)
   - All capture parameters come from this model: `audio.sample_rate`, `audio.channels`, `audio.format`, `processing.gain_db`, `stream.segment_duration_s` (default: 10s, US-R07)
-- [ ] Extend `build_recorder_spec()` in Controller's `container_spec.py` to inject `SILVASONIC_RECORDER_CONFIG_JSON`
+- [x] Extend `build_recorder_spec()` in Controller's `container_spec.py` to inject `SILVASONIC_RECORDER_CONFIG_JSON`
   - Controller serializes `profile.config` (JSONB) via `json.dumps()` into the environment dict
   - This enables the Recorder to receive its full profile configuration without database access (ADR-0013, ADR-0016)
-- [ ] Apply profile parameters to `sounddevice` / `soundfile` pipeline:
+- [x] Apply profile parameters to `sounddevice` / `soundfile` pipeline:
   - `audio.sample_rate` → Raw stream sample rate
   - `audio.channels` → channel count
   - `audio.format` → bit depth / format string
   - `processing.gain_db` → input gain
   - `stream.segment_duration_s` → segment length
-- [ ] Unit tests: profile parsing, parameter mapping, segment duration override
-- [ ] Integration test: Recorder starts with injected profile and uses correct sample rate
+- [x] Unit tests: profile parsing, parameter mapping, segment duration override
+- [x] Integration test: Recorder starts with injected profile and uses correct sample rate
 
 ---
 
