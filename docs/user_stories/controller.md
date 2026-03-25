@@ -261,14 +261,14 @@
 ### Akzeptanzkriterien
 
 #### Auto-Fallback-Profil
-- [ ] Ein `generic_usb` System-Profil wird beim Start geseedet (48 kHz, 1 ch, S16LE, Gain 0 dB).
-- [ ] Wenn kein Profil-Match (Score 0) gefunden wird, weist der Controller automatisch `generic_usb` zu.
-- [ ] Das Gerät erhält `enrollment_status=enrolled` und `profile_slug=generic_usb`.
-- [ ] Der Recorder startet sofort mit den Standard-Settings.
+- [x] Ein `generic_usb` System-Profil wird beim Start geseedet (48 kHz, 1 ch, S16LE, Gain 0 dB).
+- [x] Wenn kein Profil-Match (Score 0) gefunden wird, weist der Controller automatisch `generic_usb` zu.
+- [x] Das Gerät erhält `enrollment_status=enrolled` und `profile_slug=generic_usb`.
+- [x] Der Recorder startet sofort mit den Standard-Settings.
 
 #### Upgrade-Pfad
-- [ ] Der Nutzer kann über die Web-Oberfläche ein besseres Profil zuweisen oder ein eigenes erstellen (v0.8.0+).
-- [ ] Beim Profil-Wechsel wird der Recorder automatisch mit neuer Konfiguration neu gestartet.
+- [ ] ~~Der Nutzer kann über die Web-Oberfläche ein besseres Profil zuweisen oder ein eigenes erstellen~~ (v0.8.0+).
+- [ ] ~~Beim Profil-Wechsel wird der Recorder automatisch mit neuer Konfiguration neu gestartet~~ (v0.8.0+).
 
 ### Nicht-funktionale Anforderungen
 

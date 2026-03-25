@@ -42,13 +42,13 @@
 - [x] Der Aufnahme-Dienst wird vom System als letzter beendet — bei Speicherknappheit werden zuerst Analyse-Dienste gestoppt.
 - [x] Ein Ausfall der Status-Übertragung (Redis) stoppt nicht die Aufnahme.
 - [x] Ein Ausfall des Controllers → Aufnahme läuft ungestört weiter.
-- [ ] Bei Fehlern in der Aufnahme-Pipeline erfolgt ein automatischer Neustart.
+- [x] Bei Fehlern in der Aufnahme-Pipeline erfolgt ein automatischer Neustart.
 
 #### Isolation von anderen Diensten
-- [ ] Kein anderer Dienst (BirdNET, BatDetect, Uploader, Gateway etc.) darf die Aufnahme beeinträchtigen — weder durch Ressourcenverbrauch noch durch Absturz.
-- [ ] Alle Nicht-Aufnahme-Dienste erhalten CPU- und Speicherlimits, damit sie das System nicht überlasten (→ US-C04).
-- [ ] Analyse- und Upload-Dienste greifen nur **lesend** auf Aufnahmedateien zu — kein Dienst außer dem Processor darf Aufnahmedateien verändern oder löschen.
-- [ ] Der Absturz eines beliebigen Analyse-, Upload- oder Infrastruktur-Dienstes hat keinen Einfluss auf laufende Aufnahmen.
+- [ ] ~~Kein anderer Dienst (BirdNET, BatDetect, Uploader) darf die Aufnahme beeinträchtigen~~ (Deferred: ab v0.5.0+)
+- [ ] ~~Alle Nicht-Aufnahme-Dienste erhalten CPU- und Speicherlimits~~ (Deferred: ab v0.5.0+)
+- [ ] ~~Analyse- und Upload-Dienste greifen nur **lesend** auf Aufnahmedateien zu~~ (Deferred: ab v0.5.0+)
+- [ ] ~~Der Absturz eines beliebigen Analyse- oder Upload-Dienstes hat keinen Einfluss~~ (Deferred: ab v0.5.0+)
 
 ### Nicht-funktionale Anforderungen
 
@@ -76,10 +76,10 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Originalaufnahme: Hardware-native Sample Rate und Bittiefe → `recorder/{name}/data/raw/*.wav`.
-- [ ] Standardaufnahme: 48 kHz, 16-Bit → `recorder/{name}/data/processed/*.wav`.
-- [ ] Beide Streams werden gleichzeitig und ohne gegenseitige Beeinträchtigung geschrieben.
-- [ ] Unvollständige Segmente verbleiben in `.buffer/` — nur fertig geschriebene Dateien erscheinen in `data/`.
+- [x] Originalaufnahme: Hardware-native Sample Rate und Bittiefe → `recorder/{name}/data/raw/*.wav`.
+- [x] Standardaufnahme: 48 kHz, 16-Bit → `recorder/{name}/data/processed/*.wav`.
+- [x] Beide Streams werden gleichzeitig und ohne gegenseitige Beeinträchtigung geschrieben.
+- [x] Unvollständige Segmente verbleiben in `.buffer/` — nur fertig geschriebene Dateien erscheinen in `data/`.
 
 ### Milestone
 
@@ -148,9 +148,9 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Die Aufnahme-Pipeline wird bei erkannten Fehlern (Absturz, Hänger, Prozess-Tod) automatisch neu gestartet.
-- [ ] Mehrere Absicherungs-Stufen: interner Watchdog → Container-Neustart → Controller-Prüfung (Reconciliation-Intervall).
-- [ ] Fehlstarts werden begrenzt (max. 5 Neuversuche), um Endlosschleifen zu vermeiden.
+- [x] Die Aufnahme-Pipeline wird bei erkannten Fehlern (Absturz, Hänger, Prozess-Tod) automatisch neu gestartet.
+- [x] Mehrere Absicherungs-Stufen: interner Watchdog → Container-Neustart → Controller-Prüfung (Reconciliation-Intervall).
+- [x] Fehlstarts werden begrenzt (max. 5 Neuversuche), um Endlosschleifen zu vermeiden.
 
 ### Milestone
 
@@ -171,9 +171,9 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Die Segment-Dauer wird aus dem Mikrofon-Profil gelesen (Standard: 10 Sekunden).
-- [ ] Die Segment-Dauer kann im Web-Interface geändert werden (🔮 Future: Frontend-Integration).
-- [ ] Änderungen werden erst beim nächsten Start der Aufnahme-Instanz wirksam.
+- [x] Die Segment-Dauer wird aus dem Mikrofon-Profil gelesen (Standard: 10 Sekunden).
+- [ ] ~~Die Segment-Dauer kann im Web-Interface geändert werden~~ (🔮 Future: v0.8.0+)
+- [x] Änderungen werden erst beim nächsten Start der Aufnahme-Instanz wirksam.
 
 ### Milestone
 

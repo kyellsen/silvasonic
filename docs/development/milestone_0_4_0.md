@@ -118,15 +118,15 @@
 
 ### Tasks
 
-- [ ] Implement `RecordingWatchdog` in `silvasonic/recorder/watchdog.py`
+- [x] Implement `RecordingWatchdog` in `silvasonic/recorder/watchdog.py`
   - Monitor the FFmpeg process state and stream health
   - Detect: FFmpeg crash, hung process, or missing segments
   - On failure: restart FFmpeg subprocess with exponential backoff
-- [ ] Integrate watchdog into `RecorderService.run()` lifecycle
-- [ ] Report recording health via existing `_monitor_recording` health component
-- [ ] Respect max retry limit (5 restarts, then give up — matches container restart policy)
-- [ ] Unit tests: mock `ffmpeg` subprocess, verify failure detection and restart logic
-- [ ] Integration test: simulate stream crash, verify automatic recovery
+- [x] Integrate watchdog into `RecorderService.run()` lifecycle
+- [x] Report recording health via existing `_monitor_recording` health component
+- [x] Respect max retry limit (5 restarts, then give up — matches container restart policy)
+- [x] Unit tests: mock `ffmpeg` subprocess, verify failure detection and restart logic
+- [x] Integration test: simulate stream crash, verify automatic recovery
 
 ---
 
@@ -138,12 +138,12 @@
 
 ### Tasks
 
-- [ ] Test: Redis outage does not stop recording (heartbeats silently skipped)
-- [ ] Test: Controller crash does not stop running Recorder
-- [ ] Test: OOM scenario — verify Recorder is killed last (`oom_score_adj=-999`)
-- [ ] Test: Read-only workspace mounts for non-Recorder services (ADR-0009 zero-trust)
-- [ ] Verify segment files are valid WAV (header + data intact after promotion)
-- [ ] Update Recorder README status table (mark implemented features)
+- [x] Test: Redis outage does not stop recording (heartbeats silently skipped)
+- [x] Test: Controller crash does not stop running Recorder
+- [x] Test: OOM scenario — verify Recorder is killed last (`oom_score_adj=-999`)
+- [ ] ~~Test: Read-only workspace mounts for non-Recorder services~~ (Deferred: no non-Recorder Tier 2 services in v0.4.0)
+- [x] Verify segment files are valid WAV (header + data intact after promotion)
+- [x] Update Recorder README status table (mark implemented features)
 
 ---
 

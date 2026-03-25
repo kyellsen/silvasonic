@@ -19,8 +19,8 @@
 | Audio Capture (FFmpeg Engine)          | ✅ Implemented | v0.4.0    | US-R01     |
 | Dual Stream (Raw + Processed)          | ✅ Implemented | v0.4.0    | US-R03     |
 | Segment Duration via Profile           | ✅ Implemented | v0.4.0    | US-R07     |
-| Watchdog & Auto-Recovery               | 🔜 Planned     | v0.4.0    | US-R06     |
-| OOM Protection (`oom_score_adj=-999`)  | 🔜 Planned     | v0.4.0    | US-R02     |
+| Watchdog & Auto-Recovery               | ✅ Implemented | v0.4.0    | US-R06     |
+| OOM Protection (`oom_score_adj=-999`)  | ✅ Implemented | v0.4.0    | US-R02     |
 | Live-Stream (Opus → Icecast)           | 🔮 Future      | v0.9.0    | US-R04     |
 
 ---
