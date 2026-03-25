@@ -236,6 +236,93 @@ class SegmentWriter:
 
 
 # ---------------------------------------------------------------------------
+# MockInputStream (for CI / hardware-independent testing)
+# ---------------------------------------------------------------------------
+
+
+class MockInputStream:
+    """Synthetic audio source replacing ``sd.InputStream`` for testing.
+
+    Generates a 440 Hz sine tone (or noise) in a background thread and
+    pushes chunks to the pipeline's queue at roughly real-time pace.
+    Used when ``SILVASONIC_RECORDER_MOCK_SOURCE=true`` is set.
+
+    Args:
+        queue: Target ``queue.Queue`` shared with the pipeline drain loop.
+        config: Pipeline configuration (sample rate, channels, chunk size, format).
+    """
+
+    def __init__(
+        self,
+        target_queue: queue.Queue[Any],
+        config: PipelineConfig,
+    ) -> None:
+        """Initialise the mock source (does NOT start generating)."""
+        self._queue = target_queue
+        self._config = config
+        self._running = False
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        """Begin generating synthetic audio in a background thread."""
+        self._running = True
+        self._thread = threading.Thread(
+            target=self._generate_loop,
+            name="mock-input-stream",
+            daemon=True,
+        )
+        self._thread.start()
+        log.info(
+            "mock_input_stream.started",
+            sample_rate=self._config.sample_rate,
+            chunk_size=self._config.chunk_size,
+        )
+
+    def stop(self) -> None:
+        """Signal the generator thread to stop."""
+        self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+        log.info("mock_input_stream.stopped")
+
+    def close(self) -> None:
+        """Alias for ``stop()`` (mirror sd.InputStream API)."""
+        self.stop()
+
+    def _generate_loop(self) -> None:
+        """Generate and enqueue synthetic audio chunks at ~real-time pace."""
+        dtype = self._config.numpy_dtype
+        sr = self._config.sample_rate
+        channels = self._config.channels
+        chunk = self._config.chunk_size
+        sleep_s = chunk / sr  # Real-time pacing
+
+        # Pre-compute one period of 440 Hz sine
+        freq = 440.0
+        t = np.arange(chunk, dtype=np.float64) / sr
+        sine = np.sin(2.0 * np.pi * freq * t)
+
+        # Scale to ~50 % of dtype range
+        if dtype == "int16":
+            amplitude = 16000.0
+        elif dtype == "int32":
+            amplitude = 1_000_000_000.0
+        else:
+            amplitude = 1.0  # pragma: no cover
+
+        frame = (sine * amplitude).astype(dtype)
+        frame = np.column_stack([frame] * channels) if channels > 1 else frame.reshape(-1, 1)
+
+        import time as _time
+
+        while self._running:
+            with contextlib.suppress(queue.Full):
+                self._queue.put_nowait(frame.copy())
+            _time.sleep(sleep_s)
+
+
+# ---------------------------------------------------------------------------
 # AudioPipeline
 # ---------------------------------------------------------------------------
 
@@ -261,14 +348,18 @@ class AudioPipeline:
         config: PipelineConfig,
         workspace: Path,
         device: str = "hw:1,0",
+        *,
+        mock_source: bool = False,
     ) -> None:
         """Initialize the pipeline (does NOT start recording)."""
         self._config = config
         self._workspace = workspace
         self._device = device
+        self._mock_source = mock_source
         self._buffer_dir = workspace / ".buffer" / "raw"
         self._data_dir = workspace / "data" / "raw"
         self._stream: sd.InputStream | None = None
+        self._mock_stream: MockInputStream | None = None
         self._writer: SegmentWriter | None = None
         self._queue: queue.Queue[Any] = queue.Queue(maxsize=64)
         self._active = False
@@ -318,39 +409,44 @@ class AudioPipeline:
     def start(self) -> None:
         """Open the audio stream and start recording.
 
-        Creates the initial ``SegmentWriter`` and opens the
-        ``sounddevice.InputStream``.  The stream starts pushing
-        audio data to the internal queue immediately.
+        Creates the initial ``SegmentWriter`` and opens either a real
+        ``sounddevice.InputStream`` or a ``MockInputStream`` (when
+        ``mock_source=True``).
 
         Raises:
             sd.PortAudioError: If the audio device cannot be opened.
         """
-        _ensure_alsa_hostapi()
-
         self._writer = SegmentWriter(
             self._buffer_dir,
             self._data_dir,
             self._config,
         )
 
-        self._stream = sd.InputStream(
-            device=self._device,
-            samplerate=self._config.sample_rate,
-            channels=self._config.channels,
-            dtype=self._config.numpy_dtype,
-            blocksize=self._config.chunk_size,
-            callback=self._audio_callback,
-        )
-        self._stream.start()
+        if self._mock_source:
+            self._mock_stream = MockInputStream(self._queue, self._config)
+            self._mock_stream.start()
+        else:
+            _ensure_alsa_hostapi()
+            self._stream = sd.InputStream(
+                device=self._device,
+                samplerate=self._config.sample_rate,
+                channels=self._config.channels,
+                dtype=self._config.numpy_dtype,
+                blocksize=self._config.chunk_size,
+                callback=self._audio_callback,
+            )
+            self._stream.start()
+
         self._active = True
 
         log.info(
             "pipeline.started",
-            device=self._device,
+            device=self._device if not self._mock_source else "mock",
             sample_rate=self._config.sample_rate,
             channels=self._config.channels,
             format=self._config.format,
             segment_s=self._config.segment_duration_s,
+            mock_source=self._mock_source,
         )
 
     def _apply_gain(self, data: np.ndarray) -> np.ndarray:
@@ -423,7 +519,12 @@ class AudioPipeline:
         """
         self._active = False
 
-        # Stop the audio stream first
+        # Stop the mock stream if used
+        if self._mock_stream is not None:
+            self._mock_stream.stop()
+            self._mock_stream = None
+
+        # Stop the real audio stream
         if self._stream is not None:
             try:
                 self._stream.stop()

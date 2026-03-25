@@ -1,0 +1,25 @@
+---
+# Behringer U-Phoria Profile
+# VID-only match (no PID) → needs alsa_name_contains for Score 50.
+# 48kHz optimized for audio range/BirdNET.
+schema_version: "1.0"
+slug: behringer_uphoria
+name: Behringer U-Phoria
+description: Profile for Behringer U-Phoria USB audio interfaces.
+manufacturer: Behringer
+model: U-Phoria
+audio:
+  sample_rate: 48000
+  channels: 2
+  format: S16LE
+  match:
+    usb_vendor_id: "1397"
+    alsa_name_contains: "UMC"
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false
+  live_stream_enabled: false
+  segment_duration_s: 10

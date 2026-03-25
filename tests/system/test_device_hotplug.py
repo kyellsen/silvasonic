@@ -43,6 +43,7 @@ from .conftest import (
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
     HwMicConfig,
+    ensure_test_network,
     require_recorder_image,
 )
 
@@ -195,6 +196,7 @@ class TestHardwareSpawnCycle:
     ) -> None:
         """Detection → matching → DB upsert → evaluation → real container spawn."""
         require_recorder_image()
+        ensure_test_network()
         session_factory = seeded_db
 
         # Scan real hardware — find the primary mic

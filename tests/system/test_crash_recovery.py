@@ -1,4 +1,4 @@
-"""Integration tests: Crash Recovery & Multi-Instance (Phase 6).
+"""System tests: Crash Recovery & Multi-Instance (Phase 6).
 
 Verifies the crash recovery guarantees from ADR-0013 §2.4:
 
@@ -13,85 +13,38 @@ These tests require:
 - The Recorder image to be built locally (``just build``).
 
 Tests are **skipped** when the Podman socket is unavailable.
+
+Moved from ``services/controller/tests/integration/`` because these
+tests require a real Podman socket + pre-built images (Stage 10), not
+testcontainers (Stage 6).
 """
 
 from __future__ import annotations
 
 import contextlib
-import os
-import pathlib
 import subprocess
 import time
 from pathlib import Path
 
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
-from silvasonic.controller.container_spec import (
-    MountSpec,
-    RestartPolicy,
-    Tier2ServiceSpec,
-)
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 
-# Discover the Podman socket path
-_DEFAULT_ROOTLESS_SOCKET = f"/run/user/{os.getuid()}/podman/podman.sock"
-_PODMAN_SOCKET = os.environ.get("SILVASONIC_PODMAN_SOCKET", _DEFAULT_ROOTLESS_SOCKET)
-_SOCKET_AVAILABLE = pathlib.Path(_PODMAN_SOCKET).exists()
-_RECORDER_IMAGE = "localhost/silvasonic_recorder:latest"
+from .conftest import (
+    PODMAN_SOCKET,
+    SOCKET_AVAILABLE,
+    make_test_spec,
+    require_recorder_image,
+)
 
 pytestmark = [
-    pytest.mark.integration,
+    pytest.mark.system,
 ]
 
 
-def _require_image() -> None:
-    """Skip the test if the Recorder image is not built."""
-    result = subprocess.run(
-        ["podman", "image", "exists", _RECORDER_IMAGE],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        pytest.skip("Recorder image not built (run 'just build' first)")
-
-
-def _make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSpec:
-    """Create a minimal Recorder spec for crash recovery testing."""
-    return Tier2ServiceSpec(
-        image=_RECORDER_IMAGE,
-        name=name,
-        network="silvasonic-net",
-        environment={
-            "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
-            "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
-            "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
-        },
-        labels={
-            "io.silvasonic.tier": "2",
-            "io.silvasonic.owner": "controller",
-            "io.silvasonic.service": "recorder",
-            "io.silvasonic.device_id": device_id,
-            "io.silvasonic.profile": "test_profile",
-        },
-        mounts=[
-            MountSpec(
-                source=str(workspace),
-                target="/app/workspace",
-                read_only=False,
-            ),
-        ],
-        devices=[],
-        group_add=[],
-        privileged=False,
-        restart_policy=RestartPolicy(name="no", max_retry_count=0),
-        memory_limit="128m",
-        cpu_limit=0.5,
-        oom_score_adj=-999,
-    )
-
-
 @pytest.mark.skipif(
-    not _SOCKET_AVAILABLE,
-    reason=f"Podman socket not found at {_PODMAN_SOCKET}",
+    not SOCKET_AVAILABLE,
+    reason=f"Podman socket not found at {PODMAN_SOCKET}",
 )
 class TestCrashRecovery:
     """Verify crash recovery guarantees from ADR-0013 §2.4.
@@ -107,13 +60,13 @@ class TestCrashRecovery:
         loop infinitely.  After the fix, start() removes the exited
         container and recreates a fresh one.
         """
-        _require_image()
+        require_recorder_image()
 
         container_name = "silvasonic-recorder-exited-test"
         network_name = "silvasonic-net"
         workspace = tmp_path / "recorder" / "exited-test"
         workspace.mkdir(parents=True, exist_ok=True)
-        spec = _make_test_spec(container_name, "exited-test-device", workspace)
+        spec = make_test_spec(container_name, "exited-test-device", workspace)
 
         # Ensure the network exists (it's only created by compose normally)
         subprocess.run(
@@ -121,7 +74,7 @@ class TestCrashRecovery:
             capture_output=True,
         )
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
 
         try:
@@ -168,15 +121,15 @@ class TestCrashRecovery:
         Simulates a Controller crash by closing the Podman client, then
         reconnects and verifies the container is still running.
         """
-        _require_image()
+        require_recorder_image()
 
         container_name = "silvasonic-recorder-crash-test"
         workspace = tmp_path / "recorder" / "crash-test"
         workspace.mkdir(parents=True, exist_ok=True)
-        spec = _make_test_spec(container_name, "crash-test-device", workspace)
+        spec = make_test_spec(container_name, "crash-test-device", workspace)
 
         # Phase 1: Start container via first client
-        client1 = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client1 = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client1.connect()
         try:
             mgr1 = ContainerManager(client1)
@@ -188,7 +141,7 @@ class TestCrashRecovery:
             client1.close()
 
         # Phase 2: Reconnect with new client — container should still be running
-        client2 = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client2 = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client2.connect()
         try:
             mgr2 = ContainerManager(client2)
@@ -215,14 +168,14 @@ class TestCrashRecovery:
         (simulating Controller restart), and verifies sync_state() does NOT
         call containers.run() — it adopts the existing container.
         """
-        _require_image()
+        require_recorder_image()
 
         container_name = "silvasonic-recorder-adopt-test"
         workspace = tmp_path / "recorder" / "adopt-test"
         workspace.mkdir(parents=True, exist_ok=True)
-        spec = _make_test_spec(container_name, "adopt-test-device", workspace)
+        spec = make_test_spec(container_name, "adopt-test-device", workspace)
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
 
         try:
@@ -266,7 +219,7 @@ class TestCrashRecovery:
         Starts 2 containers with different device_ids, verifies both appear
         in list_managed() with correct, distinct labels.
         """
-        _require_image()
+        require_recorder_image()
 
         names = [
             "silvasonic-recorder-multi-test-a",
@@ -277,9 +230,9 @@ class TestCrashRecovery:
         for name, device_id in zip(names, device_ids, strict=True):
             workspace = tmp_path / "recorder" / name
             workspace.mkdir(parents=True, exist_ok=True)
-            specs.append(_make_test_spec(name, device_id, workspace))
+            specs.append(make_test_spec(name, device_id, workspace))
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
 
         try:
@@ -330,7 +283,7 @@ class TestCrashRecovery:
         4. Verify the killed container is restarted (new container ID).
         5. Verify the surviving container is unchanged (same ID).
         """
-        _require_image()
+        require_recorder_image()
 
         names = [
             "silvasonic-recorder-kill-test-a",
@@ -341,9 +294,9 @@ class TestCrashRecovery:
         for name, device_id in zip(names, device_ids, strict=True):
             workspace = tmp_path / "recorder" / name
             workspace.mkdir(parents=True, exist_ok=True)
-            specs.append(_make_test_spec(name, device_id, workspace))
+            specs.append(make_test_spec(name, device_id, workspace))
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
 
         try:
@@ -422,7 +375,7 @@ class TestCrashRecovery:
         2 Recorder containers, then stopping all containers returned
         by ``list_managed()``.  Verifies all containers are stopped.
         """
-        _require_image()
+        require_recorder_image()
 
         names = [
             "silvasonic-recorder-shutdown-test-a",
@@ -433,9 +386,9 @@ class TestCrashRecovery:
         for name, device_id in zip(names, device_ids, strict=True):
             workspace = tmp_path / "recorder" / name
             workspace.mkdir(parents=True, exist_ok=True)
-            specs.append(_make_test_spec(name, device_id, workspace))
+            specs.append(make_test_spec(name, device_id, workspace))
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
 
         try:

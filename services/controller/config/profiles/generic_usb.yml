@@ -1,0 +1,24 @@
+---
+# Generic USB Microphone Fallback Profile
+# Safe defaults for unknown USB microphones (auto-assigned on Score 0).
+# No match criteria — used as fallback only, never auto-matched by VID/PID.
+schema_version: "1.0"
+slug: generic_usb
+name: Generic USB Microphone
+description: Safe fallback profile for unknown USB microphones (48kHz, 16-bit mono).
+manufacturer: Generic
+model: USB Audio
+audio:
+  sample_rate: 48000
+  channels: 1
+  format: S16LE
+  # No match block — this profile is assigned by the ProfileMatcher
+  # fallback logic, not by VID/PID or ALSA name matching.
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false    # 48kHz = already standard, no downsampling needed
+  live_stream_enabled: false
+  segment_duration_s: 10

@@ -36,6 +36,9 @@ class RecorderSettings(BaseSettings):
     # Skip ALSA device validation (smoke tests without /dev/snd)
     skip_device_check: bool = False
 
+    # Use synthetic audio source instead of real hardware (CI testing)
+    recorder_mock_source: bool = False
+
     # Full profile config JSON (injected by Controller, ADR-0016)
     recorder_config_json: str | None = None
 

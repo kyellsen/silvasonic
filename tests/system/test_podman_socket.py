@@ -1,29 +1,30 @@
-"""Integration tests: SilvasonicPodmanClient ↔ real Podman socket.
+"""System tests: SilvasonicPodmanClient ↔ real Podman socket.
 
 These tests verify real connectivity to the host Podman engine.
 They are skipped if the Podman socket is not available.
 
 The socket path is discovered from the ``SILVASONIC_PODMAN_SOCKET``
 environment variable or falls back to the standard rootless location.
+
+Moved from ``services/controller/tests/integration/`` because these
+tests require a real Podman socket (Stage 10), not testcontainers
+(Stage 6).
 """
 
 from __future__ import annotations
 
-import os
-import pathlib
-
 import pytest
 
-# Discover the Podman socket path
-_DEFAULT_ROOTLESS_SOCKET = f"/run/user/{os.getuid()}/podman/podman.sock"
-_PODMAN_SOCKET = os.environ.get("SILVASONIC_PODMAN_SOCKET", _DEFAULT_ROOTLESS_SOCKET)
-_SOCKET_AVAILABLE = pathlib.Path(_PODMAN_SOCKET).exists()
+from .conftest import (
+    PODMAN_SOCKET,
+    SOCKET_AVAILABLE,
+)
 
 pytestmark = [
-    pytest.mark.integration,
+    pytest.mark.system,
     pytest.mark.skipif(
-        not _SOCKET_AVAILABLE,
-        reason=f"Podman socket not found at {_PODMAN_SOCKET}",
+        not SOCKET_AVAILABLE,
+        reason=f"Podman socket not found at {PODMAN_SOCKET}",
     ),
 ]
 
@@ -35,7 +36,7 @@ class TestPodmanSocketConnection:
         """Connects to the host Podman socket and pings the engine."""
         from silvasonic.controller.podman_client import SilvasonicPodmanClient
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
         try:
             assert client.is_connected
@@ -47,7 +48,7 @@ class TestPodmanSocketConnection:
         """Lists containers (may be empty, but must not raise)."""
         from silvasonic.controller.podman_client import SilvasonicPodmanClient
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
         try:
             containers = client.list_containers()
@@ -59,7 +60,7 @@ class TestPodmanSocketConnection:
         """Lists managed containers (filters by silvasonic label)."""
         from silvasonic.controller.podman_client import SilvasonicPodmanClient
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
         try:
             managed = client.list_managed_containers()
@@ -76,7 +77,7 @@ class TestPodmanSocketConnection:
         """Closes connection and reconnects successfully."""
         from silvasonic.controller.podman_client import SilvasonicPodmanClient
 
-        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client.connect()
         assert client.is_connected
 

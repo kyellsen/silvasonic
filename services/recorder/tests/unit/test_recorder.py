@@ -40,6 +40,7 @@ def bare_service() -> "RecorderService":
     svc._cfg = MagicMock()
     svc._cfg.recorder_device = "hw:mock,0"
     svc._cfg.skip_device_check = False
+    svc._cfg.recorder_mock_source = False
     svc._cfg.workspace_path = MagicMock()
     svc._pipeline_config = PipelineConfig()
     svc._pipeline = None

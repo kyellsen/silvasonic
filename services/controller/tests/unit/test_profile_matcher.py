@@ -85,32 +85,90 @@ class TestProfileMatcher:
         assert result.profile_slug == "generic_ultra"
         assert result.auto_enroll is False  # Only score 100 gets auto_enroll
 
-    async def test_no_match_score_0(self, device_info: DeviceInfo) -> None:
-        """No matching profile → score 0."""
+    async def test_no_match_score_0_no_fallback(self, device_info: DeviceInfo) -> None:
+        """No matching profile and no generic_usb fallback → score 0, slug None."""
         profile = self._make_profile("other_mic", usb_vid="aaaa", usb_pid="bbbb")
 
         session = AsyncMock(add=MagicMock())
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [profile]
         session.execute.return_value = mock_result
+        # Fallback lookup: generic_usb not in DB
+        session.get.return_value = None
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
 
         assert result.score == 0
         assert result.profile_slug is None
+        assert result.auto_enroll is False
 
-    async def test_no_profiles_in_db(self, device_info: DeviceInfo) -> None:
-        """Empty DB → no match."""
+    async def test_score_0_fallback_assigns_generic_usb(self, device_info: DeviceInfo) -> None:
+        """Score 0 + generic_usb in DB → auto-assign with auto_enroll=True."""
+        profile = self._make_profile("other_mic", usb_vid="aaaa", usb_pid="bbbb")
+
         session = AsyncMock(add=MagicMock())
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        session.execute.return_value = mock_result
+        mock_result.scalars.return_value.all.return_value = [profile]
+
+        # Fallback lookup: generic_usb exists
+        generic_profile = MagicMock()
+        generic_profile.slug = "generic_usb"
+        session.get.return_value = generic_profile
+
+        # auto_enrollment config
+        config_result = MagicMock()
+        config_mock = MagicMock()
+        config_mock.value = {"auto_enrollment": True}
+        config_result.scalar_one_or_none.return_value = config_mock
+        session.execute.side_effect = [mock_result, config_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
 
         assert result.score == 0
+        assert result.profile_slug == "generic_usb"
+        assert result.auto_enroll is True
+
+    async def test_fallback_respects_auto_enrollment_false(self, device_info: DeviceInfo) -> None:
+        """Score 0 + generic_usb in DB + auto_enrollment=False → auto_enroll=False."""
+        # No matching profiles
+        session = AsyncMock(add=MagicMock())
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+
+        # Fallback lookup: generic_usb exists
+        generic_profile = MagicMock()
+        generic_profile.slug = "generic_usb"
+        session.get.return_value = generic_profile
+
+        # auto_enrollment disabled
+        config_result = MagicMock()
+        config_mock = MagicMock()
+        config_mock.value = {"auto_enrollment": False}
+        config_result.scalar_one_or_none.return_value = config_mock
+        session.execute.side_effect = [mock_result, config_result]
+
+        matcher = ProfileMatcher()
+        result = await matcher.match(device_info, session)
+
+        assert result.score == 0
+        assert result.profile_slug == "generic_usb"
+        assert result.auto_enroll is False
+
+    async def test_no_profiles_in_db(self, device_info: DeviceInfo) -> None:
+        """Empty DB (no profiles, no fallback) → no match."""
+        session = AsyncMock(add=MagicMock())
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        session.execute.return_value = mock_result
+        session.get.return_value = None  # No generic_usb fallback
+
+        matcher = ProfileMatcher()
+        result = await matcher.match(device_info, session)
+
+        assert result.score == 0
+        assert result.profile_slug is None
 
     async def test_auto_enrollment_false(self, device_info: DeviceInfo) -> None:
         """auto_enrollment=false in system_config → no auto-enroll even with score 100."""
@@ -153,7 +211,7 @@ class TestProfileMatcher:
         assert result.score == 100
 
     async def test_profile_without_match_criteria(self) -> None:
-        """Profile with empty config → score 0."""
+        """Profile with empty config → score 0 (no fallback)."""
         profile = MagicMock()
         profile.slug = "bare_profile"
         profile.config = {}
@@ -163,10 +221,12 @@ class TestProfileMatcher:
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [profile]
         session.execute.return_value = mock_result
+        session.get.return_value = None  # No generic_usb fallback
 
         matcher = ProfileMatcher()
         result = await matcher.match(info, session)
         assert result.score == 0
+        assert result.profile_slug is None
 
     async def test_auto_enrollment_default_true_when_no_config(
         self,

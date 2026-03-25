@@ -46,6 +46,7 @@ tests/                # Cross-cutting tests only
 
 > [!IMPORTANT]
 > A test file in `tests/unit/` **MUST** only contain `@pytest.mark.unit` tests. Mixing markers in a single directory is **FORBIDDEN**.
+> **Exception:** `tests/system/` contains both `@pytest.mark.system` and `@pytest.mark.system_hw` tests because they share Podman socket, DB, and hardware-config fixtures via a common `conftest.py`.
 
 ---
 

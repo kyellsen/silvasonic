@@ -81,16 +81,16 @@
 
 ### Tasks
 
-- [ ] Create `generic_usb.yml` seed profile in `services/controller/config/profiles/`:
+- [x] Create `generic_usb.yml` seed profile in `services/controller/config/profiles/`:
   - 48 kHz, 1 ch, S16LE, Gain 0 dB, no highpass filter, no processing
   - No `match` criteria (used as fallback only, never auto-matched by VID/PID)
   - `is_system=true`, slug: `generic_usb`
-- [ ] Update `ProfileMatcher` / Reconciler: Score 0 → auto-assign `generic_usb` profile
+- [x] Update `ProfileMatcher` / Reconciler: Score 0 → auto-assign `generic_usb` profile
   - Device gets `enrollment_status=enrolled`, `profile_slug=generic_usb`
   - Recorder starts immediately with safe defaults
   - User can later switch to a better profile via Web-Interface (v0.8.0+)
-- [ ] Unit tests: Score-0 auto-fallback assigns `generic_usb`, verify Recorder starts
-- [ ] Integration test: unknown USB device → `generic_usb` profile → Recorder spawns
+- [x] Unit tests: Score-0 auto-fallback assigns `generic_usb`, verify Recorder starts
+- [x] Integration test: unknown USB device → `generic_usb` profile → Recorder spawns
 
 ---
 

@@ -246,13 +246,17 @@ class TestSegmentWriter:
 class TestAudioPipeline:
     """Tests for AudioPipeline — orchestrated capture with mocked audio."""
 
-    def _make_pipeline(self, tmp_path: Path, **cfg_overrides: Any) -> AudioPipeline:
+    def _make_pipeline(
+        self, tmp_path: Path, *, mock_source: bool = False, **cfg_overrides: Any
+    ) -> AudioPipeline:
         """Create a pipeline with workspace dirs already set up."""
         from silvasonic.recorder.workspace import ensure_workspace
 
         ensure_workspace(tmp_path)
         cfg = PipelineConfig(**cfg_overrides)
-        return AudioPipeline(config=cfg, workspace=tmp_path, device="hw:mock,0")
+        return AudioPipeline(
+            config=cfg, workspace=tmp_path, device="hw:mock,0", mock_source=mock_source
+        )
 
     def test_initial_state(self, tmp_path: Path) -> None:
         """Pipeline starts inactive with zero xruns."""
@@ -456,6 +460,20 @@ class TestAudioPipeline:
         # No files should be promoted
         data_files = list((tmp_path / "data" / "raw").iterdir())
         assert len(data_files) == 0
+
+    def test_start_stop_mock_source(self, tmp_path: Path) -> None:
+        """start()/stop() with mock_source=True exercises MockInputStream lifecycle."""
+        pipeline = self._make_pipeline(tmp_path, mock_source=True)
+
+        pipeline.start()
+        assert pipeline.is_active
+        assert pipeline._mock_stream is not None
+        assert pipeline._stream is None  # No real PortAudio stream
+
+        pipeline.stop()
+        assert not pipeline.is_active
+        assert pipeline._mock_stream is None
+        assert pipeline._writer is None
 
 
 # ===================================================================

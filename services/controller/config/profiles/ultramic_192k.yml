@@ -1,0 +1,26 @@
+---
+# Dodotronic Ultramic 192K & 192K EVO Profile
+# High-frequency ultrasound microphone for bioacoustics (half-rate variant).
+schema_version: "1.0"
+slug: ultramic_192k
+name: Dodotronic Ultramic 192K / EVO
+description: High-performance ultrasonic microphone (up to 96kHz) for bioacoustics. Covers both classic and EVO variants.
+manufacturer: Dodotronic
+model: Ultramic 192K
+audio:
+  sample_rate: 192000
+  channels: 1
+  format: S16LE # Hardware native
+  match:
+    usb_vendor_id: "0869"
+    usb_product_id: "0308"
+    alsa_name_contains: "ultramic"
+processing:
+  gain_db: 12.0 # Often needs boost for distant animals
+  chunk_size: 8192
+  highpass_filter_hz: 1000.0 # Cut rumble
+stream:
+  raw_enabled: true # Archive full 192kHz
+  processed_enabled: true # Downsample to 48kHz for BirdNET and Web
+  live_stream_enabled: true # Enable MP3 stream
+  segment_duration_s: 15 # Short segments for faster processing

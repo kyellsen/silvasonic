@@ -986,3 +986,150 @@ class TestRecorderSpecIntegrity:
         assert "ultramic-384k" in specs_b[0].name
 
         await engine.dispose()
+
+
+# -----------------------------------------------------------------------
+# Generic USB Fallback (v0.4.0 Phase 3, US-C10)
+# -----------------------------------------------------------------------
+
+
+class TestGenericUsbFallback:
+    """Integration: unknown device → generic_usb fallback → recorder spec."""
+
+    async def test_unknown_device_gets_generic_fallback_and_spawns(
+        self,
+        tmp_path: Path,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """Unknown USB device (no VID/PID match) auto-enrolls with generic_usb.
+
+        Steps:
+        1. Seed generic_usb profile + one known profile (no match for our device)
+        2. Match unknown device → score 0 → fallback assigns generic_usb
+        3. Upsert device as enrolled with generic_usb
+        4. Evaluate → produces a Tier2ServiceSpec with generic_usb config
+        """
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        from silvasonic.controller.seeder import ConfigSeeder, ProfileBootstrapper
+
+        # Seed generic_usb profile (from real YAML file) + known profile
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir(exist_ok=True)
+
+        # Copy the real generic_usb.yml
+        import shutil
+
+        from silvasonic.controller.seeder import _find_service_root
+
+        real_profiles = _find_service_root() / "config" / "profiles"
+        shutil.copy(real_profiles / "generic_usb.yml", profiles_dir / "generic_usb.yml")
+
+        # Also seed a known profile that does NOT match our device
+        (profiles_dir / "known_mic.yml").write_text(
+            """
+schema_version: "1.0"
+slug: known_mic
+name: Known Microphone
+description: A known mic that won't match our unknown device.
+audio:
+  sample_rate: 96000
+  channels: 2
+  format: S24LE
+  match:
+    usb_vendor_id: "ffff"
+    usb_product_id: "ffff"
+processing:
+  gain_db: 6.0
+  chunk_size: 8192
+stream:
+  raw_enabled: true
+  processed_enabled: true
+  live_stream_enabled: false
+  segment_duration_s: 20
+""",
+            encoding="utf-8",
+        )
+
+        # Seed system config with auto_enrollment=true
+        defaults_yml = tmp_path / "defaults.yml"
+        defaults_yml.write_text(
+            """
+system:
+  station_name: "Fallback Test Station"
+  auto_enrollment: true
+""",
+            encoding="utf-8",
+        )
+
+        async with sf() as session:
+            await ConfigSeeder(defaults_path=defaults_yml).seed(session)
+            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
+            await session.commit()
+
+        # Step 2: Match an unknown device (VID/PID that doesn't match anything)
+        unknown_device = DeviceInfo(
+            alsa_card_index=99,
+            alsa_name="Unknown USB Audio",
+            alsa_device="hw:99,0",
+            usb_vendor_id="1234",
+            usb_product_id="5678",
+            usb_serial="UNKNOWN-001",
+        )
+
+        matcher = ProfileMatcher()
+        async with sf() as session:
+            match_result = await matcher.match(unknown_device, session)
+
+        # Score 0, but fallback to generic_usb
+        assert match_result.score == 0, f"Expected score 0, got {match_result.score}"
+        assert match_result.profile_slug == "generic_usb", (
+            f"Expected generic_usb fallback, got {match_result.profile_slug}"
+        )
+        assert match_result.auto_enroll is True
+
+        # Step 3: Upsert as enrolled with generic_usb
+        async with sf() as session:
+            device = await upsert_device(
+                unknown_device,
+                session,
+                profile_slug=match_result.profile_slug,
+                enrollment_status="enrolled",
+            )
+            await session.commit()
+            device_name = device.name
+            device_profile = device.profile_slug
+
+        assert device_profile == "generic_usb"
+        assert device_name == "1234-5678-UNKNOWN-001"
+
+        # Step 4: Evaluate → should produce a spec with generic_usb config
+        evaluator = DeviceStateEvaluator()
+        async with sf() as session:
+            all_specs = await evaluator.evaluate(session)
+
+        matching = [
+            s
+            for s in all_specs
+            if s.labels.get("io.silvasonic.device_id") == "1234-5678-UNKNOWN-001"
+        ]
+        assert len(matching) == 1, f"Expected 1 spec, got {len(matching)}"
+        spec = matching[0]
+
+        # Verify the spec uses generic_usb profile settings
+        assert isinstance(spec, Tier2ServiceSpec)
+        assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "generic_usb"
+        assert "SILVASONIC_RECORDER_CONFIG_JSON" in spec.environment
+
+        # Verify the injected config JSON contains 48kHz/1ch/S16LE
+        import json
+
+        config = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
+        assert config["audio"]["sample_rate"] == 48000
+        assert config["audio"]["channels"] == 1
+        assert config["audio"]["format"] == "S16LE"
+        assert config["processing"]["gain_db"] == 0.0
+
+        await engine.dispose()

@@ -400,6 +400,107 @@ audio:
         await bootstrapper.seed(session)
         session.add.assert_not_called()
 
+    async def test_generic_usb_profile_seeded(self) -> None:
+        """Real generic_usb.yml is valid and seeds correctly."""
+        from silvasonic.controller.seeder import _find_service_root
+
+        profiles_dir = _find_service_root() / "config" / "profiles"
+        assert (profiles_dir / "generic_usb.yml").exists(), "generic_usb.yml must exist"
+
+        bootstrapper = ProfileBootstrapper(profiles_dir=profiles_dir)
+        session = AsyncMock(add=MagicMock())
+        session.get = AsyncMock(return_value=None)  # All profiles are new
+
+        await bootstrapper.seed(session)
+
+        # Should have inserted at least the generic_usb profile
+        slugs = [call.args[0].slug for call in session.add.call_args_list]
+        assert "generic_usb" in slugs, "generic_usb must be seeded"
+
+        # Verify the generic_usb config content
+        generic_calls = [c for c in session.add.call_args_list if c.args[0].slug == "generic_usb"]
+        generic_db = generic_calls[0].args[0]
+        assert generic_db.is_system is True
+        assert generic_db.config["audio"]["sample_rate"] == 48000
+        assert generic_db.config["audio"]["channels"] == 1
+        assert generic_db.config["audio"]["format"] == "S16LE"
+        assert generic_db.config["processing"]["gain_db"] == 0.0
+
+
+@pytest.mark.unit
+class TestAllRealProfilesValid:
+    """Validate every .yml file in config/profiles/ against the Pydantic schema.
+
+    This test ensures that new or modified seed profiles never silently fail
+    Pydantic validation at Controller startup (which would cause them to be
+    skipped without any test failure).
+    """
+
+    @staticmethod
+    def _real_profiles_dir() -> Path:
+        from silvasonic.controller.seeder import _find_service_root
+
+        return _find_service_root() / "config" / "profiles"
+
+    @staticmethod
+    def _collect_profile_ids() -> list[str]:
+        """Discover all .yml basenames for parametrize IDs."""
+        from silvasonic.controller.seeder import _find_service_root
+
+        d = _find_service_root() / "config" / "profiles"
+        return sorted(p.name for p in d.glob("*.yml"))
+
+    @pytest.mark.parametrize(
+        "yml_name",
+        _collect_profile_ids.__func__(),  # type: ignore[attr-defined]
+        ids=lambda n: n.removesuffix(".yml"),
+    )
+    def test_profile_passes_pydantic_validation(self, yml_name: str) -> None:
+        """Each seed YAML must parse without Pydantic ValidationError."""
+        import yaml
+        from silvasonic.core.schemas.devices import MicrophoneProfile
+
+        yml_path = self._real_profiles_dir() / yml_name
+        raw = yaml.safe_load(yml_path.read_text(encoding="utf-8"))
+
+        assert isinstance(raw, dict), f"{yml_name}: YAML root must be a mapping"
+        assert "slug" in raw, f"{yml_name}: missing required 'slug' field"
+
+        # This will raise ValidationError on schema mismatch
+        profile = MicrophoneProfile(**raw)
+
+        # Basic sanity: slug and audio section must be present
+        assert profile.slug, f"{yml_name}: slug must not be empty"
+        assert profile.audio.sample_rate > 0, f"{yml_name}: sample_rate must be positive"
+
+    @pytest.mark.parametrize(
+        "yml_name",
+        _collect_profile_ids.__func__(),  # type: ignore[attr-defined]
+        ids=lambda n: n.removesuffix(".yml"),
+    )
+    async def test_profile_seeds_to_db(self, yml_name: str) -> None:
+        """Each seed YAML must be accepted by ProfileBootstrapper (full pipeline)."""
+        profiles_dir = self._real_profiles_dir()
+        # Create a temporary dir with only this one profile
+        import shutil
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp) / "profiles"
+            tmp_dir.mkdir()
+            shutil.copy2(profiles_dir / yml_name, tmp_dir / yml_name)
+
+            bootstrapper = ProfileBootstrapper(profiles_dir=tmp_dir)
+            session = AsyncMock(add=MagicMock())
+            session.get = AsyncMock(return_value=None)
+
+            await bootstrapper.seed(session)
+
+            assert session.add.call_count == 1, (
+                f"{yml_name}: ProfileBootstrapper must insert exactly 1 profile, "
+                f"got {session.add.call_count} (likely a validation failure)"
+            )
+
 
 # ===================================================================
 # AuthSeeder

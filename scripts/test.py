@@ -15,7 +15,6 @@ Usage:
     python3 scripts/test.py all           # all non-HW tests (unit+int+system+smoke+e2e)
 """
 
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -248,15 +247,19 @@ def _preflight_hw() -> None:
     icon = ok if usb_found else fail
     print(f"  {icon}  USB-Audio device .... {usb_detail}")
 
-    # 2. Podman socket
-    default_socket = f"/run/user/{os.getuid()}/podman/podman.sock"
-    socket_path = os.environ.get(
-        "SILVASONIC_PODMAN_SOCKET",
-        default_socket,
+    # 2. Podman socket — use `podman info` instead of Path.exists() because
+    #    systemd socket-activated files are not visible via stat().
+    socket_ok = (
+        subprocess.run(
+            ["podman", "info", "--format", "{{.Host.RemoteSocket.Path}}"],
+            capture_output=True,
+            timeout=5,
+        ).returncode
+        == 0
     )
-    socket_ok = Path(socket_path).exists()
+    socket_detail = "podman info OK" if socket_ok else "unreachable"
     icon = ok if socket_ok else fail
-    print(f"  {icon}  Podman socket ...... {socket_path}")
+    print(f"  {icon}  Podman socket ...... {socket_detail}")
 
     # 3. Recorder image
     image = "localhost/silvasonic_recorder:latest"

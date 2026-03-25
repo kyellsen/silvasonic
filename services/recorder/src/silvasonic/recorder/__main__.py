@@ -98,7 +98,9 @@ class RecorderService(SilvaService):
             await self._shutdown_event.wait()
             return
 
-        if not self._validate_device(device):
+        use_mock = self._cfg.recorder_mock_source
+
+        if not use_mock and not self._validate_device(device):
             self.health.update_status("recorder", False, "Device validation failed")
             await self._shutdown_event.wait()
             return
@@ -108,6 +110,7 @@ class RecorderService(SilvaService):
             config=self._pipeline_config,
             workspace=workspace,
             device=device,
+            mock_source=use_mock,
         )
 
         try:

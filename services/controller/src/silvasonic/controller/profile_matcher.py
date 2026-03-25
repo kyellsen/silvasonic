@@ -3,7 +3,7 @@
 Implements a 3-level scoring system (ADR-0016):
 - **Score 100:** Exact USB Vendor+Product ID match → auto-enroll
 - **Score 50:** ALSA card name substring match → suggest profile
-- **Score 0:** No match → device stays pending
+- **Score 0:** No match → auto-assign ``generic_usb`` fallback (v0.4.0+)
 """
 
 from __future__ import annotations
@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
+GENERIC_USB_SLUG = "generic_usb"
+"""Slug for the generic USB fallback profile (seeded by ProfileBootstrapper)."""
+
 
 class MatchResult(BaseModel):
     """Result of a profile matching attempt."""
@@ -36,6 +39,9 @@ class ProfileMatcher:
 
     Uses the ``match`` field of :class:`MicrophoneProfile` to score
     candidates against a :class:`DeviceInfo`.
+
+    When no profile matches (score 0), the matcher falls back to the
+    ``generic_usb`` profile if it exists in the database (v0.4.0+, US-C10).
     """
 
     async def match(
@@ -77,10 +83,25 @@ class ProfileMatcher:
                 auto_enroll=best.auto_enroll,
             )
         else:
-            log.debug(
-                "profile_matcher.no_match",
-                device_id=device_info.stable_device_id,
-            )
+            # Score 0: Try generic_usb fallback (v0.4.0+, US-C10)
+            fallback = await session.get(MicProfileDB, GENERIC_USB_SLUG)
+            if fallback is not None:
+                auto_enrollment = await self._get_auto_enrollment(session)
+                best = MatchResult(
+                    profile_slug=GENERIC_USB_SLUG,
+                    score=0,
+                    auto_enroll=auto_enrollment,
+                )
+                log.info(
+                    "profile_matcher.fallback_assigned",
+                    device_id=device_info.stable_device_id,
+                    profile=GENERIC_USB_SLUG,
+                )
+            else:
+                log.debug(
+                    "profile_matcher.no_match",
+                    device_id=device_info.stable_device_id,
+                )
 
         return best
 

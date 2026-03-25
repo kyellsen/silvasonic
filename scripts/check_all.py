@@ -110,7 +110,12 @@ def _stage_lock_check() -> None:
 
 
 def _stage_dep_audit() -> None:
-    """Stage 2: Security audit of dependencies via pip-audit."""
+    """Stage 2: Security audit of dependencies via pip-audit.
+
+    Hinweis: Wir ignorieren vorerst CVE-2026-4539 (pygments), da noch kein Fix
+    verfügbar ist. Wir nutzen absichtlich kein `--ignore-vuln`, damit der Fehler
+    weiterhin im Log angezeigt wird und wir an das Update erinnert werden!
+    """
     result = subprocess.run(["uv", "run", "pip-audit"], cwd=PROJECT_ROOT)
     if result.returncode != 0:
         sys.exit(result.returncode)

@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import contextlib
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -41,6 +42,7 @@ from .conftest import (
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
+    make_test_spec,
     require_recorder_image,
     seed_test_defaults,
     seed_test_profile,
@@ -184,41 +186,6 @@ class TestSeedingAndDevicePipeline:
 # ---------------------------------------------------------------------------
 
 
-def _make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSpec:
-    """Create a minimal Recorder spec for system testing."""
-    return Tier2ServiceSpec(
-        image=RECORDER_IMAGE,
-        name=name,
-        network="silvasonic-net",
-        environment={
-            "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
-            "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
-            "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
-        },
-        labels={
-            "io.silvasonic.tier": "2",
-            "io.silvasonic.owner": "controller",
-            "io.silvasonic.service": "recorder",
-            "io.silvasonic.device_id": device_id,
-            "io.silvasonic.profile": "test_profile",
-        },
-        mounts=[
-            MountSpec(
-                source=str(workspace),
-                target="/app/workspace",
-                read_only=False,
-            ),
-        ],
-        devices=[],
-        group_add=[],
-        privileged=False,
-        restart_policy=RestartPolicy(name="no", max_retry_count=0),
-        memory_limit="128m",
-        cpu_limit=0.5,
-        oom_score_adj=-999,
-    )
-
-
 @pytest.mark.skipif(
     not SOCKET_AVAILABLE,
     reason=f"Podman socket not found at {PODMAN_SOCKET}",
@@ -233,7 +200,7 @@ class TestContainerLifecycle:
         container_name = "silvasonic-recorder-system-test-lifecycle"
         workspace = tmp_path / "recorder" / "lifecycle"
         workspace.mkdir(parents=True, exist_ok=True)
-        spec = _make_test_spec(container_name, "system-test-lifecycle", workspace)
+        spec = make_test_spec(container_name, "system-test-lifecycle", workspace)
 
         client = SilvasonicPodmanClient(
             socket_path=PODMAN_SOCKET,
@@ -281,8 +248,8 @@ class TestContainerLifecycle:
         workspace_o = tmp_path / "recorder" / "orphan"
         workspace_o.mkdir(parents=True, exist_ok=True)
 
-        spec_desired = _make_test_spec(name_desired, "desired-device", workspace_d)
-        spec_orphan = _make_test_spec(name_orphan, "orphan-device", workspace_o)
+        spec_desired = make_test_spec(name_desired, "desired-device", workspace_d)
+        spec_orphan = make_test_spec(name_orphan, "orphan-device", workspace_o)
 
         client = SilvasonicPodmanClient(
             socket_path=PODMAN_SOCKET,
@@ -337,7 +304,7 @@ class TestContainerLifecycle:
             for i, name in enumerate(names):
                 workspace = tmp_path / "recorder" / f"shutdown-{i}"
                 workspace.mkdir(parents=True, exist_ok=True)
-                spec = _make_test_spec(name, f"shutdown-device-{i}", workspace)
+                spec = make_test_spec(name, f"shutdown-device-{i}", workspace)
                 mgr.start(spec)
 
             # Verify both running
@@ -360,4 +327,134 @@ class TestContainerLifecycle:
             for name in names:
                 with contextlib.suppress(Exception):
                     client.containers.get(name).remove(force=True)
+            client.close()
+
+
+# ---------------------------------------------------------------------------
+# Test: Mock-Source Recorder Capture (no real hardware needed)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not SOCKET_AVAILABLE,
+    reason=f"Podman socket not found at {PODMAN_SOCKET}",
+)
+class TestRecorderMockCapture:
+    """Verify Recorder container produces WAV files using mock audio source.
+
+    Uses ``SILVASONIC_RECORDER_MOCK_SOURCE=true`` so no real USB microphone
+    is required. The Recorder generates synthetic 440 Hz sine-wave audio
+    and writes segmented WAV files to the bind-mounted workspace.
+
+    This closes the critical gap where system tests previously started
+    Recorder containers but never verified WAV output.
+    """
+
+    def test_mock_source_produces_wav(self, tmp_path: Path) -> None:
+        """Container with mock_source produces WAV files in workspace."""
+        import soundfile as sf
+
+        require_recorder_image()
+
+        container_name = "silvasonic-recorder-system-test-mock-capture"
+        workspace = tmp_path / "recorder" / "mock-capture"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace.chmod(0o777)
+
+        spec = Tier2ServiceSpec(
+            image=RECORDER_IMAGE,
+            name=container_name,
+            network="silvasonic-net",
+            environment={
+                "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
+                "SILVASONIC_RECORDER_MOCK_SOURCE": "true",
+                "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
+                "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
+            },
+            labels={
+                "io.silvasonic.tier": "2",
+                "io.silvasonic.owner": "controller",
+                "io.silvasonic.service": "recorder",
+                "io.silvasonic.device_id": "mock-capture-test",
+                "io.silvasonic.test": "system",
+            },
+            mounts=[
+                MountSpec(
+                    source=str(workspace),
+                    target="/app/workspace",
+                    read_only=False,
+                ),
+            ],
+            devices=[],
+            group_add=[],
+            privileged=False,
+            restart_policy=RestartPolicy(name="no", max_retry_count=0),
+            memory_limit="256m",
+            cpu_limit=1.0,
+            oom_score_adj=-999,
+        )
+
+        client = SilvasonicPodmanClient(
+            socket_path=PODMAN_SOCKET,
+            max_retries=2,
+            retry_delay=0.5,
+        )
+        client.connect()
+
+        try:
+            mgr = ContainerManager(client)
+            info = mgr.start(spec)
+            assert info is not None, "Container start failed"
+
+            # Wait for the Recorder to produce at least 1 full segment
+            # Default segment=10s, wait 15s to ensure at least 1 promoted
+            wait_seconds = 15
+            time.sleep(wait_seconds)
+
+            # Stop gracefully (promotes final segment)
+            mgr.stop(container_name, timeout=10)
+
+            # Verify WAV files in workspace
+            data_dir = workspace / "data" / "raw"
+            buffer_dir = workspace / ".buffer" / "raw"
+
+            wav_in_data = list(data_dir.glob("*.wav")) if data_dir.exists() else []
+            wav_in_buffer = list(buffer_dir.glob("*.wav")) if buffer_dir.exists() else []
+            total_wavs = len(wav_in_data) + len(wav_in_buffer)
+
+            if total_wavs < 1:
+                # Capture logs for debugging
+                try:
+                    import subprocess
+
+                    logs = subprocess.run(
+                        ["podman", "logs", container_name],
+                        capture_output=True,
+                        text=True,
+                    )
+                    print(
+                        f"\n--- CONTAINER LOGS ({container_name}) ---\n"
+                        f"{logs.stderr}\n{logs.stdout}\n"
+                        "----------------------------------"
+                    )
+                except Exception as e:
+                    print(f"Could not fetch podman logs: {e}")
+
+            assert total_wavs >= 1, (
+                f"No WAV files found in workspace {workspace}. "
+                f"data/raw: {wav_in_data}, .buffer/raw: {wav_in_buffer}. "
+                f"Check container logs with: podman logs {container_name}"
+            )
+
+            # Validate WAV file(s) are actual audio
+            for wav_path in wav_in_data:
+                wav_info = sf.info(str(wav_path))
+                assert wav_info.frames > 0, f"WAV {wav_path.name} has 0 frames"
+                assert wav_info.samplerate > 0
+                assert wav_info.channels >= 1
+
+            mgr.remove(container_name)
+        finally:
+            with contextlib.suppress(Exception):
+                client.containers.get(container_name).remove(force=True)
             client.close()

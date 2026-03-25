@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import pathlib
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +21,7 @@ import pytest
 import structlog
 import yaml
 from silvasonic.controller.container_manager import ContainerManager
+from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from silvasonic.test_utils.helpers import build_postgres_url
@@ -36,7 +36,32 @@ log = structlog.get_logger()
 
 _DEFAULT_ROOTLESS_SOCKET = f"/run/user/{os.getuid()}/podman/podman.sock"
 PODMAN_SOCKET = os.environ.get("SILVASONIC_PODMAN_SOCKET", _DEFAULT_ROOTLESS_SOCKET)
-SOCKET_AVAILABLE = pathlib.Path(PODMAN_SOCKET).exists()
+
+
+def _is_podman_reachable() -> bool:
+    """Check if the Podman engine is reachable.
+
+    Uses ``podman info`` instead of ``Path.exists()`` because systemd
+    socket-activated sockets are invisible to ``stat()`` /
+    ``socket.connect()`` — the file lives in kernel space only
+    (visible in ``/proc/net/unix`` but not in the filesystem).
+    """
+    import subprocess
+
+    try:
+        return (
+            subprocess.run(
+                ["podman", "info"],
+                capture_output=True,
+                timeout=5,
+            ).returncode
+            == 0
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+SOCKET_AVAILABLE = _is_podman_reachable()
 RECORDER_IMAGE = "localhost/silvasonic_recorder:latest"
 
 
@@ -56,6 +81,78 @@ def require_recorder_image() -> None:
     )
     if result.returncode != 0:
         pytest.skip("Recorder image not built (run 'just build' first)")
+
+
+_NETWORK_NAME = "silvasonic-net"
+
+
+def ensure_test_network() -> None:
+    """Create the ``silvasonic-net`` Podman network if it doesn't exist.
+
+    After a host reboot the network is gone because it is normally
+    created by ``just up`` (compose).  Container-spawning HW tests need
+    the network to be present before they can start containers.
+    """
+    import subprocess
+
+    # Check first — create is idempotent but noisy on stderr.
+    result = subprocess.run(
+        ["podman", "network", "exists", _NETWORK_NAME],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return  # Already exists.
+
+    subprocess.run(
+        ["podman", "network", "create", _NETWORK_NAME],
+        capture_output=True,
+        check=True,
+    )
+
+
+def make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSpec:
+    """Create a minimal Recorder spec for system testing.
+
+    Shared helper used by ``test_controller_lifecycle.py`` and
+    ``test_crash_recovery.py`` to avoid duplicating spec construction.
+    """
+    from silvasonic.controller.container_spec import (
+        MountSpec,
+        RestartPolicy,
+        Tier2ServiceSpec,
+    )
+
+    return Tier2ServiceSpec(
+        image=RECORDER_IMAGE,
+        name=name,
+        network="silvasonic-net",
+        environment={
+            "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
+            "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
+            "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
+        },
+        labels={
+            "io.silvasonic.tier": "2",
+            "io.silvasonic.owner": "controller",
+            "io.silvasonic.service": "recorder",
+            "io.silvasonic.device_id": device_id,
+            "io.silvasonic.profile": "test_profile",
+        },
+        mounts=[
+            MountSpec(
+                source=str(workspace),
+                target="/app/workspace",
+                read_only=False,
+            ),
+        ],
+        devices=[],
+        group_add=[],
+        privileged=False,
+        restart_policy=RestartPolicy(name="no", max_retry_count=0),
+        memory_limit="128m",
+        cpu_limit=0.5,
+        oom_score_adj=-999,
+    )
 
 
 # ---------------------------------------------------------------------------

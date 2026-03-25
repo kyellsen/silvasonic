@@ -1,0 +1,25 @@
+---
+# Focusrite Scarlett (Generic) Profile
+# VID-only match (no PID) → needs alsa_name_contains for Score 50.
+# 48kHz optimized for audio range/BirdNET.
+schema_version: "1.0"
+slug: focusrite_scarlett
+name: Focusrite Scarlett
+description: General profile for Focusrite Scarlett USB audio interfaces.
+manufacturer: Focusrite
+model: Scarlett
+audio:
+  sample_rate: 48000
+  channels: 2
+  format: S16LE
+  match:
+    usb_vendor_id: "1235"
+    alsa_name_contains: "Scarlett"
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false
+  live_stream_enabled: false
+  segment_duration_s: 10

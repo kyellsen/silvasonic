@@ -1,0 +1,23 @@
+---
+# Pettersson M500-384 USB Ultrasound Microphone Profile
+# Match via ALSA name fallback (Score 50) — exact VID/PID unknown.
+schema_version: "1.0"
+slug: pettersson_m500
+name: Pettersson M500-384
+description: High-end USB ultrasound microphone optimized for bat detection (384kHz).
+manufacturer: Pettersson
+model: M500-384
+audio:
+  sample_rate: 384000
+  channels: 1
+  format: S16LE
+  match:
+    alsa_name_contains: "Pettersson"
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: true
+  live_stream_enabled: false
+  segment_duration_s: 10
