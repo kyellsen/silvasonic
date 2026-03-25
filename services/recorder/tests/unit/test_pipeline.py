@@ -6,7 +6,6 @@ FFmpeg subprocess — no real audio hardware or FFmpeg binary needed.
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -170,7 +169,14 @@ class TestFFmpegConfig:
         seg_idx = args.index("-segment_time")
         assert args[seg_idx + 1] == "15"
         assert "-reset_timestamps" in args
-        assert "-segment_list_type" in args
+
+    def test_build_ffmpeg_args_no_segment_list(self) -> None:
+        """No -segment_list arguments are generated (CSV removed)."""
+        cfg = FFmpegConfig()
+        args = cfg.build_ffmpeg_args("hw:1,0", Path("/ws"), mock_source=True)
+
+        assert "-segment_list" not in args
+        assert "-segment_list_type" not in args
 
     def test_build_ffmpeg_args_custom_binary(self) -> None:
         """Custom FFmpeg binary path is used."""
@@ -188,136 +194,130 @@ class TestFFmpegConfig:
 
 @pytest.mark.unit
 class TestSegmentPromoter:
-    """Tests for SegmentPromoter — CSV poll + atomic promotion."""
+    """Tests for SegmentPromoter — filesystem poll + atomic promotion."""
 
-    def _write_csv(self, csv_path: Path, rows: list[list[str]]) -> None:
-        """Helper to write a segment-list CSV."""
-        with csv_path.open("w", newline="") as f:
-            writer = csv.writer(f)
-            for row in rows:
-                writer.writerow(row)
-
-    def test_promotes_segment(self, tmp_path: Path) -> None:
-        """Segments listed in CSV are promoted from .buffer/ to data/."""
+    def test_promotes_completed_segment(self, tmp_path: Path) -> None:
+        """When 2 files exist, the older one is promoted."""
         buffer_dir = tmp_path / ".buffer" / "raw"
         data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
         buffer_dir.mkdir(parents=True)
         data_dir.mkdir(parents=True)
 
-        # Create a "completed" segment in buffer
-        seg_file = buffer_dir / "2026-03-25T14-30-00_10s.wav"
-        seg_file.write_text("fake wav data")
+        # Simulate: seg1 is complete, seg2 is actively being written
+        seg1 = buffer_dir / "2026-03-25T14-30-00_10s.wav"
+        seg2 = buffer_dir / "2026-03-25T14-30-10_10s.wav"
+        seg1.write_text("complete segment")
+        seg2.write_text("active segment")
 
-        # Write the CSV (FFmpeg would do this)
-        self._write_csv(
-            csv_path,
-            [
-                [str(seg_file), "0.000000", "10.000000"],
-            ],
-        )
-
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir, stream_name="raw")
+        promoter = SegmentPromoter(buffer_dir, data_dir, stream_name="raw")
         promoter._poll_and_promote()
 
-        assert not seg_file.exists(), "Source should be moved"
-        assert (data_dir / "2026-03-25T14-30-00_10s.wav").exists()
+        assert not seg1.exists(), "Completed segment should be moved"
+        assert seg2.exists(), "Active segment should remain"
+        assert (data_dir / seg1.name).exists()
         assert promoter.segments_promoted == 1
 
-    def test_idempotent_double_poll(self, tmp_path: Path) -> None:
-        """Polling twice with the same CSV does not re-promote."""
+    def test_skips_single_file(self, tmp_path: Path) -> None:
+        """When only 1 file exists, nothing is promoted (still active)."""
         buffer_dir = tmp_path / ".buffer" / "raw"
         data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
         buffer_dir.mkdir(parents=True)
         data_dir.mkdir(parents=True)
 
-        seg_file = buffer_dir / "seg1.wav"
-        seg_file.write_text("data")
+        active = buffer_dir / "seg1.wav"
+        active.write_text("being written")
 
-        self._write_csv(csv_path, [[str(seg_file), "0", "10"]])
-
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir)
+        promoter = SegmentPromoter(buffer_dir, data_dir)
         promoter._poll_and_promote()
-        promoter._poll_and_promote()  # Second poll — no new lines
 
-        assert promoter.segments_promoted == 1
+        assert active.exists(), "Active segment must not be promoted"
+        assert promoter.segments_promoted == 0
 
-    def test_missing_source_logs_warning(self, tmp_path: Path) -> None:
-        """Missing source file is logged but does not crash."""
+    def test_empty_buffer_is_safe(self, tmp_path: Path) -> None:
+        """Empty buffer directory is a no-op."""
         buffer_dir = tmp_path / ".buffer" / "raw"
         data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
         buffer_dir.mkdir(parents=True)
         data_dir.mkdir(parents=True)
 
-        # CSV references a non-existent file
-        self._write_csv(
-            csv_path,
-            [
-                [str(buffer_dir / "nonexistent.wav"), "0", "10"],
-            ],
-        )
-
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir)
+        promoter = SegmentPromoter(buffer_dir, data_dir)
         promoter._poll_and_promote()
 
         assert promoter.segments_promoted == 0
 
-    def test_no_csv_is_safe(self, tmp_path: Path) -> None:
-        """No CSV file is a no-op (FFmpeg hasn't written one yet)."""
+    def test_incremental_promotion(self, tmp_path: Path) -> None:
+        """New segments are promoted incrementally as they appear."""
         buffer_dir = tmp_path / ".buffer" / "raw"
         data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
         buffer_dir.mkdir(parents=True)
         data_dir.mkdir(parents=True)
 
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir)
-        promoter._poll_and_promote()
-
-        assert promoter.segments_promoted == 0
-
-    def test_incremental_csv_growth(self, tmp_path: Path) -> None:
-        """New CSV lines are promoted incrementally."""
-        buffer_dir = tmp_path / ".buffer" / "raw"
-        data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
-        buffer_dir.mkdir(parents=True)
-        data_dir.mkdir(parents=True)
-
-        # First segment
+        # First round: 2 files → promote oldest
         seg1 = buffer_dir / "seg1.wav"
+        seg2 = buffer_dir / "seg2.wav"
         seg1.write_text("data1")
-        self._write_csv(csv_path, [[str(seg1), "0", "10"]])
+        seg2.write_text("data2")
 
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir)
+        promoter = SegmentPromoter(buffer_dir, data_dir)
         promoter._poll_and_promote()
         assert promoter.segments_promoted == 1
+        assert (data_dir / "seg1.wav").exists()
 
-        # Second segment added
-        seg2 = buffer_dir / "seg2.wav"
-        seg2.write_text("data2")
-        self._write_csv(
-            csv_path,
-            [
-                [str(seg1), "0", "10"],
-                [str(seg2), "10", "20"],
-            ],
-        )
+        # Second round: seg3 appears → seg2 can be promoted
+        seg3 = buffer_dir / "seg3.wav"
+        seg3.write_text("data3")
 
         promoter._poll_and_promote()
         assert promoter.segments_promoted == 2
+        assert (data_dir / "seg2.wav").exists()
+        assert seg3.exists(), "Newest file (active) should remain"
+
+    def test_promotes_multiple_at_once(self, tmp_path: Path) -> None:
+        """When multiple completed segments accumulate, all are promoted."""
+        buffer_dir = tmp_path / ".buffer" / "raw"
+        data_dir = tmp_path / "data" / "raw"
+        buffer_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True)
+
+        # 4 files: 3 complete + 1 active
+        for i in range(4):
+            (buffer_dir / f"seg{i:02d}.wav").write_text(f"data{i}")
+
+        promoter = SegmentPromoter(buffer_dir, data_dir)
+        promoter._poll_and_promote()
+
+        assert promoter.segments_promoted == 3
+        assert (buffer_dir / "seg03.wav").exists(), "Newest must remain"
+
+    def test_final_pass_promotes_all(self, tmp_path: Path) -> None:
+        """After FFmpeg exits, _promote_all() promotes everything."""
+        buffer_dir = tmp_path / ".buffer" / "raw"
+        data_dir = tmp_path / "data" / "raw"
+        buffer_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True)
+
+        seg1 = buffer_dir / "seg1.wav"
+        seg2 = buffer_dir / "seg2.wav"
+        seg1.write_text("data1")
+        seg2.write_text("data2")
+
+        promoter = SegmentPromoter(buffer_dir, data_dir)
+        promoter._promote_all()
+
+        assert promoter.segments_promoted == 2
+        assert not seg1.exists()
+        assert not seg2.exists()
+        assert (data_dir / "seg1.wav").exists()
         assert (data_dir / "seg2.wav").exists()
 
     def test_thread_lifecycle(self, tmp_path: Path) -> None:
         """Promoter thread starts, runs, and stops cleanly."""
         buffer_dir = tmp_path / ".buffer" / "raw"
         data_dir = tmp_path / "data" / "raw"
-        csv_path = tmp_path / ".buffer" / "raw_segments.csv"
         buffer_dir.mkdir(parents=True)
         data_dir.mkdir(parents=True)
 
-        promoter = SegmentPromoter(csv_path, buffer_dir, data_dir, poll_interval=0.1)
+        promoter = SegmentPromoter(buffer_dir, data_dir, poll_interval=0.1)
         promoter.start()
         assert promoter.is_alive()
 
@@ -457,33 +457,6 @@ class TestFFmpegPipeline:
         assert any("warning" in e for e in errors)
 
         mock_proc.poll.return_value = 0
-        pipeline.stop()
-
-    @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")
-    def test_clean_segment_lists_on_start(self, mock_promoter: MagicMock, tmp_path: Path) -> None:
-        """Stale segment CSVs are removed on start()."""
-        ws = self._make_workspace(tmp_path)
-        raw_csv = ws / ".buffer" / "raw_segments.csv"
-        proc_csv = ws / ".buffer" / "processed_segments.csv"
-        raw_csv.write_text("stale data")
-        proc_csv.write_text("stale data")
-
-        config = FFmpegConfig()
-
-        mock_proc = MagicMock()
-        mock_proc.pid = 1
-        mock_proc.poll.return_value = None
-        mock_proc.stderr = iter([])
-
-        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
-            pipeline = FFmpegPipeline(config, ws, mock_source=True)
-            pipeline.start()
-
-        assert not raw_csv.exists()
-        assert not proc_csv.exists()
-
-        mock_proc.poll.return_value = 0
-        mock_proc.returncode = 0
         pipeline.stop()
 
     @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")

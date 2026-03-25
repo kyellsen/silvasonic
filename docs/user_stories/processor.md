@@ -12,7 +12,7 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Neue `.wav`-Dateien im Aufnahme-Verzeichnis werden innerhalb weniger Sekunden erkannt (periodisches Scannen, Default: 5s).
+- [ ] Neue `.wav`-Dateien im Aufnahme-Verzeichnis werden innerhalb weniger Sekunden erkannt (periodisches Scannen, siehe [Processor Service §5](../services/processor.md) für Default-Wert).
 - [ ] Metadaten (Dauer, Sample Rate, Kanäle, Dateigröße) werden automatisch ausgelesen und in die Datenbank geschrieben.
 - [ ] Bereits registrierte Aufnahmen werden nicht doppelt erfasst (idempotent).
 - [ ] Nur vollständig geschriebene Dateien werden erfasst — unvollständige Puffer-Dateien werden ignoriert.
@@ -83,7 +83,7 @@
 
 - [ ] Schwellenwerte (Aufräumen / Vorsorge / Notfall) und Scan-Intervalle sind in den Einstellungen änderbar.
 - [ ] Nach einer Änderung wird der Dienst automatisch neu gestartet und übernimmt die neuen Werte.
-- [ ] Sinnvolle Standard-Werte sind ab Werk vorbelegt (70% / 80% / 90%, 5s Scan-Intervall, 60s Bereinigungszyklus).
+- [ ] Sinnvolle Standard-Werte sind ab Werk vorbelegt (Schwellenwerte und Intervalle siehe [Processor Service §5](../services/processor.md)).
 
 ### Milestone
 

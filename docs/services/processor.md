@@ -97,7 +97,7 @@ As an **Immutable Container** (ADR-0019), the Processor reads these settings *on
 | `janitor_threshold_critical`  | `80.0`  | Defensive Trigger (%)          |
 | `janitor_threshold_emergency` | `90.0`  | Panic Trigger (%)              |
 | `janitor_interval_seconds`    | `60`    | Seconds between cleanup cycles |
-| `indexer_poll_interval`       | `5.0`   | Seconds between indexing scans |
+| `indexer_poll_interval`       | `2.0`   | Seconds between indexing scans |
 
 **Update Mechanism (State Reconciliation):**
 1. User changes settings in Web UI.

@@ -86,5 +86,5 @@ The exact implementation details, thresholds, and deletion rules are maintained 
 
 The Dual Stream output (Raw + Processed) is produced by a single **FFmpeg subprocess** managed by the Recorder service. FFmpeg handles ALSA capture, resampling, segmentation, and WAV encoding in native C code — the Python GIL never touches the audio path.
 
-The Recorder's Python process manages FFmpeg's lifecycle and atomically promotes completed segments from `.buffer/` to `data/` via segment-list CSV polling and `os.replace()`.
+The Recorder's Python process manages FFmpeg's lifecycle and atomically promotes completed segments from `.buffer/` to `data/` via filesystem polling and `os.replace()`.
 

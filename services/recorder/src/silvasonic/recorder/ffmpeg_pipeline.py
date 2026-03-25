@@ -6,18 +6,23 @@ Dual Stream Architecture (ADR-0011):
 
 Architecture:
     - ``FFmpegConfig``: Validated capture parameters → FFmpeg command builder
-    - ``SegmentPromoter``: Polls FFmpeg segment-list CSV → atomic promotion
+    - ``SegmentPromoter``: Polls ``.buffer/`` directory → atomic promotion
     - ``FFmpegPipeline``: Manages FFmpeg subprocess + dual promoter threads
 
 FFmpeg runs as a separate OS process.  Python never touches audio data —
 no GIL, no GC pauses, no queue contention.  The ``SegmentPromoter``
-polls the segment-list CSV and promotes completed segments from
-``.buffer/`` to ``data/`` via ``os.replace()`` (POSIX-atomic).
+polls ``.buffer/`` for completed segments and promotes them to
+``data/`` via ``os.replace()`` (POSIX-atomic).
+
+Completeness Signal:
+    FFmpeg's segment muxer closes segment N *before* opening N+1.
+    Therefore, if ≥2 files exist in ``.buffer/{stream}/``, all but the
+    newest are guaranteed complete.  After FFmpeg exits (SIGINT), **all**
+    remaining files are complete.  No segment-list CSV needed.
 """
 
 from __future__ import annotations
 
-import csv
 import os
 import signal
 import subprocess
@@ -172,7 +177,6 @@ class FFmpegConfig(BaseModel):
         # Output 1: Raw stream
         if self.raw_enabled:
             raw_buffer = workspace / ".buffer" / "raw"
-            raw_csv = workspace / ".buffer" / "raw_segments.csv"
             cmd.extend(
                 [
                     "-map",
@@ -189,10 +193,6 @@ class FFmpegConfig(BaseModel):
                     "1",
                     "-strftime",
                     "1",
-                    "-segment_list",
-                    str(raw_csv),
-                    "-segment_list_type",
-                    "csv",
                     str(raw_buffer) + "/%Y-%m-%dT%H-%M-%S_" + seg_time + "s.wav",
                 ]
             )
@@ -200,7 +200,6 @@ class FFmpegConfig(BaseModel):
         # Output 2: Processed stream (resampled to 48 kHz / S16LE)
         if self.processed_enabled:
             proc_buffer = workspace / ".buffer" / "processed"
-            proc_csv = workspace / ".buffer" / "processed_segments.csv"
             cmd.extend(
                 [
                     "-map",
@@ -219,10 +218,6 @@ class FFmpegConfig(BaseModel):
                     "1",
                     "-strftime",
                     "1",
-                    "-segment_list",
-                    str(proc_csv),
-                    "-segment_list_type",
-                    "csv",
                     str(proc_buffer) + "/%Y-%m-%dT%H-%M-%S_" + seg_time + "s.wav",
                 ]
             )
@@ -234,26 +229,28 @@ class FFmpegConfig(BaseModel):
 # SegmentPromoter
 # ---------------------------------------------------------------------------
 class SegmentPromoter(threading.Thread):
-    """Poll FFmpeg segment-list CSV and promote completed segments.
+    """Poll ``.buffer/`` directory and promote completed segments.
 
-    Reads the CSV file written by FFmpeg's ``-segment_list`` option.
-    For each new entry, atomically moves the file from ``.buffer/``
+    FFmpeg's segment muxer closes segment N before opening N+1.
+    If ≥2 WAV files exist in the buffer directory, all but the newest
+    are guaranteed complete.  Each completed file is atomically moved
     to ``data/`` via ``os.replace()``.
+
+    After ``stop()`` is called, a **final pass** promotes all remaining
+    files (FFmpeg has exited, so every file is complete).
 
     The Processor/Indexer (v0.5.0) polls ``data/`` for new WAVs —
     atomic promotion ensures it never sees partially-written files.
 
     Args:
-        csv_path: Path to the segment-list CSV file.
         buffer_dir: Source directory (``.buffer/raw/`` or ``.buffer/processed/``).
         data_dir: Target directory (``data/raw/`` or ``data/processed/``).
         stream_name: Stream identifier for logging (``"raw"`` or ``"processed"``).
-        poll_interval: Seconds between CSV polls.
+        poll_interval: Seconds between directory polls.
     """
 
     def __init__(
         self,
-        csv_path: Path,
         buffer_dir: Path,
         data_dir: Path,
         stream_name: str = "raw",
@@ -261,7 +258,6 @@ class SegmentPromoter(threading.Thread):
     ) -> None:
         """Initialize the promoter thread."""
         super().__init__(name=f"segment-promoter-{stream_name}", daemon=True)
-        self._csv_path = csv_path
         self._buffer_dir = buffer_dir
         self._data_dir = data_dir
         self._stream_name = stream_name
@@ -269,7 +265,6 @@ class SegmentPromoter(threading.Thread):
         self._running = False
         self._promoted_count = 0
         self._promoted_lock = threading.Lock()
-        self._last_line_count = 0
 
     @property
     def segments_promoted(self) -> int:
@@ -282,7 +277,7 @@ class SegmentPromoter(threading.Thread):
         self._running = False
 
     def run(self) -> None:
-        """Poll loop: read CSV, promote new segments."""
+        """Poll loop: scan buffer directory, promote completed segments."""
         self._running = True
         log.info("segment_promoter.started", stream=self._stream_name)
 
@@ -290,8 +285,8 @@ class SegmentPromoter(threading.Thread):
             self._poll_and_promote()
             time.sleep(self._poll_interval)
 
-        # Final promotion pass after stop signal
-        self._poll_and_promote()
+        # Final promotion pass — FFmpeg has exited, ALL files are complete
+        self._promote_all()
         log.info(
             "segment_promoter.stopped",
             stream=self._stream_name,
@@ -299,40 +294,33 @@ class SegmentPromoter(threading.Thread):
         )
 
     def _poll_and_promote(self) -> None:
-        """Read the CSV and promote any new segments."""
-        if not self._csv_path.exists():
-            return
+        """Promote completed segments from ``.buffer/`` to ``data/``.
 
-        try:
-            with self._csv_path.open("r") as f:
-                reader = csv.reader(f)
-                lines = list(reader)
-        except OSError:
-            return  # File may be briefly locked by FFmpeg
+        FFmpeg closes segment N before opening N+1.  Therefore, if ≥2
+        files exist in ``.buffer/``, all but the newest (the active
+        segment being written) are complete and safe to promote.
+        """
+        files = sorted(self._buffer_dir.glob("*.wav"))
+        if len(files) < 2:
+            return  # 0 or 1 file — nothing complete yet
 
-        new_lines = lines[self._last_line_count :]
-        self._last_line_count = len(lines)
+        # All except the newest (actively being written by FFmpeg)
+        for src in files[:-1]:
+            self._promote_segment(src)
 
-        for row in new_lines:
-            if not row:
-                continue
-            # FFmpeg CSV format: filename,start_time,end_time
-            segment_path = Path(row[0])
-            self._promote_segment(segment_path)
+    def _promote_all(self) -> None:
+        """Promote ALL remaining files (called after FFmpeg exits).
 
-    def _promote_segment(self, segment_path: Path) -> None:
+        After FFmpeg has been stopped via SIGINT and the process has
+        exited, every remaining file in ``.buffer/`` is complete
+        (FFmpeg finalized the WAV header on shutdown).
+        """
+        for src in sorted(self._buffer_dir.glob("*.wav")):
+            self._promote_segment(src)
+
+    def _promote_segment(self, src: Path) -> None:
         """Atomically move a segment from .buffer/ to data/."""
-        filename = segment_path.name
-        src = self._buffer_dir / filename
-        dst = self._data_dir / filename
-
-        if not src.exists():
-            log.warning(
-                "segment_promoter.source_missing",
-                stream=self._stream_name,
-                filename=filename,
-            )
-            return
+        dst = self._data_dir / src.name
 
         try:
             os.replace(str(src), str(dst))
@@ -341,14 +329,14 @@ class SegmentPromoter(threading.Thread):
             log.info(
                 "segment.promoted",
                 stream=self._stream_name,
-                filename=filename,
+                filename=src.name,
                 total=self.segments_promoted,
             )
         except OSError:
             log.exception(
                 "segment.promote_failed",
                 stream=self._stream_name,
-                filename=filename,
+                filename=src.name,
             )
 
 
@@ -365,7 +353,7 @@ class FFmpegPipeline:
     - **Processed**: Resampled to 48 kHz / S16LE → ``data/processed/``
 
     FFmpeg writes segments to ``.buffer/``.  ``SegmentPromoter`` threads
-    poll the segment-list CSV and atomically promote completed segments
+    poll the buffer directory and atomically promote completed segments
     to ``data/`` via ``os.replace()``.
 
     Args:
@@ -441,14 +429,6 @@ class FFmpegPipeline:
         """PID of the FFmpeg subprocess, or ``None``."""
         return self._proc.pid if self._proc else None
 
-    def _clean_segment_lists(self) -> None:
-        """Remove stale segment-list CSVs from previous runs."""
-        for name in ("raw_segments.csv", "processed_segments.csv"):
-            csv_path = self._workspace / ".buffer" / name
-            if csv_path.exists():
-                csv_path.unlink()
-                log.debug("pipeline.cleaned_segment_list", path=str(csv_path))
-
     def start(self) -> None:
         """Start FFmpeg and segment promoter threads.
 
@@ -456,8 +436,6 @@ class FFmpegPipeline:
             FileNotFoundError: If the FFmpeg binary is not found.
             subprocess.SubprocessError: If FFmpeg fails to start.
         """
-        self._clean_segment_lists()
-
         cmd = self._config.build_ffmpeg_args(
             device=self._device,
             workspace=self._workspace,
@@ -497,7 +475,6 @@ class FFmpegPipeline:
         # Start segment promoters for enabled streams
         if self._config.raw_enabled:
             self._raw_promoter = SegmentPromoter(
-                csv_path=self._workspace / ".buffer" / "raw_segments.csv",
                 buffer_dir=self._workspace / ".buffer" / "raw",
                 data_dir=self._workspace / "data" / "raw",
                 stream_name="raw",
@@ -506,7 +483,6 @@ class FFmpegPipeline:
 
         if self._config.processed_enabled:
             self._processed_promoter = SegmentPromoter(
-                csv_path=self._workspace / ".buffer" / "processed_segments.csv",
                 buffer_dir=self._workspace / ".buffer" / "processed",
                 data_dir=self._workspace / "data" / "processed",
                 stream_name="processed",
@@ -572,7 +548,7 @@ class FFmpegPipeline:
             self._stderr_thread.join(timeout=2)
             self._stderr_thread = None
 
-        # Stop promoters (they do one final pass)
+        # Stop promoters (they do one final pass promoting ALL remaining files)
         for promoter in (self._raw_promoter, self._processed_promoter):
             if promoter is not None:
                 promoter.stop()

@@ -141,11 +141,11 @@ class ControllerService(SilvaService):
                 if name:
                     log.info("controller.shutdown.stopping", name=name)
                     await asyncio.to_thread(
-                        self._container_manager.stop,
+                        self._container_manager.stop_and_remove,
                         name,
                     )
             log.info(
-                "controller.shutdown.all_stopped",
+                "controller.shutdown.all_removed",
                 count=len(containers),
             )
         except Exception:

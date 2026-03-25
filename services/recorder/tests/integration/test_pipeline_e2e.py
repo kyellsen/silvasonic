@@ -6,7 +6,7 @@ Exercises the complete dual-stream pipeline with FFmpeg's built-in
     FFmpegPipeline.start(mock_source=True)
       → FFmpeg generates 440 Hz sine via lavfi
       → segment muxer writes .buffer/raw/ and .buffer/processed/
-      → SegmentPromoter promotes to data/raw/ and data/processed/
+      → SegmentPromoter polls filesystem, promotes completed to data/
       → segment rotation via -segment_time
 
 No real audio hardware, no containers, no Redis required.
@@ -56,8 +56,8 @@ class TestFFmpegPipelineE2E:
 
     # ── Test timing constants (DRY) ──────────────────────────────────────
     _SEGMENT_S = 1  # Shortest allowed segment (PositiveInt ≥ 1)
-    _RUN_S = 1.2  # Enough for 1 full rotation + margin
-    _RUN_LONG_S = 2.5  # For count-assertions (≥2 rotations needed)
+    _RUN_S = 2.1  # Enough for ≥1 full rotations + margin
+    _RUN_LONG_S = 2.8  # For count-assertions (≥2 rotations needed)
 
     @staticmethod
     def _make_pipeline(
@@ -192,7 +192,7 @@ class TestFFmpegPipelineE2E:
         assert pipeline.is_active
         assert pipeline.ffmpeg_pid is not None
 
-        time.sleep(1.5)
+        time.sleep(0.5)
 
         # Stop
         pipeline.stop()

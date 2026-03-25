@@ -43,3 +43,24 @@ class TestEnsureWorkspace:
 
         assert (deep / "data" / "raw").is_dir()
         assert (deep / ".buffer" / "processed").is_dir()
+
+    def test_promotes_orphan_segments_from_buffer(self, tmp_path: Path) -> None:
+        """Orphan WAVs in .buffer/ are promoted to data/ on startup."""
+        from silvasonic.recorder.workspace import ensure_workspace
+
+        # Simulate a previous crash: WAV files left in .buffer/
+        for subdir in ("data/raw", "data/processed", ".buffer/raw", ".buffer/processed"):
+            (tmp_path / subdir).mkdir(parents=True)
+
+        orphan_raw = tmp_path / ".buffer" / "raw" / "orphan1.wav"
+        orphan_proc = tmp_path / ".buffer" / "processed" / "orphan2.wav"
+        orphan_raw.write_text("raw orphan")
+        orphan_proc.write_text("processed orphan")
+
+        ensure_workspace(tmp_path)
+
+        # Orphans should be moved to data/
+        assert not orphan_raw.exists()
+        assert not orphan_proc.exists()
+        assert (tmp_path / "data" / "raw" / "orphan1.wav").read_text() == "raw orphan"
+        assert (tmp_path / "data" / "processed" / "orphan2.wav").read_text() == "processed orphan"

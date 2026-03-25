@@ -7,7 +7,7 @@ operations, and edge cases (not connected, not found, connection errors).
 """
 
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
@@ -404,6 +404,61 @@ class TestContainerManager:
         mgr = ContainerManager(client)
 
         assert mgr.remove("test-container") is False
+
+    def test_remove_api_error_retries_and_succeeds(self) -> None:
+        """remove() retries on APIError and succeeds on second attempt."""
+        from podman.errors import APIError
+
+        first_container = MagicMock()
+        first_container.remove.side_effect = APIError("container is stopping")
+        second_container = MagicMock()
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.side_effect = [first_container, second_container]
+        mgr = ContainerManager(client)
+
+        with patch("time.sleep"):
+            result = mgr.remove("stopping-container")
+
+        assert result is True
+        second_container.remove.assert_called_once_with(force=True)
+
+    def test_remove_api_error_retry_not_found(self) -> None:
+        """remove() returns True when container disappears during retry."""
+        from podman.errors import APIError, NotFound
+
+        first_container = MagicMock()
+        first_container.remove.side_effect = APIError("container is stopping")
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.side_effect = [first_container, NotFound("gone")]
+        mgr = ContainerManager(client)
+
+        with patch("time.sleep"):
+            result = mgr.remove("vanishing-container")
+
+        assert result is True
+
+    def test_remove_api_error_retry_fails(self) -> None:
+        """remove() returns False when retry also fails."""
+        from podman.errors import APIError
+
+        first_container = MagicMock()
+        first_container.remove.side_effect = APIError("container is stopping")
+        second_container = MagicMock()
+        second_container.remove.side_effect = APIError("still stopping")
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.side_effect = [first_container, second_container]
+        mgr = ContainerManager(client)
+
+        with patch("time.sleep"):
+            result = mgr.remove("stuck-container")
+
+        assert result is False
 
     def test_stop_and_remove_calls_both(self) -> None:
         """stop_and_remove() delegates to stop() then remove()."""

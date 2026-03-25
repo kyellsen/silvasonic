@@ -8,6 +8,7 @@ and should be called via ``asyncio.to_thread()`` from async code.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import structlog
@@ -185,6 +186,24 @@ class ContainerManager:
         except _NotFound:
             log.info("container_manager.remove.already_gone", name=name)
             return True
+        except _APIError:
+            # Container may still be transitioning from 'stopping' → retry once
+            time.sleep(2)
+            try:
+                container = self._podman.containers.get(name)
+                container.remove(force=True)
+                log.info("container_manager.removed", name=name)
+                return True
+            except _NotFound:
+                log.info("container_manager.remove.already_gone", name=name)
+                return True
+            except Exception as retry_err:
+                log.warning(
+                    "container_manager.remove.failed",
+                    name=name,
+                    error_type=type(retry_err).__name__,
+                )
+                return False
         except Exception as e:
             log.warning("container_manager.remove.failed", name=name, error_type=type(e).__name__)
             return False

@@ -396,7 +396,7 @@ class TestStopAllTier2:
         ):
             await svc._stop_all_tier2()
 
-        assert svc._container_manager.stop.call_count == 2
+        assert svc._container_manager.stop_and_remove.call_count == 2
 
     async def test_stops_no_containers(self) -> None:
         """_stop_all_tier2 handles gracefully when no containers are running."""

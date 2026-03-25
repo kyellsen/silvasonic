@@ -32,9 +32,9 @@ from common import (
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Parallel workers for unit tests (0 = disabled).
-# Override via: SILVASONIC_TEST_WORKERS=<n>
-PYTEST_WORKERS = int(os.environ.get("SILVASONIC_TEST_WORKERS", "6"))
+# Per-suite parallel workers (0 = sequential).
+UNIT_WORKERS = int(os.environ.get("SILVASONIC_UNIT_WORKERS", "6"))
+SYSTEM_WORKERS = int(os.environ.get("SILVASONIC_SYSTEM_WORKERS", "6"))
 
 
 def _pytest(marker: str, cmd: list[str]) -> int:
@@ -57,7 +57,7 @@ def cmd_unit() -> list[str]:
         "-m",
         "unit",
         "-n",
-        str(PYTEST_WORKERS),
+        str(UNIT_WORKERS),
         "--tb=short",
         "-q",
         "-rs",
@@ -109,6 +109,8 @@ def cmd_system() -> list[str]:
         "pytest",
         "-m",
         "system",
+        "-n",
+        str(SYSTEM_WORKERS),
         "-p",
         "no:cov",
         "--override-ini",

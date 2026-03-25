@@ -291,7 +291,7 @@ class TestHardwareSpawnCycle:
             labels = container.get("labels", {})
             assert isinstance(labels, dict)
             assert labels.get("io.silvasonic.device_id") == device_info.stable_device_id
-            assert labels.get("io.silvasonic.owner") == "controller"
+            assert labels.get("io.silvasonic.owner") == f"controller-test-{TEST_RUN_ID}"
 
             # Cleanup
             mgr.stop(test_name, timeout=3)
