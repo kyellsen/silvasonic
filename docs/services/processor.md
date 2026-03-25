@@ -34,6 +34,14 @@
 *   Registers files in the `recordings` database table.
 *   Idempotent — checks for existing entries to prevent duplicates.
 
+#### Reconciliation Audit (Split-Brain Healing)
+
+On startup, before the regular polling loop begins, the Indexer runs a one-time
+reconciliation check. It queries all `recordings` rows where `local_deleted = false`
+and verifies the referenced `file_processed` exists on disk. Missing files are
+marked `local_deleted = true` with a `WARNING` log entry. This heals the
+Split-Brain scenario where Panic-Mode deleted files while the database was offline.
+
 #### Janitor (Retention)
 
 The **only** service authorized to delete files from the Recorder workspace (ADR-0009). Operates in three escalating modes based on NVMe utilization (ADR-0011 §6):
@@ -46,6 +54,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 
 *   **Soft Delete:** Files are physically removed, but the database row is preserved with `local_deleted=TRUE` to maintain the historical inventory.
 *   **Fallback:** In Panic Mode, if the database is offline, falls back to filesystem `mtime` for blind cleanup.
+*   **Split-Brain Healing:** After DB recovery, the Indexer's startup Reconciliation Audit automatically detects and corrects orphaned `local_deleted = false` rows for files that no longer exist on disk. See §3 Indexer.
 
 ### Outputs
 

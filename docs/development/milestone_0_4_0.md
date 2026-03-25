@@ -2,7 +2,7 @@
 
 > **Target:** v0.4.0 — Recorder captures audio from USB microphones: FFmpeg Engine (ADR-0024), segmented WAV output, Profile Injection, Generic USB Fallback, Dual Stream (Raw + Processed), Watchdog & Auto-Recovery
 >
-> **Status:** 🔨 In Progress
+> **Status:** ✅ Done
 >
 > **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Recorder README](../../services/recorder/README.md)
 >
@@ -151,7 +151,7 @@
 
 | Item                                        | Target Version |
 | ------------------------------------------- | -------------- |
-| Live Opus stream (Recorder → Icecast)       | v0.9.0         |
+| Live Opus stream (Recorder → Icecast)       | v1.1.0         |
 | FLAC compression for upload                 | v0.6.0         |
 | Processor service (ingestion + cleanup)     | v0.5.0         |
 | Web-Interface profile editing               | v0.8.0         |

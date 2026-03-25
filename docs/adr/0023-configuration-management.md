@@ -61,7 +61,7 @@ auth:
 #   ...
 # uploader:                            # v0.6.0
 #   ...
-# birdnet:                             # v1.1.0
+# birdnet:                             # v0.9.0
 #   confidence_threshold: 0.25
 ```
 

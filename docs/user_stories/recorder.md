@@ -106,7 +106,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.9.0
+- **Milestone:** v1.1.0
 
 ### Referenzen
 

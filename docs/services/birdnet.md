@@ -99,4 +99,4 @@ Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an *
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — Resource Limits & QoS
 *   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (latitude, confidence threshold)
 *   [Glossary: BirdNET](../glossary.md) — canonical definition
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.9.0)

@@ -23,3 +23,4 @@
 - [ADR-0022: Live Log Streaming — Podman Logs via Redis SSE](0022-live-log-streaming.md)
 - [ADR-0023: Configuration Management — YAML Seed, DB Settings, Users Table](0023-configuration-management.md)
 - [ADR-0024: FFmpeg Audio Engine — Replacing sounddevice/soxr with FFmpeg](0024-ffmpeg-audio-engine.md)
+- [ADR-0025: Recordings Table — Standard PostgreSQL Table (No Hypertable)](0025-recordings-standard-table.md)

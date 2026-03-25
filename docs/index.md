@@ -39,6 +39,7 @@
 - [Milestone v0.2.0](development/milestone_0_2_0.md) — Concrete implementation plan for Service Infrastructure
 - [Milestone v0.3.0](development/milestone_0_3_0.md) — Concrete implementation plan for Tier 2 Container Management
 - [Milestone v0.4.0](development/milestone_0_4_0.md) — Audio Recording: Dual Stream, Profile Injection, Generic USB Fallback, Watchdog
+- [Milestone v0.5.0](development/milestone_0_5_0.md) — Analysis & Backend Orchestration: Processor Service (Indexer + Janitor)
 - [Milestone Template](development/milestone_template.md) — Template for new milestone documents
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)

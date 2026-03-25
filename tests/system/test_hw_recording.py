@@ -465,3 +465,290 @@ class TestFullHardwareLifecycle:
             with contextlib.suppress(Exception):
                 client.containers.get(test_name).remove(force=True)
             client.close()
+
+
+# ---------------------------------------------------------------------------
+# Test: Full Pipeline E2E (DB + Redis + Podman + Real Hardware + WAV + Heartbeat)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not _USB_PRESENT, reason="No USB-Audio device connected")
+@pytest.mark.skipif(not SOCKET_AVAILABLE, reason="Podman socket not available")
+class TestFullPipelineE2E:
+    """Ultimate E2E: USB scan → DB → Redis → Container → WAV + Heartbeat.
+
+    This is the comprehensive production-path confidence test for v0.4.0.
+    Unlike ``TestFullHardwareLifecycle``, this test also includes:
+
+    - A real Redis on ``silvasonic-net`` for heartbeat verification.
+    - WAV header validation (sample rate, channels, format).
+    - Redis heartbeat assertions (service, health, watchdog metadata).
+    - Container health-endpoint check.
+    """
+
+    _WAIT_SECONDS = 18  # Enough for 2-3 segment promotions (3s segments)
+
+    async def test_full_pipeline_with_heartbeat(
+        self,
+        primary_device: DeviceInfo,
+        seeded_db: async_sessionmaker[AsyncSession],
+        hw_redis: tuple[str, int],
+        tmp_path: Path,
+    ) -> None:
+        """Full pipeline: Scan → Match → DB → Container → WAV + Redis heartbeat.
+
+        Validates:
+        1. Profile matching and device enrollment.
+        2. DeviceStateEvaluator produces a valid Tier2ServiceSpec.
+        3. Container starts with real /dev/snd and produces dual-stream WAV files.
+        4. WAV files have valid headers (correct sample rate and channels).
+        5. Redis heartbeat contains service, health, recording, and watchdog metadata.
+        6. Container health endpoint returns 200.
+        """
+        require_recorder_image()
+        ensure_test_network()
+
+        session_factory = seeded_db
+        redis_host, redis_port = hw_redis
+
+        # ── Step 1: Match profile ──────────────────────────────────
+        matcher = ProfileMatcher()
+        async with session_factory() as session:
+            match_result = await matcher.match(primary_device, session)
+
+        if match_result.score < 100:
+            pytest.skip(
+                f"Primary mic ({primary_device.alsa_name}) did not match "
+                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score})"
+            )
+
+        # ── Step 2: Enroll device in DB ────────────────────────────
+        from silvasonic.controller.device_repository import upsert_device
+
+        async with session_factory() as session:
+            await upsert_device(
+                primary_device,
+                session,
+                profile_slug=match_result.profile_slug,
+                enrollment_status="enrolled",
+            )
+            await session.commit()
+
+        # ── Step 3: Evaluate desired state ─────────────────────────
+        evaluator = DeviceStateEvaluator()
+        async with session_factory() as session:
+            specs = await evaluator.evaluate(session)
+
+        matching_specs = [
+            s
+            for s in specs
+            if s.labels.get("io.silvasonic.device_id") == primary_device.stable_device_id
+        ]
+        assert len(matching_specs) == 1, (
+            f"Expected 1 spec for {primary_device.stable_device_id}, got {len(matching_specs)}"
+        )
+        spec = matching_specs[0]
+
+        # ── Step 4: Start Recorder container ───────────────────────
+        test_name = f"silvasonic-recorder-e2e-pipeline-{TEST_RUN_ID}"
+        workspace = tmp_path / "e2e_pipeline"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace.chmod(0o777)
+
+        test_spec = Tier2ServiceSpec(
+            image=RECORDER_IMAGE,
+            name=test_name,
+            network=spec.network,
+            environment={
+                **spec.environment,
+                "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
+                # Override Redis URL to point to our test Redis
+                "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
+            },
+            labels={
+                **spec.labels,
+                "io.silvasonic.test": "system_hw_e2e",
+                "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
+            },
+            mounts=[
+                MountSpec(
+                    source=str(workspace),
+                    target="/app/workspace",
+                    read_only=False,
+                ),
+            ],
+            devices=["/dev/snd"],
+            group_add=["audio"],
+            privileged=False,
+            restart_policy=RestartPolicy(name="no", max_retry_count=0),
+            memory_limit="256m",
+            cpu_limit=1.0,
+            oom_score_adj=-999,
+        )
+
+        client = SilvasonicPodmanClient(
+            socket_path=PODMAN_SOCKET,
+            max_retries=2,
+            retry_delay=0.5,
+        )
+        client.connect()
+
+        try:
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
+            info = mgr.start(test_spec)
+            assert info is not None, "Container start failed"
+            assert info.get("name") == test_name
+
+            print(f"\n  ⏳ Recording for {self._WAIT_SECONDS}s...")
+            time.sleep(self._WAIT_SECONDS)
+
+            # ── Step 5: Assert WAV files exist ─────────────────────
+            raw_data = workspace / "data" / "raw"
+            proc_data = workspace / "data" / "processed"
+
+            raw_wavs = list(raw_data.glob("*.wav")) if raw_data.exists() else []
+            proc_wavs = list(proc_data.glob("*.wav")) if proc_data.exists() else []
+
+            if not raw_wavs and not proc_wavs:
+                # Dump container logs for debugging
+                try:
+                    logs = subprocess.run(
+                        ["podman", "logs", test_name],
+                        capture_output=True,
+                        text=True,
+                    )
+                    print(
+                        f"\n--- CONTAINER LOGS ({test_name}) ---\n"
+                        f"{logs.stderr}\n{logs.stdout}\n"
+                        "----------------------------------"
+                    )
+                except Exception as e:
+                    print(f"Could not fetch container logs: {e}")
+
+            assert len(raw_wavs) >= 1, (
+                f"No raw WAV files in {raw_data}. Check container logs: podman logs {test_name}"
+            )
+            assert len(proc_wavs) >= 1, (
+                f"No processed WAV files in {proc_data}. "
+                f"Check container logs: podman logs {test_name}"
+            )
+            print(f"  ✅ WAV files: {len(raw_wavs)} raw, {len(proc_wavs)} processed")
+
+            # ── Step 6: Validate WAV headers (via ffprobe) ────────
+            def _ffprobe_wav(path: Path) -> tuple[int, int, str]:
+                """Return (sample_rate, channels, codec) via ffprobe."""
+                result = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-show_entries",
+                        "stream=sample_rate,channels,codec_name",
+                        "-of",
+                        "csv=p=0",
+                        str(path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                assert result.returncode == 0, f"ffprobe failed on {path.name}: {result.stderr}"
+                parts = result.stdout.strip().split(",")
+                assert len(parts) >= 3, f"Unexpected ffprobe output: {result.stdout}"
+                return int(parts[1]), int(parts[2]), parts[0]
+
+            raw_sr, raw_ch, raw_codec = _ffprobe_wav(raw_wavs[0])
+            assert raw_ch >= 1
+            assert raw_sr == PRIMARY_MIC.sample_rate, (
+                f"Raw WAV sample rate {raw_sr} != expected {PRIMARY_MIC.sample_rate}"
+            )
+            print(f"  ✅ Raw WAV: {raw_sr} Hz, {raw_ch} ch, {raw_codec}")
+
+            proc_sr, proc_ch, proc_codec = _ffprobe_wav(proc_wavs[0])
+            assert proc_ch >= 1
+            assert proc_sr == PROCESSED_SAMPLE_RATE, (
+                f"Processed WAV sample rate {proc_sr} != expected {PROCESSED_SAMPLE_RATE}"
+            )
+            print(f"  ✅ Processed WAV: {proc_sr} Hz, {proc_ch} ch, {proc_codec}")
+
+            # ── Step 7: Assert Redis heartbeat ─────────────────────
+            import json
+            from typing import Any
+
+            from redis import Redis
+
+            redis_client = Redis(
+                host=redis_host,
+                port=redis_port,
+                decode_responses=True,
+            )
+
+            # Poll for heartbeat (recorder writes every ~2s)
+            heartbeat_raw: str | None = None
+            for _ in range(15):
+                keys: list[str] = list(redis_client.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                for key in keys:
+                    if "recorder" in key:
+                        heartbeat_raw = str(redis_client.get(key))
+                        break
+                if heartbeat_raw:
+                    break
+                time.sleep(1)
+
+            assert heartbeat_raw is not None, (
+                "No recorder heartbeat found in Redis after 15s. "
+                f"Keys present: {list(redis_client.keys('silvasonic:*'))}"  # type: ignore[arg-type]
+            )
+
+            payload: dict[str, Any] = json.loads(heartbeat_raw)
+            assert payload["service"] == "recorder"
+            assert payload["health"]["status"] == "ok"
+            assert "recording" in payload["meta"]
+            assert payload["meta"]["recording"]["raw_enabled"] is True
+            assert payload["meta"]["recording"]["processed_enabled"] is True
+
+            # Phase 5: Watchdog metadata
+            assert "watchdog_restarts" in payload["meta"]["recording"], (
+                "Watchdog metadata missing from heartbeat"
+            )
+            assert payload["meta"]["recording"]["watchdog_restarts"] == 0
+
+            print(
+                "  ✅ Redis heartbeat verified: "
+                f"service={payload['service']}, "
+                f"health={payload['health']['status']}, "
+                f"watchdog_restarts={payload['meta']['recording']['watchdog_restarts']}"
+            )
+            redis_client.close()
+
+            # ── Step 8: Health endpoint ────────────────────────────
+            # The container exposes port 9500 — check via podman exec
+            health_result = subprocess.run(
+                [
+                    "podman",
+                    "exec",
+                    test_name,
+                    "curl",
+                    "-sf",
+                    "http://localhost:9500/healthy",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            assert health_result.returncode == 0, f"Health endpoint failed: {health_result.stderr}"
+            print("  ✅ Health endpoint: 200 OK")
+
+            # ── Teardown ───────────────────────────────────────────
+            mgr.stop(test_name, timeout=10)
+            mgr.remove(test_name)
+
+            print(
+                "\n  🎉 Full Pipeline E2E PASSED: "
+                "USB → DB → Podman → FFmpeg → WAV ✓ → "
+                "Redis Heartbeat ✓ → Health ✓"
+            )
+        finally:
+            with contextlib.suppress(Exception):
+                client.containers.get(test_name).remove(force=True)
+            client.close()

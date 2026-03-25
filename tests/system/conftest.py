@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import contextlib
 import os
+import subprocess
+import time
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -137,6 +139,89 @@ def require_recorder_image() -> None:
 
 
 _NETWORK_NAME = "silvasonic-net"
+
+
+@pytest.fixture()
+def hw_redis() -> Iterator[tuple[str, int]]:
+    """Ephemeral Redis on ``silvasonic-net`` for hardware E2E tests.
+
+    Starts a Redis container attached to the existing ``silvasonic-net``
+    Podman network with alias ``silvasonic-redis``, so that the spawned
+    Recorder container can reach it at the production-default URL
+    (``redis://silvasonic-redis:6379/0``).
+
+    Yields ``(host_ip, mapped_port)`` for direct host-side access
+    (heartbeat polling from the test process).
+    """
+    ensure_test_network()
+    name = f"silvasonic-redis-hwtest-{TEST_RUN_ID}"
+
+    # Force-remove any stale container from a previous interrupted run
+    subprocess.run(
+        ["podman", "rm", "-f", name],
+        capture_output=True,
+        timeout=10,
+    )
+
+    # Start Redis with network alias + published port for host access
+    result = subprocess.run(
+        [
+            "podman",
+            "run",
+            "-d",
+            "--name",
+            name,
+            "--network",
+            _NETWORK_NAME,
+            "--network-alias",
+            "silvasonic-redis",
+            "-p",
+            "6379",  # random host port (Podman syntax)
+            "docker.io/library/redis:7-alpine",
+            "redis-server",
+            "--save",
+            "",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.fail(
+            f"Failed to start Redis container: exit {result.returncode}\n"
+            f"stderr: {result.stderr}\nstdout: {result.stdout}"
+        )
+
+    try:
+        # Wait for Redis to be ready
+        for _ in range(20):
+            ping = subprocess.run(
+                ["podman", "exec", name, "redis-cli", "ping"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            if ping.stdout.strip() == "PONG":
+                break
+            time.sleep(0.25)
+
+        # Get mapped host port
+        port_result = subprocess.run(
+            ["podman", "port", name, "6379"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        # Output like "0.0.0.0:12345"
+        mapped_port = int(port_result.stdout.strip().split(":")[-1])
+
+        yield ("127.0.0.1", mapped_port)
+    finally:
+        with contextlib.suppress(Exception):
+            subprocess.run(
+                ["podman", "rm", "-f", name],
+                capture_output=True,
+                timeout=10,
+            )
 
 
 def ensure_test_network() -> None:

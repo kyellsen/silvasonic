@@ -1,6 +1,6 @@
 # User Stories — Icecast Service
 
-> **Service:** Icecast · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.9.0)
+> **Service:** Icecast · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v1.1.0)
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.9.0
+- **Milestone:** v1.1.0
 
 ### Referenzen
 
@@ -44,7 +44,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.9.0
+- **Milestone:** v1.1.0
 
 ### Referenzen
 
@@ -69,7 +69,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.9.0
+- **Milestone:** v1.1.0
 
 ### Referenzen
 

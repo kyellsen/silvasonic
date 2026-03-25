@@ -101,4 +101,4 @@
 
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Triple Stream Architecture (§5)
 *   [Glossary: Icecast, Live Stream, Mount Point, Opus, Triple Stream Architecture](../glossary.md)
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.9.0)
+*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)

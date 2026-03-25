@@ -173,7 +173,7 @@
 | ----------------------------------------------- | -------------- |
 | Actual audio recording (`recorder/__main__.py`) | v0.4.0         |
 | Uploader, BirdNET, BatDetect as Tier 2          | v0.6.0+        |
-| Icecast live Opus stream (Recorder → Icecast)   | v0.9.0         |
+| Icecast live Opus stream (Recorder → Icecast)   | v1.1.0         |
 | Quadlet generation for production               | v1.0.0         |
 
 > **Note:** Resource limits (CPU/RAM) and QoS (`oom_score_adj`) are now **in scope** for Phase 3 as part of the `Tier2ServiceSpec` model. See [ADR-0020](../adr/0020-resource-limits-qos.md).

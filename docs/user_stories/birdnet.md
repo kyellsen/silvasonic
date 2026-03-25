@@ -1,6 +1,6 @@
 # User Stories — BirdNET Service
 
-> **Service:** BirdNET · **Tier:** 2 (Immutable) · **Status:** Planned (since v1.1.0)
+> **Service:** BirdNET · **Tier:** 2 (Immutable) · **Status:** Planned (since v0.9.0)
 
 ---
 
@@ -19,7 +19,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 
@@ -43,7 +43,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 
@@ -66,7 +66,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 
@@ -91,7 +91,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 
@@ -119,7 +119,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 
@@ -143,7 +143,7 @@
 
 ### Milestone
 
-- **Milestone:** v1.1.0
+- **Milestone:** v0.9.0
 
 ### Referenzen
 

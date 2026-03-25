@@ -3,7 +3,7 @@
 > **Status:** Partial (since v0.2.0) · **Tier:** 2 (Application, Managed by Controller) · **Port:** 9500
 
 **AS-IS:** The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller.
-**Target:** Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) 🔮 Future (v0.9.0).
+**Target:** Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) 🔮 Future (v1.1.0).
 
 ---
 
@@ -21,7 +21,7 @@
 | Segment Duration via Profile           | ✅ Implemented | v0.4.0    | US-R07     |
 | Watchdog & Auto-Recovery               | ✅ Implemented | v0.4.0    | US-R06     |
 | OOM Protection (`oom_score_adj=-999`)  | ✅ Implemented | v0.4.0    | US-R02     |
-| Live-Stream (Opus → Icecast)           | 🔮 Future      | v0.9.0    | US-R04     |
+| Live-Stream (Opus → Icecast)           | 🔮 Future      | v1.1.0    | US-R04     |
 
 ---
 
@@ -36,7 +36,7 @@
 *   **Plug & Play:** Works with any ALSA-compatible USB microphone. Configuration is injected by the Controller via Microphone Profiles — no manual setup needed. (US-R01)
 *   **Uninterrupted Recording:** The recording continues under all circumstances — memory pressure, network failure, or service restarts. Data capture always has priority. (US-R02)
 *   **Dual Format:** Simultaneous raw (24-bit, native SR) and processed (48 kHz, 16-bit) output for science and ML. (US-R03)
-*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording. 🔮 Future (v0.9.0) (US-R04)
+*   **Live Monitoring:** Listen to the microphone in real-time via Icecast (Opus stream) without stopping or degrading the scientific recording. 🔮 Future (v1.1.0) (US-R04)
 *   **Multi-Microphone:** Run multiple microphones in parallel, each with its own isolated instance and workspace. (US-R05)
 *   **Self-Healing:** Automatic recovery from pipeline crashes, hangs, and hardware errors — without user intervention. (US-R06)
 *   **Configurable Segments:** Segment duration is configurable via Microphone Profile (default: 10s). (US-R07)
@@ -69,13 +69,13 @@ The Recorder is an **immutable Tier 2** service. This means:
     2.  **Processed:** Resampled to 48 kHz / S16LE by FFmpeg for consistent ML input.
 *   **Segment Writing:** Files are written in configurable segments (default: 10 seconds, configurable via Microphone Profile).
 *   **Buffer → Data Workflow:** While a segment is being actively written by FFmpeg, it is stored in `.buffer/{stream}/`. A `SegmentPromoter` thread detects completed segments and atomically moves them to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
-*   **Triple Stream Architecture** 🔮 Future (v0.9.0):
+*   **Triple Stream Architecture** 🔮 Future (v1.1.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 
 ### Outputs
 
 *   **Filesystem:** Segmented WAV files in `data/raw/` and `data/processed/` directories under the Recorder instance workspace on NVMe (moved there from `.buffer/`).
-*   **Icecast Stream:** 🔮 Future (v0.9.0) — Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
+*   **Icecast Stream:** 🔮 Future (v1.1.0) — Pushes Opus audio directly to an Icecast mount point (e.g., `/mic-ultramic.opus`).
 *   **Redis Heartbeats:** Fire-and-forget heartbeats via `SilvaService` base class (ADR-0019). Zero coupling to the recording loop — if Redis is unavailable, heartbeats are silently skipped.
 
 ---

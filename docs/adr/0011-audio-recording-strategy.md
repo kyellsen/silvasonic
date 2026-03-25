@@ -50,11 +50,11 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   Requires double the storage for local recordings (raw + processed).
     *   CPU overhead for real-time resampling to produce the processed stream (handled by FFmpeg, see ADR-0024).
 
-## 5. Future: Live Opus Stream (v0.9.0)
+## 5. Future: Live Opus Stream (v1.1.0)
 
 > **Status:** Planned
 
-In v0.9.0, the Recorder will produce a **third output stream**, extending the Dual Stream Architecture to a **Triple Stream Architecture**:
+In v1.1.0, the Recorder will produce a **third output stream**, extending the Dual Stream Architecture to a **Triple Stream Architecture**:
 
 | Stream        | Format    | Destination       | Purpose                         |
 | ------------- | --------- | ----------------- | ------------------------------- |

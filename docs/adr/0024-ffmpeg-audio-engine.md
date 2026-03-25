@@ -18,7 +18,7 @@ On a Raspberry Pi 5 running concurrent ML workloads (BirdNET, BatDetect), these 
 *   **Process Isolation:** FFmpeg runs as a separate OS process. If Python crashes, FFmpeg continues recording until SIGTERM. The Linux kernel can schedule FFmpeg on a dedicated CPU core, independent of Python and ML workloads.
 *   **Battle-Tested:** FFmpeg is used in billions of installations for audio/video capture. Its ALSA backend, resampler (`soxr`), and segment muxer are production-hardened.
 *   **Dual Stream in One Command:** FFmpeg's `-map` and `-f segment` produce both Raw and Processed streams simultaneously — replacing ~600 lines of Python with a single CLI invocation.
-*   **Future-Ready:** Adding the Triple Stream (Opus → Icecast, v0.9.0) is a single additional `-map` line.
+*   **Future-Ready:** Adding the Triple Stream (Opus → Icecast, v1.1.0) is a single additional `-map` line.
 
 ### 2.1. Segment Completion Strategy
 
@@ -46,7 +46,7 @@ This preserves the existing `.buffer/` → `data/` promotion pattern required by
     *   **3 Python dependencies removed** (`sounddevice`, `soundfile`, `soxr`).
     *   **~600 lines of complex Python replaced** by ~250 lines of subprocess management.
     *   **Testable without hardware** via FFmpeg's built-in signal generator (`lavfi`).
-    *   **Trivial extension** to Triple Stream (Opus → Icecast) in v0.9.0.
+    *   **Trivial extension** to Triple Stream (Opus → Icecast) in v1.1.0.
 *   **Negative:**
     *   FFmpeg becomes a system-level dependency (installed in Containerfile).
     *   Observability shifts from Python properties to FFmpeg stderr parsing.

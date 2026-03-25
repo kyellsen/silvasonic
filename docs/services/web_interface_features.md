@@ -52,12 +52,12 @@ Der Inspector zeigt **immer kontextabhängige Details** zum aktuell gewählten O
 | **Recorders** | *(Auswahl)* | **Audio-Preview →** Wavesurfer.js Waveform + Spektrogramm der letzten Aufnahme | v0.8.0+ |
 | **Processor** | Indexer-Zusammenfassung: Dateien heute, Gesamtbestand, letzte Bereinigung | **Datei-Zeile →** Datei-Details: Pfad, Dauer, Sample Rate, Kanäle, Größe, Upload-/Analyse-Status | v0.8.0 |
 | **Uploaders** | Queue-Summe, Durchsatz, letzter Upload | **Uploader-Card →** Target-Details: URL, Auth, Queue, letzte Fehler, Retries | v0.8.0 |
-| **Birds** | Artenzusammenfassung: Gesamtarten, Nachweise heute | **Species-Card →** Art-Steckbrief: Bild, Name (de + sci), Taxonomie, Häufigkeit, Konfidenz | v1.1.0 |
-| **Birds** | *(Analyzer-Tab)* | **Erkennungs-Zeile →** Wavesurfer.js Spektrogramm + Annotation-Region, Konfidenzwert, Aufnahme-Link | v1.1.0 |
+| **Birds** | Artenzusammenfassung: Gesamtarten, Nachweise heute | **Species-Card →** Art-Steckbrief: Bild, Name (de + sci), Taxonomie, Häufigkeit, Konfidenz | v0.9.0 |
+| **Birds** | *(Analyzer-Tab)* | **Erkennungs-Zeile →** Wavesurfer.js Spektrogramm + Annotation-Region, Konfidenzwert, Aufnahme-Link | v0.9.0 |
 | **Bats** | Artenzusammenfassung (analog Birds) | **Species-Card →** Art-Steckbrief + Ultraschall-Spektrogramm | v1.3.0 |
 | **Bats** | *(Analyzer-Tab)* | **Erkennungs-Zeile →** Spektrogramm-Overlay (analog Birds) | v1.3.0 |
 | **Weather** | Aktuelle Messwerte compact | **Chart-Punkt →** Detail-Werte zum Zeitpunkt + korrelierte Artnachweise | v1.2.0 |
-| **Livesound** | Stream-Status: Zuhörer, Bitrate, Latenz | **Recorder-Auswahl →** Live-Waveform, Pegelwert, Stream-URL (kopierbar) | v0.9.0 |
+| **Livesound** | Stream-Status: Zuhörer, Bitrate, Latenz | **Recorder-Auswahl →** Live-Waveform, Pegelwert, Stream-URL (kopierbar) | v1.1.0 |
 | **Settings / About** | — (Inspector leer oder verborgen) | — | — |
 
 ---
@@ -120,11 +120,11 @@ Der Inspector zeigt **immer kontextabhängige Details** zum aktuell gewählten O
 
 | Feature | Beschreibung | Milestone |
 |---------|-------------|-----------|
-| Tab: Discovery | Pokédex-Style Species-Cards: Art-Bild, Name (Deutsch + Wissenschaftlich), Nachweis-Zähler, Konfidenz | v1.1.0 |
-| Tab: Analyzer | Datentabelle mit Filtern (Datum, Art, Konfidenz). Zeilen-Klick → Inspector mit Wavesurfer Annotation | v1.1.0 |
-| Tab: Statistics | ECharts: Aktivitäts-Heatmap, Top-10, Artendiversität über Zeit | v1.1.0 |
-| Bird Detail (`/birds/{id}`) | Art-Detailseite: Wikipedia-Info, Bild, Beschreibung, Timeline aller Nachweise | v1.1.0 |
-| Konfidenz-Schwellenwert | Filter: nur Nachweise über eingestelltem Schwellenwert anzeigen | v1.1.0 |
+| Tab: Discovery | Pokédex-Style Species-Cards: Art-Bild, Name (Deutsch + Wissenschaftlich), Nachweis-Zähler, Konfidenz | v0.9.0 |
+| Tab: Analyzer | Datentabelle mit Filtern (Datum, Art, Konfidenz). Zeilen-Klick → Inspector mit Wavesurfer Annotation | v0.9.0 |
+| Tab: Statistics | ECharts: Aktivitäts-Heatmap, Top-10, Artendiversität über Zeit | v0.9.0 |
+| Bird Detail (`/birds/{id}`) | Art-Detailseite: Wikipedia-Info, Bild, Beschreibung, Timeline aller Nachweise | v0.9.0 |
+| Konfidenz-Schwellenwert | Filter: nur Nachweise über eingestelltem Schwellenwert anzeigen | v0.9.0 |
 
 ---
 
@@ -154,10 +154,10 @@ Der Inspector zeigt **immer kontextabhängige Details** zum aktuell gewählten O
 
 | Feature | Beschreibung | Milestone |
 |---------|-------------|-----------|
-| Recorder-Auswahl | Dropdown/Cards: aktive Mikrofone zum Live-Abhören auswählen | v0.9.0 |
-| Audio-Player | Browser-basierter Opus-Stream-Player (Play/Stop/Volume) | v0.9.0 |
-| Waveform Visualization | Wavesurfer.js Live-Waveform des aktiven Streams | v0.9.0 |
-| Stream-URL teilen | Stabile URL pro Mikrofon-Stream für VLC/externe Player | v0.9.0 |
+| Recorder-Auswahl | Dropdown/Cards: aktive Mikrofone zum Live-Abhören auswählen | v1.1.0 |
+| Audio-Player | Browser-basierter Opus-Stream-Player (Play/Stop/Volume) | v1.1.0 |
+| Waveform Visualization | Wavesurfer.js Live-Waveform des aktiven Streams | v1.1.0 |
+| Stream-URL teilen | Stabile URL pro Mikrofon-Stream für VLC/externe Player | v1.1.0 |
 
 ---
 
@@ -404,8 +404,8 @@ Diese Features sind essenziell, werden aber **absichtlich nicht** im Frontend ex
 |-----------|---------------|
 | ✅ v0.2.0 (Web-Mock) | ~12 (Shell-Grundstruktur, Station Name, About) |
 | v0.8.0 (Web-Interface) | ~57 (Dashboard-Live, Recorders inkl. Enrollment/Watchdog, Uploaders inkl. Audit-Log, Settings inkl. Confidence/Window/Bandwidth, Auth) |
-| v0.9.0 (Icecast) | ~4 (Livesound-Player, Stream-URL) |
-| v1.1.0 (BirdNET) | ~5 (Birds Discovery/Analyzer/Statistics) |
+| v1.1.0 (Icecast) | ~4 (Livesound-Player, Stream-URL) |
+| v0.9.0 (BirdNET) | ~5 (Birds Discovery/Analyzer/Statistics) |
 | v1.2.0 (Weather) | ~4 (Weather Tabs) |
 | v1.3.0 (BatDetect) | ~4 (Bats Discovery/Analyzer/Statistics) |
 | v1.5.0 (Tailscale) | ~3 (VPN-Toggle, Status, Logs) |
