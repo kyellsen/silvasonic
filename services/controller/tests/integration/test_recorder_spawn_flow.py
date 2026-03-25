@@ -22,7 +22,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
-from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, UsbInfo, upsert_device
+from silvasonic.controller.device_repository import upsert_device
+from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, UsbInfo
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
 from silvasonic.test_utils.helpers import build_postgres_url

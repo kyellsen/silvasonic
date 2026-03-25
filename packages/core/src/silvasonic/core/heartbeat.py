@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 import json
 import time
+from collections.abc import Callable
 from typing import Any, Protocol
 
 import structlog
@@ -35,20 +36,8 @@ DEFAULT_HEARTBEAT_TTL_S: int = 30
 """Default TTL (seconds) for heartbeat Redis keys (should be ≥ 3x interval)."""
 
 
-class HealthProvider(Protocol):
-    """Callable that returns the current health status dict."""
-
-    def __call__(self) -> dict[str, Any]:
-        """Return the current health status dict."""
-        ...
-
-
-class MetaProvider(Protocol):
-    """Callable that returns service-specific heartbeat metadata."""
-
-    def __call__(self) -> dict[str, Any]:
-        """Return service-specific heartbeat metadata."""
-        ...
+StatusProvider = Callable[[], dict[str, Any]]
+"""Type alias for callables returning a status dict (health or meta)."""
 
 
 class ResourceCollectorProtocol(Protocol):
@@ -100,24 +89,16 @@ class HeartbeatPublisher:
         self._channel = channel
         self._interval = interval
         self._task: asyncio.Task[None] | None = None
-        self._health_fn: HealthProvider | None = None
-        self._meta_fn: MetaProvider | None = None
+        self._health_fn: StatusProvider | None = None
+        self._meta_fn: StatusProvider | None = None
         self._activity: str = "idle"
 
-    def set_health_provider(self, fn: HealthProvider) -> None:
-        """Register a callable that returns the health dict.
-
-        Expected signature: ``() -> dict`` returning
-        ``{"status": "ok"|"error", "components": {...}}``.
-        """
+    def set_health_provider(self, fn: StatusProvider) -> None:
+        """Register a callable that returns the health dict."""
         self._health_fn = fn
 
-    def set_meta_provider(self, fn: MetaProvider) -> None:
-        """Register a callable that returns additional meta fields.
-
-        Expected signature: ``() -> dict`` returning any service-specific
-        metadata (merged with ``resources``).
-        """
+    def set_meta_provider(self, fn: StatusProvider) -> None:
+        """Register a callable that returns additional meta fields."""
         self._meta_fn = fn
 
     def set_activity(self, activity: str) -> None:

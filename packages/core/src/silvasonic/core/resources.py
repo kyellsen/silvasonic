@@ -12,6 +12,7 @@ populate the ``meta.resources`` field of heartbeat payloads.  The
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -47,11 +48,7 @@ class HostResources(BaseModel):
 
 
 def _collect_disk_usage(path: Path) -> tuple[float, float, float] | None:
-    """Return ``(used_gb, total_gb, percent)`` for *path*, or ``None``.
-
-    Returns ``None`` when the path does not exist or ``shutil.disk_usage``
-    fails — callers treat ``None`` as "no storage info available".
-    """
+    """Return (used_gb, total_gb, percent) for *path*, or None."""
     if not path.exists():
         return None
     usage = shutil.disk_usage(path)
@@ -60,6 +57,18 @@ def _collect_disk_usage(path: Path) -> tuple[float, float, float] | None:
         round(usage.total / 1024**3, 2),
         round(usage.used / usage.total * 100, 1),
     )
+
+
+def _safe_collect(label: str, fn: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    """Run *fn* and return its result, returning {} on any error."""
+    try:
+        return fn()
+    except (psutil.Error, OSError) as exc:
+        logger.debug(f"{label}_failed", error=type(exc).__name__)
+        return {}
+    except Exception:
+        logger.debug(f"{label}_failed", exc_info=True)
+        return {}
 
 
 class ResourceCollector:
@@ -80,18 +89,14 @@ class ResourceCollector:
         self._process.cpu_percent(interval=None)
 
     def collect(self) -> dict[str, Any]:
-        """Collect current per-process resource usage.
+        """Collect current per-process resource usage."""
 
-        Returns a dict suitable for inclusion in ``meta.resources``.
-        Returns an empty dict if collection fails.
-        """
-        try:
+        def _inner() -> dict[str, Any]:
             resources = ProcessResources(
                 cpu_percent=round(self._process.cpu_percent(interval=None), 1),
                 memory_mb=round(self._process.memory_info().rss / 1024 / 1024, 2),
                 num_threads=self._process.num_threads(),
             )
-
             if self._workspace is not None:
                 disk = _collect_disk_usage(self._workspace)
                 if disk is not None:
@@ -100,14 +105,9 @@ class ResourceCollector:
                         resources.storage_total_gb,
                         resources.storage_percent,
                     ) = disk
-
             return resources.model_dump(exclude_none=True)
-        except (psutil.Error, OSError) as exc:
-            logger.debug("resource_collection_failed", error=type(exc).__name__)
-            return {}
-        except Exception:
-            logger.debug("resource_collection_failed", exc_info=True)
-            return {}
+
+        return _safe_collect("resource_collection", _inner)
 
 
 class HostResourceCollector:
@@ -125,11 +125,9 @@ class HostResourceCollector:
         self._storage_path = Path(storage_path) if storage_path else None
 
     def collect(self) -> dict[str, Any]:
-        """Collect host-level resource metrics.
+        """Collect host-level resource metrics."""
 
-        Returns a dict suitable for inclusion in ``meta.host_resources``.
-        """
-        try:
+        def _inner() -> dict[str, Any]:
             mem = psutil.virtual_memory()
             resources = HostResources(
                 cpu_percent=round(psutil.cpu_percent(interval=None), 1),
@@ -138,7 +136,6 @@ class HostResourceCollector:
                 memory_total_mb=round(mem.total / 1024 / 1024, 1),
                 memory_percent=round(mem.percent, 1),
             )
-
             if self._storage_path is not None:
                 disk = _collect_disk_usage(self._storage_path)
                 if disk is not None:
@@ -147,11 +144,6 @@ class HostResourceCollector:
                         resources.storage_total_gb,
                         resources.storage_percent,
                     ) = disk
-
             return resources.model_dump(exclude_none=True)
-        except (psutil.Error, OSError) as exc:
-            logger.debug("host_resource_collection_failed", error=type(exc).__name__)
-            return {}
-        except Exception:
-            logger.debug("host_resource_collection_failed", exc_info=True)
-            return {}
+
+        return _safe_collect("host_resource_collection", _inner)

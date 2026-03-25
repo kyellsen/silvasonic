@@ -45,8 +45,12 @@ def bare_service() -> "RecorderService":
     svc._cfg.workspace_path = MagicMock()
     svc._cfg.ffmpeg_binary = "ffmpeg"
     svc._cfg.ffmpeg_loglevel = "warning"
+    svc._cfg.recorder_watchdog_max_restarts = 5
+    svc._cfg.recorder_watchdog_check_interval_s = 5.0
+    svc._cfg.recorder_watchdog_stall_timeout_s = 60.0
     svc._pipeline_config = FFmpegConfig()
     svc._pipeline = None
+    svc._watchdog = None
     return svc
 
 
@@ -292,19 +296,23 @@ class TestRecorderServiceRun:
         mock_pipeline.segments_promoted = 0
         mock_pipeline.stderr_errors = []
 
+        mock_watchdog = MagicMock()
+        mock_watchdog.watch = AsyncMock()
+
         with (
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
+            patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
             patch.object(bare_service, "_validate_device", return_value=True),
         ):
-            # Set shutdown after a short delay
-            async def trigger_shutdown() -> None:
+            # Configure watchdog.watch to set shutdown after a short delay
+            async def fake_watch(event: asyncio.Event) -> None:
                 await asyncio.sleep(0.1)
-                bare_service._shutdown_event.set()
+                event.set()
 
-            shutdown_task = asyncio.create_task(trigger_shutdown())
+            mock_watchdog.watch.side_effect = fake_watch
+
             await bare_service.run()
-            await shutdown_task
 
         mock_pipeline.start.assert_called_once()
         mock_pipeline.stop.assert_called_once()
@@ -342,19 +350,23 @@ class TestRecorderServiceRun:
         mock_pipeline.segments_promoted = 0
         mock_pipeline.stderr_errors = []
 
+        mock_watchdog = MagicMock()
+        mock_watchdog.watch = AsyncMock()
+
         with (
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
+            patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
             patch.object(bare_service, "_validate_device", return_value=True),
         ):
-            # Set shutdown after a short delay
-            async def trigger_shutdown() -> None:
-                await asyncio.sleep(0.1)
-                bare_service._shutdown_event.set()
 
-            shutdown_task = asyncio.create_task(trigger_shutdown())
+            async def fake_watch(event: asyncio.Event) -> None:
+                await asyncio.sleep(0.1)
+                event.set()
+
+            mock_watchdog.watch.side_effect = fake_watch
+
             await bare_service.run()
-            await shutdown_task
 
         # Pipeline should have been stopped
         mock_pipeline.stop.assert_called_once()
@@ -487,6 +499,11 @@ class TestGetExtraMeta:
         assert meta["recording"]["ffmpeg_pid"] is None
         assert meta["recording"]["raw_enabled"] is True
         assert meta["recording"]["processed_enabled"] is True
+        # Watchdog fields present even without watchdog
+        assert meta["recording"]["watchdog_restarts"] == 0
+        assert meta["recording"]["watchdog_max_restarts"] == 5
+        assert meta["recording"]["watchdog_giving_up"] is False
+        assert meta["recording"]["watchdog_last_failure"] is None
 
     def test_extra_meta_with_pipeline(self, bare_service: "RecorderService") -> None:
         """Returns recording metadata from active pipeline."""
@@ -502,6 +519,21 @@ class TestGetExtraMeta:
         assert meta["recording"]["ffmpeg_pid"] == 1234
         assert meta["recording"]["raw_enabled"] is True
         assert meta["recording"]["processed_enabled"] is True
+
+    def test_extra_meta_includes_watchdog(self, bare_service: "RecorderService") -> None:
+        """Heartbeat metadata includes watchdog fields when watchdog is set."""
+        mock_watchdog = MagicMock()
+        mock_watchdog.restart_count = 2
+        mock_watchdog.max_restarts = 5
+        mock_watchdog.is_giving_up = False
+        mock_watchdog.last_failure_reason = "FFmpeg process exited (returncode=-9)"
+        bare_service._watchdog = mock_watchdog
+
+        meta = bare_service.get_extra_meta()
+        assert meta["recording"]["watchdog_restarts"] == 2
+        assert meta["recording"]["watchdog_max_restarts"] == 5
+        assert meta["recording"]["watchdog_giving_up"] is False
+        assert "returncode=-9" in meta["recording"]["watchdog_last_failure"]
 
 
 # ---------------------------------------------------------------------------

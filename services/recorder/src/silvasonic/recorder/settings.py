@@ -49,6 +49,11 @@ class RecorderSettings(BaseSettings):
     ffmpeg_binary: str = "ffmpeg"
     ffmpeg_loglevel: str = "warning"
 
+    # Watchdog configuration (US-R06)
+    recorder_watchdog_max_restarts: int = 5
+    recorder_watchdog_check_interval_s: float = 5.0
+    recorder_watchdog_stall_timeout_s: float = 60.0
+
     def parse_profile(self) -> MicrophoneProfile | None:
         """Parse ``recorder_config_json`` into a :class:`MicrophoneProfile`.
 

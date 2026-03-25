@@ -15,10 +15,10 @@ import pathlib
 from pathlib import Path
 
 import pytest
+from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import (
     DeviceInfo,
     DeviceScanner,
-    upsert_device,
 )
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy import text

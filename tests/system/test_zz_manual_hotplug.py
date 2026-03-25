@@ -22,7 +22,8 @@ import time
 from pathlib import Path
 
 import pytest
-from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, upsert_device
+from silvasonic.controller.device_repository import upsert_device
+from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 

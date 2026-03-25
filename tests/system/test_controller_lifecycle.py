@@ -30,7 +30,8 @@ from silvasonic.controller.container_spec import (
     RestartPolicy,
     Tier2ServiceSpec,
 )
-from silvasonic.controller.device_scanner import DeviceScanner, UsbInfo, upsert_device
+from silvasonic.controller.device_repository import upsert_device
+from silvasonic.controller.device_scanner import DeviceScanner, UsbInfo
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator

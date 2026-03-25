@@ -419,8 +419,6 @@ class TestFFmpegPipeline:
             pipeline.start()
 
         assert pipeline.segments_promoted == 8
-        assert pipeline.raw_segments_promoted == 5
-        assert pipeline.processed_segments_promoted == 3
 
         mock_proc.poll.return_value = 0
         mock_proc.returncode = 0
@@ -474,9 +472,10 @@ class TestFFmpegPipeline:
             pipeline = FFmpegPipeline(config, ws, mock_source=True)
             pipeline.start()
 
-        # raw_promoter should not be created, but processed should
-        assert pipeline._raw_promoter is None
-        assert pipeline._processed_promoter is not None
+        # Only processed promoter should be created (1 item in _promoters)
+        assert len(pipeline._promoters) == 1
+        mock_promoter.assert_called_once()
+        assert mock_promoter.call_args.kwargs["stream_name"] == "processed"
 
         mock_proc.poll.return_value = 0
         mock_proc.returncode = 0
@@ -499,10 +498,106 @@ class TestFFmpegPipeline:
             pipeline = FFmpegPipeline(config, ws, mock_source=True)
             pipeline.start()
 
-        # processed_promoter should not be created, but raw should
-        assert pipeline._raw_promoter is not None
-        assert pipeline._processed_promoter is None
+        # Only raw promoter should be created (1 item in _promoters)
+        assert len(pipeline._promoters) == 1
+        mock_promoter.assert_called_once()
+        assert mock_promoter.call_args.kwargs["stream_name"] == "raw"
 
         mock_proc.poll.return_value = 0
         mock_proc.returncode = 0
+        pipeline.stop()
+
+    @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")
+    def test_returncode_while_running(self, mock_promoter: MagicMock, tmp_path: Path) -> None:
+        """Returncode returns poll() result while process is running."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig(raw_enabled=False, processed_enabled=False)
+
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None  # Running
+        mock_proc.stderr = iter([])
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
+            pipeline = FFmpegPipeline(config, ws, mock_source=True)
+            pipeline.start()
+
+        # While running, returncode delegates to poll()
+        assert pipeline.returncode is None
+
+        # After exit, poll() returns the exit code
+        mock_proc.poll.return_value = -9
+        assert pipeline.returncode == -9
+
+        mock_proc.returncode = -9
+        pipeline.stop()
+
+    def test_returncode_after_stop(self, tmp_path: Path) -> None:
+        """Returncode returns _last_returncode after stop() clears _proc."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig(raw_enabled=False, processed_enabled=False)
+
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None  # Running
+        mock_proc.stderr = iter([])
+        mock_proc.returncode = 42  # Set after wait() in real life
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
+            pipeline = FFmpegPipeline(config, ws, mock_source=True)
+            pipeline.start()
+
+        # poll() returns None → stop() enters the cleanup block → sets _last_returncode
+        pipeline.stop()
+
+        # After stop, _proc is None, but _last_returncode persists
+        assert pipeline._proc is None
+        assert pipeline.returncode == 42
+
+    def test_returncode_initial_none(self, tmp_path: Path) -> None:
+        """Returncode is None before any process has started."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig()
+        pipeline = FFmpegPipeline(config, ws)
+        assert pipeline.returncode is None
+
+    @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")
+    def test_reentrant_start_clears_stderr(self, mock_promoter: MagicMock, tmp_path: Path) -> None:
+        """start() clears previous stderr_errors for re-entrant lifecycle."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig(raw_enabled=False, processed_enabled=False)
+
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None
+        mock_proc.stderr = iter([b"[error] first run problem\n"])
+        mock_proc.returncode = 0
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
+            pipeline = FFmpegPipeline(config, ws, mock_source=True)
+            pipeline.start()
+
+            # Wait for stderr thread to process
+            if pipeline._stderr_thread is not None:
+                pipeline._stderr_thread.join(timeout=2)
+
+            assert len(pipeline.stderr_errors) >= 1
+
+            # Stop and restart
+            mock_proc.poll.return_value = 0
+            pipeline.stop()
+
+            mock_proc2 = MagicMock()
+            mock_proc2.pid = 2
+            mock_proc2.poll.return_value = None
+            mock_proc2.stderr = iter([])  # Clean run
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc2):
+            pipeline.start()
+
+        # After re-start, old errors should be cleared
+        assert pipeline.stderr_errors == []
+
+        mock_proc2.poll.return_value = 0
+        mock_proc2.returncode = 0
         pipeline.stop()

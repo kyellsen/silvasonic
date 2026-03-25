@@ -167,7 +167,7 @@ class ReconciliationLoop:
 
     async def _reconcile_once(self) -> None:
         """Execute a single reconciliation cycle."""
-        # Step 1: Rescan hardware → persist to DB (if scanner available)
+        # Step 1: Rescan hardware → persist to DB
         if self._scanner is not None:
             await self._rescan_hardware()
 

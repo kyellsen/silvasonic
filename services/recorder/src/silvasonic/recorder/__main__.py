@@ -21,6 +21,7 @@ import structlog
 from silvasonic.core.service import SilvaService
 from silvasonic.recorder.ffmpeg_pipeline import FFmpegConfig, FFmpegPipeline
 from silvasonic.recorder.settings import RecorderSettings
+from silvasonic.recorder.watchdog import RecordingWatchdog
 from silvasonic.recorder.workspace import ensure_workspace
 
 log = structlog.get_logger()
@@ -61,6 +62,7 @@ class RecorderService(SilvaService):
             log.info("recorder.using_defaults")
 
         self._pipeline: FFmpegPipeline | None = None
+        self._watchdog: RecordingWatchdog | None = None
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Include recording metadata in heartbeat (ADR-0019 §2.4)."""
@@ -76,6 +78,14 @@ class RecorderService(SilvaService):
                 "ffmpeg_pid": self._pipeline.ffmpeg_pid if self._pipeline else None,
                 "raw_enabled": self._pipeline_config.raw_enabled,
                 "processed_enabled": self._pipeline_config.processed_enabled,
+                "watchdog_restarts": self._watchdog.restart_count if self._watchdog else 0,
+                "watchdog_max_restarts": self._watchdog.max_restarts
+                if self._watchdog
+                else self._cfg.recorder_watchdog_max_restarts,
+                "watchdog_giving_up": self._watchdog.is_giving_up if self._watchdog else False,
+                "watchdog_last_failure": self._watchdog.last_failure_reason
+                if self._watchdog
+                else None,
             },
         }
         return meta
@@ -133,12 +143,18 @@ class RecorderService(SilvaService):
             self.health.update_status("recorder", False, "Pipeline start failed")
             return
 
-        # Step 4: Monitor loop — FFmpeg works autonomously
+        # Step 4: Start watchdog + monitor loop
+        self._watchdog = RecordingWatchdog(
+            self._pipeline,
+            max_restarts=self._cfg.recorder_watchdog_max_restarts,
+            check_interval_s=self._cfg.recorder_watchdog_check_interval_s,
+            stall_timeout_s=self._cfg.recorder_watchdog_stall_timeout_s,
+        )
         rec_task = asyncio.create_task(self._monitor_recording())
 
         try:
-            # FFmpeg runs in its own process — Python just waits for shutdown
-            await self._shutdown_event.wait()
+            # Watchdog handles monitoring + restarts; exits on shutdown or give-up
+            await self._watchdog.watch(self._shutdown_event)
         except asyncio.CancelledError:
             pass
         finally:

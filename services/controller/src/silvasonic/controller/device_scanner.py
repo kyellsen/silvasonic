@@ -199,11 +199,3 @@ class DeviceScanner:
 
         log.debug("device_scanner.scan_complete", devices_found=len(devices))
         return devices
-
-
-# ---------------------------------------------------------------------------
-# Backwards-compat re-export (moved to device_repository.py)
-# ---------------------------------------------------------------------------
-from silvasonic.controller.device_repository import (  # noqa: E402
-    upsert_device as upsert_device,
-)

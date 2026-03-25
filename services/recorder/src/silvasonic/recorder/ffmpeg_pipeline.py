@@ -385,14 +385,12 @@ class FFmpegPipeline:
 
         self._proc: subprocess.Popen[bytes] | None = None
         self._stderr_thread: threading.Thread | None = None
-        self._raw_promoter: SegmentPromoter | None = None
-        self._processed_promoter: SegmentPromoter | None = None
+        self._promoters: list[SegmentPromoter] = []
         self._active = False
         self._stderr_errors: list[str] = []
         self._stderr_lock = threading.Lock()
-        # Cached counters — survive past stop() when promoters are cleared
-        self._final_raw_promoted = 0
-        self._final_processed_promoted = 0
+        self._final_promoted = 0  # cached count surviving past stop()
+        self._last_returncode: int | None = None
 
     @property
     def is_active(self) -> bool:
@@ -401,22 +399,10 @@ class FFmpegPipeline:
 
     @property
     def segments_promoted(self) -> int:
-        """Total segments promoted across both streams."""
-        return self.raw_segments_promoted + self.processed_segments_promoted
-
-    @property
-    def raw_segments_promoted(self) -> int:
-        """Segments promoted in the raw stream."""
-        if self._raw_promoter is not None:
-            return self._raw_promoter.segments_promoted
-        return self._final_raw_promoted
-
-    @property
-    def processed_segments_promoted(self) -> int:
-        """Segments promoted in the processed stream."""
-        if self._processed_promoter is not None:
-            return self._processed_promoter.segments_promoted
-        return self._final_processed_promoted
+        """Total segments promoted across all streams."""
+        if self._promoters:
+            return sum(p.segments_promoted for p in self._promoters)
+        return self._final_promoted
 
     @property
     def stderr_errors(self) -> list[str]:
@@ -429,13 +415,27 @@ class FFmpegPipeline:
         """PID of the FFmpeg subprocess, or ``None``."""
         return self._proc.pid if self._proc else None
 
+    @property
+    def returncode(self) -> int | None:
+        """Return code of the last FFmpeg process, or ``None``."""
+        if self._proc is not None:
+            return self._proc.poll()
+        return self._last_returncode
+
     def start(self) -> None:
         """Start FFmpeg and segment promoter threads.
+
+        Can be called again after ``stop()`` to restart the pipeline
+        (re-entrant lifecycle, used by ``RecordingWatchdog``).
 
         Raises:
             FileNotFoundError: If the FFmpeg binary is not found.
             subprocess.SubprocessError: If FFmpeg fails to start.
         """
+        # Clear stale state from previous run (re-entrant support)
+        with self._stderr_lock:
+            self._stderr_errors.clear()
+
         cmd = self._config.build_ffmpeg_args(
             device=self._device,
             workspace=self._workspace,
@@ -473,21 +473,19 @@ class FFmpegPipeline:
         self._stderr_thread.start()
 
         # Start segment promoters for enabled streams
-        if self._config.raw_enabled:
-            self._raw_promoter = SegmentPromoter(
-                buffer_dir=self._workspace / ".buffer" / "raw",
-                data_dir=self._workspace / "data" / "raw",
-                stream_name="raw",
-            )
-            self._raw_promoter.start()
-
-        if self._config.processed_enabled:
-            self._processed_promoter = SegmentPromoter(
-                buffer_dir=self._workspace / ".buffer" / "processed",
-                data_dir=self._workspace / "data" / "processed",
-                stream_name="processed",
-            )
-            self._processed_promoter.start()
+        self._promoters = []
+        for stream, enabled in (
+            ("raw", self._config.raw_enabled),
+            ("processed", self._config.processed_enabled),
+        ):
+            if enabled:
+                p = SegmentPromoter(
+                    buffer_dir=self._workspace / ".buffer" / stream,
+                    data_dir=self._workspace / "data" / stream,
+                    stream_name=stream,
+                )
+                p.start()
+                self._promoters.append(p)
 
         self._active = True
         log.info("pipeline.started", ffmpeg_pid=self._proc.pid)
@@ -539,9 +537,9 @@ class FFmpegPipeline:
             except OSError:  # pragma: no cover — process already exited
                 pass
 
-            returncode = self._proc.returncode
+            self._last_returncode = self._proc.returncode
             self._proc = None
-            log.info("pipeline.ffmpeg_exited", returncode=returncode)
+            log.info("pipeline.ffmpeg_exited", returncode=self._last_returncode)
 
         # Wait for stderr thread to finish
         if self._stderr_thread is not None:
@@ -549,22 +547,17 @@ class FFmpegPipeline:
             self._stderr_thread = None
 
         # Stop promoters (they do one final pass promoting ALL remaining files)
-        for promoter in (self._raw_promoter, self._processed_promoter):
-            if promoter is not None:
-                promoter.stop()
-                promoter.join(timeout=3)
+        for promoter in self._promoters:
+            promoter.stop()
+            promoter.join(timeout=3)
 
+        promoted = self.segments_promoted
         log.info(
             "pipeline.stopped",
-            raw_promoted=self.raw_segments_promoted,
-            processed_promoted=self.processed_segments_promoted,
+            segments_promoted=promoted,
             stderr_errors=len(self.stderr_errors),
         )
 
         # Cache final counts before clearing promoter references
-        self._final_raw_promoted = self._raw_promoter.segments_promoted if self._raw_promoter else 0
-        self._final_processed_promoted = (
-            self._processed_promoter.segments_promoted if self._processed_promoter else 0
-        )
-        self._raw_promoter = None
-        self._processed_promoter = None
+        self._final_promoted = promoted
+        self._promoters = []

@@ -91,26 +91,22 @@ class SilvasonicPodmanClient:
 
     @property
     def is_connected(self) -> bool:
-        """Return ``True`` if the client is connected and healthy."""
+        """True if the client is connected and healthy."""
         return self._connected
 
     @property
     def socket_url(self) -> str:
-        """Return the ``unix://`` URL used for the Podman socket."""
+        """The ``unix://`` URL for the Podman socket."""
         return f"unix://{self._socket_path}"
 
     @property
-    def socket_path(self) -> str:  # pragma: no cover — integration-tested
-        """Return the filesystem path to the Podman socket."""
+    def socket_path(self) -> str:
+        """Filesystem path to the Podman socket."""
         return self._socket_path
 
     @property
     def containers(self) -> Any:  # pragma: no cover — integration-tested
-        """Expose the Podman containers API.
-
-        Raises:
-            RuntimeError: If not connected (call ``connect()`` first).
-        """
+        """Expose the Podman containers API."""
         if self._client is None:
             msg = "PodmanClient is not connected — call connect() first"
             raise RuntimeError(msg)

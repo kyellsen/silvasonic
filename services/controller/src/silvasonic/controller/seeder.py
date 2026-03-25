@@ -1,13 +1,7 @@
 """Startup seeders for Controller — idempotent DB bootstrapping (ADR-0023).
 
-Three seeders run on every Controller startup in sequence:
-
-1. **ConfigSeeder** — Populates ``system_config`` with factory defaults.
-2. **ProfileBootstrapper** — Seeds microphone profiles from bundled YAML files.
-3. **AuthSeeder** — Creates default admin user with bcrypt-hashed password.
-
-All seeders use ``INSERT … ON CONFLICT DO NOTHING`` semantics: existing
-user-modified values are **never** overwritten.
+ConfigSeeder, ProfileBootstrapper, AuthSeeder run in sequence on startup.
+All use INSERT ON CONFLICT DO NOTHING — existing user values are never overwritten.
 """
 
 from __future__ import annotations
@@ -40,37 +34,30 @@ log = structlog.get_logger()
 # Paths
 # ---------------------------------------------------------------------------
 def _find_service_root(start: Path = Path(__file__).resolve()) -> Path:
-    """Walk up until ``pyproject.toml`` is found (service root)."""
+    """Walk up until pyproject.toml is found."""
     for parent in start.parents:
         if (parent / "pyproject.toml").exists():
             return parent
-    return start.parent  # Fallback: same directory
+    return start.parent
 
 
 @cache
 def _get_config_dir() -> Path:
-    """Return config dir, resolved lazily on first call."""
     return _find_service_root() / "config"
 
 
 @cache
 def _get_defaults_yml() -> Path:
-    """Return defaults.yml path, resolved lazily on first call."""
     return _get_config_dir() / "defaults.yml"
 
 
 @cache
 def _get_profiles_dir() -> Path:
-    """Return profiles dir, resolved lazily on first call."""
     return _get_config_dir() / "profiles"
 
 
 def _load_defaults(path: Path) -> dict[str, Any] | None:
-    """Load and validate ``defaults.yml``.
-
-    Returns:
-        Parsed dict or ``None`` if file is missing/invalid.
-    """
+    """Load and validate defaults.yml. Returns parsed dict or None."""
     if not path.exists():
         log.warning("seeder.no_defaults_file", path=str(path))
         return None
@@ -81,14 +68,8 @@ def _load_defaults(path: Path) -> dict[str, Any] | None:
     return raw
 
 
-# ---------------------------------------------------------------------------
-# ConfigSeeder
-# ---------------------------------------------------------------------------
 class ConfigSeeder:
-    """Seed ``system_config`` with factory defaults (ADR-0023 §2.3).
-
-    Each key is inserted only if it does **not** already exist.
-    """
+    """Seed ``system_config`` with factory defaults (ADR-0023)."""
 
     def __init__(self, defaults_path: Path | None = None) -> None:
         """Initialize with path to defaults YAML file."""
@@ -142,16 +123,8 @@ class ConfigSeeder:
                 log.debug("seeder.config.skipped", key=key)
 
 
-# ---------------------------------------------------------------------------
-# ProfileBootstrapper
-# ---------------------------------------------------------------------------
 class ProfileBootstrapper:
-    """Seed ``microphone_profiles`` from YAML files (ADR-0016).
-
-    Reads all ``*.yml`` files from the ``profiles/`` directory,
-    validates each against the ``MicrophoneProfile`` Pydantic schema,
-    and inserts into the DB if the ``slug`` does not already exist.
-    """
+    """Seed ``microphone_profiles`` from YAML profile files (ADR-0016)."""
 
     def __init__(self, profiles_dir: Path | None = None) -> None:
         """Initialize with path to profiles directory."""
@@ -224,15 +197,8 @@ class ProfileBootstrapper:
             log.info("seeder.profiles.inserted", slug=slug, file=yml_path.name)
 
 
-# ---------------------------------------------------------------------------
-# AuthSeeder
-# ---------------------------------------------------------------------------
 class AuthSeeder:
-    """Seed default admin user (ADR-0023 §2.4).
-
-    Creates a default admin with bcrypt-hashed password.
-    Skips if a user with the same username already exists.
-    """
+    """Seed default admin user with bcrypt-hashed password (ADR-0023)."""
 
     def __init__(self, defaults_path: Path | None = None) -> None:
         """Initialize with path to defaults YAML file."""
@@ -287,15 +253,8 @@ class AuthSeeder:
         log.info("seeder.auth.created", username=username)
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 async def run_all_seeders(session: AsyncSession) -> None:
-    """Run all seeders in order: config → profiles → auth.
-
-    All operations are idempotent. Existing user-modified values
-    are never overwritten.
-    """
+    """Run all seeders in order: config → profiles → auth (idempotent)."""
     log.info("seeder.start")
 
     # Load defaults.yml once, share across seeders

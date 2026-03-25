@@ -108,17 +108,6 @@ class RecorderEnvConfig(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
 
-_env_config: RecorderEnvConfig | None = None
-
-
-def _get_env_config() -> RecorderEnvConfig:
-    """Return cached RecorderEnvConfig (created once, reused)."""
-    global _env_config
-    if _env_config is None:
-        _env_config = RecorderEnvConfig()
-    return _env_config
-
-
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -194,7 +183,7 @@ def build_recorder_spec(
         Complete spec ready for ``ContainerManager.start()``.
     """
     # Read env vars via Pydantic BaseSettings (validated, type-safe)
-    env = _get_env_config()
+    env = RecorderEnvConfig()
     network = network or env.NETWORK
     workspace_path = workspace_path or env.WORKSPACE_PATH
     memory_limit = memory_limit or env.RECORDER_MEMORY_LIMIT

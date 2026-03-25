@@ -49,7 +49,7 @@ from silvasonic.core.health import HealthMonitor, start_health_server
 from silvasonic.core.heartbeat import (
     DEFAULT_HEARTBEAT_INTERVAL_S,
     HeartbeatPublisher,
-    MetaProvider,
+    StatusProvider,
 )
 from silvasonic.core.logging import configure_logging
 from silvasonic.core.redis import get_redis_connection
@@ -199,7 +199,7 @@ class ServiceContext:
         except Exception:
             logger.debug("dying_gasp_failed", exc_info=True)
 
-    def set_meta_provider(self, fn: MetaProvider) -> None:
+    def set_meta_provider(self, fn: StatusProvider) -> None:
         """Register a callable that returns service-specific heartbeat meta.
 
         Args:

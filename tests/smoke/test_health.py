@@ -117,4 +117,10 @@ class TestServiceHeartbeats:
         assert "raw_enabled" in payload["meta"]["recording"]
         assert "processed_enabled" in payload["meta"]["recording"]
 
+        # Phase 5: watchdog fields must be present in heartbeat
+        assert "watchdog_restarts" in payload["meta"]["recording"]
+        assert "watchdog_max_restarts" in payload["meta"]["recording"]
+        assert "watchdog_giving_up" in payload["meta"]["recording"]
+        assert "watchdog_last_failure" in payload["meta"]["recording"]
+
         redis_client.close()
