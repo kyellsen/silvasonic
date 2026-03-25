@@ -684,13 +684,21 @@ class TestFullPipelineE2E:
             )
 
             # Poll for heartbeat (recorder writes every ~2s)
+            # Key format: silvasonic:status:<instance_id> (instance_id = device ID, NOT "recorder")
+            # We must check the JSON payload's "service" field to find the recorder heartbeat.
             heartbeat_raw: str | None = None
             for _ in range(15):
                 keys: list[str] = list(redis_client.keys("silvasonic:status:*"))  # type: ignore[arg-type]
                 for key in keys:
-                    if "recorder" in key:
-                        heartbeat_raw = str(redis_client.get(key))
-                        break
+                    val = redis_client.get(key)
+                    if val is not None:
+                        try:
+                            data = json.loads(str(val))
+                            if data.get("service") == "recorder":
+                                heartbeat_raw = str(val)
+                                break
+                        except (json.JSONDecodeError, TypeError):
+                            continue
                 if heartbeat_raw:
                     break
                 time.sleep(1)
