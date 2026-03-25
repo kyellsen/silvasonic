@@ -312,8 +312,9 @@ class TestControllerLoadConfig:
     """Tests for the load_config() hook (DB seeding)."""
 
     async def test_load_config_calls_seeders(self) -> None:
-        """load_config() runs all seeders via get_session()."""
+        """load_config() runs all seeders and calls scan_and_sync_devices."""
         svc = _make_bare_service()
+        svc._reconciliation_loop.scan_and_sync_devices = AsyncMock(return_value=0)
 
         with (
             patch(
@@ -323,11 +324,6 @@ class TestControllerLoadConfig:
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
             ) as mock_seeders,
-            patch.object(
-                svc,
-                "_initial_device_scan",
-                new_callable=AsyncMock,
-            ),
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
@@ -336,6 +332,7 @@ class TestControllerLoadConfig:
             await svc.load_config()
 
         mock_seeders.assert_awaited_once_with(mock_ctx)
+        svc._reconciliation_loop.scan_and_sync_devices.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -429,118 +426,6 @@ class TestStopAllTier2:
         ):
             # Should not raise
             await svc._stop_all_tier2()
-
-
-# ---------------------------------------------------------------------------
-# _initial_device_scan
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestInitialDeviceScan:
-    """Tests for the _initial_device_scan method."""
-
-    async def test_no_devices_found(self) -> None:
-        """_initial_device_scan returns early when no devices are detected."""
-        svc = _make_bare_service()
-        svc._device_scanner.scan_all.return_value = []
-
-        with patch(
-            "silvasonic.controller.__main__.asyncio.to_thread",
-            new_callable=AsyncMock,
-            side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-        ):
-            await svc._initial_device_scan()
-
-    async def test_devices_with_auto_enroll(self) -> None:
-        """_initial_device_scan upserts devices with auto-enroll profiles."""
-        from silvasonic.controller.device_scanner import DeviceInfo
-        from silvasonic.controller.profile_matcher import MatchResult
-
-        svc = _make_bare_service()
-
-        device_info = DeviceInfo(
-            alsa_card_index=2,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:2,0",
-            usb_vendor_id="16d0",
-            usb_product_id="0b40",
-            usb_serial="ABC",
-        )
-        svc._device_scanner.scan_all.return_value = [device_info]
-        svc._profile_matcher.match = AsyncMock(
-            return_value=MatchResult(
-                profile_slug="ultramic_384",
-                score=100,
-                auto_enroll=True,
-            )
-        )
-
-        with (
-            patch(
-                "silvasonic.controller.__main__.asyncio.to_thread",
-                new_callable=AsyncMock,
-                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-            ),
-            patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
-            patch(
-                "silvasonic.controller.__main__.upsert_device",
-                new_callable=AsyncMock,
-            ) as mock_upsert,
-        ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-            await svc._initial_device_scan()
-
-        mock_upsert.assert_awaited_once()
-        call_kwargs = mock_upsert.call_args
-        assert call_kwargs.kwargs["profile_slug"] == "ultramic_384"
-        assert call_kwargs.kwargs["enrollment_status"] == "enrolled"
-
-    async def test_devices_without_auto_enroll(self) -> None:
-        """_initial_device_scan upserts devices as pending when no auto-enroll."""
-        from silvasonic.controller.device_scanner import DeviceInfo
-        from silvasonic.controller.profile_matcher import MatchResult
-
-        svc = _make_bare_service()
-
-        device_info = DeviceInfo(
-            alsa_card_index=0,
-            alsa_name="Generic Mic",
-            alsa_device="hw:0,0",
-        )
-        svc._device_scanner.scan_all.return_value = [device_info]
-        svc._profile_matcher.match = AsyncMock(
-            return_value=MatchResult(
-                profile_slug="generic",
-                score=50,
-                auto_enroll=False,
-            )
-        )
-
-        with (
-            patch(
-                "silvasonic.controller.__main__.asyncio.to_thread",
-                new_callable=AsyncMock,
-                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-            ),
-            patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
-            patch(
-                "silvasonic.controller.__main__.upsert_device",
-                new_callable=AsyncMock,
-            ) as mock_upsert,
-        ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-            await svc._initial_device_scan()
-
-        call_kwargs = mock_upsert.call_args
-        assert call_kwargs.kwargs["profile_slug"] is None
-        assert call_kwargs.kwargs["enrollment_status"] == "pending"
 
 
 # ---------------------------------------------------------------------------

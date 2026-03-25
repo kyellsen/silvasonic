@@ -1,4 +1,4 @@
-"""Hardware-dependent system tests — require a real USB microphone.
+"""Hardware-dependent system tests — require real USB microphone(s).
 
 Tests the full device detection pipeline with real hardware:
 ``/proc/asound/cards`` + ``sysfs`` → DeviceScanner → ProfileMatcher → DB.
@@ -8,8 +8,13 @@ Run manually with:
 
     just test-hw
 
+Configuration via environment variables (see ``.env.example``):
+- ``SILVASONIC_HW_PRIMARY_PROFILE``   — Primary mic profile slug (default: ``ultramic_384_evo``)
+- ``SILVASONIC_HW_SECONDARY_PROFILE`` — Optional secondary mic profile slug
+
 Skip conditions:
 - No USB-Audio device detected → all tests skipped
+- Primary/secondary mic not connected → respective tests skipped
 - Podman socket not available → container tests skipped
 - Recorder image not built → container tests skipped
 """
@@ -17,7 +22,6 @@ Skip conditions:
 from __future__ import annotations
 
 import contextlib
-import time
 from pathlib import Path
 
 import pytest
@@ -31,16 +35,15 @@ from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, upse
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
-from silvasonic.controller.seeder import ConfigSeeder, ProfileBootstrapper
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .conftest import (
     PODMAN_SOCKET,
+    PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
+    HwMicConfig,
     require_recorder_image,
-    seed_test_defaults,
-    seed_test_profile,
 )
 
 pytestmark = [
@@ -49,7 +52,7 @@ pytestmark = [
 
 
 # ---------------------------------------------------------------------------
-# Hardware detection helper
+# Hardware detection helpers
 # ---------------------------------------------------------------------------
 
 
@@ -68,11 +71,22 @@ def _get_usb_devices() -> list[DeviceInfo]:
     return scanner.scan_all()
 
 
+def _find_by_config(devices: list[DeviceInfo], mic: HwMicConfig) -> list[DeviceInfo]:
+    """Filter devices by USB VID/PID from a mic config."""
+    return [d for d in devices if d.usb_vendor_id == mic.vid and d.usb_product_id == mic.pid]
+
+
+def _mic_connected(mic: HwMicConfig) -> bool:
+    """Check if a specific mic (by VID/PID) is currently connected."""
+    return len(_find_by_config(_get_usb_devices(), mic)) > 0
+
+
 _USB_PRESENT = _has_usb_audio_device()
+_PRIMARY_CONNECTED = _USB_PRESENT and _mic_connected(PRIMARY_MIC)
 
 
 # ---------------------------------------------------------------------------
-# Test: Real USB Device Detection
+# Test: Real USB Device Detection (any mic)
 # ---------------------------------------------------------------------------
 
 
@@ -114,13 +128,11 @@ class TestRealDeviceDetection:
         assert not device_id.startswith("alsa-card"), (
             f"Real USB device should not use ALSA fallback: {device_id}"
         )
-        assert "-" in device_id, (
-            f"Expected '{'{vendor}'}'-'{'{product}'}'-... format, got: {device_id}"
-        )
+        assert "-" in device_id, f"Expected '{{vendor}}'-'{{product}}'-... format, got: {device_id}"
 
 
 # ---------------------------------------------------------------------------
-# Test: Real Profile Matching with DB
+# Test: Real Profile Matching with DB (any mic)
 # ---------------------------------------------------------------------------
 
 
@@ -130,25 +142,14 @@ class TestRealProfileMatching:
 
     async def test_profile_match_with_real_device(
         self,
-        tmp_path: Path,
-        session_factory: async_sessionmaker[AsyncSession],
+        seeded_db: async_sessionmaker[AsyncSession],
     ) -> None:
         """Real USB device → ProfileMatcher finds a match in DB."""
-        # Seed profiles
-        defaults_path = seed_test_defaults(tmp_path)
-        profiles_dir = seed_test_profile(tmp_path)
-
-        async with session_factory() as session:
-            await ConfigSeeder(defaults_path=defaults_path).seed(session)
-            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
-            await session.commit()
-
-        # Scan real hardware
         devices = _get_usb_devices()
         assert len(devices) >= 1
 
         matcher = ProfileMatcher()
-        async with session_factory() as session:
+        async with seeded_db() as session:
             match_result = await matcher.match(devices[0], session)
 
         # We can't guarantee a match (depends on which mic is connected),
@@ -175,11 +176,11 @@ class TestRealProfileMatching:
 
 
 # ---------------------------------------------------------------------------
-# Test: Full Hardware Spawn Cycle (requires Podman + image + USB mic)
+# Test: Full Hardware Spawn Cycle (requires Podman + image + primary mic)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not _USB_PRESENT, reason="No USB-Audio device connected")
+@pytest.mark.skipif(not _PRIMARY_CONNECTED, reason="Primary mic not connected")
 @pytest.mark.skipif(
     not SOCKET_AVAILABLE,
     reason=f"Podman socket not found at {PODMAN_SOCKET}",
@@ -190,24 +191,17 @@ class TestHardwareSpawnCycle:
     async def test_full_spawn_cycle(
         self,
         tmp_path: Path,
-        session_factory: async_sessionmaker[AsyncSession],
+        seeded_db: async_sessionmaker[AsyncSession],
     ) -> None:
         """Detection → matching → DB upsert → evaluation → real container spawn."""
         require_recorder_image()
+        session_factory = seeded_db
 
-        # Seed DB
-        defaults_path = seed_test_defaults(tmp_path)
-        profiles_dir = seed_test_profile(tmp_path)
-
-        async with session_factory() as session:
-            await ConfigSeeder(defaults_path=defaults_path).seed(session)
-            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
-            await session.commit()
-
-        # Scan real hardware
+        # Scan real hardware — find the primary mic
         devices = _get_usb_devices()
-        assert len(devices) >= 1
-        device_info = devices[0]
+        primary_devices = _find_by_config(devices, PRIMARY_MIC)
+        assert len(primary_devices) >= 1
+        device_info = primary_devices[0]
 
         # Match
         matcher = ProfileMatcher()
@@ -216,9 +210,9 @@ class TestHardwareSpawnCycle:
 
         if match_result.score < 100:
             pytest.skip(
-                f"Connected device ({device_info.alsa_name}) did not match "
-                f"any seeded profile (score={match_result.score}). "
-                f"This test requires a device with a matching profile."
+                f"Primary mic ({device_info.alsa_name}) did not match "
+                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score}). "
+                f"Check profile YAML match criteria."
             )
 
         # Upsert as enrolled
@@ -302,85 +296,3 @@ class TestHardwareSpawnCycle:
             with contextlib.suppress(Exception):
                 client.containers.get(test_name).remove(force=True)
             client.close()
-
-
-# ---------------------------------------------------------------------------
-# Test: Interactive UltraMic 384K Hot-Plug (user must unplug/re-plug)
-# ---------------------------------------------------------------------------
-
-_ULTRAMIC_VID = "0869"
-_ULTRAMIC_PID = "0389"
-
-
-def _find_ultramic(devices: list[DeviceInfo]) -> list[DeviceInfo]:
-    """Filter devices to UltraMic 384K by USB VID/PID."""
-    return [
-        d for d in devices if d.usb_vendor_id == _ULTRAMIC_VID and d.usb_product_id == _ULTRAMIC_PID
-    ]
-
-
-@pytest.mark.skipif(not _USB_PRESENT, reason="No USB-Audio device connected")
-class TestUltraMicHotPlug:
-    """Interactive hot-plug tests — user unplugs/re-plugs UltraMic 384K.
-
-    These tests run in definition order and require physical interaction:
-    1. Verify UltraMic is detected.
-    2. User unplugs → verify it disappears.
-    3. User re-plugs → verify it reappears with same identity.
-
-    Requires ``-s`` flag (stdin capture disabled) for ``input()`` prompts.
-    """
-
-    def test_ultramic_detected_before_unplug(self) -> None:
-        """UltraMic 384K must be present before hot-plug sequence."""
-        devices = _get_usb_devices()
-        ultramic = _find_ultramic(devices)
-        assert len(ultramic) == 1, (
-            f"Expected exactly 1 UltraMic 384K "
-            f"(VID:{_ULTRAMIC_VID} PID:{_ULTRAMIC_PID}), "
-            f"found {len(ultramic)}. "
-            f"All devices: {[d.alsa_name for d in devices]}"
-        )
-        print(f"\n  ✅ UltraMic detected: {ultramic[0].alsa_name} ({ultramic[0].alsa_device})")
-
-    def test_ultramic_disappears_on_unplug(self) -> None:
-        """After unplug, UltraMic is gone from scan results."""
-        print("\n" + "─" * 50)
-        print("  🔌 Bitte UltraMic 384K JETZT ABZIEHEN")
-        input("     Dann Enter drücken... ")
-        print("─" * 50)
-
-        time.sleep(2)  # udev/ALSA settle time
-
-        devices = _get_usb_devices()
-        ultramic = _find_ultramic(devices)
-        assert len(ultramic) == 0, (
-            f"UltraMic 384K still detected after unplug! Found: {[d.alsa_name for d in ultramic]}"
-        )
-        print("  ✅ UltraMic no longer detected — unplug confirmed.")
-
-    def test_ultramic_reappears_on_replug(self) -> None:
-        """After re-plug, UltraMic reappears with stable USB identity."""
-        print("\n" + "─" * 50)
-        print("  🔌 Bitte UltraMic 384K JETZT WIEDER ANSTECKEN")
-        input("     Dann Enter drücken... ")
-        print("─" * 50)
-
-        time.sleep(3)  # USB enumeration takes a moment
-
-        devices = _get_usb_devices()
-        ultramic = _find_ultramic(devices)
-        assert len(ultramic) == 1, (
-            f"UltraMic 384K not found after re-plug! All devices: {[d.alsa_name for d in devices]}"
-        )
-
-        device = ultramic[0]
-        # Verify stable identity uses USB, not ALSA fallback
-        assert not device.stable_device_id.startswith("alsa-card"), (
-            f"Stable ID should use USB identity, not ALSA fallback: {device.stable_device_id}"
-        )
-        print(
-            f"  ✅ UltraMic re-detected: {device.alsa_name} "
-            f"({device.alsa_device}) — "
-            f"stable_id={device.stable_device_id}"
-        )

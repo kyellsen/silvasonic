@@ -210,6 +210,11 @@ def build_recorder_spec(
             "SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(profile.config),
             "SILVASONIC_REDIS_URL": env.REDIS_URL,
             "SILVASONIC_INSTANCE_ID": device_id,
+            # Force PortAudio to use raw ALSA (not PulseAudio/PipeWire).
+            # Prevents "Invalid sample rate" errors on hosts with desktop
+            # audio stacks that cannot handle high sample rates (384kHz).
+            "PULSE_SERVER": "",
+            "PIPEWIRE_RUNTIME_DIR": "",
         },
         labels={
             "io.silvasonic.tier": "2",

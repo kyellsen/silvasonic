@@ -5,6 +5,7 @@ Provides:
 - Real ``SilvasonicPodmanClient`` connected to the host Podman socket.
 - ``ContainerManager`` with automatic cleanup of test containers.
 - Async SQLAlchemy session factory wired to the testcontainers DB.
+- Hardware mic config loading from profile YAMLs (env-var driven).
 """
 
 from __future__ import annotations
@@ -13,14 +14,21 @@ import contextlib
 import os
 import pathlib
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
+import structlog
+import yaml
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
+from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
+
+log = structlog.get_logger()
 
 # ---------------------------------------------------------------------------
 # Podman socket discovery (same pattern as test_crash_recovery.py)
@@ -48,6 +56,77 @@ def require_recorder_image() -> None:
     )
     if result.returncode != 0:
         pytest.skip("Recorder image not built (run 'just build' first)")
+
+
+# ---------------------------------------------------------------------------
+# Hardware Mic Config (env-var driven, profile-YAML backed)
+# ---------------------------------------------------------------------------
+
+# Path to the profiles directory (relative to the controller service root)
+_PROFILES_DIR = (
+    Path(__file__).resolve().parents[2] / "services" / "controller" / "config" / "profiles"
+)
+
+
+@dataclass(frozen=True)
+class HwMicConfig:
+    """Hardware mic configuration extracted from a profile YAML.
+
+    Used by system_hw tests to identify connected devices by USB VID/PID,
+    seed the correct profile into the test DB, and generate dynamic
+    skip conditions and interactive prompts.
+    """
+
+    slug: str
+    name: str
+    vid: str
+    pid: str
+    alsa_contains: str
+    sample_rate: int
+    profile_data: dict[str, Any]
+
+
+def load_hw_mic_config(profile_slug: str) -> HwMicConfig:
+    """Load a profile YAML by slug and extract test-relevant fields.
+
+    Args:
+        profile_slug: Filename stem in ``config/profiles/`` (e.g. ``ultramic_384_evo``).
+
+    Raises:
+        FileNotFoundError: If no YAML file exists for the given slug.
+        KeyError: If the YAML is missing required match criteria.
+    """
+    yml_path = _PROFILES_DIR / f"{profile_slug}.yml"
+    if not yml_path.exists():
+        msg = (
+            f"Profile YAML not found: {yml_path}. "
+            f"Available profiles: {[p.stem for p in _PROFILES_DIR.glob('*.yml')]}"
+        )
+        raise FileNotFoundError(msg)
+
+    raw: dict[str, Any] = yaml.safe_load(yml_path.read_text(encoding="utf-8"))
+
+    # Validate against Pydantic schema
+    validated = MicProfileSchema(**raw)
+
+    match = raw["audio"]["match"]
+    return HwMicConfig(
+        slug=validated.slug,
+        name=validated.name,
+        vid=match["usb_vendor_id"],
+        pid=match["usb_product_id"],
+        alsa_contains=match.get("alsa_name_contains", ""),
+        sample_rate=validated.audio.sample_rate,
+        profile_data=raw,
+    )
+
+
+# Load mic configs from environment variables
+_PRIMARY_SLUG = os.environ.get("SILVASONIC_HW_PRIMARY_PROFILE", "ultramic_384_evo")
+_SECONDARY_SLUG = os.environ.get("SILVASONIC_HW_SECONDARY_PROFILE", "")
+
+PRIMARY_MIC: HwMicConfig = load_hw_mic_config(_PRIMARY_SLUG)
+SECONDARY_MIC: HwMicConfig | None = load_hw_mic_config(_SECONDARY_SLUG) if _SECONDARY_SLUG else None
 
 
 # ---------------------------------------------------------------------------
@@ -115,43 +194,65 @@ def session_factory(
 
 
 # ---------------------------------------------------------------------------
-# Default config / profile helpers
+# Profile seeding helpers (config-driven)
 # ---------------------------------------------------------------------------
 
 
-def seed_test_profile(tmp_path: Path) -> Path:
-    """Create a profile YAML matching UltraMic 384K via USB VID/PID.
+def _write_profile_yml(profiles_dir: Path, mic: HwMicConfig) -> None:
+    """Write a mic config's profile data as YAML into the profiles directory."""
+    yml_path = profiles_dir / f"{mic.slug}.yml"
+    yml_path.write_text(
+        yaml.dump(mic.profile_data, default_flow_style=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+
+def seed_primary_profile(tmp_path: Path) -> Path:
+    """Create the primary mic profile YAML for test seeding.
 
     Returns the profiles directory path.
     """
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir(exist_ok=True)
-    (profiles_dir / "ultramic_test.yml").write_text(
-        """\
-schema_version: "1.0"
-slug: ultramic_test
-name: UltraMic EVO Test Profile
-description: System test profile for UltraMic 384K EVO.
-audio:
-  sample_rate: 384000
-  channels: 1
-  format: S16LE
-  match:
-    usb_vendor_id: "0869"
-    usb_product_id: "0389"
-    alsa_name_contains: "UltraMic384K_EVO"
-processing:
-  gain_db: 0.0
-  chunk_size: 4096
-stream:
-  raw_enabled: true
-  processed_enabled: true
-  live_stream_enabled: false
-  segment_duration_s: 15
-""",
-        encoding="utf-8",
-    )
+    _write_profile_yml(profiles_dir, PRIMARY_MIC)
     return profiles_dir
+
+
+def seed_secondary_profile(tmp_path: Path) -> Path:
+    """Create the secondary mic profile YAML for test seeding.
+
+    Returns the profiles directory path.
+
+    Raises:
+        RuntimeError: If no secondary mic is configured.
+    """
+    if SECONDARY_MIC is None:
+        msg = "No secondary mic configured (set SILVASONIC_HW_SECONDARY_PROFILE)"
+        raise RuntimeError(msg)
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    _write_profile_yml(profiles_dir, SECONDARY_MIC)
+    return profiles_dir
+
+
+def seed_all_profiles(tmp_path: Path) -> Path:
+    """Seed both primary and secondary (if configured) profiles.
+
+    Returns the profiles directory path.
+    """
+    profiles_dir = seed_primary_profile(tmp_path)
+    if SECONDARY_MIC is not None:
+        _write_profile_yml(profiles_dir, SECONDARY_MIC)
+    return profiles_dir
+
+
+# Backward-compatible alias
+def seed_test_profile(tmp_path: Path) -> Path:
+    """Create the primary mic profile YAML (backward-compatible alias).
+
+    Returns the profiles directory path.
+    """
+    return seed_primary_profile(tmp_path)
 
 
 def seed_test_defaults(tmp_path: Path) -> Path:
@@ -173,3 +274,64 @@ auth:
         encoding="utf-8",
     )
     return defaults_path
+
+
+# ---------------------------------------------------------------------------
+# Convenience fixtures (reduce boilerplate in test files)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+async def seeded_db(
+    tmp_path: Path,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> async_sessionmaker[AsyncSession]:
+    """Session factory with all profiles and defaults seeded.
+
+    Combines ``seed_test_defaults()`` + ``seed_all_profiles()`` +
+    ``ConfigSeeder`` + ``ProfileBootstrapper`` into a single fixture.
+    Returns the session factory for further queries.
+    """
+    from silvasonic.controller.seeder import ConfigSeeder, ProfileBootstrapper
+
+    defaults_path = seed_test_defaults(tmp_path)
+    profiles_dir = seed_all_profiles(tmp_path)
+
+    async with session_factory() as session:
+        await ConfigSeeder(defaults_path=defaults_path).seed(session)
+        await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
+        await session.commit()
+
+    return session_factory
+
+
+@pytest.fixture(scope="module")
+def usb_devices() -> list[Any]:
+    """Cached USB device scan result (module-scoped).
+
+    Calls ``DeviceScanner.scan_all()`` once per test module and caches
+    the result.  Do NOT use in hot-plug tests where device state changes
+    between tests.
+    """
+    from silvasonic.controller.device_scanner import DeviceScanner
+
+    return DeviceScanner().scan_all()
+
+
+@pytest.fixture()
+def primary_device(usb_devices: list[Any]) -> Any:
+    """Return the first connected primary mic device, or skip.
+
+    Uses the module-scoped ``usb_devices`` fixture and filters by the
+    primary mic's VID/PID from the environment configuration.
+    """
+    from silvasonic.controller.device_scanner import DeviceInfo
+
+    found: list[DeviceInfo] = [
+        d
+        for d in usb_devices
+        if d.usb_vendor_id == PRIMARY_MIC.vid and d.usb_product_id == PRIMARY_MIC.pid
+    ]
+    if not found:
+        pytest.skip(f"Primary mic {PRIMARY_MIC.name} not connected")
+    return found[0]

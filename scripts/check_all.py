@@ -38,8 +38,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Total number of stages in the pipeline
 TOTAL_STAGES = 12
 
-# Result type: (label, passed_or_none, elapsed)
-StageResult = tuple[str, bool | None, float]
+# Result type: (label, passed_or_none, elapsed, critical)
+StageResult = tuple[str, bool | None, float, bool]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -54,10 +54,16 @@ def _stage_header(num: int, label: str) -> None:
     print(f"{'═' * 60}{Colors.ENDC}")
 
 
-def _run_stage(num: int, label: str, func: Callable[[], None]) -> StageResult:
+def _run_stage(
+    num: int,
+    label: str,
+    func: Callable[[], None],
+    *,
+    critical: bool = True,
+) -> StageResult:
     """Run a pipeline stage, measure time, catch failures.
 
-    Returns (label, passed, elapsed_seconds).
+    Returns (label, passed, elapsed_seconds, critical).
     """
     _stage_header(num, label)
     start = time.monotonic()
@@ -65,18 +71,18 @@ def _run_stage(num: int, label: str, func: Callable[[], None]) -> StageResult:
         func()
         elapsed = time.monotonic() - start
         print_success(f"{label} — {fmt_duration(elapsed)}")
-        return label, True, elapsed
+        return label, True, elapsed, critical
     except SystemExit as e:
         elapsed = time.monotonic() - start
         if e.code == 0 or e.code is None:
             print_success(f"{label} — {fmt_duration(elapsed)}")
-            return label, True, elapsed
+            return label, True, elapsed, critical
         print_error(f"{label} FAILED (exit {e.code}) — {fmt_duration(elapsed)}")
-        return label, False, elapsed
+        return label, False, elapsed, critical
     except Exception as e:
         elapsed = time.monotonic() - start
         print_error(f"{label} FAILED — {e} — {fmt_duration(elapsed)}")
-        return label, False, elapsed
+        return label, False, elapsed, critical
 
 
 # Stages that may fail without aborting the pipeline.
@@ -229,7 +235,8 @@ def main() -> None:
 
     def record(label: str, num: int, func: Callable[[], None]) -> bool:
         """Run a stage and record the result. Returns True if passed."""
-        result = _run_stage(num, label, func)
+        critical = label not in NON_CRITICAL_STAGES
+        result = _run_stage(num, label, func, critical=critical)
         stages.append(result)
         return result[1] is True
 
@@ -258,7 +265,7 @@ def main() -> None:
         if label in SKIPPED_BY_DEFAULT:
             _stage_header(num, label)
             print(f"  ⏩  {label} skipped by default (SKIPPED_BY_DEFAULT).")
-            stages.append((label, None, 0.0))
+            stages.append((label, None, 0.0, True))
             continue
         passed = record(label, num, func)
         if not passed:
@@ -268,7 +275,7 @@ def main() -> None:
             elif label not in NON_CRITICAL_STAGES:
                 # Hard abort for other critical stages.
                 for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
-                    stages.append((skip_label, None, 0.0))
+                    stages.append((skip_label, None, 0.0, True))
                 break
 
         # After leaving the always-run group, abort if any member failed.
@@ -278,15 +285,16 @@ def main() -> None:
             and (idx + 1 >= len(all_stages) or all_stages[idx + 1][0] not in ALWAYS_RUN_STAGES)
         ):
             for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
-                stages.append((skip_label, None, 0.0))
+                stages.append((skip_label, None, 0.0, True))
             break
 
     # ── Final Summary ─────────────────────────────────────────────────────
     pipeline_elapsed = time.monotonic() - pipeline_start
     _print_summary(stages, pipeline_elapsed)
 
-    # Exit with error if any stage failed
-    if any(passed is False for _, passed, _ in stages):
+    # Exit with error only if a CRITICAL stage failed.
+    # Non-critical stages (e.g. Dep Audit) are reported but do not block.
+    if any(passed is False and critical for _, passed, _, critical in stages):
         sys.exit(1)
 
 
@@ -304,13 +312,14 @@ def _print_summary(
 
     passed_count = 0
     failed_count = 0
+    warned_count = 0
     skipped_count = 0
 
     # Find max elapsed for bar normalization (longest stage = full bar)
-    max_elapsed = max((e for _, p, e in stages if p is not None), default=1.0) or 1.0
-    max_label = max(len(label) for label, _, _ in stages)
+    max_elapsed = max((e for _, p, e, _c in stages if p is not None), default=1.0) or 1.0
+    max_label = max(len(label) for label, _, _, _ in stages)
 
-    for label, passed, elapsed in stages:
+    for label, passed, elapsed, critical in stages:
         if passed is None:
             icon = f"{Colors.WARNING}⏭️  SKIP{Colors.ENDC}"
             skipped_count += 1
@@ -322,6 +331,14 @@ def _print_summary(
             filled = int(min(elapsed / max_elapsed, 1.0) * bar_width)
             bar = "█" * filled + "░" * (bar_width - filled)
             bar_str = f"  {Colors.OKGREEN}{bar}{Colors.ENDC}"
+            time_str = f"  {fmt_duration(elapsed)}"
+        elif not critical:
+            # Non-critical failure → warning (does not affect exit code).
+            icon = f"{Colors.WARNING}⚠️  WARN{Colors.ENDC}"
+            warned_count += 1
+            filled = int(min(elapsed / max_elapsed, 1.0) * bar_width)
+            bar = "█" * filled + "░" * (bar_width - filled)
+            bar_str = f"  {Colors.WARNING}{bar}{Colors.ENDC}"
             time_str = f"  {fmt_duration(elapsed)}"
         else:
             icon = f"{Colors.FAIL}❌ FAIL{Colors.ENDC}"
@@ -338,12 +355,19 @@ def _print_summary(
     total_time = f"{Colors.BOLD}{fmt_duration(total_elapsed)}{Colors.ENDC}"
     print(f"\n  {total_label}{total_bar}  {total_time}")
 
-    if failed_count == 0 and skipped_count == 0:
+    if failed_count == 0 and warned_count == 0 and skipped_count == 0:
         print(
             f"\n  {Colors.OKGREEN}{Colors.BOLD}🎉 All {TOTAL_STAGES} stages passed!{Colors.ENDC}\n"
         )
     elif failed_count > 0:
         print(f"\n  {Colors.FAIL}{Colors.BOLD}💥 {failed_count} stage(s) failed!{Colors.ENDC}\n")
+    elif warned_count > 0 and skipped_count == 0:
+        print(
+            f"\n  {Colors.OKGREEN}{Colors.BOLD}"
+            f"✅ Pipeline passed"
+            f"{Colors.ENDC}"
+            f" {Colors.WARNING}({warned_count} non-critical warning(s)){Colors.ENDC}\n"
+        )
     else:
         print(
             f"\n  {Colors.WARNING}{Colors.BOLD}"

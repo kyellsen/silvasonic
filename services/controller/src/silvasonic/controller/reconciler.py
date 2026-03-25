@@ -181,14 +181,14 @@ class ReconciliationLoop:
             actual,
         )
 
-    async def _rescan_hardware(self) -> None:
-        """Rescan USB audio devices and sync state to DB.
+    async def scan_and_sync_devices(self) -> int:
+        """Scan USB devices, match profiles, and sync state to DB.
 
-        Detects newly connected and disconnected devices, updates their
-        status in the database, and matches profiles for new devices.
+        Returns the number of devices found.  Reusable for both initial
+        scan (during ``load_config``) and periodic rescans.
         """
         if self._scanner is None:
-            return
+            return 0
 
         devices = await asyncio.to_thread(self._scanner.scan_all)
         current_ids = {d.stable_device_id for d in devices}
@@ -222,7 +222,12 @@ class ReconciliationLoop:
 
             await session.commit()
 
-        log.debug(
-            "reconciler.hardware_rescan",
-            devices_found=len(devices),
-        )
+        return len(devices)
+
+    async def _rescan_hardware(self) -> None:
+        """Rescan USB audio devices and sync state to DB.
+
+        Delegates to ``scan_and_sync_devices()`` and logs the result.
+        """
+        count = await self.scan_and_sync_devices()
+        log.debug("reconciler.hardware_rescan", devices_found=count)

@@ -21,7 +21,7 @@ from silvasonic.core import __version__
 
 STATION = {
     "name": "Silvasonic-001",
-    "location": "Teststandort Wald",
+    "location": "Test Location Forest",
     "version": f"{__version__}-mock",
 }
 

@@ -21,7 +21,7 @@ from typing import Any, NoReturn
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
-from silvasonic.controller.device_scanner import DeviceScanner, upsert_device
+from silvasonic.controller.device_scanner import DeviceScanner
 from silvasonic.controller.log_forwarder import LogForwarder
 from silvasonic.controller.nudge_subscriber import NudgeSubscriber
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
@@ -92,7 +92,8 @@ class ControllerService(SilvaService):
             await run_all_seeders(session)
 
         # Phase 4: Initial device scan after seeding
-        await self._initial_device_scan()
+        count = await self._reconciliation_loop.scan_and_sync_devices()
+        log.info("controller.initial_scan", devices_found=count)
 
     async def run(self) -> None:
         """Main orchestration loop.
@@ -204,34 +205,6 @@ class ControllerService(SilvaService):
                     f"{len(containers)} managed containers",
                 )
             await asyncio.sleep(10)
-
-    async def _initial_device_scan(self) -> None:
-        """Scan for connected USB audio devices and persist to DB.
-
-        Called once during ``load_config()`` to populate the ``devices``
-        table with any microphones that were already connected at boot.
-        """
-        devices = await asyncio.to_thread(self._device_scanner.scan_all)
-        if not devices:
-            log.info("controller.initial_scan", devices_found=0)
-            return
-
-        async with get_session() as session:
-            for device_info in devices:
-                match_result = await self._profile_matcher.match(device_info, session)
-
-                profile_slug = match_result.profile_slug if match_result.auto_enroll else None
-                enrollment = "enrolled" if match_result.auto_enroll else "pending"
-
-                await upsert_device(
-                    device_info,
-                    session,
-                    profile_slug=profile_slug,
-                    enrollment_status=enrollment,
-                )
-            await session.commit()
-
-        log.info("controller.initial_scan", devices_found=len(devices))
 
 
 if __name__ == "__main__":

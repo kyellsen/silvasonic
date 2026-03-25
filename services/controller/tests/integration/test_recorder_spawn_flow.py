@@ -495,8 +495,11 @@ auth:
 
         mgr.sync_state(desired=all_specs, actual=fake_running)
 
-        # Container should have been stopped
-        mock_container_obj.stop.assert_called_once()
+        # The orphaned container should have been stopped (via stop_and_remove).
+        # Note: stop() may be called multiple times because the shared mock_podman
+        # makes all containers.get() calls return the same mock object, and
+        # start() also calls stop_and_remove() for containers it considers "exited".
+        mock_container_obj.stop.assert_called()
 
         await engine.dispose()
 

@@ -162,6 +162,7 @@ def recorder_container(
         DockerContainer("silvasonic_recorder")
         .with_exposed_ports(9500)
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_env("SILVASONIC_SKIP_DEVICE_CHECK", "true")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw"})
     )

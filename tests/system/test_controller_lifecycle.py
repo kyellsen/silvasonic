@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .conftest import (
     PODMAN_SOCKET,
+    PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
     require_recorder_image,
@@ -49,20 +50,24 @@ pytestmark = [
     pytest.mark.system,
 ]
 
-# Mock ALSA cards: one onboard HDA-Intel, one USB-Audio (UltraMic EVO)
+# Mock ALSA cards: one onboard HDA-Intel, one USB-Audio (primary mic from config)
+MOCK_ALSA_ALIAS = PRIMARY_MIC.alsa_contains.replace(" ", "_")[:16]
+MOCK_ALSA_FULL_NAME = PRIMARY_MIC.alsa_contains
 MOCK_ASOUND_CARDS = (
     " 0 [PCH             ]: HDA-Intel - HDA Intel PCH\n"
     "                      HDA Intel PCH at 0xf7200000 irq 32\n"
-    " 2 [UltraMic384K_EVO]: USB-Audio - UltraMic384K_EVO 16bit r0\n"
-    "                      Dodotronic UltraMic384K_EVO at usb-0000:00:14-2\n"
+    f" 2 [{MOCK_ALSA_ALIAS}]: USB-Audio - {MOCK_ALSA_FULL_NAME}\n"
+    f"                      {PRIMARY_MIC.name} at usb-0000:00:14-2\n"
 )
 
 MOCK_USB_INFO = UsbInfo(
-    vendor_id="0869",
-    product_id="0389",
+    vendor_id=PRIMARY_MIC.vid,
+    product_id=PRIMARY_MIC.pid,
     serial="SYSTEM-TEST-001",
     bus_path="1-2",
 )
+
+MOCK_STABLE_ID = f"{PRIMARY_MIC.vid}-{PRIMARY_MIC.pid}-SYSTEM-TEST-001"
 
 
 # ---------------------------------------------------------------------------
@@ -101,13 +106,13 @@ class TestSeedingAndDevicePipeline:
         from silvasonic.core.database.models.profiles import MicrophoneProfile
 
         async with session_factory() as session:
-            profile = await session.get(MicrophoneProfile, "ultramic_test")
-            assert profile is not None, "profile must be seeded"
-            assert profile.name == "UltraMic EVO Test Profile"
+            profile = await session.get(MicrophoneProfile, PRIMARY_MIC.slug)
+            assert profile is not None, f"profile '{PRIMARY_MIC.slug}' must be seeded"
+            assert profile.name == PRIMARY_MIC.name
             profile_config = profile.config or {}
             assert isinstance(profile_config, dict)
             match_cfg = profile_config.get("audio", {}).get("match", {})
-            assert match_cfg.get("usb_vendor_id") == "0869"
+            assert match_cfg.get("usb_vendor_id") == PRIMARY_MIC.vid
 
     async def test_device_scan_and_profile_match(
         self,
@@ -137,8 +142,8 @@ class TestSeedingAndDevicePipeline:
 
         assert len(devices) == 1
         info = devices[0]
-        assert info.stable_device_id == "0869-0389-SYSTEM-TEST-001"
-        assert info.alsa_name == "UltraMic384K_EVO 16bit r0"
+        assert info.stable_device_id == MOCK_STABLE_ID
+        assert PRIMARY_MIC.alsa_contains.lower() in info.alsa_name.lower()
 
         # Match → auto-enroll
         matcher = ProfileMatcher()
@@ -146,7 +151,7 @@ class TestSeedingAndDevicePipeline:
             match_result = await matcher.match(info, session)
         assert match_result.score == 100
         assert match_result.auto_enroll is True
-        assert match_result.profile_slug == "ultramic_test"
+        assert match_result.profile_slug == PRIMARY_MIC.slug
 
         # Upsert
         async with session_factory() as session:
@@ -160,7 +165,7 @@ class TestSeedingAndDevicePipeline:
             device_name = device.name
             device_status = device.status
 
-        assert device_name == "0869-0389-SYSTEM-TEST-001"
+        assert device_name == MOCK_STABLE_ID
         assert device_status == "online"
 
         # Evaluate → spec
@@ -168,11 +173,7 @@ class TestSeedingAndDevicePipeline:
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
-        matching = [
-            s
-            for s in specs
-            if s.labels.get("io.silvasonic.device_id") == "0869-0389-SYSTEM-TEST-001"
-        ]
+        matching = [s for s in specs if s.labels.get("io.silvasonic.device_id") == MOCK_STABLE_ID]
         assert len(matching) == 1
         spec = matching[0]
         assert spec.oom_score_adj == -999

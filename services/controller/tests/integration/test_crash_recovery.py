@@ -99,6 +99,69 @@ class TestCrashRecovery:
     Requires a running Podman socket and the Recorder image.
     """
 
+    def test_start_replaces_exited_container(self, tmp_path: Path) -> None:
+        """Regression: start() must replace exited containers (crash-loop fix).
+
+        Previously, start() returned the dead container info when a
+        container existed with status=exited, causing the reconciler to
+        loop infinitely.  After the fix, start() removes the exited
+        container and recreates a fresh one.
+        """
+        _require_image()
+
+        container_name = "silvasonic-recorder-exited-test"
+        network_name = "silvasonic-net"
+        workspace = tmp_path / "recorder" / "exited-test"
+        workspace.mkdir(parents=True, exist_ok=True)
+        spec = _make_test_spec(container_name, "exited-test-device", workspace)
+
+        # Ensure the network exists (it's only created by compose normally)
+        subprocess.run(
+            ["podman", "network", "create", network_name],
+            capture_output=True,
+        )
+
+        client = SilvasonicPodmanClient(socket_path=_PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
+        client.connect()
+
+        try:
+            mgr = ContainerManager(client)
+
+            # Step 1: Start container
+            info = mgr.start(spec)
+            assert info is not None, "start() should return container info"
+            original_id = info.get("id")
+
+            # Step 2: Kill the container to force exited state
+            result = subprocess.run(
+                ["podman", "kill", container_name],
+                capture_output=True,
+            )
+            assert result.returncode == 0, f"podman kill failed: {result.stderr.decode()}"
+            time.sleep(1)
+
+            exited = mgr.get(container_name)
+            assert exited is not None, "Container should still exist after kill"
+            assert exited.get("status") == "exited", (
+                f"Container should be exited, got status={exited.get('status')}"
+            )
+
+            # Step 3: Call start() again — it should replace the exited
+            # container instead of returning the dead one.
+            restarted = mgr.start(spec)
+            assert restarted is not None, "start() should return new container info"
+            assert restarted.get("id") != original_id, (
+                "start() must create a new container, not return the dead one"
+            )
+
+            # Cleanup
+            mgr.stop(container_name)
+            mgr.remove(container_name)
+        finally:
+            with contextlib.suppress(Exception):
+                client.containers.get(container_name).remove(force=True)
+            client.close()
+
     def test_recorder_survives_controller_disconnect(self, tmp_path: Path) -> None:
         """Tier 2 container keeps running after Controller disconnects (US-C02 §4).
 

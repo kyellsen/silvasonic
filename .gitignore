@@ -68,7 +68,7 @@ site/
 
 prompts/*
 COMMANDS.md
-test_out_*.wav
+*.wav
 
 # Frontend (Tailwind CSS build)
 node_modules/

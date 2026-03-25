@@ -124,7 +124,7 @@ plugins = ["pydantic.mypy"]
 mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/recorder/src:services/web-mock/src"
 
 [[tool.mypy.overrides]]
-module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]
+module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml", "sounddevice", "sounddevice.*", "soundfile", "soundfile.*", "soxr", "soxr.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -1,0 +1,25 @@
+---
+# RODE NT-USB Profile
+# Studio-grade condenser USB microphone for vocal-range bioacoustics.
+schema_version: "1.0"
+slug: rode_nt_usb
+name: RODE NT-USB
+description: Large-diaphragm condenser USB microphone (20Hz–20kHz) for bird and vocal-range recording.
+manufacturer: RODE Microphones
+model: NT-USB
+audio:
+  sample_rate: 48000
+  channels: 1
+  format: S16LE
+  match:
+    usb_vendor_id: "19f7"
+    usb_product_id: "0003"
+    alsa_name_contains: "RODE NT-USB"
+processing:
+  gain_db: 0.0
+  chunk_size: 4096
+stream:
+  raw_enabled: true
+  processed_enabled: false    # Native 48kHz = no downsampling needed
+  live_stream_enabled: true
+  segment_duration_s: 15

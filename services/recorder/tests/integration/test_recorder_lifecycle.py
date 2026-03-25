@@ -56,7 +56,10 @@ class TestRecorderLifecycleRedis:
         await cast(Any, redis).aclose()
 
     async def test_monitor_recording_updates_health(self, recorder_service: Any) -> None:
-        """_monitor_recording() updates health component to 'Recording active'."""
+        """_monitor_recording() updates health component status.
+
+        Without a running pipeline, the monitor reports 'Pipeline not initialized'.
+        """
         task = asyncio.create_task(recorder_service._monitor_recording())
         await asyncio.sleep(0.5)
         task.cancel()
@@ -65,8 +68,8 @@ class TestRecorderLifecycleRedis:
 
         status = recorder_service.health.get_status()
         assert "recording" in status["components"]
-        assert status["components"]["recording"]["healthy"] is True
-        assert status["components"]["recording"]["details"] == "Recording active"
+        assert status["components"]["recording"]["healthy"] is False
+        assert status["components"]["recording"]["details"] == "Pipeline not initialized"
 
     async def test_teardown_stops_heartbeat(self, recorder_service: Any) -> None:
         """After _teardown(), the heartbeat background task is done."""

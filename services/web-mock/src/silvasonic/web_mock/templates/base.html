@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de"
+<html lang="en"
   x-data="{ sidebarOpen: true, inspectorOpen: '{{ active }}' === 'dashboard', consoleOpen: false, darkMode: localStorage.getItem('silvasonic-dark-mode') !== 'false', activeService: '{{ log_services[0].id if log_services else 'controller' }}' }"
   x-init="$watch('darkMode', val => document.documentElement.setAttribute('data-theme', val ? 'silvadark' : 'silvalight')); document.documentElement.setAttribute('data-theme', darkMode ? 'silvadark' : 'silvalight')"
   :data-theme="darkMode ? 'silvadark' : 'silvalight'">

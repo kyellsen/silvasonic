@@ -120,6 +120,21 @@ class TestBuildRecorderSpec:
         assert spec.privileged is True
         assert len(spec.devices) == 1
 
+    def test_recorder_spec_suppresses_pulse_and_pipewire(self) -> None:
+        """Recorder spec sets PULSE_SERVER='' and PIPEWIRE_RUNTIME_DIR='' to force ALSA."""
+        device = MagicMock()
+        device.name = "test-device"
+        device.config = {"alsa_device": "hw:1,0", "usb_serial": "1234"}
+
+        profile = MagicMock()
+        profile.slug = "test_mic"
+        profile.config = {"audio": {"sample_rate": 48000}}
+
+        spec = build_recorder_spec(device, profile)
+
+        assert spec.environment["PULSE_SERVER"] == ""
+        assert spec.environment["PIPEWIRE_RUNTIME_DIR"] == ""
+
 
 @pytest.mark.unit
 class TestShortSuffix:
@@ -223,12 +238,12 @@ class TestContainerManager:
         assert call_kwargs["network_mode"] == "bridge"
         assert call_kwargs["networks"] == {"silvasonic-net": {}}
 
-    def test_start_skips_existing(self) -> None:
+    def test_start_skips_running(self) -> None:
         """start() returns existing container info if already running."""
         existing = MagicMock()
         existing.id = "abc123"
         existing.name = "silvasonic-recorder-test"
-        existing.status = "running"
+        existing.attrs = {"State": "running"}
         existing.labels = {}
 
         client = MagicMock()
@@ -239,7 +254,43 @@ class TestContainerManager:
         result = mgr.start(_make_spec())
 
         assert result is not None
+        assert result["status"] == "running"
         client.containers.run.assert_not_called()
+
+    def test_start_replaces_exited_container(self) -> None:
+        """start() removes an exited container and recreates it."""
+        exited = MagicMock()
+        exited.id = "dead123"
+        exited.name = "silvasonic-recorder-test"
+        exited.attrs = {"State": "exited"}
+        exited.labels = {}
+
+        new_container = MagicMock()
+        new_container.id = "new456"
+        new_container.name = "silvasonic-recorder-test"
+        new_container.attrs = {"State": "running"}
+        new_container.labels = {}
+
+        client = MagicMock()
+        client.is_connected = True
+        # Call sequence for containers.get():
+        #   1. get() in start() → returns exited (status check)
+        #   2. stop() in stop_and_remove() → returns exited (sends SIGTERM)
+        #   3. remove() in stop_and_remove() → returns exited (force-remove)
+
+        client.containers.get.side_effect = [exited, exited, exited]
+        client.containers.run.return_value = new_container
+
+        mgr = ContainerManager(client)
+        result = mgr.start(_make_spec())
+
+        assert result is not None
+        assert result["status"] == "running"
+        # stop_and_remove must stop then remove the exited container
+        exited.stop.assert_called_once()
+        exited.remove.assert_called_once_with(force=True)
+        # A new container must have been created
+        client.containers.run.assert_called_once()
 
     def test_start_exception_returns_none(self) -> None:
         """start() returns None on unexpected exceptions."""
@@ -292,6 +343,30 @@ class TestContainerManager:
 
         assert mgr.stop("unreachable-container") is False
 
+    def test_stop_json_decode_error_returns_true(self) -> None:
+        """stop() returns True on JSONDecodeError (race: container already exited)."""
+        import json
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.return_value.stop.side_effect = json.JSONDecodeError(
+            "Expecting value", "", 0
+        )
+        mgr = ContainerManager(client)
+
+        assert mgr.stop("race-container") is True
+
+    def test_stop_api_error_returns_true(self) -> None:
+        """stop() returns True on APIError (race: container stop conflict)."""
+        from podman.errors import APIError
+
+        client = MagicMock()
+        client.is_connected = True
+        client.containers.get.return_value.stop.side_effect = APIError("container already stopped")
+        mgr = ContainerManager(client)
+
+        assert mgr.stop("stopped-container") is True
+
     def test_remove_force_removes(self) -> None:
         """remove() force-removes a container."""
         client = MagicMock()
@@ -329,6 +404,43 @@ class TestContainerManager:
         mgr = ContainerManager(client)
 
         assert mgr.remove("test-container") is False
+
+    def test_stop_and_remove_calls_both(self) -> None:
+        """stop_and_remove() delegates to stop() then remove()."""
+        client = MagicMock()
+        client.is_connected = True
+        mgr = ContainerManager(client)
+
+        result = mgr.stop_and_remove("test-container", timeout=5)
+
+        assert result is True
+        container = client.containers.get.return_value
+        container.stop.assert_called_once_with(timeout=5)
+        container.remove.assert_called_once_with(force=True)
+
+    def test_stop_and_remove_not_connected(self) -> None:
+        """stop_and_remove() returns False when not connected."""
+        client = MagicMock()
+        client.is_connected = False
+        mgr = ContainerManager(client)
+
+        assert mgr.stop_and_remove("unreachable") is False
+
+    def test_build_run_kwargs_structure(self) -> None:
+        """_build_run_kwargs() builds correct kwargs dict from spec."""
+        spec = _make_spec(name="silvasonic-recorder-test")
+        kwargs = ContainerManager._build_run_kwargs(spec)
+
+        assert kwargs["image"] == spec.image
+        assert kwargs["name"] == spec.name
+        assert kwargs["detach"] is True
+        assert kwargs["network_mode"] == "bridge"
+        assert kwargs["networks"] == {spec.network: {}}
+        assert kwargs["mem_limit"] == spec.memory_limit
+        assert kwargs["oom_score_adj"] == spec.oom_score_adj
+        assert kwargs["cpu_quota"] == int(spec.cpu_limit * 100_000)
+        assert isinstance(kwargs["restart_policy"], dict)
+        assert kwargs["restart_policy"]["Name"] == "on-failure"
 
     def test_get_not_found_returns_none(self) -> None:
         """get() returns None silently when container does not exist."""

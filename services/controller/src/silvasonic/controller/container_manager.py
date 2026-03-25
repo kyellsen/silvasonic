@@ -7,9 +7,11 @@ and should be called via ``asyncio.to_thread()`` from async code.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import structlog
+from podman.errors import APIError as _APIError
 from podman.errors import NotFound as _NotFound
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient, _container_info
@@ -39,65 +41,27 @@ class ContainerManager:
         # Check if container already exists
         existing = self.get(spec.name)
         if existing is not None:
+            status = existing.get("status", "")
+            if status == "running":
+                log.info(
+                    "container_manager.start.already_running",
+                    name=spec.name,
+                )
+                return existing
+
+            # Container exists but is not running (exited/dead) — remove
+            # and fall through to recreate.  This prevents restart loops
+            # when a Recorder crashes.
             log.info(
-                "container_manager.start.already_exists",
+                "container_manager.start.replacing_exited",
                 name=spec.name,
-                status=existing.get("status"),
+                status=status,
             )
-            return existing
+            self.stop_and_remove(spec.name)
 
         try:
-            # Build podman run kwargs from spec
-            mounts = [
-                {
-                    "type": "bind",
-                    "source": m.source,
-                    "target": m.target,
-                    "read_only": m.read_only,
-                }
-                for m in spec.mounts
-            ]
-
-            # Ensure bind-mount source directories exist on the HOST.
-            # Use controller_source (controller-local path via bind mount)
-            # so mkdir goes through to the host filesystem.
-            for mount_spec in spec.mounts:
-                mkdir_path = Path(mount_spec.controller_source or mount_spec.source)
-                if not mount_spec.read_only and not mkdir_path.exists():
-                    mkdir_path.mkdir(parents=True, exist_ok=True)
-                    log.info(
-                        "container_manager.mkdir",
-                        path=str(mkdir_path),
-                        name=spec.name,
-                    )
-
-            run_kwargs: dict[str, object] = {
-                "image": spec.image,
-                "name": spec.name,
-                "detach": True,
-                "network_mode": "bridge",
-                "networks": {spec.network: {}},
-                "environment": spec.environment,
-                "labels": spec.labels,
-                "mounts": mounts,
-                "privileged": spec.privileged,
-                "restart_policy": {
-                    "Name": spec.restart_policy.name,
-                    "MaximumRetryCount": spec.restart_policy.max_retry_count,
-                },
-                # Resource Limits (ADR-0020)
-                "mem_limit": spec.memory_limit,
-                "cpu_quota": int(spec.cpu_limit * 100_000),
-                "oom_score_adj": spec.oom_score_adj,
-            }
-
-            # Only pass devices/group_add when non-empty; podman-py
-            # crashes with TypeError if either is None.
-            if spec.devices:
-                run_kwargs["devices"] = spec.devices
-            if spec.group_add:
-                run_kwargs["group_add"] = spec.group_add
-
+            self._ensure_mount_dirs(spec)
+            run_kwargs = self._build_run_kwargs(spec)
             container = self._podman.containers.run(**run_kwargs)
 
             log.info(
@@ -115,6 +79,57 @@ class ContainerManager:
             )
             return None
 
+    @staticmethod
+    def _ensure_mount_dirs(spec: Tier2ServiceSpec) -> None:
+        """Create bind-mount source directories on the host if needed."""
+        for mount_spec in spec.mounts:
+            mkdir_path = Path(mount_spec.controller_source or mount_spec.source)
+            if not mount_spec.read_only and not mkdir_path.exists():
+                mkdir_path.mkdir(parents=True, exist_ok=True)
+                log.info(
+                    "container_manager.mkdir",
+                    path=str(mkdir_path),
+                    name=spec.name,
+                )
+
+    @staticmethod
+    def _build_run_kwargs(spec: Tier2ServiceSpec) -> dict[str, object]:
+        """Build ``podman.containers.run()`` kwargs from a Tier2ServiceSpec."""
+        # Use 'volumes' instead of 'mounts' to pass SELinux/rootless ownership relabeling ('z')
+        volumes = {}
+        for m in spec.mounts:
+            mode = "ro,z" if m.read_only else "z"
+            volumes[m.source] = {"bind": m.target, "mode": mode}
+
+        kwargs: dict[str, object] = {
+            "image": spec.image,
+            "name": spec.name,
+            "detach": True,
+            "network_mode": "bridge",
+            "networks": {spec.network: {}},
+            "environment": spec.environment,
+            "labels": spec.labels,
+            "volumes": volumes,
+            "privileged": spec.privileged,
+            "restart_policy": {
+                "Name": spec.restart_policy.name,
+                "MaximumRetryCount": spec.restart_policy.max_retry_count,
+            },
+            # Resource Limits (ADR-0020)
+            "mem_limit": spec.memory_limit,
+            "cpu_quota": int(spec.cpu_limit * 100_000),
+            "oom_score_adj": spec.oom_score_adj,
+        }
+
+        # Only pass devices/group_add when non-empty; podman-py
+        # crashes with TypeError if either is None.
+        if spec.devices:
+            kwargs["devices"] = spec.devices
+        if spec.group_add:
+            kwargs["group_add"] = spec.group_add
+
+        return kwargs
+
     def stop(self, name: str, timeout: int = 10) -> bool:
         """Stop a container by name (SIGTERM → wait → force-kill).
 
@@ -130,6 +145,13 @@ class ContainerManager:
             return True
         except _NotFound:
             log.info("container_manager.stop.already_gone", name=name)
+            return True
+        except (json.JSONDecodeError, _APIError):
+            # podman-py raises JSONDecodeError when the container exits
+            # before the stop response arrives (304 with empty body).
+            # APIError may also occur in similar race conditions.
+            # In both cases the container is effectively stopped.
+            log.info("container_manager.stop.race_ok", name=name)
             return True
         except Exception as e:
             log.warning("container_manager.stop.failed", name=name, error_type=type(e).__name__)
@@ -154,6 +176,15 @@ class ContainerManager:
         except Exception as e:
             log.warning("container_manager.remove.failed", name=name, error_type=type(e).__name__)
             return False
+
+    def stop_and_remove(self, name: str, timeout: int = 10) -> bool:
+        """Stop and remove a container (teardown lifecycle).
+
+        Combines ``stop()`` and ``remove()`` into a single idempotent
+        operation.  Returns True if the container is gone afterwards.
+        """
+        self.stop(name, timeout=timeout)
+        return self.remove(name)
 
     def get(self, name: str) -> dict[str, object] | None:
         """Get container info by name, or None if not found."""
@@ -204,5 +235,4 @@ class ContainerManager:
             name = str(container.get("name", ""))
             if name not in desired_names:
                 log.info("reconciler.stopping_orphaned", name=name)
-                self.stop(name)
-                self.remove(name)
+                self.stop_and_remove(name)

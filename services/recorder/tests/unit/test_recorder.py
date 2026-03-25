@@ -1,14 +1,16 @@
-"""Unit tests for silvasonic-recorder service — 100 % coverage.
+"""Unit tests for silvasonic-recorder service.
 
 Tests the RecorderService (SilvaService subclass) including:
 - Package import
-- Service configuration
+- Service configuration and settings
+- RecorderSettings profile parsing
 - Background health monitor (_monitor_recording)
 - run() lifecycle with shutdown event
 - __main__ guard
 """
 
 import asyncio
+import json
 import os
 import sys
 import warnings
@@ -30,10 +32,17 @@ def bare_service() -> "RecorderService":
     works without mypy complaints.
     """
     from silvasonic.recorder.__main__ import RecorderService
+    from silvasonic.recorder.pipeline import PipelineConfig
 
     svc = RecorderService.__new__(RecorderService)
     svc._ctx = MagicMock()
     svc._ctx.health = HealthMonitor()
+    svc._cfg = MagicMock()
+    svc._cfg.recorder_device = "hw:mock,0"
+    svc._cfg.skip_device_check = False
+    svc._cfg.workspace_path = MagicMock()
+    svc._pipeline_config = PipelineConfig()
+    svc._pipeline = None
     return svc
 
 
@@ -90,6 +99,101 @@ class TestRecorderConfig:
                 instance_id="recorder", redis_url="redis://custom:1234/5"
             )
 
+    def test_init_with_profile_json(self) -> None:
+        """__init__ uses from_profile when valid config JSON is present."""
+        config = {"audio": {"sample_rate": 96000, "channels": 1, "format": "S16LE"}}
+        with (
+            patch.dict(os.environ, {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(config)}),
+            patch("silvasonic.core.service.SilvaService.__init__"),
+        ):
+            from silvasonic.recorder.__main__ import RecorderService
+
+            svc = RecorderService()
+            assert svc._pipeline_config.sample_rate == 96000
+
+
+# ---------------------------------------------------------------------------
+# RecorderSettings
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestRecorderSettings:
+    """Tests for RecorderSettings — environment parsing and profile loading."""
+
+    def test_defaults(self) -> None:
+        """Default settings have expected values."""
+        from silvasonic.recorder.settings import RecorderSettings
+
+        settings = RecorderSettings()
+        assert settings.instance_id == "recorder"
+        assert settings.recorder_device == "hw:1,0"
+        assert settings.recorder_config_json is None
+
+    def test_env_override(self) -> None:
+        """Environment variables override defaults."""
+        with patch.dict(
+            os.environ,
+            {
+                "SILVASONIC_INSTANCE_ID": "mic-1",
+                "SILVASONIC_RECORDER_DEVICE": "hw:3,0",
+                "SILVASONIC_RECORDER_WORKSPACE": "/custom/workspace",
+            },
+        ):
+            from silvasonic.recorder.settings import RecorderSettings
+
+            settings = RecorderSettings()
+            assert settings.instance_id == "mic-1"
+            assert settings.recorder_device == "hw:3,0"
+            assert settings.workspace_path.as_posix() == "/custom/workspace"
+
+    def test_parse_profile_none(self) -> None:
+        """parse_profile() returns None when no config JSON is set."""
+        from silvasonic.recorder.settings import RecorderSettings
+
+        settings = RecorderSettings()
+        assert settings.parse_profile() is None
+
+    def test_parse_profile_valid(self) -> None:
+        """parse_profile() returns MicrophoneProfile for valid JSON."""
+        config = {
+            "audio": {
+                "sample_rate": 384000,
+                "channels": 1,
+                "format": "S16LE",
+            },
+        }
+        with patch.dict(
+            os.environ,
+            {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(config)},
+        ):
+            from silvasonic.recorder.settings import RecorderSettings
+
+            settings = RecorderSettings()
+            profile = settings.parse_profile()
+            assert profile is not None
+            assert profile.audio.sample_rate == 384000
+
+    def test_parse_profile_invalid_json(self) -> None:
+        """parse_profile() returns None for invalid JSON."""
+        with patch.dict(
+            os.environ,
+            {"SILVASONIC_RECORDER_CONFIG_JSON": "not json{{{"},
+        ):
+            from silvasonic.recorder.settings import RecorderSettings
+
+            settings = RecorderSettings()
+            assert settings.parse_profile() is None
+
+    def test_parse_profile_missing_audio(self) -> None:
+        """parse_profile() returns None when 'audio' section is missing."""
+        with patch.dict(
+            os.environ,
+            {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps({"processing": {}})},
+        ):
+            from silvasonic.recorder.settings import RecorderSettings
+
+            settings = RecorderSettings()
+            assert settings.parse_profile() is None
+
 
 # ---------------------------------------------------------------------------
 # _monitor_recording
@@ -99,8 +203,11 @@ class TestMonitorRecording:
     """Tests for the _monitor_recording coroutine."""
 
     async def test_recording_active(self, bare_service: "RecorderService") -> None:
-        """Reports healthy when _recording_active is True."""
-        bare_service._recording_active = True
+        """Reports healthy when pipeline is active."""
+        mock_pipeline = MagicMock()
+        mock_pipeline.is_active = True
+        mock_pipeline.xrun_count = 0
+        bare_service._pipeline = mock_pipeline
 
         with (
             patch(
@@ -114,11 +221,11 @@ class TestMonitorRecording:
 
         status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is True
-        assert status["components"]["recording"]["details"] == "Recording active"
+        assert "Recording active" in status["components"]["recording"]["details"]
 
-    async def test_recording_failed(self, bare_service: "RecorderService") -> None:
-        """Reports unhealthy when _recording_active is False."""
-        bare_service._recording_active = False
+    async def test_recording_not_initialized(self, bare_service: "RecorderService") -> None:
+        """Reports unhealthy when pipeline is None."""
+        bare_service._pipeline = None
 
         with (
             patch(
@@ -132,7 +239,7 @@ class TestMonitorRecording:
 
         status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is False
-        assert status["components"]["recording"]["details"] == "Recording failed"
+        assert "Pipeline not initialized" in status["components"]["recording"]["details"]
 
 
 # ---------------------------------------------------------------------------
@@ -142,55 +249,213 @@ class TestMonitorRecording:
 class TestRecorderServiceRun:
     """Tests for the run() coroutine."""
 
-    async def test_run_starts_monitor_and_exits_on_shutdown(
-        self, bare_service: "RecorderService"
+    async def test_run_starts_pipeline_and_exits_on_shutdown(
+        self, bare_service: "RecorderService", tmp_path: MagicMock
     ) -> None:
-        """run() starts background task and exits when shutdown_event is set."""
+        """run() starts pipeline and exits when shutdown_event is set."""
         bare_service._shutdown_event = asyncio.Event()
+        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
 
-        # Mock the monitor method to be a no-op
-        async def noop_rec() -> None:
-            await asyncio.Event().wait()
+        mock_pipeline = MagicMock()
+        mock_pipeline.is_active = True
+        mock_pipeline.xrun_count = 0
+        mock_pipeline.drain_queue.return_value = 0
 
-        with patch.object(bare_service, "_monitor_recording", side_effect=noop_rec):
+        with (
+            patch("silvasonic.recorder.__main__.AudioPipeline", return_value=mock_pipeline),
+            patch("silvasonic.recorder.__main__.ensure_workspace"),
+            patch.object(bare_service, "_validate_device", return_value=True),
+        ):
             # Set shutdown after a short delay
             async def trigger_shutdown() -> None:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.1)
                 bare_service._shutdown_event.set()
 
             shutdown_task = asyncio.create_task(trigger_shutdown())
             await bare_service.run()
             await shutdown_task
 
-        # Health should have been initialized
-        status = bare_service.health.get_status()
-        assert "recorder" in status["components"]
+        mock_pipeline.start.assert_called_once()
+        mock_pipeline.stop.assert_called_once()
 
-    async def test_run_handles_cancellation(self, bare_service: "RecorderService") -> None:
-        """run() catches CancelledError in the recording loop and exits cleanly."""
+    async def test_run_handles_pipeline_start_failure(
+        self, bare_service: "RecorderService", tmp_path: MagicMock
+    ) -> None:
+        """run() handles pipeline start failure gracefully."""
         bare_service._shutdown_event = asyncio.Event()
+        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
 
-        async def noop_rec() -> None:
-            await asyncio.Event().wait()
+        mock_pipeline = MagicMock()
+        mock_pipeline.start.side_effect = RuntimeError("No audio device")
+
+        with (
+            patch("silvasonic.recorder.__main__.AudioPipeline", return_value=mock_pipeline),
+            patch("silvasonic.recorder.__main__.ensure_workspace"),
+            patch.object(bare_service, "_validate_device", return_value=True),
+        ):
+            await bare_service.run()
+
+        # Should have returned without crashing
+        status = bare_service.health.get_status()
+        assert status["components"]["recorder"]["healthy"] is False
+
+    async def test_run_handles_cancellation(
+        self, bare_service: "RecorderService", tmp_path: MagicMock
+    ) -> None:
+        """run() catches CancelledError and stops the pipeline cleanly."""
+        bare_service._shutdown_event = asyncio.Event()
+        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.is_active = True
+        mock_pipeline.xrun_count = 0
 
         call_count = 0
 
-        async def sleep_then_cancel(_delay: float) -> None:
+        async def drain_then_cancel(*_args: object) -> int:
             nonlocal call_count
             call_count += 1
             if call_count >= 2:
                 raise asyncio.CancelledError
-            # First call: let the loop iterate once
+            return 0
+
+        mock_pipeline.drain_queue = MagicMock(return_value=0)
 
         with (
-            patch.object(bare_service, "_monitor_recording", side_effect=noop_rec),
-            patch("silvasonic.recorder.__main__.asyncio.sleep", side_effect=sleep_then_cancel),
+            patch("silvasonic.recorder.__main__.AudioPipeline", return_value=mock_pipeline),
+            patch("silvasonic.recorder.__main__.ensure_workspace"),
+            patch.object(bare_service, "_validate_device", return_value=True),
+            patch(
+                "silvasonic.recorder.__main__.asyncio.to_thread",
+                side_effect=drain_then_cancel,
+            ),
         ):
             await bare_service.run()
 
-        # run() should have exited cleanly (CancelledError caught internally)
+        # Pipeline should have been stopped
+        mock_pipeline.stop.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _validate_device
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestValidateDevice:
+    """Tests for the _validate_device() pre-flight check."""
+
+    def test_validate_device_success(self, bare_service: "RecorderService") -> None:
+        """_validate_device returns True when sounddevice finds the device."""
+        with patch("silvasonic.recorder.__main__.sd") as mock_sd:
+            mock_sd.query_devices.return_value = {
+                "name": "UltraMic 384K: USB Audio",
+                "default_samplerate": 384000.0,
+                "max_input_channels": 1,
+            }
+            result = bare_service._validate_device("hw:2,0")
+
+        assert result is True
+        mock_sd.query_devices.assert_called_once_with("hw:2,0")
+
+    def test_validate_device_failure(self, bare_service: "RecorderService") -> None:
+        """_validate_device returns False and lists available devices on error."""
+        with patch("silvasonic.recorder.__main__.sd") as mock_sd:
+            mock_sd.query_devices.side_effect = [
+                ValueError("No such device"),
+                [
+                    {"name": "default", "max_input_channels": 0},
+                    {"name": "USB Mic", "max_input_channels": 1},
+                ],
+            ]
+            result = bare_service._validate_device("hw:99,0")
+
+        assert result is False
+
+
+@pytest.mark.unit
+class TestRunDeviceValidation:
+    """Tests for the run() device validation abort path."""
+
+    async def test_run_waits_on_device_validation_failure(
+        self, bare_service: "RecorderService", tmp_path: MagicMock
+    ) -> None:
+        """run() waits for shutdown when _validate_device returns False."""
+        bare_service._shutdown_event = asyncio.Event()
+        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
+        bare_service._cfg.skip_device_check = False
+
+        with (
+            patch("silvasonic.recorder.__main__.ensure_workspace"),
+            patch.object(bare_service, "_validate_device", return_value=False),
+            patch("silvasonic.recorder.__main__.AudioPipeline") as mock_pipeline_cls,
+        ):
+            # Trigger shutdown after a short delay so run() unblocks
+            async def trigger_shutdown() -> None:
+                await asyncio.sleep(0.1)
+                bare_service._shutdown_event.set()
+
+            shutdown_task = asyncio.create_task(trigger_shutdown())
+            await bare_service.run()
+            await shutdown_task
+
+        # Pipeline should never have been created
+        mock_pipeline_cls.assert_not_called()
+        # Health should indicate failure
         status = bare_service.health.get_status()
-        assert "recorder" in status["components"]
+        assert status["components"]["recorder"]["healthy"] is False
+
+    async def test_run_skips_device_check_when_configured(
+        self, bare_service: "RecorderService", tmp_path: MagicMock
+    ) -> None:
+        """run() enters idle mode when skip_device_check is True."""
+        bare_service._shutdown_event = asyncio.Event()
+        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
+        bare_service._cfg.skip_device_check = True
+
+        with (
+            patch("silvasonic.recorder.__main__.ensure_workspace"),
+            patch("silvasonic.recorder.__main__.AudioPipeline") as mock_pipeline_cls,
+        ):
+
+            async def trigger_shutdown() -> None:
+                await asyncio.sleep(0.1)
+                bare_service._shutdown_event.set()
+
+            shutdown_task = asyncio.create_task(trigger_shutdown())
+            await bare_service.run()
+            await shutdown_task
+
+        # Pipeline should never have been created
+        mock_pipeline_cls.assert_not_called()
+        # Health should be OK (idle mode)
+        status = bare_service.health.get_status()
+        assert status["components"]["recorder"]["healthy"] is True
+        assert "idle" in status["components"]["recorder"]["details"]
+
+
+# ---------------------------------------------------------------------------
+# get_extra_meta
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestGetExtraMeta:
+    """Tests for heartbeat metadata."""
+
+    def test_extra_meta_no_pipeline(self, bare_service: "RecorderService") -> None:
+        """Returns recording metadata even without active pipeline."""
+        meta = bare_service.get_extra_meta()
+        assert "recording" in meta
+        assert meta["recording"]["active"] is False
+        assert meta["recording"]["xruns"] == 0
+
+    def test_extra_meta_with_pipeline(self, bare_service: "RecorderService") -> None:
+        """Returns recording metadata from active pipeline."""
+        mock_pipeline = MagicMock()
+        mock_pipeline.is_active = True
+        mock_pipeline.xrun_count = 3
+        bare_service._pipeline = mock_pipeline
+
+        meta = bare_service.get_extra_meta()
+        assert meta["recording"]["active"] is True
+        assert meta["recording"]["xruns"] == 3
 
 
 # ---------------------------------------------------------------------------
