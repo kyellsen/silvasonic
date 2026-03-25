@@ -67,14 +67,14 @@ class TestControllerLifecycleRedis:
         from silvasonic.core.service import SilvaService
 
         svc._host_resources = HostResourceCollector()
-        SilvaService.__init__(svc, redis_url=url, instance_id=instance_id, heartbeat_interval=0.5)
+        SilvaService.__init__(svc, redis_url=url, instance_id=instance_id, heartbeat_interval=0.1)
 
         with patch("silvasonic.core.service_context.start_health_server"):
             await svc._setup()
 
         try:
             svc.health.update_status("controller", True, "running")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.2)
         finally:
             await svc._teardown()
 
@@ -105,7 +105,7 @@ class TestControllerLifecycleRedis:
         from silvasonic.core.service import SilvaService
 
         svc._host_resources = HostResourceCollector()
-        SilvaService.__init__(svc, redis_url=url, instance_id=instance_id, heartbeat_interval=0.5)
+        SilvaService.__init__(svc, redis_url=url, instance_id=instance_id, heartbeat_interval=0.1)
 
         with patch("silvasonic.core.service_context.start_health_server"):
             await svc._setup()
@@ -113,7 +113,7 @@ class TestControllerLifecycleRedis:
         try:
             svc.health.update_status("controller", True, "running")
             svc.health.update_status("database", True, "Connected")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.2)
         finally:
             await svc._teardown()
 

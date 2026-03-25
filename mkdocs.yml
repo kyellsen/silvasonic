@@ -24,10 +24,13 @@ nav:
       - Database Service: services/database.md
       - Recorder Service: services/recorder.md
       - Redis Service: services/redis.md
+      - Web-Mock Service: services/web_mock.md
       - Processor Service: services/processor.md
       - Uploader Service: services/uploader.md
       - Gateway Service: services/gateway.md
       - Web-Interface Service: services/web_interface.md
+      - "UI/UX Design System": services/web_interface/02_ui_ux_design_system.md
+      - "Web-Interface Feature Specs": services/web_interface_features.md
       - Icecast Service: services/icecast.md
       - BirdNET Service: services/birdnet.md
       - Weather Service: services/weather.md
@@ -59,14 +62,29 @@ nav:
       - "ADR-0020: Resource Limits & QoS": adr/0020-resource-limits-qos.md
       - "ADR-0021: Frontend Design System": adr/0021-frontend-design-system.md
       - "ADR-0022: Live Log Streaming": adr/0022-live-log-streaming.md
+      - "ADR-0023: Configuration Management": adr/0023-configuration-management.md
+      - "ADR-0024: FFmpeg Audio Engine": adr/0024-ffmpeg-audio-engine.md
   - Development:
       - Overview: development/README.md
+      - "Milestone v0.1.0": development/milestone_0_1_0.md
       - "Milestone v0.2.0": development/milestone_0_2_0.md
       - "Milestone v0.3.0": development/milestone_0_3_0.md
+      - "Milestone v0.4.0": development/milestone_0_4_0.md
+      - Milestone Template: development/milestone_template.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
       - Release Checklist: development/release_checklist.md
       - "Future Features & Ideas": development/idea.md
+  - User Stories:
+      - Controller: user_stories/controller.md
+      - Recorder: user_stories/recorder.md
+      - BirdNET: user_stories/birdnet.md
+      - BatDetect: user_stories/batdetect.md
+      - Processor: user_stories/processor.md
+      - Gateway: user_stories/gateway.md
+      - Icecast: user_stories/icecast.md
+      - Uploader: user_stories/uploader.md
+      - Web-Interface: user_stories/web_interface.md
   - Hardware: hardware.md
   - API Reference: api_reference.md
   - Glossary: glossary.md

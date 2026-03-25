@@ -112,5 +112,9 @@ class TestServiceHeartbeats:
         assert payload["instance_id"] == "recorder"
         assert payload["health"]["status"] == "ok"
         assert "resources" in payload["meta"]
+        # Phase 4: dual-stream flags must be present in heartbeat
+        assert "recording" in payload["meta"]
+        assert "raw_enabled" in payload["meta"]["recording"]
+        assert "processed_enabled" in payload["meta"]["recording"]
 
         redis_client.close()

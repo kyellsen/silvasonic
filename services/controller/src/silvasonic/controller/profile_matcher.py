@@ -48,19 +48,28 @@ class ProfileMatcher:
         self,
         device_info: DeviceInfo,
         session: AsyncSession,
+        *,
+        profiles: list[MicProfileDB] | None = None,
     ) -> MatchResult:
         """Find the best matching profile for a device.
 
         Args:
             device_info: Detected device information.
             session: Active async DB session.
+            profiles: Optional pre-loaded profiles list.  When provided,
+                skips the ``SELECT *`` query — useful when matching
+                multiple devices in a single reconciliation cycle.
 
         Returns:
             :class:`MatchResult` with best match (or no match).
         """
-        # Load all profiles
-        result = await session.execute(select(MicProfileDB))
-        profiles = result.scalars().all()
+        # Load auto_enrollment flag once (avoids duplicate DB query)
+        auto_enrollment = await self._get_auto_enrollment(session)
+
+        # Load profiles from DB if not pre-loaded by caller
+        if profiles is None:
+            result = await session.execute(select(MicProfileDB))
+            profiles = list(result.scalars().all())
 
         best: MatchResult = MatchResult()
 
@@ -71,7 +80,6 @@ class ProfileMatcher:
 
         # Check auto_enrollment flag if we have a match
         if best.score >= 100:
-            auto_enrollment = await self._get_auto_enrollment(session)
             best.auto_enroll = auto_enrollment
 
         if best.profile_slug:
@@ -86,7 +94,6 @@ class ProfileMatcher:
             # Score 0: Try generic_usb fallback (v0.4.0+, US-C10)
             fallback = await session.get(MicProfileDB, GENERIC_USB_SLUG)
             if fallback is not None:
-                auto_enrollment = await self._get_auto_enrollment(session)
                 best = MatchResult(
                     profile_slug=GENERIC_USB_SLUG,
                     score=0,

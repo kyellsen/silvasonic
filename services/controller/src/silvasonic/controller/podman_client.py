@@ -33,7 +33,7 @@ class PodmanConnectionError(Exception):
     """Raised when the Podman socket cannot be reached after retries."""
 
 
-def _container_info(c: Any) -> dict[str, object]:
+def container_info(c: Any) -> dict[str, object]:
     """Extract standard info dict from a Podman container object.
 
     Handles podman-py sparse mode (default in v5.7+) where ``attrs["State"]``
@@ -198,7 +198,7 @@ class SilvasonicPodmanClient:
             return []
         try:
             containers = self._client.containers.list(filters=filters if filters else None)
-            return [_container_info(c) for c in containers]
+            return [container_info(c) for c in containers]
         except Exception as e:
             expected = isinstance(e, (ConnectionError, OSError))
             log.warning(
@@ -208,16 +208,22 @@ class SilvasonicPodmanClient:
             )
             return []
 
-    def list_managed_containers(self) -> list[dict[str, object]]:
+    def list_managed_containers(self, owner_profile: str = "controller") -> list[dict[str, object]]:
         """List containers owned by this Controller.
 
         Convenience method that filters by
-        ``io.silvasonic.owner=controller``.
+        ``io.silvasonic.owner=<owner_profile>``.
+
+        Args:
+            owner_profile: Value to match against the ``io.silvasonic.owner``
+                label.  Defaults to ``"controller"`` (production).  Tests use
+                a unique value like ``"controller-test-<uuid>"`` to isolate
+                test containers from the production stack.
 
         Returns:
             List of managed container info dicts.
         """
-        return self.list_containers(label="io.silvasonic.owner=controller")
+        return self.list_containers(label=f"io.silvasonic.owner={owner_profile}")
 
     def close(self) -> None:
         """Disconnect from the Podman socket."""

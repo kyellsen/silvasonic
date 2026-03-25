@@ -1,7 +1,7 @@
 """Unit tests for SilvasonicPodmanClient.
 
 Covers initialization, connect() with retry logic, ping(), list_containers(),
-list_managed_containers(), close(), _container_info(), and the containers
+list_managed_containers(), close(), container_info(), and the containers
 property.
 """
 
@@ -9,7 +9,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from silvasonic.controller.podman_client import SilvasonicPodmanClient, _container_info
+from silvasonic.controller.podman_client import SilvasonicPodmanClient, container_info
 
 # ===================================================================
 # Initialization
@@ -128,6 +128,7 @@ class TestSilvasonicPodmanClientConnect:
         with (
             patch("podman.PodmanClient", mock_podman_class),
             patch("time.sleep") as mock_sleep,
+            patch("silvasonic.controller.podman_client.log"),
             pytest.raises(PodmanConnectionError),
         ):
             client.connect()
@@ -237,13 +238,13 @@ class TestSilvasonicPodmanClientPing:
 
 
 # ===================================================================
-# _container_info()
+# container_info()
 # ===================================================================
 
 
 @pytest.mark.unit
 class TestContainerInfo:
-    """Tests for _container_info() — sparse/full mode, name normalization."""
+    """Tests for container_info() — sparse/full mode, name normalization."""
 
     def test_sparse_mode_state_string(self) -> None:
         """Sparse mode: attrs['State'] is a plain string (podman-py v5.7+)."""
@@ -253,7 +254,7 @@ class TestContainerInfo:
         c.attrs = {"State": "running"}
         c.labels = {}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info["status"] == "running"
         assert info["name"] == "silvasonic-recorder-test"
 
@@ -265,7 +266,7 @@ class TestContainerInfo:
         c.attrs = {"State": {"Status": "exited", "ExitCode": 0}}
         c.labels = {}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info["status"] == "exited"
 
     def test_name_slash_prefix_stripped(self) -> None:
@@ -276,7 +277,7 @@ class TestContainerInfo:
         c.attrs = {"State": "running"}
         c.labels = {}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info["name"] == "silvasonic-recorder-test"
 
     def test_name_without_slash_unchanged(self) -> None:
@@ -287,7 +288,7 @@ class TestContainerInfo:
         c.attrs = {"State": "running"}
         c.labels = {}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info["name"] == "silvasonic-recorder-test"
 
     def test_missing_state_defaults_empty(self) -> None:
@@ -298,7 +299,7 @@ class TestContainerInfo:
         c.attrs = {}
         c.labels = {}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info["status"] == ""
 
     def test_returns_all_fields(self) -> None:
@@ -309,7 +310,7 @@ class TestContainerInfo:
         c.attrs = {"State": "created"}
         c.labels = {"io.silvasonic.owner": "controller"}
 
-        info = _container_info(c)
+        info = container_info(c)
         assert info == {
             "id": "xyz789",
             "name": "recorder-1",
@@ -390,7 +391,7 @@ class TestSilvasonicPodmanClientListContainers:
         client._client.containers.list.assert_called_once_with(filters={"status": ["running"]})
 
     def test_list_managed_containers(self) -> None:
-        """Filters by io.silvasonic.owner=controller label."""
+        """Filters by io.silvasonic.owner=controller label (default)."""
         client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
         client._client = MagicMock()
         client._client.containers.list.return_value = []
@@ -399,6 +400,18 @@ class TestSilvasonicPodmanClientListContainers:
         client.list_managed_containers()
         client._client.containers.list.assert_called_once_with(
             filters={"label": "io.silvasonic.owner=controller"}
+        )
+
+    def test_list_managed_containers_custom_profile(self) -> None:
+        """Custom owner_profile changes the label filter."""
+        client = SilvasonicPodmanClient.__new__(SilvasonicPodmanClient)
+        client._client = MagicMock()
+        client._client.containers.list.return_value = []
+        client._connected = True
+
+        client.list_managed_containers(owner_profile="controller-test-abc12345")
+        client._client.containers.list.assert_called_once_with(
+            filters={"label": "io.silvasonic.owner=controller-test-abc12345"}
         )
 
 

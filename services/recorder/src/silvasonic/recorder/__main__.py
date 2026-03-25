@@ -1,4 +1,4 @@
-"""Silvasonic Recorder — Audio capture service (ADR-0019).
+"""Silvasonic Recorder — Audio capture service (ADR-0019, ADR-0024).
 
 The Recorder is an **immutable Tier 2** service. It has NO database access
 and receives all configuration via environment variables (Profile Injection)
@@ -8,18 +8,18 @@ Inherits the full ``SilvaService`` managed lifecycle: structured logging,
 health monitoring, Redis heartbeats with liveness watchdog, and graceful
 shutdown.
 
-v0.4.0: Captures audio from USB microphones using ``sounddevice`` +
-``soundfile``, writes segmented WAV files, and manages the buffer→data
-promotion workflow.
+v0.5.0: Captures audio via FFmpeg subprocess (ADR-0024).  FFmpeg handles
+ALSA capture, dual-stream segmentation, and resampling.  Python manages
+the subprocess lifecycle and atomic segment promotion.
 """
 
 import asyncio
+import subprocess
 from typing import Any
 
-import sounddevice as sd
 import structlog
 from silvasonic.core.service import SilvaService
-from silvasonic.recorder.pipeline import AudioPipeline, PipelineConfig
+from silvasonic.recorder.ffmpeg_pipeline import FFmpegConfig, FFmpegPipeline
 from silvasonic.recorder.settings import RecorderSettings
 from silvasonic.recorder.workspace import ensure_workspace
 
@@ -27,7 +27,7 @@ log = structlog.get_logger()
 
 
 class RecorderService(SilvaService):
-    """Recorder service — captures audio from USB microphones.
+    """Recorder service — captures audio from USB microphones via FFmpeg.
 
     Class Attributes:
         service_name: ``"recorder"``
@@ -47,18 +47,20 @@ class RecorderService(SilvaService):
         # Build pipeline config from injected profile (or defaults)
         profile = self._cfg.parse_profile()
         if profile is not None:
-            self._pipeline_config = PipelineConfig.from_profile(profile)
+            self._pipeline_config = FFmpegConfig.from_profile(profile)
             log.info(
                 "recorder.profile_loaded",
                 sample_rate=self._pipeline_config.sample_rate,
                 channels=self._pipeline_config.channels,
                 format=self._pipeline_config.format,
+                raw_enabled=self._pipeline_config.raw_enabled,
+                processed_enabled=self._pipeline_config.processed_enabled,
             )
         else:
-            self._pipeline_config = PipelineConfig()
+            self._pipeline_config = FFmpegConfig()
             log.info("recorder.using_defaults")
 
-        self._pipeline: AudioPipeline | None = None
+        self._pipeline: FFmpegPipeline | None = None
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Include recording metadata in heartbeat (ADR-0019 §2.4)."""
@@ -70,18 +72,22 @@ class RecorderService(SilvaService):
                 "format": self._pipeline_config.format,
                 "segment_duration_s": self._pipeline_config.segment_duration_s,
                 "active": self._pipeline.is_active if self._pipeline else False,
-                "xruns": self._pipeline.xrun_count if self._pipeline else 0,
+                "segments_promoted": (self._pipeline.segments_promoted if self._pipeline else 0),
+                "ffmpeg_pid": self._pipeline.ffmpeg_pid if self._pipeline else None,
+                "raw_enabled": self._pipeline_config.raw_enabled,
+                "processed_enabled": self._pipeline_config.processed_enabled,
             },
         }
         return meta
 
     async def run(self) -> None:
-        """Main recording loop.
+        """Main recording lifecycle.
 
         1. Ensure workspace directories exist.
-        2. Start the audio pipeline.
-        3. Drain the audio queue and write segments.
-        4. On shutdown: stop pipeline and promote final segment.
+        2. Pre-flight device validation (optional).
+        3. Start FFmpeg pipeline.
+        4. Wait for shutdown signal (FFmpeg works autonomously).
+        5. Stop pipeline and promote final segments.
         """
         self.health.update_status("recorder", True, "running")
 
@@ -105,12 +111,14 @@ class RecorderService(SilvaService):
             await self._shutdown_event.wait()
             return
 
-        # Step 3: Start pipeline
-        self._pipeline = AudioPipeline(
+        # Step 3: Start FFmpeg pipeline
+        self._pipeline = FFmpegPipeline(
             config=self._pipeline_config,
             workspace=workspace,
             device=device,
             mock_source=use_mock,
+            ffmpeg_binary=self._cfg.ffmpeg_binary,
+            ffmpeg_loglevel=self._cfg.ffmpeg_loglevel,
         )
 
         try:
@@ -125,31 +133,26 @@ class RecorderService(SilvaService):
             self.health.update_status("recorder", False, "Pipeline start failed")
             return
 
-        # Step 4: Start background health monitor
+        # Step 4: Monitor loop — FFmpeg works autonomously
         rec_task = asyncio.create_task(self._monitor_recording())
 
         try:
-            # Step 5: Main loop — drain audio queue and keep watchdog alive
-            while not self._shutdown_event.is_set():
-                self.health.touch()
-                # Drain available audio data from the queue
-                await asyncio.to_thread(self._pipeline.drain_queue)
-                await asyncio.sleep(0.05)  # ~20 Hz drain cycle
+            # FFmpeg runs in its own process — Python just waits for shutdown
+            await self._shutdown_event.wait()
         except asyncio.CancelledError:
             pass
         finally:
             rec_task.cancel()
-            # Step 6: Stop pipeline (drains remaining + promotes final segment)
+            # Step 5: Stop pipeline (promotes remaining segments)
             if self._pipeline is not None:
                 self._pipeline.stop()
                 self._pipeline = None
 
     def _validate_device(self, device: str) -> bool:
-        """Validate that the audio device exists and is queryable.
+        """Validate that the ALSA audio device exists.
 
-        Logs all available input devices for diagnostics if the
-        configured device cannot be found.  This provides a clear
-        error message instead of an opaque ``PortAudioError``.
+        Uses ``arecord -l`` to list available capture devices and
+        checks if the configured device can be found.
 
         Args:
             device: ALSA device string (e.g. ``"hw:2,0"``).
@@ -158,40 +161,59 @@ class RecorderService(SilvaService):
             ``True`` if the device was found, ``False`` otherwise.
         """
         try:
-            info = sd.query_devices(device)
-            log.info(
-                "recorder.device_validated",
-                device=device,
-                name=info["name"],
-                default_samplerate=info["default_samplerate"],
-                max_input_channels=info["max_input_channels"],
+            result = subprocess.run(
+                ["arecord", "-l"],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
-            return True
-        except Exception:
-            available = [
-                {"idx": i, "name": d["name"], "inputs": d["max_input_channels"]}
-                for i, d in enumerate(sd.query_devices())
-                if d["max_input_channels"] > 0
+            output = result.stdout
+
+            # Extract card number from device string (e.g. "hw:2,0" → "2")
+            card_num = device.split(":")[1].split(",")[0] if ":" in device else device
+            card_marker = f"card {card_num}:"
+
+            if card_marker in output:
+                # Find the device name for logging
+                for line in output.splitlines():
+                    if card_marker in line:
+                        log.info(
+                            "recorder.device_validated",
+                            device=device,
+                            info=line.strip(),
+                        )
+                        return True
+
+            # Device not found — log available devices
+            available_lines = [
+                line.strip() for line in output.splitlines() if line.strip().startswith("card ")
             ]
             log.error(
                 "recorder.device_not_found",
                 device=device,
-                available_input_devices=available,
+                available_devices=available_lines,
             )
             return False
 
-    async def _monitor_recording(self) -> None:
-        """Periodically check recording status and update health.
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            log.exception("recorder.device_validation_failed", device=device)
+            return False
 
-        Reports pipeline activity and xrun count to the health monitor.
+    async def _monitor_recording(self) -> None:
+        """Periodically check FFmpeg status and update health.
+
+        Reports pipeline activity and segment count to the health
+        monitor.
         """
         while True:
             if self._pipeline is not None:
                 is_recording = self._pipeline.is_active
-                xruns = self._pipeline.xrun_count
-                details = (
-                    f"Recording active (xruns: {xruns})" if is_recording else "Recording stopped"
-                )
+                segments = self._pipeline.segments_promoted
+                errors = len(self._pipeline.stderr_errors)
+                if is_recording:
+                    details = f"Recording active (segments: {segments}, errors: {errors})"
+                else:
+                    details = "FFmpeg process exited unexpectedly"
             else:
                 is_recording = False
                 details = "Pipeline not initialized"

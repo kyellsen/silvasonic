@@ -225,35 +225,8 @@ class LogForwarder:
                 name,
             )
 
-            # container.logs() is synchronous and blocking → run in thread
-            # We use a generator wrapper to iterate in a thread-safe way
-            def _iter_logs() -> list[str]:
-                """Read a batch of log lines (blocking)."""
-                lines: list[str] = []
-                try:
-                    for line in container.logs(
-                        stream=True,
-                        follow=True,
-                        stdout=True,
-                        stderr=True,
-                        timestamps=False,
-                    ):
-                        if isinstance(line, bytes):
-                            line = line.decode("utf-8", errors="replace")
-                        stripped = line.rstrip("\n\r")
-                        if stripped:
-                            lines.append(stripped)
-                        # Yield control periodically to allow cancellation
-                        if len(lines) >= 10:
-                            return lines
-                except StopIteration:  # pragma: no cover — defensive
-                    pass
-                except Exception:
-                    pass
-                return lines
-
             while True:
-                lines = await asyncio.to_thread(_iter_logs)
+                lines = await asyncio.to_thread(self._read_log_batch, container)
                 if not lines:
                     # Container may have stopped — exit follow loop
                     log.debug("log_forwarder.container_stopped", name=name)
@@ -282,6 +255,42 @@ class LogForwarder:
             raise
         except Exception:
             log.debug("log_forwarder.follow_error", name=name)
+
+    @staticmethod
+    def _read_log_batch(container: Any, *, batch_size: int = 10) -> list[str]:
+        """Read a batch of log lines from a container (blocking).
+
+        Called via ``asyncio.to_thread()`` to avoid blocking the event loop.
+
+        Args:
+            container: Podman container object.
+            batch_size: Max lines per batch before yielding control.
+
+        Returns:
+            List of stripped log lines (may be empty if stream ended).
+        """
+        lines: list[str] = []
+        try:
+            for line in container.logs(
+                stream=True,
+                follow=True,
+                stdout=True,
+                stderr=True,
+                timestamps=False,
+            ):
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace")
+                stripped = line.rstrip("\n\r")
+                if stripped:
+                    lines.append(stripped)
+                # Yield control periodically to allow cancellation
+                if len(lines) >= batch_size:
+                    return lines
+        except StopIteration:  # pragma: no cover — defensive
+            pass
+        except Exception:
+            log.debug("log_forwarder.read_batch_error", exc_info=True)
+        return lines
 
     async def _cancel_all_tasks(self) -> None:
         """Cancel all active follow tasks."""

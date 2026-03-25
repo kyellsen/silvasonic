@@ -82,7 +82,7 @@ class TestSilvaServiceLifecycleRedis:
             async def run(self) -> None:
                 pass
 
-        svc = _TestService(redis_url=url, instance_id=instance_id, heartbeat_interval=0.5)
+        svc = _TestService(redis_url=url, instance_id=instance_id, heartbeat_interval=0.1)
 
         with patch("silvasonic.core.service_context.start_health_server"):
             await svc._setup()
@@ -90,7 +90,7 @@ class TestSilvaServiceLifecycleRedis:
         try:
             # Update health status and let heartbeat fire
             svc.health.update_status("main", True, "running")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.2)
         finally:
             await svc._teardown()
 
@@ -188,14 +188,14 @@ class TestSilvaServiceLifecycleRedis:
             async def run(self) -> None:
                 pass
 
-        svc = _MetaService(redis_url=url, instance_id=instance_id, heartbeat_interval=0.5)
+        svc = _MetaService(redis_url=url, instance_id=instance_id, heartbeat_interval=0.1)
 
         with patch("silvasonic.core.service_context.start_health_server"):
             await svc._setup()
 
         try:
             svc.health.update_status("main", True, "ok")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.2)
         finally:
             await svc._teardown()
 
@@ -241,12 +241,12 @@ class TestServiceContextPubSub:
                 service_port=19881,
                 instance_id="ps-01",
                 redis_url=url,
-                heartbeat_interval=0.5,
+                heartbeat_interval=0.1,
                 skip_health_server=True,
             ) as ctx:
                 ctx.health.update_status("test", True, "ok")
                 # Wait for at least one heartbeat to fire
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(0.2)
 
         # Check that at least one message was received
         msg = await pubsub.get_message(timeout=5.0)

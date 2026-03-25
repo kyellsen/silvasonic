@@ -16,8 +16,8 @@
 | Recording Health Monitor (Placeholder) | ✅ Implemented | v0.2.0    | —          |
 | Plug & Play Detection                  | ✅ Implemented | v0.3.0    | US-R01     |
 | Multi-Microphone Instances             | ✅ Implemented | v0.3.0    | US-R05     |
-| Audio Capture (Python Pipeline)        | ✅ Implemented | v0.4.0    | US-R01     |
-| Dual Stream (Raw + Processed)          | 🔜 Planned     | v0.4.0    | US-R03     |
+| Audio Capture (FFmpeg Engine)          | ✅ Implemented | v0.4.0    | US-R01     |
+| Dual Stream (Raw + Processed)          | ✅ Implemented | v0.4.0    | US-R03     |
 | Segment Duration via Profile           | ✅ Implemented | v0.4.0    | US-R07     |
 | Watchdog & Auto-Recovery               | 🔜 Planned     | v0.4.0    | US-R06     |
 | OOM Protection (`oom_score_adj=-999`)  | 🔜 Planned     | v0.4.0    | US-R02     |
@@ -63,12 +63,12 @@ The Recorder is an **immutable Tier 2** service. This means:
 
 ### Processing
 
-*   **Audio Pipeline:** Orchestrates a non-blocking audio capture stream using `sounddevice` and writes data using `soundfile`. A single ALSA capture is split into multiple output streams in the callback.
-*   **Dual Stream Architecture** 🔜 Planned (v0.4.0):
-    1.  **Raw:** Preserves original sample rate and bit depth (direct write to native-format WAV).
-    2.  **Processed:** Resamples to 48 kHz (using `soxr.resample`) for consistent ML input.
+*   **Audio Pipeline:** Subprocess-based engine managing an `ffmpeg` instance. A single ALSA capture is split into multiple output streams in one command (ADR-0024).
+*   **Dual Stream Architecture** ✅ Implemented (v0.4.0):
+    1.  **Raw:** Preserves original sample rate and bit depth (direct write via FFmpeg).
+    2.  **Processed:** Resampled to 48 kHz / S16LE by FFmpeg for consistent ML input.
 *   **Segment Writing:** Files are written in configurable segments (default: 10 seconds, configurable via Microphone Profile).
-*   **Buffer → Data Workflow:** While a segment is being actively written, it is stored in `.buffer/{stream}/`. Only when the segment is completely written and closed by `soundfile` is it moved to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
+*   **Buffer → Data Workflow:** While a segment is being actively written by FFmpeg, it is stored in `.buffer/{stream}/`. A `SegmentPromoter` thread detects completed segments and atomically moves them to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
 *   **Triple Stream Architecture** 🔮 Future (v0.9.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 
@@ -130,7 +130,7 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 
 | Level | Mechanism                                                                                       | Scope                                      |
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| 1     | **Internal Watchdog** — monitors audio callbacks and stream state for errors, hangs, or xruns   | Restarts the pipeline within the container |
+| 1     | **Subprocess Monitor** — monitors the FFmpeg process state and checks for errors or hangs       | Restarts the pipeline within the container |
 | 2     | **Container Restart** — Podman `restart: on-failure` (max 5 retries) restarts the entire container | Handles container-level crashes            |
 | 3     | **Controller Health Check** (reconciliation interval) — detects unresponsive Recorders and recreates them | Handles unrecoverable states               |
 
@@ -191,10 +191,10 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 | ---------------- | ---------------------------------------------------------------------------------------- |
 | **Immutable**    | Yes — config at startup via env vars, restart to reconfigure (ADR-0019)                  |
 | **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
-| **Concurrency**  | Process-based — core work in C extensions (PortAudio/libsndfile), Python wrapper is threaded |
+| **Concurrency**  | Multi-process — audio capture is isolated in an FFmpeg subprocess, Python wrapper handles orchestration |
 | **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
 | **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
-| **Resources**    | Medium — continuous I/O to NVMe, dynamic resampling CPU usage scales with sample rate    |
+| **Resources**    | Medium — continuous I/O to NVMe, FFmpeg resampling CPU usage scales with sample rate     |
 | **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
 | **Retry Limit**  | Max 5 restart retries before giving up — prevents infinite restart loops                 |
 
@@ -202,10 +202,8 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Technology Stack
 
-*   **Audio Capture:** `sounddevice` (PortAudio wrapper)
-*   **Audio I/O:** `soundfile` (libsndfile wrapper)
-*   **Audio Resampling:** `soxr` (libsoxr — industry-standard audio resampling)
-*   **System Dependencies:** `libportaudio2`, `libsndfile1`, `alsa-utils`
+*   **Audio Engine:** `ffmpeg` (subprocess management and capture)
+*   **System Dependencies:** `ffmpeg`, `alsa-utils`
 *   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
 *   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
 

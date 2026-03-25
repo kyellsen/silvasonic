@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.3.0 — Tier 2 Container Management
+> **Status:** v0.4.0 — Audio Recording (Dual Stream) 🔨
 
 ---
 
@@ -10,8 +10,8 @@
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | **v0.1.0** | Requirements Engineering & Specification — Complete specification of all features, tech stack, architecture, and service logic up to v1.0.0 (MVP) in `.md` files with clear roadmap. Repo structure, core pkg, DB, CI pipeline, ADRs, Podman as implementation foundation | ✅ Done        |
 | **v0.2.0** | Service Infrastructure — Redis container, `SilvaService` base class, `core.service`, `core.redis`, `core.heartbeat`. All services inherit unified lifecycle. Heartbeats go live (ADR-0019). Web-Mock dev UI                                                               | ✅ Done        |
-| **v0.3.0** | Controller manages Recorder lifecycle (start/stop via `podman-py`, reconciliation loop, Profile Injection)                                                                                                                                                                | ✅ Done        |
-| v0.4.0     | Recorder writes .wav files (Dual Stream), Generic USB Fallback Profile, 3-Tier Auto-Onboarding (Score 100/50/0)                                                                                                                                                                | 🔨 In Progress |
+| **v0.3.0** | Tier 2 Container Management — Podman lifecycle, USB Detection, Profile Matching & Auto-Enrollment, Config Seeding, Log Streaming (ADR-0022), Reconciliation Loop                                                                                                              | ✅ Done        |
+| v0.4.0     | Audio Recording — FFmpeg Engine (ADR-0024), Dual Stream (Raw + Processed), Profile Injection, Generic USB Fallback, Watchdog & Auto-Recovery                                                                                                                                    | 🔨 In Progress |
 | v0.5.0     | Processor service (Ingestion, Indexing, Janitor — immutable Tier 1)                                                                                                                                                                                                       | ⏳ Planned     |
 | v0.6.0     | Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)                                                                                                                                                                                            | ⏳ Planned     |
 | v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ⏳ Planned     |

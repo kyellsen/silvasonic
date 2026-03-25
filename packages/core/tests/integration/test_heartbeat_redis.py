@@ -143,7 +143,7 @@ class TestServiceContextLifecycle:
             service_port=19876,
             instance_id="ctx-01",
             redis_url=url,
-            heartbeat_interval=1.0,
+            heartbeat_interval=0.1,
             skip_health_server=True,
         ) as ctx:
             # Verify heartbeat was started
@@ -151,7 +151,7 @@ class TestServiceContextLifecycle:
             assert ctx.resource_collector is not None
 
             # Let the heartbeat loop fire at least once
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(0.2)
 
         # After teardown: verify the key was written to Redis
         redis = Redis.from_url(url, decode_responses=True)

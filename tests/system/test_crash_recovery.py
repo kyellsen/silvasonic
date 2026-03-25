@@ -33,6 +33,7 @@ from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from .conftest import (
     PODMAN_SOCKET,
     SOCKET_AVAILABLE,
+    TEST_RUN_ID,
     make_test_spec,
     require_recorder_image,
 )
@@ -62,7 +63,7 @@ class TestCrashRecovery:
         """
         require_recorder_image()
 
-        container_name = "silvasonic-recorder-exited-test"
+        container_name = f"silvasonic-recorder-exited-test-{TEST_RUN_ID}"
         network_name = "silvasonic-net"
         workspace = tmp_path / "recorder" / "exited-test"
         workspace.mkdir(parents=True, exist_ok=True)
@@ -78,7 +79,7 @@ class TestCrashRecovery:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Step 1: Start container
             info = mgr.start(spec)
@@ -123,7 +124,7 @@ class TestCrashRecovery:
         """
         require_recorder_image()
 
-        container_name = "silvasonic-recorder-crash-test"
+        container_name = f"silvasonic-recorder-crash-test-{TEST_RUN_ID}"
         workspace = tmp_path / "recorder" / "crash-test"
         workspace.mkdir(parents=True, exist_ok=True)
         spec = make_test_spec(container_name, "crash-test-device", workspace)
@@ -132,7 +133,7 @@ class TestCrashRecovery:
         client1 = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client1.connect()
         try:
-            mgr1 = ContainerManager(client1)
+            mgr1 = ContainerManager(client1, owner_profile=f"controller-test-{TEST_RUN_ID}")
             info = mgr1.start(spec)
             assert info is not None, "start() should return container info"
             original_id = info.get("id")
@@ -144,7 +145,7 @@ class TestCrashRecovery:
         client2 = SilvasonicPodmanClient(socket_path=PODMAN_SOCKET, max_retries=2, retry_delay=0.5)
         client2.connect()
         try:
-            mgr2 = ContainerManager(client2)
+            mgr2 = ContainerManager(client2, owner_profile=f"controller-test-{TEST_RUN_ID}")
             surviving = mgr2.get(container_name)
 
             assert surviving is not None, "Container should still exist after Controller disconnect"
@@ -170,7 +171,7 @@ class TestCrashRecovery:
         """
         require_recorder_image()
 
-        container_name = "silvasonic-recorder-adopt-test"
+        container_name = f"silvasonic-recorder-adopt-test-{TEST_RUN_ID}"
         workspace = tmp_path / "recorder" / "adopt-test"
         workspace.mkdir(parents=True, exist_ok=True)
         spec = make_test_spec(container_name, "adopt-test-device", workspace)
@@ -180,13 +181,13 @@ class TestCrashRecovery:
 
         try:
             # Phase 1: Start a container (= "original Controller")
-            mgr1 = ContainerManager(client)
+            mgr1 = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
             info = mgr1.start(spec)
             assert info is not None
             original_id = info.get("id")
 
             # Phase 2: Simulate Controller restart — new ContainerManager
-            mgr2 = ContainerManager(client)
+            mgr2 = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Query actual state (like Controller does on startup)
             actual = mgr2.list_managed()
@@ -222,8 +223,8 @@ class TestCrashRecovery:
         require_recorder_image()
 
         names = [
-            "silvasonic-recorder-multi-test-a",
-            "silvasonic-recorder-multi-test-b",
+            f"silvasonic-recorder-multi-test-a-{TEST_RUN_ID}",
+            f"silvasonic-recorder-multi-test-b-{TEST_RUN_ID}",
         ]
         device_ids = ["multi-device-aaa", "multi-device-bbb"]
         specs = []
@@ -236,7 +237,7 @@ class TestCrashRecovery:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Start both containers
             for spec in specs:
@@ -257,7 +258,7 @@ class TestCrashRecovery:
                 assert isinstance(labels, dict)
                 assert labels.get("io.silvasonic.device_id") == expected_device_id
                 assert labels.get("io.silvasonic.service") == "recorder"
-                assert labels.get("io.silvasonic.owner") == "controller"
+                assert labels.get("io.silvasonic.owner") == f"controller-test-{TEST_RUN_ID}"
 
             # Cleanup
             for name in names:
@@ -286,8 +287,8 @@ class TestCrashRecovery:
         require_recorder_image()
 
         names = [
-            "silvasonic-recorder-kill-test-a",
-            "silvasonic-recorder-kill-test-b",
+            f"silvasonic-recorder-kill-test-a-{TEST_RUN_ID}",
+            f"silvasonic-recorder-kill-test-b-{TEST_RUN_ID}",
         ]
         device_ids = ["kill-device-aaa", "kill-device-bbb"]
         specs = []
@@ -300,7 +301,7 @@ class TestCrashRecovery:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Step 1: Start both containers
             original_ids = {}
@@ -378,8 +379,8 @@ class TestCrashRecovery:
         require_recorder_image()
 
         names = [
-            "silvasonic-recorder-shutdown-test-a",
-            "silvasonic-recorder-shutdown-test-b",
+            f"silvasonic-recorder-shutdown-test-a-{TEST_RUN_ID}",
+            f"silvasonic-recorder-shutdown-test-b-{TEST_RUN_ID}",
         ]
         device_ids = ["shutdown-device-aaa", "shutdown-device-bbb"]
         specs = []
@@ -392,7 +393,7 @@ class TestCrashRecovery:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Start both containers
             for spec in specs:

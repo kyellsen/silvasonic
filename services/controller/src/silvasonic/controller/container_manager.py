@@ -14,7 +14,7 @@ import structlog
 from podman.errors import APIError as _APIError
 from podman.errors import NotFound as _NotFound
 from silvasonic.controller.container_spec import Tier2ServiceSpec
-from silvasonic.controller.podman_client import SilvasonicPodmanClient, _container_info
+from silvasonic.controller.podman_client import SilvasonicPodmanClient, container_info
 
 log = structlog.get_logger()
 
@@ -25,9 +25,21 @@ class ContainerManager:
     All methods are synchronous — call via ``asyncio.to_thread()``.
     """
 
-    def __init__(self, podman_client: SilvasonicPodmanClient) -> None:
-        """Initialize with a Podman client instance."""
+    def __init__(
+        self,
+        podman_client: SilvasonicPodmanClient,
+        owner_profile: str = "controller",
+    ) -> None:
+        """Initialize with a Podman client instance.
+
+        Args:
+            podman_client: Connected Podman client.
+            owner_profile: Label value for ``io.silvasonic.owner``.
+                Defaults to ``"controller"`` (production).  Tests pass
+                a unique value to isolate test containers.
+        """
         self._podman = podman_client
+        self._owner_profile = owner_profile
 
     def start(self, spec: Tier2ServiceSpec) -> dict[str, object] | None:
         """Start a Tier 2 container from a spec.
@@ -72,7 +84,7 @@ class ContainerManager:
                 oom_score_adj=spec.oom_score_adj,
             )
 
-            return _container_info(container)
+            return container_info(container)
         except Exception as e:
             log.exception(
                 "container_manager.start.failed", name=spec.name, error_type=type(e).__name__
@@ -193,7 +205,7 @@ class ContainerManager:
 
         try:
             container = self._podman.containers.get(name)
-            return _container_info(container)
+            return container_info(container)
         except _NotFound:
             return None
         except Exception as e:
@@ -202,7 +214,9 @@ class ContainerManager:
 
     def list_managed(self) -> list[dict[str, object]]:
         """List all containers owned by this Controller."""
-        return self._podman.list_managed_containers()
+        return self._podman.list_managed_containers(
+            owner_profile=self._owner_profile,
+        )
 
     def sync_state(
         self,
@@ -225,14 +239,14 @@ class ContainerManager:
         # Start missing containers
         for spec in desired:
             if spec.name not in actual_names:
-                log.info("reconciler.starting_missing", name=spec.name)
+                log.info("container_manager.starting_missing", name=spec.name)
                 self.start(spec)
             else:
-                log.debug("reconciler.already_running", name=spec.name)
+                log.debug("container_manager.already_running", name=spec.name)
 
         # Stop and remove orphaned containers (ADR-0017: immutable → recreate)
         for container in actual:
             name = str(container.get("name", ""))
             if name not in desired_names:
-                log.info("reconciler.stopping_orphaned", name=name)
+                log.info("container_manager.stopping_orphaned", name=name)
                 self.stop_and_remove(name)

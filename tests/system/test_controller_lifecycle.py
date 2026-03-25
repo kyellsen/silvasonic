@@ -42,6 +42,7 @@ from .conftest import (
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
+    TEST_RUN_ID,
     make_test_spec,
     require_recorder_image,
     seed_test_defaults,
@@ -197,7 +198,7 @@ class TestContainerLifecycle:
         """Start a real Recorder container, verify it runs, stop it."""
         require_recorder_image()
 
-        container_name = "silvasonic-recorder-system-test-lifecycle"
+        container_name = f"silvasonic-recorder-system-test-lifecycle-{TEST_RUN_ID}"
         workspace = tmp_path / "recorder" / "lifecycle"
         workspace.mkdir(parents=True, exist_ok=True)
         spec = make_test_spec(container_name, "system-test-lifecycle", workspace)
@@ -210,7 +211,7 @@ class TestContainerLifecycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Start
             info = mgr.start(spec)
@@ -240,8 +241,8 @@ class TestContainerLifecycle:
         """sync_state() starts missing and stops orphaned containers."""
         require_recorder_image()
 
-        name_desired = "silvasonic-recorder-system-test-desired"
-        name_orphan = "silvasonic-recorder-system-test-orphan"
+        name_desired = f"silvasonic-recorder-system-test-desired-{TEST_RUN_ID}"
+        name_orphan = f"silvasonic-recorder-system-test-orphan-{TEST_RUN_ID}"
 
         workspace_d = tmp_path / "recorder" / "desired"
         workspace_d.mkdir(parents=True, exist_ok=True)
@@ -259,7 +260,7 @@ class TestContainerLifecycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Pre-start the orphan (it should be stopped by sync_state)
             mgr.start(spec_orphan)
@@ -288,8 +289,8 @@ class TestContainerLifecycle:
         require_recorder_image()
 
         names = [
-            "silvasonic-recorder-system-test-shutdown-a",
-            "silvasonic-recorder-system-test-shutdown-b",
+            f"silvasonic-recorder-system-test-shutdown-a-{TEST_RUN_ID}",
+            f"silvasonic-recorder-system-test-shutdown-b-{TEST_RUN_ID}",
         ]
 
         client = SilvasonicPodmanClient(
@@ -300,7 +301,7 @@ class TestContainerLifecycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
             for i, name in enumerate(names):
                 workspace = tmp_path / "recorder" / f"shutdown-{i}"
                 workspace.mkdir(parents=True, exist_ok=True)
@@ -352,11 +353,11 @@ class TestRecorderMockCapture:
 
     def test_mock_source_produces_wav(self, tmp_path: Path) -> None:
         """Container with mock_source produces WAV files in workspace."""
-        import soundfile as sf
+        import wave
 
         require_recorder_image()
 
-        container_name = "silvasonic-recorder-system-test-mock-capture"
+        container_name = f"silvasonic-recorder-system-test-mock-capture-{TEST_RUN_ID}"
         workspace = tmp_path / "recorder" / "mock-capture"
         workspace.mkdir(parents=True, exist_ok=True)
         workspace.chmod(0o777)
@@ -373,7 +374,7 @@ class TestRecorderMockCapture:
             },
             labels={
                 "io.silvasonic.tier": "2",
-                "io.silvasonic.owner": "controller",
+                "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
                 "io.silvasonic.service": "recorder",
                 "io.silvasonic.device_id": "mock-capture-test",
                 "io.silvasonic.test": "system",
@@ -402,7 +403,7 @@ class TestRecorderMockCapture:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
             info = mgr.start(spec)
             assert info is not None, "Container start failed"
 
@@ -446,12 +447,12 @@ class TestRecorderMockCapture:
                 f"Check container logs with: podman logs {container_name}"
             )
 
-            # Validate WAV file(s) are actual audio
+            # Validate WAV file(s) are actual audio (stdlib wave module)
             for wav_path in wav_in_data:
-                wav_info = sf.info(str(wav_path))
-                assert wav_info.frames > 0, f"WAV {wav_path.name} has 0 frames"
-                assert wav_info.samplerate > 0
-                assert wav_info.channels >= 1
+                with wave.open(str(wav_path), "rb") as wf:
+                    assert wf.getnframes() > 0, f"WAV {wav_path.name} has 0 frames"
+                    assert wf.getframerate() > 0
+                    assert wf.getnchannels() >= 1
 
             mgr.remove(container_name)
         finally:

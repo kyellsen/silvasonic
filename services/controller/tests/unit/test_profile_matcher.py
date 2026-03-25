@@ -60,7 +60,7 @@ class TestProfileMatcher:
         config_mock = MagicMock()
         config_mock.value = {"auto_enrollment": True}
         config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
@@ -121,7 +121,7 @@ class TestProfileMatcher:
         config_mock = MagicMock()
         config_mock.value = {"auto_enrollment": True}
         config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
@@ -147,7 +147,7 @@ class TestProfileMatcher:
         config_mock = MagicMock()
         config_mock.value = {"auto_enrollment": False}
         config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
@@ -183,7 +183,7 @@ class TestProfileMatcher:
         config_mock.value = {"auto_enrollment": False}
         config_result.scalar_one_or_none.return_value = config_mock
 
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
@@ -203,7 +203,7 @@ class TestProfileMatcher:
         config_mock = MagicMock()
         config_mock.value = {"auto_enrollment": True}
         config_result.scalar_one_or_none.return_value = config_mock
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)
@@ -242,7 +242,7 @@ class TestProfileMatcher:
         config_result = MagicMock()
         config_result.scalar_one_or_none.return_value = None  # No config row
 
-        session.execute.side_effect = [mock_result, config_result]
+        session.execute.side_effect = [config_result, mock_result]
 
         matcher = ProfileMatcher()
         result = await matcher.match(device_info, session)

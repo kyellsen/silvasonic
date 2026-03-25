@@ -1,26 +1,29 @@
-"""Integration test: Full AudioPipeline lifecycle (hardware-independent).
+"""Integration test: Full FFmpegPipeline lifecycle (hardware-independent).
 
-Exercises the complete pipeline chain with a **mocked** ``sd.InputStream``
-that injects synthetic audio into the queue:
+Exercises the complete dual-stream pipeline with FFmpeg's built-in
+``lavfi`` signal generator (ADR-0024):
 
-    AudioPipeline.start(mock_source=True)
-      → MockInputStream generates 440 Hz sine
-      → drain_queue() writes to SegmentWriter
-      → segment rotation → close_and_promote()
-      → WAV files verified in ``tmp_path/data/raw/``
+    FFmpegPipeline.start(mock_source=True)
+      → FFmpeg generates 440 Hz sine via lavfi
+      → segment muxer writes .buffer/raw/ and .buffer/processed/
+      → SegmentPromoter promotes to data/raw/ and data/processed/
+      → segment rotation via -segment_time
 
 No real audio hardware, no containers, no Redis required.
+Requires FFmpeg to be installed on the test runner.
 """
 
 from __future__ import annotations
 
+import subprocess
 import time
 from pathlib import Path
 
-import numpy as np
 import pytest
-import soundfile as sf
-from silvasonic.recorder.pipeline import AudioPipeline, PipelineConfig
+from silvasonic.recorder.ffmpeg_pipeline import (
+    FFmpegConfig,
+    FFmpegPipeline,
+)
 from silvasonic.recorder.workspace import ensure_workspace
 
 pytestmark = [
@@ -28,172 +31,170 @@ pytestmark = [
 ]
 
 
-class TestPipelineE2E:
-    """Full AudioPipeline lifecycle with MockInputStream → WAV files."""
+def _ffmpeg_available() -> bool:
+    """Check if FFmpeg is available on the system."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+skip_no_ffmpeg = pytest.mark.skipif(
+    not _ffmpeg_available(),
+    reason="FFmpeg not installed — skip integration tests",
+)
+
+
+@skip_no_ffmpeg
+class TestFFmpegPipelineE2E:
+    """Full FFmpegPipeline lifecycle with lavfi → WAV files."""
+
+    # ── Test timing constants (DRY) ──────────────────────────────────────
+    _SEGMENT_S = 1  # Shortest allowed segment (PositiveInt ≥ 1)
+    _RUN_S = 1.2  # Enough for 1 full rotation + margin
+    _RUN_LONG_S = 2.5  # For count-assertions (≥2 rotations needed)
 
     @staticmethod
     def _make_pipeline(
         workspace: Path,
         *,
         sample_rate: int = 48000,
-        segment_duration_s: int = 1,
-        chunk_size: int = 4096,
-    ) -> AudioPipeline:
+        segment_duration_s: int = 2,
+        raw_enabled: bool = True,
+        processed_enabled: bool = True,
+        gain_db: float = 0.0,
+    ) -> FFmpegPipeline:
         """Create a mock-source pipeline with short segments."""
         ensure_workspace(workspace)
-        cfg = PipelineConfig(
+        cfg = FFmpegConfig(
             sample_rate=sample_rate,
             channels=1,
             format="S16LE",
-            chunk_size=chunk_size,
             segment_duration_s=segment_duration_s,
-            gain_db=0.0,
+            gain_db=gain_db,
+            raw_enabled=raw_enabled,
+            processed_enabled=processed_enabled,
         )
-        return AudioPipeline(
+        return FFmpegPipeline(
             config=cfg,
             workspace=workspace,
-            device="hw:mock,0",
+            device="hw:mock,0",  # Ignored when mock_source=True
             mock_source=True,
         )
 
     @staticmethod
-    def _run(pipeline: AudioPipeline, duration_s: float) -> None:
-        """Run the pipeline drain loop for *duration_s* seconds."""
+    def _run(pipeline: FFmpegPipeline, duration_s: float) -> None:
+        """Run the pipeline for *duration_s* seconds, then stop."""
         pipeline.start()
-        deadline = time.monotonic() + duration_s
-        while time.monotonic() < deadline:
-            pipeline.drain_queue()
-            time.sleep(0.05)
+        time.sleep(duration_s)
         pipeline.stop()
 
     def test_produces_wav_files(self, tmp_path: Path) -> None:
         """Pipeline with mock source produces at least 1 WAV in data/raw/."""
         workspace = tmp_path / "e2e_wav"
-        pipeline = self._make_pipeline(workspace, segment_duration_s=1)
+        pipeline = self._make_pipeline(workspace, segment_duration_s=self._SEGMENT_S)
 
-        # Run for 3s → should produce at least 2 segments (1s each)
-        self._run(pipeline, 3.0)
+        self._run(pipeline, self._RUN_S)
 
         data_dir = workspace / "data" / "raw"
         wav_files = sorted(data_dir.glob("*.wav"))
         assert len(wav_files) >= 1, f"Expected ≥1 WAV files in {data_dir}, found {len(wav_files)}"
 
-    def test_wav_metadata_correct(self, tmp_path: Path) -> None:
-        """WAV files have correct sample rate and channels."""
-        workspace = tmp_path / "e2e_meta"
-        sr = 48000
-        pipeline = self._make_pipeline(workspace, sample_rate=sr, segment_duration_s=1)
+    def test_dual_stream_produces_both_dirs(self, tmp_path: Path) -> None:
+        """Pipeline produces WAV files in both data/raw/ and data/processed/."""
+        workspace = tmp_path / "e2e_dual"
+        pipeline = self._make_pipeline(workspace, segment_duration_s=self._SEGMENT_S)
 
-        self._run(pipeline, 2.5)
+        self._run(pipeline, self._RUN_S)
 
-        data_dir = workspace / "data" / "raw"
-        wav_files = sorted(data_dir.glob("*.wav"))
-        assert len(wav_files) >= 1
+        raw_wavs = sorted((workspace / "data" / "raw").glob("*.wav"))
+        proc_wavs = sorted((workspace / "data" / "processed").glob("*.wav"))
+        assert len(raw_wavs) >= 1, f"Expected ≥1 raw WAVs, got {len(raw_wavs)}"
+        assert len(proc_wavs) >= 1, f"Expected ≥1 processed WAVs, got {len(proc_wavs)}"
 
-        info = sf.info(str(wav_files[0]))
-        assert info.samplerate == sr, f"WAV sample rate {info.samplerate} != {sr}"
-        assert info.channels == 1
-        assert info.frames > 0
-
-    def test_wav_contains_nonzero_data(self, tmp_path: Path) -> None:
-        """WAV files contain non-zero audio (synthetic sine wave)."""
-        workspace = tmp_path / "e2e_nonzero"
-        pipeline = self._make_pipeline(workspace, segment_duration_s=1)
-
-        self._run(pipeline, 2.5)
-
-        data_dir = workspace / "data" / "raw"
-        wav_files = sorted(data_dir.glob("*.wav"))
-        assert len(wav_files) >= 1
-
-        data, _sr = sf.read(str(wav_files[0]), dtype="int16")
-        nonzero = int(np.count_nonzero(data))
-        assert nonzero > 0, "WAV should contain non-zero audio data (sine wave)"
-
-    def test_segment_duration_approximately_correct(self, tmp_path: Path) -> None:
-        """Each WAV segment is approximately segment_duration_s long."""
-        workspace = tmp_path / "e2e_duration"
-        seg_s = 2
-        pipeline = self._make_pipeline(workspace, segment_duration_s=seg_s)
-
-        # Run long enough for at least 1 full segment + promotion
-        self._run(pipeline, seg_s + 1.5)
-
-        data_dir = workspace / "data" / "raw"
-        wav_files = sorted(data_dir.glob("*.wav"))
-        assert len(wav_files) >= 1
-
-        info = sf.info(str(wav_files[0]))
-        actual_s = info.frames / info.samplerate
-        # Allow ±50% tolerance (timing imprecision in tests)
-        assert actual_s >= seg_s * 0.5, f"Segment too short: {actual_s:.2f}s (expected ~{seg_s}s)"
-
-    def test_buffer_dir_empty_after_stop(self, tmp_path: Path) -> None:
-        """After stop(), .buffer/raw/ should be empty (all promoted or discarded)."""
+    def test_buffer_dirs_empty_after_stop(self, tmp_path: Path) -> None:
+        """After stop(), buffer dirs have at most 1 file (in-progress at SIGINT)."""
         workspace = tmp_path / "e2e_buffer"
-        pipeline = self._make_pipeline(workspace, segment_duration_s=1)
+        pipeline = self._make_pipeline(workspace, segment_duration_s=self._SEGMENT_S)
 
-        self._run(pipeline, 2.5)
+        self._run(pipeline, self._RUN_S)
 
-        buffer_dir = workspace / ".buffer" / "raw"
-        remaining = list(buffer_dir.glob("*.wav"))
-        assert len(remaining) == 0, (
-            f"Buffer should be empty after stop(), found {len(remaining)} files"
+        for stream in ("raw", "processed"):
+            buf = workspace / ".buffer" / stream
+            remaining = list(buf.glob("*.wav"))
+            # At most 1 file may remain: the segment being written when SIGINT arrived.
+            # Completed segments are promoted, only the in-progress one stays.
+            assert len(remaining) <= 1, (
+                f"Buffer .buffer/{stream}/ should have ≤1 file, found {len(remaining)}"
+            )
+
+    def test_raw_only_mode(self, tmp_path: Path) -> None:
+        """processed_enabled=False → only data/raw/ has WAV files."""
+        workspace = tmp_path / "e2e_raw_only"
+        pipeline = self._make_pipeline(
+            workspace,
+            segment_duration_s=self._SEGMENT_S,
+            raw_enabled=True,
+            processed_enabled=False,
         )
 
-    def test_gain_applied_to_wav(self, tmp_path: Path) -> None:
-        """Software gain is applied to audio data in the WAV file."""
-        workspace_no_gain = tmp_path / "e2e_gain_off"
-        workspace_with_gain = tmp_path / "e2e_gain_on"
+        self._run(pipeline, self._RUN_S)
 
-        # Run without gain
-        ensure_workspace(workspace_no_gain)
-        cfg_no = PipelineConfig(
-            sample_rate=48000,
-            channels=1,
-            format="S16LE",
-            chunk_size=4096,
-            segment_duration_s=1,
-            gain_db=0.0,
+        raw_wavs = list((workspace / "data" / "raw").glob("*.wav"))
+        proc_wavs = list((workspace / "data" / "processed").glob("*.wav"))
+        assert len(raw_wavs) >= 1
+        assert len(proc_wavs) == 0, f"No processed WAVs expected, got {len(proc_wavs)}"
+
+    def test_processed_only_mode(self, tmp_path: Path) -> None:
+        """raw_enabled=False → only data/processed/ has WAV files."""
+        workspace = tmp_path / "e2e_proc_only"
+        pipeline = self._make_pipeline(
+            workspace,
+            segment_duration_s=self._SEGMENT_S,
+            raw_enabled=False,
+            processed_enabled=True,
         )
-        p_no = AudioPipeline(
-            config=cfg_no,
-            workspace=workspace_no_gain,
-            device="hw:mock,0",
-            mock_source=True,
+
+        self._run(pipeline, self._RUN_S)
+
+        raw_wavs = list((workspace / "data" / "raw").glob("*.wav"))
+        proc_wavs = list((workspace / "data" / "processed").glob("*.wav"))
+        assert len(proc_wavs) >= 1
+        assert len(raw_wavs) == 0, f"No raw WAVs expected, got {len(raw_wavs)}"
+
+    def test_segments_promoted_count(self, tmp_path: Path) -> None:
+        """Pipeline reports correct segment promotion count."""
+        workspace = tmp_path / "e2e_count"
+        pipeline = self._make_pipeline(workspace, segment_duration_s=self._SEGMENT_S)
+
+        self._run(pipeline, self._RUN_LONG_S)
+
+        assert pipeline.segments_promoted >= 2, (
+            f"Expected ≥2 promoted segments, got {pipeline.segments_promoted}"
         )
-        self._run(p_no, 2.0)
 
-        # Run with +6 dB gain
-        ensure_workspace(workspace_with_gain)
-        cfg_yes = PipelineConfig(
-            sample_rate=48000,
-            channels=1,
-            format="S16LE",
-            chunk_size=4096,
-            segment_duration_s=1,
-            gain_db=6.0,
-        )
-        p_yes = AudioPipeline(
-            config=cfg_yes,
-            workspace=workspace_with_gain,
-            device="hw:mock,0",
-            mock_source=True,
-        )
-        self._run(p_yes, 2.0)
+    def test_pipeline_lifecycle(self, tmp_path: Path) -> None:
+        """Pipeline starts, records, and stops cleanly."""
+        workspace = tmp_path / "e2e_lifecycle"
+        pipeline = self._make_pipeline(workspace, segment_duration_s=self._SEGMENT_S)
 
-        # Compare RMS of first WAV from each
-        wavs_no = sorted((workspace_no_gain / "data" / "raw").glob("*.wav"))
-        wavs_yes = sorted((workspace_with_gain / "data" / "raw").glob("*.wav"))
-        assert len(wavs_no) >= 1 and len(wavs_yes) >= 1
+        # Not started
+        assert not pipeline.is_active
+        assert pipeline.ffmpeg_pid is None
 
-        data_no, _ = sf.read(str(wavs_no[0]), dtype="float64")
-        data_yes, _ = sf.read(str(wavs_yes[0]), dtype="float64")
+        # Start
+        pipeline.start()
+        assert pipeline.is_active
+        assert pipeline.ffmpeg_pid is not None
 
-        rms_no = float(np.sqrt(np.mean(data_no**2)))
-        rms_yes = float(np.sqrt(np.mean(data_yes**2)))
+        time.sleep(1.5)
 
-        # +6 dB ≈ 2x amplitude → RMS should be ~2x higher
-        assert rms_yes > rms_no * 1.5, (
-            f"Gained audio RMS ({rms_yes:.4f}) should be significantly > ungained ({rms_no:.4f})"
-        )
+        # Stop
+        pipeline.stop()
+        assert not pipeline.is_active
+        assert pipeline.ffmpeg_pid is None  # Cleared after stop

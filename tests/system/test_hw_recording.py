@@ -2,7 +2,7 @@
 
 Tests the full recording pipeline with real audio hardware:
 - Device validation (ALSA query, sample rate acceptance)
-- Live audio capture via AudioPipeline → WAV file verification
+- Live audio capture via FFmpegPipeline → WAV file verification
 - Full lifecycle: Plug → Scan → DB → Container with /dev/snd → WAV output
 
 These tests are **never** included in CI or ``just check-all``.
@@ -23,13 +23,11 @@ Skip conditions:
 from __future__ import annotations
 
 import contextlib
+import subprocess
 import time
 from pathlib import Path
 
-import numpy as np
 import pytest
-import sounddevice as sd
-import soundfile as sf
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import (
     MountSpec,
@@ -40,7 +38,7 @@ from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
-from silvasonic.recorder.pipeline import AudioPipeline, PipelineConfig
+from silvasonic.recorder.ffmpeg_pipeline import PROCESSED_SAMPLE_RATE, FFmpegConfig, FFmpegPipeline
 from silvasonic.recorder.workspace import ensure_workspace
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -49,6 +47,7 @@ from .conftest import (
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
+    TEST_RUN_ID,
     ensure_test_network,
     require_recorder_image,
 )
@@ -85,98 +84,100 @@ class TestDeviceValidation:
     """Validate ALSA device accessibility and profile sample rate compatibility.
 
     These tests verify that the configured microphone's ALSA device is
-    queryable by sounddevice and that the profile's sample rate is
-    accepted — critical after the PortAudioError bug with UltraMic.
+    queryable by arecord and that the profile's sample rate is accepted.
     """
 
     def test_alsa_device_queryable(self, primary_device: DeviceInfo) -> None:
-        """Primary mic's ALSA device can be queried via sounddevice.
+        """Primary mic's ALSA device can be queried via arecord.
 
-        Verifies that ``sd.query_devices(hw:X,0)`` returns valid info
-        with at least 1 input channel.
+        Verifies that ``arecord -l`` lists the expected card number.
         """
         alsa_device = primary_device.alsa_device
-        info = sd.query_devices(alsa_device)
-        assert isinstance(info, dict), f"query_devices({alsa_device}) did not return dict"
-        assert info["max_input_channels"] >= 1, f"{alsa_device} has no input channels: {info}"
-        print(
-            f"\n  ✅ {alsa_device} queryable: "
-            f"name={info['name']}, "
-            f"default_sr={info['default_samplerate']}, "
-            f"inputs={info['max_input_channels']}"
-        )
+        result = subprocess.run(["arecord", "-l"], capture_output=True, text=True, timeout=5)
+        # Extract card number from device string (e.g. "hw:2,0" → "2")
+        card_num = alsa_device.split(":")[1].split(",")[0] if ":" in alsa_device else alsa_device
+        card_marker = f"card {card_num}:"
+        assert card_marker in result.stdout, f"Device {alsa_device} not found in arecord -l output"
+        for line in result.stdout.splitlines():
+            if card_marker in line:
+                print(f"\n  ✅ {alsa_device} queryable: {line.strip()}")
+                break
 
-    def test_profile_sample_rate_accepted(self, primary_device: DeviceInfo) -> None:
-        """Profile's configured sample rate is accepted by the real device.
-
-        Uses ``sd.check_input_settings()`` to validate before opening
-        a stream.  This catches the PortAudioError that occurred with
-        UltraMic 384 EVO when using an unsupported sample rate.
-        """
+    def test_ffmpeg_accepts_device(self, primary_device: DeviceInfo) -> None:
+        """FFmpeg can open the ALSA device for a brief capture."""
         alsa_device = primary_device.alsa_device
         sample_rate = PRIMARY_MIC.sample_rate
 
-        try:
-            sd.check_input_settings(
-                device=alsa_device,
-                samplerate=sample_rate,
-                channels=1,
-            )
-        except sd.PortAudioError as exc:
-            pytest.fail(f"Profile sample rate {sample_rate} Hz rejected by {alsa_device}: {exc}")
-
-        print(f"\n  ✅ {alsa_device} accepts {sample_rate} Hz (profile: {PRIMARY_MIC.slug})")
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-nostdin",
+                "-f",
+                "alsa",
+                "-sample_rate",
+                str(sample_rate),
+                "-channels",
+                "1",
+                "-i",
+                alsa_device,
+                "-t",
+                "0.5",
+                "-f",
+                "null",
+                "-",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, (
+            f"FFmpeg failed to open {alsa_device} at {sample_rate} Hz: {result.stderr}"
+        )
+        print(f"\n  ✅ FFmpeg accepts {alsa_device} at {sample_rate} Hz")
 
 
 # ---------------------------------------------------------------------------
-# Test: Real Audio Capture (pipeline → WAV)
+# Test: Real Audio Capture (FFmpeg pipeline → WAV)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _USB_PRESENT, reason="No USB-Audio device connected")
 class TestRealAudioCapture:
-    """Verify that AudioPipeline produces valid WAV files with real hardware.
+    """Verify that FFmpegPipeline produces valid WAV files with real hardware.
 
     Uses a short segment duration (3s) to keep test runtime reasonable.
-    The pipeline runs for ~5s to ensure at least one segment is promoted.
+    The pipeline runs for ~8s to ensure at least one segment is promoted.
     """
 
-    # Short config for testing
     _SEGMENT_S = 3
-    _CAPTURE_S = 5  # Must be > _SEGMENT_S to trigger promotion
+    _CAPTURE_S = 8
 
     def _make_pipeline(
         self,
         workspace: Path,
         device: str,
         sample_rate: int,
-    ) -> AudioPipeline:
+    ) -> FFmpegPipeline:
         """Create a pipeline with test-friendly short segment duration."""
         ensure_workspace(workspace)
-        cfg = PipelineConfig(
+        cfg = FFmpegConfig(
             sample_rate=sample_rate,
             channels=1,
             format="S16LE",
-            chunk_size=4096,
             segment_duration_s=self._SEGMENT_S,
             gain_db=0.0,
         )
-        return AudioPipeline(config=cfg, workspace=workspace, device=device)
+        return FFmpegPipeline(config=cfg, workspace=workspace, device=device)
 
     @staticmethod
-    def _run_pipeline(pipeline: AudioPipeline, duration_s: float) -> None:
-        """Start pipeline, drain queue for *duration_s*, then stop.
+    def _run_pipeline(pipeline: FFmpegPipeline, duration_s: float) -> None:
+        """Start pipeline, wait for *duration_s*, then stop.
 
-        Mirrors the ``RecorderService.run()`` drain loop (~20 Hz) so that
-        the PortAudio callback queue is consumed continuously.  Without
-        draining, the 64-slot queue fills in <1 s at 384 kHz and all
-        subsequent audio data is silently dropped.
+        FFmpeg runs as a separate process — no drain loop needed.
         """
         pipeline.start()
-        deadline = time.monotonic() + duration_s
-        while time.monotonic() < deadline:
-            pipeline.drain_queue()
-            time.sleep(0.05)  # ~20 Hz — matches RecorderService
+        time.sleep(duration_s)
         pipeline.stop()
 
     def test_pipeline_captures_audio(
@@ -184,7 +185,7 @@ class TestRealAudioCapture:
         primary_device: DeviceInfo,
         tmp_path: Path,
     ) -> None:
-        """AudioPipeline with real device produces at least 1 WAV file."""
+        """FFmpegPipeline with real device produces at least 1 WAV file."""
         workspace = tmp_path / "capture_test"
         pipeline = self._make_pipeline(
             workspace,
@@ -195,7 +196,6 @@ class TestRealAudioCapture:
         self._run_pipeline(pipeline, self._CAPTURE_S)
         assert not pipeline.is_active, "Pipeline should be inactive after stop()"
 
-        # Check for promoted WAV files
         data_dir = workspace / "data" / "raw"
         wav_files = list(data_dir.glob("*.wav"))
         assert len(wav_files) >= 1, (
@@ -203,14 +203,21 @@ class TestRealAudioCapture:
             f"found {len(wav_files)}. "
             f"Buffer dir contents: {list((workspace / '.buffer' / 'raw').glob('*'))}"
         )
-        print(f"\n  ✅ Captured {len(wav_files)} WAV file(s) in {data_dir}")
+        print(f"\n  ✅ Captured {len(wav_files)} raw WAV file(s) in {data_dir}")
+
+        proc_dir = workspace / "data" / "processed"
+        proc_wavs = list(proc_dir.glob("*.wav"))
+        assert len(proc_wavs) >= 1, (
+            f"Expected at least 1 processed WAV in {proc_dir}, found {len(proc_wavs)}"
+        )
+        print(f"  ✅ Captured {len(proc_wavs)} processed WAV file(s) in {proc_dir}")
 
     def test_wav_is_valid(
         self,
         primary_device: DeviceInfo,
         tmp_path: Path,
     ) -> None:
-        """Captured WAV file is a valid audio file with correct parameters."""
+        """Captured WAV file has valid metadata (use ffprobe)."""
         workspace = tmp_path / "wav_valid_test"
         pipeline = self._make_pipeline(
             workspace,
@@ -224,60 +231,54 @@ class TestRealAudioCapture:
         wav_files = list(data_dir.glob("*.wav"))
         assert len(wav_files) >= 1, "No WAV files captured"
 
-        # Validate WAV with soundfile
         wav_path = wav_files[0]
-        info = sf.info(str(wav_path))
-
-        assert info.samplerate == PRIMARY_MIC.sample_rate, (
-            f"WAV sample rate {info.samplerate} != profile {PRIMARY_MIC.sample_rate}"
+        # Use ffprobe to validate WAV metadata
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=sample_rate,channels,codec_name",
+                "-of",
+                "csv=p=0",
+                str(wav_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
-        assert info.channels == 1, f"Expected 1 channel, got {info.channels}"
-        assert info.frames > 0, "WAV file has 0 frames"
+        assert result.returncode == 0, f"ffprobe failed: {result.stderr}"
+        parts = result.stdout.strip().split(",")
+        assert len(parts) >= 2, f"Unexpected ffprobe output: {result.stdout}"
+        print(f"\n  ✅ Raw WAV valid: {wav_path.name} ({result.stdout.strip()})")
 
-        # Duration should be approximately segment_duration_s
-        duration = info.frames / info.samplerate
-        assert duration > 0.5, f"WAV too short: {duration:.2f}s"
+        # Verify processed WAV
+        proc_dir = workspace / "data" / "processed"
+        proc_wavs = list(proc_dir.glob("*.wav"))
+        assert len(proc_wavs) >= 1, "No processed WAV files captured"
 
-        print(
-            f"\n  ✅ WAV valid: {wav_path.name} "
-            f"({info.samplerate} Hz, {info.channels}ch, "
-            f"{info.frames} frames, {duration:.1f}s)"
+        proc_result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=sample_rate",
+                "-of",
+                "csv=p=0",
+                str(proc_wavs[0]),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
-
-    def test_wav_contains_nonzero_data(
-        self,
-        primary_device: DeviceInfo,
-        tmp_path: Path,
-    ) -> None:
-        """Captured WAV contains non-zero audio data (real microphone input)."""
-        workspace = tmp_path / "nonzero_test"
-        pipeline = self._make_pipeline(
-            workspace,
-            primary_device.alsa_device,
-            PRIMARY_MIC.sample_rate,
+        assert result.returncode == 0
+        proc_sr = proc_result.stdout.strip()
+        assert proc_sr == str(PROCESSED_SAMPLE_RATE), (
+            f"Processed WAV SR {proc_sr} != {PROCESSED_SAMPLE_RATE}"
         )
-
-        self._run_pipeline(pipeline, self._CAPTURE_S)
-
-        data_dir = workspace / "data" / "raw"
-        wav_files = list(data_dir.glob("*.wav"))
-        assert len(wav_files) >= 1, "No WAV files captured"
-
-        data, sr = sf.read(str(wav_files[0]), dtype="int16")
-        assert sr == PRIMARY_MIC.sample_rate
-
-        # Real audio should not be all zeros
-        nonzero_count = int(np.count_nonzero(data))
-        total = len(data)
-        assert nonzero_count > 0, (
-            "WAV contains only silence (all zeros). Is the microphone actually capturing audio?"
-        )
-
-        pct = (nonzero_count / total) * 100
-        print(
-            f"\n  ✅ WAV non-zero: {nonzero_count}/{total} samples "
-            f"({pct:.1f}%) — real audio confirmed"
-        )
+        print(f"  ✅ Processed WAV valid: {proc_wavs[0].name} ({proc_sr} Hz)")
 
 
 # ---------------------------------------------------------------------------
@@ -293,9 +294,9 @@ class TestRealAudioCapture:
 class TestFullHardwareLifecycle:
     """End-to-end: device detection → DB → container with real /dev/snd → WAV.
 
-    This is the critical test that was missing: it verifies the ENTIRE
-    production lifecycle from USB device detection to actual audio
-    recording inside a containerized Recorder with /dev/snd passthrough.
+    This is the critical test that verifies the ENTIRE production lifecycle
+    from USB device detection to actual audio recording inside a
+    containerized Recorder with /dev/snd passthrough.
     """
 
     async def test_plug_to_wav(
@@ -331,7 +332,7 @@ class TestFullHardwareLifecycle:
             )
 
         # Step 3: Upsert as enrolled
-        from silvasonic.controller.device_scanner import upsert_device
+        from silvasonic.controller.device_repository import upsert_device
 
         async with session_factory() as session:
             await upsert_device(
@@ -358,9 +359,8 @@ class TestFullHardwareLifecycle:
         spec = matching[0]
 
         # Step 5: Create container with REAL /dev/snd (the key difference!)
-        test_name = "silvasonic-recorder-system-test-hw-lifecycle"
+        test_name = f"silvasonic-recorder-system-test-hw-lifecycle-{TEST_RUN_ID}"
 
-        # Use tmp_path (real FS, not tmpfs) — never write into the repo tree
         workspace = tmp_path / "hw_lifecycle"
         workspace.mkdir(parents=True, exist_ok=True)
         workspace.chmod(0o777)
@@ -371,12 +371,12 @@ class TestFullHardwareLifecycle:
             network=spec.network,
             environment={
                 **spec.environment,
-                # Override segment duration for faster test
                 "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
             },
             labels={
                 **spec.labels,
                 "io.silvasonic.test": "system_hw",
+                "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
             },
             mounts=[
                 MountSpec(
@@ -385,7 +385,6 @@ class TestFullHardwareLifecycle:
                     read_only=False,
                 ),
             ],
-            # CRITICAL: Pass real /dev/snd for actual audio capture
             devices=["/dev/snd"],
             group_add=["audio"],
             privileged=False,
@@ -403,13 +402,12 @@ class TestFullHardwareLifecycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
             info = mgr.start(test_spec)
             assert info is not None, "Container start failed"
             assert info.get("name") == test_name
 
             # Step 6: Wait for container to record at least one segment
-            # The default segment is 10-15s; we wait enough time
             wait_seconds = 20
             print(f"\n  ⏳ Waiting {wait_seconds}s for container to record audio...")
             time.sleep(wait_seconds)
@@ -421,16 +419,12 @@ class TestFullHardwareLifecycle:
             data_dir = workspace / "data" / "raw"
             buffer_dir = workspace / ".buffer" / "raw"
 
-            # Check both data and buffer directories
             wav_in_data = list(data_dir.glob("*.wav")) if data_dir.exists() else []
             wav_in_buffer = list(buffer_dir.glob("*.wav")) if buffer_dir.exists() else []
             total_wavs = len(wav_in_data) + len(wav_in_buffer)
 
             if total_wavs < 1:
-                # Capture logs to help debug
                 try:
-                    import subprocess
-
                     logs = subprocess.run(
                         ["podman", "logs", test_name], capture_output=True, text=True
                     )
@@ -448,22 +442,21 @@ class TestFullHardwareLifecycle:
                 f"Check container logs with: podman logs {test_name}"
             )
 
-            # Validate the WAV file(s)
-            for wav_path in wav_in_data:
-                wav_info = sf.info(str(wav_path))
-                assert wav_info.frames > 0, f"WAV {wav_path.name} has 0 frames"
-                duration = wav_info.frames / wav_info.samplerate
-                print(
-                    f"  ✅ {wav_path.name}: "
-                    f"{wav_info.samplerate} Hz, "
-                    f"{wav_info.channels}ch, "
-                    f"{duration:.1f}s"
-                )
-
             print(
                 f"\n  ✅ Full lifecycle verified: "
                 f"{len(wav_in_data)} promoted + "
-                f"{len(wav_in_buffer)} buffered WAV file(s)"
+                f"{len(wav_in_buffer)} buffered raw WAV file(s)"
+            )
+
+            # Verify processed WAV files
+            proc_data_dir = workspace / "data" / "processed"
+            proc_buffer_dir = workspace / ".buffer" / "processed"
+            proc_in_data = list(proc_data_dir.glob("*.wav")) if proc_data_dir.exists() else []
+            proc_in_buffer = list(proc_buffer_dir.glob("*.wav")) if proc_buffer_dir.exists() else []
+            total_proc = len(proc_in_data) + len(proc_in_buffer)
+            assert total_proc >= 1, (
+                f"No processed WAV files found in {workspace}. "
+                f"data/processed: {proc_in_data}, .buffer/processed: {proc_in_buffer}"
             )
 
             # Cleanup

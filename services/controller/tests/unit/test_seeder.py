@@ -522,7 +522,13 @@ class TestAuthSeeder:
         session = AsyncMock(add=MagicMock())
         session.execute = AsyncMock(return_value=result_mock)
 
-        await seeder.seed(session)
+        # Mock bcrypt to avoid ~200ms CPU-intensive hashing in unit tests.
+        # Real bcrypt behaviour is covered by integration tests.
+        with patch(
+            "silvasonic.controller.seeder.bcrypt.hashpw",
+            return_value=b"$2b$12$mockhashvalue",
+        ):
+            await seeder.seed(session)
 
         assert session.add.call_count == 1
         added = session.add.call_args[0][0]
@@ -613,7 +619,7 @@ class TestRunAllSeeders:
         ):
             await run_all_seeders(session)
 
-            config_seed.assert_called_once_with(session)
+            config_seed.assert_called_once()
             profile_seed.assert_called_once_with(session)
-            auth_seed.assert_called_once_with(session)
+            auth_seed.assert_called_once()
             session.commit.assert_called_once()

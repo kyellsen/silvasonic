@@ -358,15 +358,13 @@ class TestControllerServiceRun:
         with (
             patch.object(svc, "_monitor_database", side_effect=noop_forever),
             patch.object(svc, "_monitor_podman", side_effect=noop_forever),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=lambda _: svc._shutdown_event.set(),
+            ),
         ):
-            # Set shutdown after a short delay
-            async def trigger_shutdown() -> None:
-                await asyncio.sleep(0.05)
-                svc._shutdown_event.set()
-
-            shutdown_task = asyncio.create_task(trigger_shutdown())
             await svc.run()
-            await shutdown_task
 
         # Health should have been initialized
         status = svc.health.get_status()

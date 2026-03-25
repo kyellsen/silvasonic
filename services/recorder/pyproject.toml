@@ -9,9 +9,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "silvasonic-core",
-    "sounddevice>=0.5",
-    "soundfile>=0.13",
-    "soxr>=0.5",
 ]
 dynamic = ["version"]
 

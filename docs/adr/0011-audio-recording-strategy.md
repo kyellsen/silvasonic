@@ -48,7 +48,7 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   **Filesystem**: The workspace directory structure uses `data/raw` and `data/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
 *   **Negative:**
     *   Requires double the storage for local recordings (raw + processed).
-    *   CPU overhead for real-time resampling to produce the processed stream.
+    *   CPU overhead for real-time resampling to produce the processed stream (handled by FFmpeg, see ADR-0024).
 
 ## 5. Future: Live Opus Stream (v0.9.0)
 
@@ -78,4 +78,13 @@ To prevent storage exhaustion on the edge device, the `processor` service implem
 We have decided to enforce **Data Capture Integrity** via an escalating retention policy based on local disk utilization. As storage fills up, the policy progressively sacrifices first local analysis completeness, and eventually remote backup guarantees, to ensure the Recorder never faces a "Disk Full" scenario and never stops recording.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
+
+## 7. Implementation: FFmpeg Audio Engine (v0.4.0)
+
+> **Status:** Implemented (since v0.4.0)
+> **See:** [ADR-0024](0024-ffmpeg-audio-engine.md) for the full architectural decision.
+
+The Dual Stream output (Raw + Processed) is produced by a single **FFmpeg subprocess** managed by the Recorder service. FFmpeg handles ALSA capture, resampling, segmentation, and WAV encoding in native C code — the Python GIL never touches the audio path.
+
+The Recorder's Python process manages FFmpeg's lifecycle and atomically promotes completed segments from `.buffer/` to `data/` via segment-list CSV polling and `os.replace()`.
 

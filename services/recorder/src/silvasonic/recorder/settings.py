@@ -45,6 +45,10 @@ class RecorderSettings(BaseSettings):
     # Workspace base path (bind-mounted by Controller)
     recorder_workspace: str = "/app/workspace"
 
+    # FFmpeg configuration (ADR-0024)
+    ffmpeg_binary: str = "ffmpeg"
+    ffmpeg_loglevel: str = "warning"
+
     def parse_profile(self) -> MicrophoneProfile | None:
         """Parse ``recorder_config_json`` into a :class:`MicrophoneProfile`.
 

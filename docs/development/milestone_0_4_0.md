@@ -1,10 +1,10 @@
 # Milestone v0.4.0 — Audio Recording (Dual Stream)
 
-> **Target:** v0.4.0 — Recorder captures audio from USB microphones: Python/C pipeline (`sounddevice`+`soundfile`), segmented WAV output, Profile Injection, Generic USB Fallback, Dual Stream (Raw + Processed), Watchdog & Auto-Recovery
+> **Target:** v0.4.0 — Recorder captures audio from USB microphones: FFmpeg Engine (ADR-0024), segmented WAV output, Profile Injection, Generic USB Fallback, Dual Stream (Raw + Processed), Watchdog & Auto-Recovery
 >
 > **Status:** 🔨 In Progress
 >
-> **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [Recorder README](../../services/recorder/README.md)
+> **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Recorder README](../../services/recorder/README.md)
 >
 > **User Stories:** [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R03](../user_stories/recorder.md#us-r03), [US-R06](../user_stories/recorder.md#us-r06), [US-R07](../user_stories/recorder.md#us-r07), [US-C10](../user_stories/controller.md#us-c10)
 
@@ -12,22 +12,21 @@
 
 ## Phase 1: Audio Pipeline & Single-Stream Capture
 
-**Goal:** Recorder captures audio from an ALSA device using `sounddevice` and writes segmented WAV files using `soundfile`.
+**Goal:** Recorder captures audio from an ALSA device using `ffmpeg` and writes segmented WAV files.
 
 **User Stories:** US-R01 (Aufnahme)
 
 ### Tasks
 
-- [x] Add `sounddevice`, `soundfile`, and `soxr` as dependencies to `services/recorder/pyproject.toml`
-- [x] Add `libportaudio2` and `libsndfile1` as system dependencies in Recorder `Containerfile` (already present since v0.3.0)
-  - `soxr` bundles its own `libsoxr` in the Python wheel — no `libsoxr-dev` system package needed
-- [x] Create `silvasonic/recorder/pipeline.py` — Audio pipeline builder
-  - Use `sounddevice.InputStream` with callback for non-blocking capture
-  - Input: ALSA device (e.g., `hw:1,0`)
-  - Output: segmented WAV files in `.buffer/raw/` using `soundfile.SoundFile`
+- [x] Add `ffmpeg` as a system dependency in Recorder `Containerfile`
+- [x] Remove legacy Python audio dependencies (`sounddevice`, `soxr`, `soundfile`) from `pyproject.toml` (ADR-0024)
+- [x] Create `silvasonic/recorder/ffmpeg_pipeline.py` — Audio pipeline builder
+  - Use `subprocess` to manage the FFmpeg execution
+  - Input: ALSA device (e.g., `hw:1,0`) or Mock Source
+  - Output: segmented WAV files in `.buffer/raw/` via FFmpeg segment muxer
   - Segment naming convention: `{ISO-timestamp}_{duration}s.wav`
 - [x] Implement `.buffer/` → `data/` file promotion logic
-  - On segment close: atomically move from `.buffer/raw/` to `data/raw/`
+  - On segment close: `SegmentPromoter` atomically moves from `.buffer/raw/` to `data/raw/`
   - Ensures Processor only sees complete files
 - [x] Create workspace directory structure on startup:
   ```
@@ -62,7 +61,7 @@
 - [x] Extend `build_recorder_spec()` in Controller's `container_spec.py` to inject `SILVASONIC_RECORDER_CONFIG_JSON`
   - Controller serializes `profile.config` (JSONB) via `json.dumps()` into the environment dict
   - This enables the Recorder to receive its full profile configuration without database access (ADR-0013, ADR-0016)
-- [x] Apply profile parameters to `sounddevice` / `soundfile` pipeline:
+- [x] Apply profile parameters to `ffmpeg` subprocess pipeline:
   - `audio.sample_rate` → Raw stream sample rate
   - `audio.channels` → channel count
   - `audio.format` → bit depth / format string
@@ -102,13 +101,12 @@
 
 ### Tasks
 
-- [ ] Extend audio callback to produce two outputs:
-  - **Raw:** Native hardware sample rate & bit depth (direct write to `soundfile`)
-  - **Processed:** Resampled to 48 kHz, 16-bit (using `soxr.resample`)
-- [ ] Both streams write to separate `.buffer/` subdirectories
-- [ ] Both streams are promoted to `data/` independently
-- [ ] Unit tests: verify dual output graph construction
-- [ ] Integration test: capture produces files in both `data/raw/` and `data/processed/`
+- [x] Configure FFmpeg `-map` to produce two outputs simultaneously:
+  - **Raw:** Native hardware sample rate & bit depth (direct copy)
+  - **Processed:** Resampled to 48 kHz / S16LE by FFmpeg
+- [x] Both streams write to separate `.buffer/` subdirectories via segment muxer
+- [x] Both streams are promoted to `data/` independently via SegmentPromoter
+- [x] Unit/Integration tests: verify dual output graph construction and promotion
 
 ---
 
@@ -121,13 +119,13 @@
 ### Tasks
 
 - [ ] Implement `RecordingWatchdog` in `silvasonic/recorder/watchdog.py`
-  - Monitor the audio stream state and ring buffer
-  - Detect: stream overflow (xruns), dead stream (no callbacks for X seconds)
-  - On failure: restart pipeline with exponential backoff
+  - Monitor the FFmpeg process state and stream health
+  - Detect: FFmpeg crash, hung process, or missing segments
+  - On failure: restart FFmpeg subprocess with exponential backoff
 - [ ] Integrate watchdog into `RecorderService.run()` lifecycle
 - [ ] Report recording health via existing `_monitor_recording` health component
 - [ ] Respect max retry limit (5 restarts, then give up — matches container restart policy)
-- [ ] Unit tests: mock `sounddevice`, verify failure detection and restart logic
+- [ ] Unit tests: mock `ffmpeg` subprocess, verify failure detection and restart logic
 - [ ] Integration test: simulate stream crash, verify automatic recovery
 
 ---

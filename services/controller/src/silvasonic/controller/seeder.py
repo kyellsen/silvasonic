@@ -65,6 +65,22 @@ def _get_profiles_dir() -> Path:
     return _get_config_dir() / "profiles"
 
 
+def _load_defaults(path: Path) -> dict[str, Any] | None:
+    """Load and validate ``defaults.yml``.
+
+    Returns:
+        Parsed dict or ``None`` if file is missing/invalid.
+    """
+    if not path.exists():
+        log.warning("seeder.no_defaults_file", path=str(path))
+        return None
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        log.error("seeder.invalid_yaml", path=str(path))
+        return None
+    return raw
+
+
 # ---------------------------------------------------------------------------
 # ConfigSeeder
 # ---------------------------------------------------------------------------
@@ -78,16 +94,17 @@ class ConfigSeeder:
         """Initialize with path to defaults YAML file."""
         self._defaults_path = defaults_path
 
-    async def seed(self, session: AsyncSession) -> None:
+    async def seed(
+        self,
+        session: AsyncSession,
+        *,
+        defaults: dict[str, Any] | None = None,
+    ) -> None:
         """Load ``defaults.yml`` and insert missing keys into ``system_config``."""
-        defaults_path = self._defaults_path or _get_defaults_yml()
-        if not defaults_path.exists():
-            log.warning("seeder.config.no_defaults_file", path=str(defaults_path))
-            return
-
-        raw = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
-        if not isinstance(raw, dict):
-            log.error("seeder.config.invalid_yaml", path=str(defaults_path))
+        if defaults is None:
+            defaults_path = self._defaults_path or _get_defaults_yml()
+            defaults = _load_defaults(defaults_path)
+        if defaults is None:
             return
 
         # Only seed keys that have a Pydantic schema mapping
@@ -98,7 +115,7 @@ class ConfigSeeder:
             "uploader": UploaderSettings,
         }
 
-        for key, value in raw.items():
+        for key, value in defaults.items():
             if key == "auth":
                 continue  # Handled by AuthSeeder
 
@@ -221,20 +238,25 @@ class AuthSeeder:
         """Initialize with path to defaults YAML file."""
         self._defaults_path = defaults_path
 
-    async def seed(self, session: AsyncSession) -> None:
+    async def seed(
+        self,
+        session: AsyncSession,
+        *,
+        defaults: dict[str, Any] | None = None,
+    ) -> None:
         """Create default admin user if not exists."""
-        defaults_path = self._defaults_path or _get_defaults_yml()
-        if not defaults_path.exists():
-            log.warning("seeder.auth.no_defaults_file", path=str(defaults_path))
+        if defaults is None:
+            defaults_path = self._defaults_path or _get_defaults_yml()
+            defaults = _load_defaults(defaults_path)
+        if defaults is None:
             return
 
-        raw = yaml.safe_load(defaults_path.read_text(encoding="utf-8"))
-        if not isinstance(raw, dict) or "auth" not in raw:
+        if "auth" not in defaults:
             log.debug("seeder.auth.no_auth_section")
             return
 
         try:
-            auth = AuthDefaults(**raw["auth"])
+            auth = AuthDefaults(**defaults["auth"])
         except ValidationError as exc:  # pragma: no cover — defensive
             log.error("seeder.auth.validation_failed", errors=exc.error_count())
             return
@@ -276,9 +298,12 @@ async def run_all_seeders(session: AsyncSession) -> None:
     """
     log.info("seeder.start")
 
-    await ConfigSeeder().seed(session)
+    # Load defaults.yml once, share across seeders
+    defaults = _load_defaults(_get_defaults_yml())
+
+    await ConfigSeeder().seed(session, defaults=defaults)
     await ProfileBootstrapper().seed(session)
-    await AuthSeeder().seed(session)
+    await AuthSeeder().seed(session, defaults=defaults)
 
     await session.commit()
     log.info("seeder.complete")

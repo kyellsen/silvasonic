@@ -2,15 +2,13 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# 1. Install system dependencies
+# 1. Install system dependencies (ADR-0024: FFmpeg as audio engine)
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libasound2 \
     alsa-utils \
-    libgpiod2 \
-    libportaudio2 \
-    libsndfile1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Get the 'uv' tool directly

@@ -42,6 +42,7 @@ from .conftest import (
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
+    TEST_RUN_ID,
     HwMicConfig,
     ensure_test_network,
     require_recorder_image,
@@ -243,7 +244,7 @@ class TestHardwareSpawnCycle:
 
         # Spawn a real container (using a minimal test spec to avoid /dev/snd issues)
         spec = matching[0]
-        test_name = "silvasonic-recorder-system-test-hw-spawn"
+        test_name = f"silvasonic-recorder-system-test-hw-spawn-{TEST_RUN_ID}"
         test_spec = Tier2ServiceSpec(
             image=RECORDER_IMAGE,
             name=test_name,
@@ -251,7 +252,8 @@ class TestHardwareSpawnCycle:
             environment=spec.environment,
             labels={
                 **spec.labels,
-                "io.silvasonic.test": "system_hw",  # Extra label for test identification
+                "io.silvasonic.test": "system_hw",
+                "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
             },
             mounts=[
                 MountSpec(
@@ -278,7 +280,7 @@ class TestHardwareSpawnCycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client)
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
             info = mgr.start(test_spec)
             assert info is not None, "Container start failed"
             assert info.get("name") == test_name

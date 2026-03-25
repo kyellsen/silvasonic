@@ -12,18 +12,22 @@ and reconciles against actual state from Podman (running containers queried by l
 from __future__ import annotations
 
 import asyncio
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec, build_recorder_spec
-from silvasonic.controller.device_scanner import DeviceScanner, upsert_device
+from silvasonic.controller.device_repository import upsert_device
+from silvasonic.controller.device_scanner import DeviceScanner
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import get_session
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from silvasonic.controller.device_scanner import DeviceInfo
 
 log = structlog.get_logger()
 
@@ -191,38 +195,64 @@ class ReconciliationLoop:
             return 0
 
         devices = await asyncio.to_thread(self._scanner.scan_all)
-        current_ids = {d.stable_device_id for d in devices}
 
         async with get_session() as session:
-            # Upsert all detected devices
-            for device_info in devices:
-                if self._matcher is not None:
-                    match_result = await self._matcher.match(device_info, session)
-                    profile_slug = match_result.profile_slug if match_result.auto_enroll else None
-                    enrollment = "enrolled" if match_result.auto_enroll else "pending"
-                else:
-                    profile_slug = None
-                    enrollment = "pending"
-
-                await upsert_device(
-                    device_info,
-                    session,
-                    profile_slug=profile_slug,
-                    enrollment_status=enrollment,
-                )
-
-            # Mark devices that are no longer detected as offline
-            result = await session.execute(select(Device).where(Device.status == "online"))
-            online_devices = result.scalars().all()
-
-            for device in online_devices:
-                if device.name not in current_ids:
-                    device.status = "offline"
-                    log.info("reconciler.device_offline", device_id=device.name)
-
+            await self._upsert_detected_devices(devices, session)
+            await self._mark_offline_devices(
+                {d.stable_device_id for d in devices},
+                session,
+            )
             await session.commit()
 
         return len(devices)
+
+    async def _upsert_detected_devices(
+        self,
+        devices: list[DeviceInfo],
+        session: AsyncSession,
+    ) -> None:
+        """Match profiles and upsert each detected device into the DB."""
+        # Pre-load all profiles once for the entire batch (M2 optimisation)
+        from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
+
+        profiles: list[MicProfileDB] | None = None
+        if self._matcher is not None:
+            result = await session.execute(select(MicProfileDB))
+            profiles = list(result.scalars().all())
+
+        for device_info in devices:
+            if self._matcher is not None:
+                match_result = await self._matcher.match(
+                    device_info,
+                    session,
+                    profiles=profiles,
+                )
+                profile_slug = match_result.profile_slug if match_result.auto_enroll else None
+                enrollment = "enrolled" if match_result.auto_enroll else "pending"
+            else:
+                profile_slug = None
+                enrollment = "pending"
+
+            await upsert_device(
+                device_info,
+                session,
+                profile_slug=profile_slug,
+                enrollment_status=enrollment,
+            )
+
+    async def _mark_offline_devices(
+        self,
+        current_ids: set[str],
+        session: AsyncSession,
+    ) -> None:
+        """Mark previously online devices as offline if no longer detected."""
+        result = await session.execute(select(Device).where(Device.status == "online"))
+        online_devices = result.scalars().all()
+
+        for device in online_devices:
+            if device.name not in current_ids:
+                device.status = "offline"
+                log.info("reconciler.device_offline", device_id=device.name)
 
     async def _rescan_hardware(self) -> None:
         """Rescan USB audio devices and sync state to DB.

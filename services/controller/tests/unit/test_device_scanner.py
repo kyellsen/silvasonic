@@ -1,12 +1,13 @@
-"""Unit tests for DeviceScanner — device detection, parsing, and upsert.
+"""Unit tests for DeviceScanner — device detection and parsing.
 
-All hardware (sysfs, /proc/asound) and DB dependencies are mocked.
+All hardware (sysfs, /proc/asound) dependencies are mocked.
+DB upsert tests are in test_device_repository.py.
 """
 
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from silvasonic.controller.device_scanner import (
@@ -16,7 +17,6 @@ from silvasonic.controller.device_scanner import (
     _get_usb_info_for_card,
     _read_sysfs,
     parse_asound_cards,
-    upsert_device,
 )
 
 # Fictional VID/PID for test isolation (not real hardware).
@@ -295,86 +295,3 @@ class TestDeviceScanner:
         scanner = DeviceScanner(cards_path=tmp_path / "nonexistent")
         devices = scanner.scan_all()
         assert devices == []
-
-
-# ===========================================================================
-# upsert_device
-# ===========================================================================
-@pytest.mark.unit
-class TestUpsertDevice:
-    """Tests for the upsert_device function with mock DB session."""
-
-    @pytest.fixture()
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            alsa_card_index=2,
-            alsa_name="UltraMic 384K",
-            alsa_device="hw:2,0",
-            usb_vendor_id=_MOCK_VID,
-            usb_product_id=_MOCK_PID,
-            usb_serial="ABC123",
-        )
-
-    async def test_upsert_creates_new_device(self, device_info: DeviceInfo) -> None:
-        """New device is inserted into DB."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        session = AsyncMock(add=MagicMock())
-        session.execute.return_value = mock_result
-
-        device = await upsert_device(device_info, session)
-
-        session.add.assert_called_once()
-        assert device.name == f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
-        assert device.status == "online"
-        assert device.enrollment_status == "pending"
-
-    async def test_upsert_updates_existing_device(self, device_info: DeviceInfo) -> None:
-        """Known device gets status=online and updated last_seen."""
-        existing = MagicMock()
-        existing.name = f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
-        existing.profile_slug = "ultramic_384_evo"
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing
-        session = AsyncMock(add=MagicMock())
-        session.execute.return_value = mock_result
-
-        device = await upsert_device(device_info, session)
-
-        assert device.status == "online"
-        assert device.last_seen is not None
-        session.add.assert_not_called()
-
-    async def test_upsert_assigns_profile_to_new_device(self, device_info: DeviceInfo) -> None:
-        """Profile slug is assigned when device is new and auto-enroll."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        session = AsyncMock(add=MagicMock())
-        session.execute.return_value = mock_result
-
-        device = await upsert_device(
-            device_info, session, profile_slug="ultramic_384_evo", enrollment_status="enrolled"
-        )
-
-        assert device.profile_slug == "ultramic_384_evo"
-        assert device.enrollment_status == "enrolled"
-
-    async def test_upsert_keeps_existing_profile(
-        self,
-        device_info: DeviceInfo,
-    ) -> None:
-        """Existing profile slug is not overwritten."""
-        existing = MagicMock()
-        existing.name = f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
-        existing.profile_slug = "custom_profile"  # already assigned
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing
-        session = AsyncMock(add=MagicMock())
-        session.execute.return_value = mock_result
-
-        device = await upsert_device(device_info, session, profile_slug="ultramic_384_evo")
-
-        # Should NOT overwrite existing profile
-        assert device.profile_slug == "custom_profile"

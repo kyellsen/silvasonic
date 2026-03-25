@@ -22,3 +22,4 @@
 - [ADR-0021: Frontend Design System — Tailwind CSS + DaisyUI + ECharts + Wavesurfer.js](0021-frontend-design-system.md)
 - [ADR-0022: Live Log Streaming — Podman Logs via Redis SSE](0022-live-log-streaming.md)
 - [ADR-0023: Configuration Management — YAML Seed, DB Settings, Users Table](0023-configuration-management.md)
+- [ADR-0024: FFmpeg Audio Engine — Replacing sounddevice/soxr with FFmpeg](0024-ffmpeg-audio-engine.md)

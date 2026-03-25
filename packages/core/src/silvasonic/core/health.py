@@ -154,12 +154,19 @@ def _make_handler(monitor: HealthMonitor) -> type[BaseHTTPRequestHandler]:
     return _HealthHandler
 
 
-def start_health_server(port: int, monitor: HealthMonitor) -> HTTPServer:
+def start_health_server(
+    port: int,
+    monitor: HealthMonitor,
+    *,
+    poll_interval: float = 0.5,
+) -> HTTPServer:
     """Start the health HTTP server on a daemon thread.
 
     Args:
         port: TCP port to listen on.
         monitor: The ``HealthMonitor`` instance whose status is served.
+        poll_interval: ``serve_forever()`` poll interval in seconds.
+            Lower values make ``shutdown()`` faster (useful in tests).
 
     Returns:
         The running ``HTTPServer`` instance.  Callers can invoke
@@ -167,6 +174,10 @@ def start_health_server(port: int, monitor: HealthMonitor) -> HTTPServer:
     """
     handler_cls = _make_handler(monitor)
     server = HTTPServer(("0.0.0.0", port), handler_cls)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(
+        target=server.serve_forever,
+        kwargs={"poll_interval": poll_interval},
+        daemon=True,
+    )
     thread.start()
     return server

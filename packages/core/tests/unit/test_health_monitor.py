@@ -206,7 +206,7 @@ class TestStartHealthServer:
         monitor = HealthMonitor()
         monitor.update_status("main", True, "ok")
 
-        server = start_health_server(port=0, monitor=monitor)
+        server = start_health_server(port=0, monitor=monitor, poll_interval=0.01)
         try:
             port = server.server_address[1]
             url = f"http://127.0.0.1:{port}/healthy"
@@ -229,7 +229,7 @@ class TestStartHealthServer:
         monitor = HealthMonitor()
         monitor.update_status("disk", False, "disk full")
 
-        server = start_health_server(port=0, monitor=monitor)
+        server = start_health_server(port=0, monitor=monitor, poll_interval=0.01)
         try:
             port = server.server_address[1]
             url = f"http://127.0.0.1:{port}/healthy"
@@ -250,7 +250,7 @@ class TestStartHealthServer:
         from silvasonic.core.health import start_health_server
 
         monitor = HealthMonitor()
-        server = start_health_server(port=0, monitor=monitor)
+        server = start_health_server(port=0, monitor=monitor, poll_interval=0.01)
         try:
             port = server.server_address[1]
             url = f"http://127.0.0.1:{port}/unknown"
@@ -267,7 +267,7 @@ class TestStartHealthServer:
         from silvasonic.core.health import start_health_server
 
         monitor = HealthMonitor()
-        server = start_health_server(port=0, monitor=monitor)
+        server = start_health_server(port=0, monitor=monitor, poll_interval=0.01)
         try:
             assert isinstance(server, HTTPServer)
         finally:

@@ -13,6 +13,10 @@ def _stop_managed_recorders() -> None:
     These containers are created dynamically via podman-py (ADR-0013)
     and are NOT managed by Compose.  They must be removed before
     ``compose down`` can tear down the shared network.
+
+    Uses a **label filter** (``io.silvasonic.owner=controller``) so that
+    test containers (owner ``controller-test-*``) are never affected by
+    a ``just stop`` command.
     """
     result = subprocess.run(
         [
@@ -20,7 +24,7 @@ def _stop_managed_recorders() -> None:
             "ps",
             "-a",
             "--filter",
-            "name=silvasonic-recorder-",
+            "label=io.silvasonic.owner=controller",
             "--format",
             "{{.Names}}",
         ],

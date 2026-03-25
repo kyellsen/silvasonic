@@ -15,6 +15,7 @@ Usage:
     python3 scripts/test.py all           # all non-HW tests (unit+int+system+smoke+e2e)
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,8 +32,9 @@ from common import (
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Parallel workers for unit tests (0 = disabled)
-PYTEST_WORKERS = 6
+# Parallel workers for unit tests (0 = disabled).
+# Override via: SILVASONIC_TEST_WORKERS=<n>
+PYTEST_WORKERS = int(os.environ.get("SILVASONIC_TEST_WORKERS", "6"))
 
 
 def _pytest(marker: str, cmd: list[str]) -> int:

@@ -39,29 +39,30 @@
 
 ### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
-| Service        | Role                                                                                                                                                       | Criticality             |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                                                                        | Critical                |
-| **redis**      | Status bus (Pub/Sub heartbeats, Key-Value status cache) and Reconcile-Nudge for immediate Controller wake-up (ADR-0017, ADR-0019)                          | Life Support            |
-| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                                                                      | Critical                |
-| **controller** | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical                |
-| **processor**  | Data Ingestion, Indexing, and Janitor. Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival                      | Critical                |
-| **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                                     | Life Support / Optional |
+| Service           | Role                                                                                                                                                       | Criticality             | Status       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------ |
+| **database**      | Central state management (TimescaleDB / PostgreSQL)                                                                                                        | Critical                | ✅ AS-IS      |
+| **redis**         | Status bus (Pub/Sub heartbeats, Key-Value status cache) and Reconcile-Nudge for immediate Controller wake-up (ADR-0017, ADR-0019)                          | Life Support            | ✅ AS-IS      |
+| **controller**    | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical                | ✅ AS-IS      |
+| **web-interface** | Local management console. In production: full management console. Dev predecessor: `web-mock` (v0.2.0)                                                    | Life Support / Optional | ✅ AS-IS ¹    |
+| **gateway**       | Caddy Reverse Proxy handling HTTPS and authentication                                                                                                      | Critical                | ⏳ TO-BE v0.7 |
+| **processor**     | Data Ingestion, Indexing, and Janitor. Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival                      | Critical                | ⏳ TO-BE v0.5 |
+| **icecast**       | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                                     | Life Support / Optional | ⏳ TO-BE v0.9 |
+| **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                                                         | Life Support / Optional | ⏳ TO-BE v1.5 |
 
-| **web-interface** | Local management console. During development: lightweight status-board dashboard. In production: full management console | Life Support / Optional |
-| **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                       | Life Support / Optional |
+> ¹ Currently implemented as `web-mock` — a lightweight dev UI shell with mock data. Will be replaced by the full `web-interface` at v0.8.0.
 
 ### Tier 2: Application (Managed by Controller)
 
 > **ALL TIER 2 CONTAINERS ARE IMMUTABLE!** The Processor (Tier 1) is also immutable — see [ADR-0019](docs/adr/0019-unified-service-infrastructure.md).
 
-| Service       | Role                                                                                                                                                                                                                | Criticality      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| **recorder**  | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Buffers audio in RAM, writes dual-stream output (Raw Native & Processed 48kHz) to NVMe, and sends a live Opus stream to Icecast | Critical         |
-| **uploader**  | Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage                                                                                                                            | Critical         |
-| **birdnet**   | On-device inference for avian species classification                                                                                                                                                                | Optional Feature |
-| **batdetect** | On-device inference for bat species classification                                                                                                                                                                  | Optional Feature |
-| **weather**   | Correlates acoustic data with environmental measurements                                                                                                                                                            | Optional Feature |
+| Service       | Role                                                                                                                                                                                                                                                    | Criticality      | Status        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------- |
+| **recorder**  | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Captures audio via FFmpeg subprocess (ADR-0024), writes dual-stream output (Raw Native & Processed 48kHz) to NVMe. 🔮 Will send a live Opus stream to Icecast (v0.9.0) | Critical         | ✅ AS-IS       |
+| **uploader**  | Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage                                                                                                                                                                 | Critical         | ⏳ TO-BE v0.6  |
+| **birdnet**   | On-device inference for avian species classification                                                                                                                                                                                                     | Optional Feature | ⏳ TO-BE v1.1  |
+| **batdetect** | On-device inference for bat species classification                                                                                                                                                                                                       | Optional Feature | ⏳ TO-BE v1.3  |
+| **weather**   | Correlates acoustic data with environmental measurements                                                                                                                                                                                                 | Optional Feature | ⏳ TO-BE v1.2  |
 
 ---
 

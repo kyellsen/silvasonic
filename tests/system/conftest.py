@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,6 +66,58 @@ SOCKET_AVAILABLE = _is_podman_reachable()
 RECORDER_IMAGE = "localhost/silvasonic_recorder:latest"
 
 
+# ---------------------------------------------------------------------------
+# Production stack guard — abort if the Compose stack is running
+# ---------------------------------------------------------------------------
+
+
+def _abort_if_prod_running() -> None:
+    """Fail fast if the production Compose stack is running.
+
+    System tests share the ``silvasonic-net`` network with the production
+    stack.  If production containers are running, spawned test Recorder
+    containers could reach the **production Redis** instead of the
+    Testcontainers Redis.  This guard prevents that scenario.
+
+    Uses the same label filter as ``scripts/stop.py``
+    (``io.silvasonic.owner=controller``) so only actual production
+    containers are detected — test containers (owner ``controller-test-*``)
+    are ignored.
+    """
+    import subprocess
+
+    result = subprocess.run(
+        [
+            "podman",
+            "ps",
+            "--filter",
+            "label=io.silvasonic.owner=controller",
+            "--format",
+            "{{.Names}}",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    names = [n for n in result.stdout.strip().splitlines() if n]
+    if names:
+        pytest.exit(
+            f"\n⚠️  Production containers are running: {', '.join(names)}\n"
+            f"   System tests require an isolated environment.\n"
+            f"   Run 'just stop' first, then re-run tests.\n",
+            returncode=1,
+        )
+
+
+if SOCKET_AVAILABLE:
+    _abort_if_prod_running()
+
+
+# Unique per pytest-session — appended to container names and labels so that
+# parallel test runs and the production stack never interfere with each other.
+TEST_RUN_ID = uuid.uuid4().hex[:8]
+
+
 def require_podman_socket() -> None:
     """Skip the test if the Podman socket is not available."""
     if not SOCKET_AVAILABLE:
@@ -115,6 +168,10 @@ def make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSp
 
     Shared helper used by ``test_controller_lifecycle.py`` and
     ``test_crash_recovery.py`` to avoid duplicating spec construction.
+
+    The ``io.silvasonic.owner`` label is set to
+    ``controller-test-<TEST_RUN_ID>`` so that test containers are invisible
+    to the production Controller and to ``just stop``.
     """
     from silvasonic.controller.container_spec import (
         MountSpec,
@@ -133,7 +190,7 @@ def make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSp
         },
         labels={
             "io.silvasonic.tier": "2",
-            "io.silvasonic.owner": "controller",
+            "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
             "io.silvasonic.service": "recorder",
             "io.silvasonic.device_id": device_id,
             "io.silvasonic.profile": "test_profile",
@@ -255,10 +312,14 @@ def container_manager(
 ) -> Iterator[ContainerManager]:
     """Provide a ContainerManager that auto-cleans test containers.
 
-    On teardown, any containers with ``io.silvasonic.owner=controller``
+    Uses a test-specific ``owner_profile`` so that ``list_managed()`` only
+    returns containers belonging to this pytest session.
+
+    On teardown, any containers with ``io.silvasonic.owner=controller-test-*``
     label and a name containing ``-test-`` are force-removed.
     """
-    mgr = ContainerManager(podman_client)
+    owner = f"controller-test-{TEST_RUN_ID}"
+    mgr = ContainerManager(podman_client, owner_profile=owner)
     yield mgr
 
     # Cleanup: force-remove any test containers we created

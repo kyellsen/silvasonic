@@ -182,8 +182,50 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ---
 
+## 8. Parallel Execution & Isolation
+
+### Safe Combinations (✅ run freely in parallel)
+
+| Suite A | Suite B | Why it's safe |
+| --- | --- | --- |
+| `just test-unit` | **anything** | Pure in-process, no containers, no Podman |
+| `just test-int` | `just test-int` | Testcontainers: ephemeral containers, random ports, own networks |
+| `just test-int` | `just test-system` | Different container pools, no name collisions (`TEST_RUN_ID`) |
+| `just test-int` | `just test-smoke` | Smoke uses own network (`smoke_network`) with distinct aliases |
+| `just test-system` | `just test-system` | Each session gets unique `TEST_RUN_ID` → isolated container names+labels |
+| `just test-system` | `just test-hw` | Both use `TEST_RUN_ID` for isolation |
+| `just test-smoke` | `just test-smoke` | Testcontainers: fully ephemeral |
+| `just stop` | **any test** | `stop.py` filters `owner=controller` (exact); test containers use `owner=controller-test-*` |
+
+### Guarded Combinations (🛡️ automatic protection)
+
+| Suite A | Suite B | Guard |
+| --- | --- | --- |
+| `just start` | `just test-system` | **Auto-abort**: system tests detect running production containers and exit immediately |
+| `just start` | `just test-hw` | **Auto-abort**: same guard applies |
+
+System and hardware tests share the `silvasonic-net` network with the production Compose stack. To prevent test containers from reaching production Redis, the system test `conftest.py` runs a **production stack guard** at import time. If any container with `io.silvasonic.owner=controller` is running, the test session aborts with a clear error message:
+
+```
+⚠️  Production containers are running: silvasonic-controller, ...
+   System tests require an isolated environment.
+   Run 'just stop' first, then re-run tests.
+```
+
+### Isolation Mechanisms
+
+| Mechanism | Protects against |
+| --- | --- |
+| `TEST_RUN_ID` (UUID per session) | Container name collisions between parallel test runs |
+| `io.silvasonic.owner=controller-test-<ID>` label | `just stop` accidentally removing test containers |
+| Production stack guard (`conftest.py`) | Test containers reaching production Redis via shared network |
+| Testcontainers (integration, smoke) | Shared DB/Redis — each session gets disposable containers |
+
+---
+
 ## See Also
 
 - [AGENTS.md §6](../../AGENTS.md) — Testing rules (markers, directory structure)
 - [AGENTS.md §5](../../AGENTS.md) — Approved test libraries
 - [Release Checklist](release_checklist.md) — Quality gates per release type
+

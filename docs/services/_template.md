@@ -60,7 +60,7 @@ What does this service own? Describe the data flow.
 <!-- Key libraries, models, or external dependencies beyond silvasonic-core. -->
 
 *   **ML Model:** e.g., BatDetect2, BirdNET
-*   **Audio:** e.g., `soundfile`, `numpy`
+*   **Audio:** e.g., `soundfile` (reading WAV), `numpy` — Note: Recorder uses `ffmpeg` (ADR-0024)
 *   **External APIs:** e.g., OpenMeteo
 
 ## 7. Open Questions & Future Ideas
