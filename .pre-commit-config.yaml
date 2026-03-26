@@ -9,6 +9,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        verbose: true
         stages: [pre-commit, pre-push]
 
       # 2. CHECK: Fast Check (Lint, Types, Unit Tests) - Runs on Commit
@@ -18,6 +19,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        verbose: true
         stages: [pre-commit]
 
       # 3. FULL CHECK: Full CI Pipeline (Build, Clean) - Runs on Push
@@ -27,4 +29,5 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        verbose: true
         stages: [pre-push]
