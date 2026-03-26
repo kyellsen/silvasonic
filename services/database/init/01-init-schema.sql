@@ -119,15 +119,25 @@ CREATE TABLE recordings (
     uploaded BOOLEAN NOT NULL DEFAULT FALSE,
     uploaded_at TIMESTAMP WITH TIME ZONE,
     local_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    analysis_state JSONB NOT NULL,
+    analysis_state JSONB NOT NULL DEFAULT '{}'::jsonb,
     upload_info JSONB DEFAULT '{}'::jsonb NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY(sensor_id) REFERENCES devices (name)
 );
 CREATE INDEX ix_recordings_time ON recordings (time);
 CREATE INDEX ix_recordings_sensor_id ON recordings (sensor_id);
-CREATE INDEX ix_recordings_uploaded ON recordings (uploaded);
-CREATE INDEX ix_recordings_local_deleted ON recordings (local_deleted);
+
+-- Worker Pull (ADR-0018): Analysis workers claim unprocessed recordings.
+-- Covers queries filtering on local_deleted, replacing standalone ix_recordings_local_deleted.
+CREATE INDEX ix_recordings_analysis_pending
+ON recordings (time ASC)
+WHERE local_deleted = false;
+
+-- Upload polling (v0.6.0 prep): Uploader finds un-uploaded, non-deleted recordings.
+-- Covers queries filtering on uploaded + local_deleted, replacing standalone ix_recordings_uploaded.
+CREATE INDEX ix_recordings_upload_pending
+ON recordings (time ASC)
+WHERE uploaded = false AND local_deleted = false;
 
 -- 9. Detections (Hypertable)
 CREATE TABLE detections (

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,7 +10,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 class Recording(Base):
     """Registry of all audio files recorded by the system.
 
-    Designed to be a TimescaleDB hypertable partitioned by `time`.
+    Standard PostgreSQL table (ADR-0025). FK constraints from ``detections``
+    and ``uploads`` are preserved. Data volume (~2M rows/year) does not
+    require Hypertable partitioning.
     """
 
     __tablename__ = "recordings"
@@ -38,14 +40,19 @@ class Recording(Base):
     filesize_raw: Mapped[int] = mapped_column(BigInteger, nullable=False)
     filesize_processed: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    uploaded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    uploaded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Soft Delete: Marked True if file is removed from local disk by Janitor
-    local_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    local_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Analysis status map
-    analysis_state: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    # Analysis status map — Worker Pull (ADR-0018)
+    analysis_state: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        nullable=False,
+    )
 
     # Upload detailed status/error history
     upload_info: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

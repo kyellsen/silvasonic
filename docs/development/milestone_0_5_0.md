@@ -76,34 +76,34 @@
 
 ### Tasks
 
-- [ ] Add partial index for Worker Pull pattern (ADR-0018):
+- [x] Add partial index for Worker Pull pattern (ADR-0018):
   ```sql
   CREATE INDEX ix_recordings_analysis_pending
   ON recordings (time ASC)
   WHERE local_deleted = false;
   ```
-- [ ] Add partial index for Upload polling (v0.6.0 preparation):
+- [x] Add partial index for Upload polling (v0.6.0 preparation):
   ```sql
   CREATE INDEX ix_recordings_upload_pending
   ON recordings (time ASC)
   WHERE uploaded = false AND local_deleted = false;
   ```
-- [ ] Verify `analysis_state` JSONB column supports the Worker Pull `SELECT ... FOR UPDATE SKIP LOCKED` pattern efficiently
-- [ ] Update `services/database/init/01-init-schema.sql` with new indices
-- [ ] Update SQLAlchemy ORM models in `silvasonic.core.database.models` if schema changes apply
+- [x] Verify `analysis_state` JSONB column supports the Worker Pull `SELECT ... FOR UPDATE SKIP LOCKED` pattern efficiently
+- [x] Update `services/database/init/01-init-schema.sql` with new indices
+- [x] Update SQLAlchemy ORM models in `silvasonic.core.database.models` if schema changes apply
 
 ### Tests
 
 #### Unit (`packages/core/tests/unit/`) — `@pytest.mark.unit`
 
-- [ ] `test_recording_model.py` — `TestRecordingModel`
+- [x] `test_recording_model.py` — `TestRecordingModel`
   - `test_analysis_state_default_empty_jsonb` — new `Recording()` has `analysis_state == {}`
   - `test_local_deleted_default_false` — new `Recording()` has `local_deleted == False`
   - `test_uploaded_default_false` — new `Recording()` has `uploaded == False`
 
 #### Integration (`tests/integration/`) — `@pytest.mark.integration`
 
-- [ ] `test_worker_pull_query.py` — `TestWorkerPullQuery`
+- [x] `test_worker_pull_query.py` — `TestWorkerPullQuery`
   - `test_for_update_skip_locked` — Two concurrent sessions: first locks a row, second gets a different row via `SKIP LOCKED`
   - `test_partial_index_used` — `EXPLAIN` confirms `ix_recordings_analysis_pending` index is used
   - `test_upload_pending_index` — `EXPLAIN` confirms `ix_recordings_upload_pending` index is used
