@@ -14,7 +14,7 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 | **Controller**         | 9100          | 9100            | `SILVASONIC_CONTROLLER_PORT`    | ✅ Implemented      |
 | **Web-Mock** (Dev UI)  | 8001          | 8001            | `SILVASONIC_WEB_MOCK_PORT`      | ✅ Implemented v0.2 |
 | **Web-Interface**      | 8000          | 8000            | `SILVASONIC_WEBUI_PORT`         | 📋 Planned v0.8     |
-| **Processor**          | 9200          | —               | `SILVASONIC_PROCESSOR_PORT`     | 📋 Planned v0.5     |
+| **Processor**          | 9200          | 9200            | `SILVASONIC_PROCESSOR_PORT`     | ✅ Implemented v0.5  |
 | **Recorder** (Health)  | 9500          | —               | — (internal only)               | ✅ Scaffold         |
 | **BirdNET** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned v1.1     |
 | **BatDetect** (Health) | 9500          | —               | — (internal only)               | 📋 Planned v1.3     |

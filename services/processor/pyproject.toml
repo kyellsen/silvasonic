@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silvasonic-processor"
+description = "Data ingestion, metadata indexing, and storage retention for Silvasonic"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["silvasonic-core", "soundfile>=0.12.0"]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "../../packages/core/src/silvasonic/core/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silvasonic"]

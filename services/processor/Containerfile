@@ -1,0 +1,31 @@
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# 1. System dependencies (curl for healthcheck, libsndfile1 for WAV metadata)
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. UV installer (pinned version — must match all other Containerfiles)
+COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
+
+# 3. Copy workspace files
+COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
+COPY services/processor/ services/processor/
+
+# 4. Install with uv
+RUN uv sync --frozen --no-dev --no-editable --package silvasonic-processor
+
+# 5. Virtual Environment in den Pfad aufnehmen
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 9200
+
+ENTRYPOINT ["python", "-m"]
+CMD ["silvasonic.processor"]

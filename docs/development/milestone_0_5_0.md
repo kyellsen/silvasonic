@@ -18,32 +18,51 @@
 
 ### Tasks
 
-- [ ] Scaffold `services/processor/` following the Service Blueprint (§1):
+- [x] Scaffold `services/processor/` following the Service Blueprint (§1):
   - `Containerfile`, `pyproject.toml`, `README.md`
   - `src/silvasonic/processor/__init__.py`, `__main__.py`, `py.typed`
   - `tests/unit/`, `tests/integration/`
-- [ ] Implement `ProcessorService(SilvaService)` in `__main__.py`:
+- [x] Implement `ProcessorService(SilvaService)` in `__main__.py`:
   - `service_name = "processor"`, `service_port = 9200`
   - Override `run()` with placeholder logic (Phase 3+4 fill this in)
   - Read `ProcessorSettings` from `system_config` table on startup (single DB read, Immutable Container pattern, ADR-0019)
-- [ ] Register in workspace:
+- [x] Register in workspace:
   - Root `pyproject.toml`: add `silvasonic-processor` to `[project] dependencies` and `[tool.uv.sources]`
-- [ ] Add `Containerfile` following the Service Blueprint (§5):
+- [x] Add `Containerfile` following the Service Blueprint (§5):
   - Base: `python:3.11-slim-bookworm`
   - System deps: `curl`, `libsndfile1` (WAV metadata via `soundfile`)
   - Port: `9200`
-- [ ] Add Processor to `compose.yml` as Tier 1 service:
+- [x] Add Processor to `compose.yml` as Tier 1 service:
   - `container_name: silvasonic-processor`
   - Depends on `database` (healthy)
   - Mount Recorder workspace **read-write** (`${SILVASONIC_WORKSPACE_PATH}/recorder:/data/recorder:z`) — Processor is the **only** non-Recorder service with `:rw` access (Janitor delete authority, ADR-0009)
   - Mount Processor workspace read-write (`${SILVASONIC_WORKSPACE_PATH}/processor:/data/processor:z`)
   - Redis URL, DB env vars
   - Healthcheck on `:9200/healthy`
-- [ ] Add `compose.override.yml` dev mounts for hot-reload
-- [ ] Add `SILVASONIC_PROCESSOR_PORT=9200` to `.env.example`
-- [ ] Unit tests: package import, lifecycle (start/shutdown), settings loading
-- [ ] Integration test: Processor starts in Testcontainer with DB, reports healthy
-- [ ] `just check` passes
+- [x] Add `compose.override.yml` dev mounts for hot-reload
+- [x] Add `SILVASONIC_PROCESSOR_PORT=9200` to `.env.example`
+- [x] `just check` passes
+
+### Tests
+
+#### Unit (`services/processor/tests/unit/`) — `@pytest.mark.unit`
+
+- [x] `test_processor.py` — `TestProcessorService`
+  - `test_package_import` — `import silvasonic.processor` succeeds
+  - `test_service_name_and_port` — `service_name == "processor"`, `service_port == 9200`
+  - `test_lifecycle_start_shutdown` — `ProcessorService` starts, shutdown signal triggers clean exit (mocked DB/Redis)
+  - `test_settings_loaded_from_db` — Pydantic `ProcessorSettings` correctly deserialized from mock `system_config` row
+  - `test_settings_defaults` — `ProcessorSettings()` defaults match `config/defaults.yml` values
+
+#### Integration (`services/processor/tests/integration/`) — `@pytest.mark.integration`
+
+- [x] `test_processor_lifecycle.py` — `TestProcessorLifecycle`
+  - `test_processor_starts_with_db` — Processor starts in Testcontainer with real DB, `/healthy` returns 200 with `{"status": "ok"}`
+  - `test_processor_heartbeat_published` — Processor publishes heartbeat to Redis within 15s
+
+#### Smoke (`tests/smoke/`) — `@pytest.mark.smoke`
+
+- [x] `test_health.py` — `TestServiceHealth::test_processor_healthy` + `TestServiceHeartbeats::test_processor_heartbeat_in_redis`
 
 ---
 
@@ -72,7 +91,22 @@
 - [ ] Verify `analysis_state` JSONB column supports the Worker Pull `SELECT ... FOR UPDATE SKIP LOCKED` pattern efficiently
 - [ ] Update `services/database/init/01-init-schema.sql` with new indices
 - [ ] Update SQLAlchemy ORM models in `silvasonic.core.database.models` if schema changes apply
-- [ ] Integration test: verify Worker Pull query pattern (`FOR UPDATE SKIP LOCKED`) works correctly against real DB
+
+### Tests
+
+#### Unit (`packages/core/tests/unit/`) — `@pytest.mark.unit`
+
+- [ ] `test_recording_model.py` — `TestRecordingModel`
+  - `test_analysis_state_default_empty_jsonb` — new `Recording()` has `analysis_state == {}`
+  - `test_local_deleted_default_false` — new `Recording()` has `local_deleted == False`
+  - `test_uploaded_default_false` — new `Recording()` has `uploaded == False`
+
+#### Integration (`tests/integration/`) — `@pytest.mark.integration`
+
+- [ ] `test_worker_pull_query.py` — `TestWorkerPullQuery`
+  - `test_for_update_skip_locked` — Two concurrent sessions: first locks a row, second gets a different row via `SKIP LOCKED`
+  - `test_partial_index_used` — `EXPLAIN` confirms `ix_recordings_analysis_pending` index is used
+  - `test_upload_pending_index` — `EXPLAIN` confirms `ix_recordings_upload_pending` index is used
 
 ---
 
@@ -110,9 +144,33 @@
   - If file is missing: sets `local_deleted = true` and logs at `WARNING` level with reason `"reconciliation"`
   - Reports `reconciled_count` in startup log and heartbeat metrics
   - Rationale: Heals Split-Brain state caused by Panic-Mode blind deletion (Phase 4) during DB outages
-- [ ] Unit tests: WAV metadata extraction, path parsing, idempotent insert logic, `.buffer/` exclusion, reconciliation audit logic
-- [ ] Integration test: place WAV files in mock workspace → Indexer picks them up → verify `recordings` rows
-- [ ] Integration test: recordings in DB with missing files on disk → Reconciliation Audit marks them `local_deleted = true`
+### Tests
+
+#### Unit (`services/processor/tests/unit/`) — `@pytest.mark.unit`
+
+- [ ] `test_indexer.py` — `TestIndexer`
+  - `test_wav_metadata_extraction` — `soundfile.info()` returns correct duration, sample_rate, channels from a synthetic WAV
+  - `test_sensor_id_from_path` — path `recorder/ultramic-01/data/processed/seg.wav` extracts `sensor_id == "ultramic-01"`
+  - `test_timestamp_from_filename` — ISO-timestamp filename parsed correctly
+  - `test_raw_file_path_resolution` — given processed path, resolves corresponding raw path
+  - `test_idempotent_skip_existing` — file already in DB (mocked) is not re-inserted
+  - `test_buffer_dir_excluded` — files in `.buffer/` are never indexed
+  - `test_only_data_dir_scanned` — only `data/processed/` is scanned, not parent or sibling dirs
+- [ ] `test_reconciliation.py` — `TestReconciliationAudit`
+  - `test_missing_file_marked_deleted` — DB row with `local_deleted=false`, file absent → sets `local_deleted=true`
+  - `test_existing_file_unchanged` — DB row with `local_deleted=false`, file present → no change
+  - `test_already_deleted_row_skipped` — DB row with `local_deleted=true` is not re-checked
+  - `test_reconciled_count_reported` — returns correct count of reconciled rows
+
+#### Integration (`services/processor/tests/integration/`) — `@pytest.mark.integration`
+
+- [ ] `test_indexer_e2e.py` — `TestIndexerIntegration`
+  - `test_new_wav_indexed` — place WAV files in mock workspace → Indexer picks them up → verify `recordings` rows in DB (Testcontainer PostgreSQL)
+  - `test_idempotent_reindex` — run Indexer twice on same files → no duplicate `recordings` rows
+  - `test_multiple_sensors_indexed` — files from two sensor directories → correct `sensor_id` per row
+- [ ] `test_reconciliation_e2e.py` — `TestReconciliationIntegration`
+  - `test_orphaned_rows_healed` — seed DB with `local_deleted=false` rows, remove files from disk → Reconciliation Audit marks them `local_deleted=true`
+  - `test_valid_rows_preserved` — seed DB with `local_deleted=false` rows, files exist → no changes
 
 ---
 
@@ -146,8 +204,30 @@
 - [ ] Report retention metrics via `get_extra_meta()`:
   - `disk_usage_percent`, `current_mode` (idle/housekeeping/defensive/panic), `files_deleted_total`
 - [ ] Update health component: `self.health.update_status("janitor", ...)`
-- [ ] Unit tests: threshold evaluation, mode escalation, soft-delete logic, panic fallback, DB-offline scenario
-- [ ] Integration test: simulate disk pressure → verify correct files are deleted and DB rows updated
+### Tests
+
+#### Unit (`services/processor/tests/unit/`) — `@pytest.mark.unit`
+
+- [ ] `test_janitor.py` — `TestJanitor`
+  - `test_idle_below_all_thresholds` — 60% usage → mode `idle`, no deletions
+  - `test_housekeeping_mode_triggers` — 75% usage → mode `housekeeping`
+  - `test_defensive_mode_triggers` — 85% usage → mode `defensive`
+  - `test_panic_mode_triggers` — 95% usage → mode `panic`
+  - `test_housekeeping_criteria` — only deletes `uploaded=true AND analysis_state complete`
+  - `test_defensive_criteria` — deletes `uploaded=true` regardless of analysis
+  - `test_panic_criteria` — deletes oldest files regardless of status
+  - `test_soft_delete_updates_db` — physical delete + DB row `local_deleted=true` (mocked fs/DB)
+  - `test_panic_fallback_no_db` — DB unreachable → falls back to `mtime`-based filesystem cleanup
+  - `test_db_offline_housekeeping_skips` — DB offline during Housekeeping → skips (no data loss)
+  - `test_metrics_reported` — `disk_usage_percent`, `current_mode`, `files_deleted_total` in heartbeat extras
+
+#### Integration (`services/processor/tests/integration/`) — `@pytest.mark.integration`
+
+- [ ] `test_janitor_e2e.py` — `TestJanitorIntegration`
+  - `test_housekeeping_deletes_correct_files` — seed DB + filesystem, mock `shutil.disk_usage` at 75% → only uploaded+analyzed files deleted, DB rows updated
+  - `test_defensive_deletes_uploaded_only` — mock 85% → uploaded files deleted regardless of analysis state
+  - `test_panic_deletes_oldest` — mock 95% → oldest files deleted regardless of status
+  - `test_panic_filesystem_fallback` — mock 95% + DB offline → files deleted by `mtime`, DB untouched
 
 ---
 
@@ -173,8 +253,26 @@
 - [ ] Add `processor` entry to `system_services` table seed (Controller seeder):
   - `name = "processor"`, `enabled = true`, `status = "unknown"`
 - [ ] Add Processor workspace directory (`processor/`) to `scripts/init.py` initialization
-- [ ] Unit tests: seeding idempotence, settings round-trip (YAML → DB → Pydantic)
-- [ ] Integration test: fresh DB → Controller seeds → Processor reads correct settings
+### Tests
+
+#### Unit (`services/controller/tests/unit/`) — `@pytest.mark.unit`
+
+- [ ] `test_seeder.py` (extend existing) — `TestProcessorConfigSeeding`
+  - `test_processor_defaults_seeded` — `ConfigSeeder` includes `processor` key with correct defaults
+  - `test_seeding_idempotent` — seeding twice does not overwrite existing values
+
+#### Unit (`services/processor/tests/unit/`) — `@pytest.mark.unit`
+
+- [ ] `test_settings.py` — `TestProcessorSettings`
+  - `test_defaults_match_yaml` — `ProcessorSettings()` defaults == values in `config/defaults.yml`
+  - `test_settings_round_trip` — serialize to JSONB → deserialize → identical Pydantic model
+
+#### Integration (`services/controller/tests/integration/`) — `@pytest.mark.integration`
+
+- [ ] `test_seeder.py` (extend existing) — `TestProcessorSeederIntegration`
+  - `test_controller_seeds_processor_settings` — fresh DB → Controller seeds → `system_config` contains `processor` key with correct JSONB
+  - `test_processor_reads_seeded_settings` — Controller seeds → Processor reads → `ProcessorSettings` fields match YAML defaults
+  - `test_processor_system_service_registered` — `system_services` table contains `name="processor"`, `enabled=true`
 
 ---
 
@@ -186,17 +284,40 @@
 
 ### Tasks
 
-- [ ] System test: Recorder produces WAV segments → Processor Indexer picks them up → recordings appear in DB
-- [ ] Test: Redis outage does not stop indexing or cleanup (Critical Path has zero Redis dependency)
-- [ ] Test: DB outage during Housekeeping/Defensive → Janitor skips (no data loss)
-- [ ] Test: DB outage during Panic → Janitor falls back to filesystem-based cleanup
-- [ ] Test: DB outage during Panic → blind delete → DB recovers → Processor restart → Reconciliation Audit heals orphaned rows (`local_deleted = true`)
-- [ ] Test: Processor restart → resumes indexing without duplicates (idempotent)
-- [ ] Test: concurrent Recorders (multiple microphones) → all indexed independently
 - [ ] Verify heartbeat payload contains Processor-specific metrics (indexer + janitor status)
 - [ ] Update Processor `README.md` with implemented features and status
 - [ ] Update `ROADMAP.md`: mark v0.5.0 as `🔨 In Progress`
 - [ ] `just check-all` passes (full CI pipeline)
+
+### Tests
+
+#### System (`tests/system/`) — `@pytest.mark.system`
+
+- [ ] `test_processor_lifecycle.py` — `TestProcessorLifecycle`
+  - `test_recorder_to_processor_pipeline` — Recorder (mock source) produces WAV segments → Processor Indexer picks them up → `recordings` rows appear in DB (Testcontainer DB+Redis, real Podman, mocked hardware)
+  - `test_processor_restart_idempotent` — stop/restart Processor → resumes indexing without duplicating existing `recordings` rows
+  - `test_concurrent_recorders_indexed` — two Recorder containers (mock source) with different `device_id` → both indexed independently, correct `sensor_id` per row
+  - `test_heartbeat_has_processor_metrics` — Processor heartbeat in Redis contains `indexer` and `janitor` status fields
+- [ ] `test_processor_resilience.py` — `TestProcessorResilience`
+  - `test_redis_outage_indexing_continues` — stop Redis → Processor Indexer still indexes files to DB (Critical Path independence)
+  - `test_redis_outage_janitor_continues` — stop Redis → Janitor still evaluates thresholds and deletes (Critical Path independence)
+  - `test_db_outage_housekeeping_skips` — stop DB during Housekeeping → Janitor skips iteration, no files deleted, no crash
+  - `test_db_outage_panic_filesystem_fallback` — stop DB during Panic threshold → Janitor deletes by `mtime` (blind cleanup)
+  - `test_split_brain_healing` — Panic blind delete → DB recovers → Processor restart → Reconciliation Audit marks orphaned rows `local_deleted=true`
+
+#### Smoke (`tests/smoke/`) — `@pytest.mark.smoke`
+
+- [ ] `test_health.py` (extend existing) — `TestServiceHealth`
+  - `test_processor_healthy` — Processor `/healthy` returns 200 with `{"status": "ok"}`
+- [ ] `test_health.py` (extend existing) — `TestServiceHeartbeats`
+  - `test_processor_heartbeat_in_redis` — Processor heartbeat appears in Redis with expected fields (`service`, `instance_id`, `health`, `meta.resources`, indexer/janitor metrics)
+
+#### System HW (`tests/system/`) — `@pytest.mark.system_hw`
+
+> **Note:** Only if v0.5.0 changes affect device detection or Recorder interaction. Recommended but not mandatory.
+
+- [ ] `test_hw_recording.py` (extend existing) — `TestFullPipelineE2E`
+  - `test_hw_recorder_to_processor_pipeline` — real USB mic → Recorder produces real WAV → Processor Indexer registers in DB → verify `recordings` rows with correct metadata (duration, sample_rate, sensor_id)
 
 ---
 

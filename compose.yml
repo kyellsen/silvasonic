@@ -65,6 +65,41 @@ services:
       retries: 5
       start_period: 15s
 
+  # --- Processor (Data Ingestion & Storage Retention) ---
+  # Tier 1 — Immutable Container pattern (ADR-0019).
+  # Config read from system_config on startup; restart to reconfigure.
+  processor:
+    container_name: silvasonic-processor
+    build:
+      context: .
+      dockerfile: services/processor/Containerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: database
+      SILVASONIC_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
+    volumes:
+      # Recorder workspace: RW — Processor is the ONLY non-Recorder service
+      # with write access (Janitor delete authority, ADR-0009).
+      - ${SILVASONIC_WORKSPACE_PATH}/recorder:/data/recorder:z
+      # Processor workspace: RW — own workspace for internal state.
+      - ${SILVASONIC_WORKSPACE_PATH}/processor:/data/processor:z
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   # --- Recorder (Audio Capture) ---
   # Immutable Tier 2 service. Managed by Controller via podman-py, NOT auto-started.
   # Multiple instances may run concurrently. No database access. No host ports.

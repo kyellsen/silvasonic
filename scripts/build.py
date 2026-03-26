@@ -20,7 +20,7 @@ from common import (
 from compose import compose
 
 # Default services (no profile needed)
-SERVICES = ["database", "controller", "web-mock"]
+SERVICES = ["database", "controller", "processor", "web-mock"]
 
 # Managed-profile services (require --profile managed to be visible)
 MANAGED_SERVICES = ["recorder"]

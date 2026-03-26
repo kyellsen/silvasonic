@@ -7,6 +7,7 @@ requires-python = ">=3.11, <3.12"
 dependencies = [
     "silvasonic-core",
     "silvasonic-controller",
+    "silvasonic-processor",
     "silvasonic-recorder",
     "silvasonic-web-mock",
 ]
@@ -18,7 +19,7 @@ exclude = [
     "services/database",
     "packages/tests",
     "services/gateway",
-    "services/processor",
+
     "services/uploader",
     "services/web-interface",
     "services/icecast",
@@ -32,6 +33,7 @@ exclude = [
 # Workspace dependencies must be explicitly declared here
 silvasonic-core = { workspace = true }
 silvasonic-controller = { workspace = true }
+silvasonic-processor = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-web-mock = { workspace = true }
 silvasonic-test-utils = { workspace = true }
@@ -121,7 +123,7 @@ python_version = "3.11"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/recorder/src:services/web-mock/src"
+mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src"
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]

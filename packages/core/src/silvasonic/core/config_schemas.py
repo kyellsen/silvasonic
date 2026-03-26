@@ -33,7 +33,7 @@ class ProcessorSettings(BaseModel):
     janitor_threshold_critical: float = 80.0
     janitor_threshold_emergency: float = 90.0
     janitor_interval_seconds: int = 60
-    indexer_poll_interval: float = 5.0
+    indexer_poll_interval: float = 2.0
 
 
 class UploaderSettings(BaseModel):

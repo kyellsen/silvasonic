@@ -140,6 +140,47 @@ def controller_container(
     container.stop()
 
 
+# ── Processor ─────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def processor_container(
+    smoke_network: Network,
+    database_container: DockerContainer,
+    redis_container_smoke: DockerContainer,
+) -> Generator[DockerContainer]:
+    """Start an isolated Processor container connected to test database and Redis.
+
+    Session-scoped: shared across all smoke tests for performance.
+    Connects to the database via 'test-database' alias and to Redis via
+    'test-redis' alias on the shared smoke_network.
+    Uses tmpfs for workspace directories (no host writes).
+    """
+    _require_image("silvasonic_processor")
+    # Ensure fixtures are used (dependency ordering)
+    _ = database_container
+    _ = redis_container_smoke
+
+    container = (
+        DockerContainer("silvasonic_processor")
+        .with_exposed_ports(9200)
+        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("POSTGRES_USER", "silvasonic")
+        .with_env("POSTGRES_PASSWORD", "silvasonic")
+        .with_env("POSTGRES_DB", "silvasonic")
+        .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_network(smoke_network)
+        .with_kwargs(tmpfs={"/data/recorder": "rw", "/data/processor": "rw"})
+    )
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(9200))
+    wait_for_http(host, port)
+    yield container
+    container.stop()
+
+
 # ── Recorder ──────────────────────────────────────────────────────────────────
 
 

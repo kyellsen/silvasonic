@@ -48,6 +48,14 @@ class TestServiceHealth:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_processor_healthy(self, processor_container: DockerContainer) -> None:
+        """Processor /healthy returns 200 with status ok."""
+        host = processor_container.get_container_host_ip()
+        port = int(processor_container.get_exposed_port(9200))
+        resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
     def test_web_mock_healthy(self, web_mock_container: DockerContainer) -> None:
         """Web-Mock /healthy returns 200 with status ok."""
         host = web_mock_container.get_container_host_ip()
@@ -122,5 +130,24 @@ class TestServiceHeartbeats:
         assert "watchdog_max_restarts" in payload["meta"]["recording"]
         assert "watchdog_giving_up" in payload["meta"]["recording"]
         assert "watchdog_last_failure" in payload["meta"]["recording"]
+
+        redis_client.close()
+
+    def test_processor_heartbeat_in_redis(
+        self,
+        processor_container: DockerContainer,
+        redis_container_smoke: DockerContainer,
+    ) -> None:
+        """Processor writes a heartbeat to Redis."""
+        host = redis_container_smoke.get_container_host_ip()
+        port = int(redis_container_smoke.get_exposed_port(6379))
+        redis_client = Redis(host=host, port=port, decode_responses=True)
+
+        payload = _poll_redis_key(redis_client, "silvasonic:status:processor")
+
+        assert payload["service"] == "processor"
+        assert payload["instance_id"] == "processor"
+        assert payload["health"]["status"] == "ok"
+        assert "resources" in payload["meta"]
 
         redis_client.close()

@@ -434,7 +434,7 @@ class TestConfigSchemas:
         assert s.janitor_threshold_warning == 70.0
         assert s.janitor_threshold_critical == 80.0
         assert s.janitor_threshold_emergency == 90.0
-        assert s.indexer_poll_interval == 5.0
+        assert s.indexer_poll_interval == 2.0
 
     def test_uploader_settings_defaults(self) -> None:
         """UploaderSettings has correct defaults."""
