@@ -15,9 +15,13 @@ class ProcessorEnvSettings(BaseSettings):
     Attributes:
         PROCESSOR_PORT: Health endpoint port (default 9200).
         REDIS_URL: Redis connection URL for heartbeats.
+        RECORDINGS_DIR: Path to Recorder workspace (mounted read-write).
+        PROCESSOR_DIR: Path to Processor workspace (read-write).
     """
 
     PROCESSOR_PORT: int = 9200
     REDIS_URL: str = "redis://localhost:6379/0"
+    RECORDINGS_DIR: str = "/data/recorder"
+    PROCESSOR_DIR: str = "/data/processor"
 
     model_config = {"env_prefix": "SILVASONIC_"}

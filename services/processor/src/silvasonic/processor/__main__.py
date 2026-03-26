@@ -2,25 +2,25 @@
 
 The Processor is an **immutable Tier 1** service responsible for:
 - **Indexer:** Scans Recorder workspace for promoted WAV files, extracts
-  metadata, and registers them in the ``recordings`` table (Phase 3).
+  metadata, and registers them in the ``recordings`` table.
 - **Janitor:** Monitors disk utilization and enforces the escalating
   retention policy to prevent storage exhaustion (Phase 4).
 
 Inherits the full ``SilvaService`` managed lifecycle: structured logging,
 health monitoring, Redis heartbeats with liveness watchdog, and graceful
 shutdown.
-
-v0.5.0: Skeleton — placeholder ``run()`` with DB config loading.
-Phase 3+4 will add Indexer and Janitor as periodic async tasks.
 """
 
 import asyncio
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import structlog
 from silvasonic.core.config_schemas import ProcessorSettings
 from silvasonic.core.database.session import get_session
 from silvasonic.core.service import SilvaService
+from silvasonic.processor import indexer, reconciliation
 from silvasonic.processor.settings import ProcessorEnvSettings
 
 log = structlog.get_logger()
@@ -47,6 +47,12 @@ class ProcessorService(SilvaService):
         )
         # Runtime config from DB — loaded in load_config(), defaults until then
         self._settings = ProcessorSettings()
+        self._recordings_dir = Path(cfg.RECORDINGS_DIR)
+
+        # Indexer metrics (reported in heartbeat)
+        self._total_indexed: int = 0
+        self._last_indexed_at: datetime | None = None
+        self._reconciled_count: int = 0
 
     async def load_config(self) -> None:
         """Read ProcessorSettings from system_config table (ADR-0023).
@@ -73,28 +79,62 @@ class ProcessorService(SilvaService):
                 log.info("processor.config_using_defaults")
 
     def get_extra_meta(self) -> dict[str, Any]:
-        """Service-specific heartbeat metadata (ADR-0019 §2.4).
-
-        Phase 1: empty. Phase 3+4 add indexer/janitor metrics.
-        """
-        return {}
+        """Service-specific heartbeat metadata (ADR-0019 §2.4)."""
+        meta: dict[str, Any] = {
+            "indexer": {
+                "total_indexed": self._total_indexed,
+                "last_indexed_at": (
+                    self._last_indexed_at.isoformat() if self._last_indexed_at else None
+                ),
+                "reconciled_count": self._reconciled_count,
+            },
+        }
+        return meta
 
     async def run(self) -> None:
-        """Main service loop — placeholder for Phase 3+4.
+        """Main service loop — Reconciliation Audit + Indexer polling.
 
-        Phase 3 will add the Indexer periodic task.
-        Phase 4 will add the Janitor periodic task.
+        1. Run Reconciliation Audit once on startup (Split-Brain healing).
+        2. Periodic Indexer loop: scan workspace, register new recordings.
         """
         self.health.update_status("processor", True, "running")
+
+        # --- Phase 1: Reconciliation Audit (once on startup) ---
+        try:
+            async with get_session() as session:
+                self._reconciled_count = await reconciliation.run_audit(
+                    session, self._recordings_dir
+                )
+            self.health.update_status("indexer", True, "reconciliation_complete")
+        except Exception:
+            log.exception("processor.reconciliation_failed")
+            self.health.update_status("indexer", False, "reconciliation_failed")
+
+        # --- Phase 2: Indexer polling loop ---
         log.info(
-            "processor.started",
-            indexer_interval=self._settings.indexer_poll_interval,
-            janitor_interval=self._settings.janitor_interval_seconds,
+            "processor.indexer_started",
+            interval=self._settings.indexer_poll_interval,
+            recordings_dir=str(self._recordings_dir),
         )
 
         while not self._shutdown_event.is_set():
+            try:
+                async with get_session() as session:
+                    result = await indexer.index_recordings(session, self._recordings_dir)
+                if result.new > 0:
+                    self._total_indexed += result.new
+                    self._last_indexed_at = datetime.now(UTC)
+                    self.health.update_status("indexer", True, f"indexed {result.new} new")
+                elif result.errors > 0:
+                    self.health.update_status("indexer", False, f"{result.errors} errors")
+                else:
+                    self.health.update_status("indexer", True, "idle")
+            except Exception:
+                log.exception("processor.indexer_error")
+                self.health.update_status("indexer", False, "error")
+
             self.health.touch()
-            await asyncio.sleep(1)
+            await asyncio.sleep(self._settings.indexer_poll_interval)
 
 
 if __name__ == "__main__":

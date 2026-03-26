@@ -118,13 +118,13 @@
 
 ### Tasks
 
-- [ ] Implement `silvasonic/processor/indexer.py` — `Indexer` class:
+- [x] Implement `silvasonic/processor/indexer.py` — `Indexer` class:
   - Periodic filesystem polling of all `recorder/*/data/processed/*.wav` (configurable interval from `ProcessorSettings.indexer_poll_interval`, default: `2.0` seconds)
   - Extract WAV metadata via `soundfile`: duration, sample_rate, channels, file size
   - Determine `sensor_id` from directory structure (`recorder/{device_name}/data/...`)
   - Locate corresponding raw file: `recorder/{device_name}/data/raw/{same_filename}.wav`
   - Calculate `filesize_raw` from the raw file
-- [ ] Register each new WAV in the `recordings` table:
+- [x] Register each new WAV in the `recordings` table:
   - `time`: parsed from segment filename (ISO timestamp)
   - `sensor_id`: device name from directory path
   - `file_raw`, `file_processed`: relative paths to both streams
@@ -132,12 +132,12 @@
   - `uploaded = false`, `local_deleted = false`
   - `analysis_state = '{}'::jsonb` (empty — no workers have processed it yet)
   - Idempotent: check for existing entry by `file_processed` before insert (avoid duplicates)
-- [ ] Only index files from `data/` directories — never from `.buffer/` (only complete, promoted segments)
-- [ ] Integrate Indexer as periodic async task in `ProcessorService.run()`
-- [ ] Report indexing metrics via `get_extra_meta()` for heartbeat:
+- [x] Only index files from `data/` directories — never from `.buffer/` (only complete, promoted segments)
+- [x] Integrate Indexer as periodic async task in `ProcessorService.run()`
+- [x] Report indexing metrics via `get_extra_meta()` for heartbeat:
   - `last_indexed_at`, `pending_count` (files on disk not yet in DB), `total_indexed`
-- [ ] Update health component: `self.health.update_status("indexer", True/False, details)`
-- [ ] Implement **Filesystem Reconciliation Audit** (Split-Brain Healing):
+- [x] Update health component: `self.health.update_status("indexer", True/False, details)`
+- [x] Implement **Filesystem Reconciliation Audit** (Split-Brain Healing):
   - Runs once on Processor startup, before the Indexer polling loop begins
   - Queries all `recordings` rows where `local_deleted = false`
   - Verifies `file_processed` exists on the filesystem
@@ -148,7 +148,7 @@
 
 #### Unit (`services/processor/tests/unit/`) — `@pytest.mark.unit`
 
-- [ ] `test_indexer.py` — `TestIndexer`
+- [x] `test_indexer.py` — `TestIndexer`
   - `test_wav_metadata_extraction` — `soundfile.info()` returns correct duration, sample_rate, channels from a synthetic WAV
   - `test_sensor_id_from_path` — path `recorder/ultramic-01/data/processed/seg.wav` extracts `sensor_id == "ultramic-01"`
   - `test_timestamp_from_filename` — ISO-timestamp filename parsed correctly
@@ -156,7 +156,7 @@
   - `test_idempotent_skip_existing` — file already in DB (mocked) is not re-inserted
   - `test_buffer_dir_excluded` — files in `.buffer/` are never indexed
   - `test_only_data_dir_scanned` — only `data/processed/` is scanned, not parent or sibling dirs
-- [ ] `test_reconciliation.py` — `TestReconciliationAudit`
+- [x] `test_reconciliation.py` — `TestReconciliationAudit`
   - `test_missing_file_marked_deleted` — DB row with `local_deleted=false`, file absent → sets `local_deleted=true`
   - `test_existing_file_unchanged` — DB row with `local_deleted=false`, file present → no change
   - `test_already_deleted_row_skipped` — DB row with `local_deleted=true` is not re-checked
@@ -164,11 +164,11 @@
 
 #### Integration (`services/processor/tests/integration/`) — `@pytest.mark.integration`
 
-- [ ] `test_indexer_e2e.py` — `TestIndexerIntegration`
+- [x] `test_indexer_e2e.py` — `TestIndexerIntegration`
   - `test_new_wav_indexed` — place WAV files in mock workspace → Indexer picks them up → verify `recordings` rows in DB (Testcontainer PostgreSQL)
   - `test_idempotent_reindex` — run Indexer twice on same files → no duplicate `recordings` rows
   - `test_multiple_sensors_indexed` — files from two sensor directories → correct `sensor_id` per row
-- [ ] `test_reconciliation_e2e.py` — `TestReconciliationIntegration`
+- [x] `test_reconciliation_e2e.py` — `TestReconciliationIntegration`
   - `test_orphaned_rows_healed` — seed DB with `local_deleted=false` rows, remove files from disk → Reconciliation Audit marks them `local_deleted=true`
   - `test_valid_rows_preserved` — seed DB with `local_deleted=false` rows, files exist → no changes
 

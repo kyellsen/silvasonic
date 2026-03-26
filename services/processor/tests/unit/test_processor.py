@@ -14,6 +14,7 @@ import asyncio
 import json
 import sys
 import warnings
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -37,6 +38,11 @@ def _make_bare_service() -> Any:
     svc._ctx.health = HealthMonitor()
     svc._settings = ProcessorSettings()
     svc._shutdown_event = asyncio.Event()
+    # Phase 3: Indexer attributes
+    svc._recordings_dir = Path("/data/recorder")
+    svc._total_indexed = 0
+    svc._last_indexed_at = None
+    svc._reconciled_count = 0
     return svc
 
 
@@ -174,12 +180,35 @@ class TestProcessorRun:
         """run() sets health status and exits when shutdown_event is set."""
         svc = _make_bare_service()
 
-        with patch(
-            "silvasonic.processor.__main__.asyncio.sleep",
-            new_callable=AsyncMock,
-            side_effect=lambda _: svc._shutdown_event.set(),
+        with (
+            patch(
+                "silvasonic.processor.__main__.get_session",
+            ) as mock_session,
+            patch(
+                "silvasonic.processor.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=lambda _: svc._shutdown_event.set(),
+            ),
         ):
-            await svc.run()
+            # Mock the DB session for reconciliation + indexer
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+
+            # Mock reconciliation.run_audit and indexer.index_recordings
+            with (
+                patch(
+                    "silvasonic.processor.__main__.reconciliation.run_audit",
+                    new_callable=AsyncMock,
+                    return_value=0,
+                ),
+                patch(
+                    "silvasonic.processor.__main__.indexer.index_recordings",
+                    new_callable=AsyncMock,
+                    return_value=MagicMock(new=0, skipped=0, errors=0),
+                ),
+            ):
+                await svc.run()
 
         status = svc.health.get_status()
         assert "processor" in status["components"]
@@ -193,11 +222,14 @@ class TestProcessorRun:
 class TestProcessorGetExtraMeta:
     """Tests for the get_extra_meta() override."""
 
-    def test_extra_meta_empty_phase1(self) -> None:
-        """get_extra_meta() returns empty dict in Phase 1 (placeholder)."""
+    def test_extra_meta_has_indexer_section(self) -> None:
+        """get_extra_meta() returns indexer metrics dict."""
         svc = _make_bare_service()
         meta = svc.get_extra_meta()
-        assert meta == {}
+        assert "indexer" in meta
+        assert meta["indexer"]["total_indexed"] == 0
+        assert meta["indexer"]["last_indexed_at"] is None
+        assert meta["indexer"]["reconciled_count"] == 0
 
 
 # ---------------------------------------------------------------------------
