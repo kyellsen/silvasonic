@@ -32,6 +32,7 @@ def _make_bare_service() -> Any:
     are accessible without mypy ``attr-defined`` errors.
     """
     from silvasonic.controller.__main__ import ControllerService
+    from silvasonic.controller.settings import ControllerSettings
 
     svc = ControllerService.__new__(ControllerService)
     svc._ctx = MagicMock()
@@ -45,6 +46,11 @@ def _make_bare_service() -> Any:
     svc._profile_matcher = MagicMock()
     # Phase 5: Log forwarding
     svc._log_forwarder = MagicMock()
+    # Stats and state tracking (added for production logging)
+    svc._cfg = ControllerSettings()
+    svc._stats = None
+    svc._db_was_connected = None
+    svc._podman_was_connected = None
     return svc
 
 
@@ -96,6 +102,36 @@ class TestControllerConfig:
     def test_service_name(self) -> None:
         """service_name is 'controller'."""
         assert ControllerService.service_name == "controller"
+
+    def test_monitor_poll_interval_default(self) -> None:
+        """CONTROLLER_MONITOR_POLL_INTERVAL_S defaults to 10.0."""
+        from silvasonic.controller.settings import ControllerSettings
+
+        cfg = ControllerSettings()
+        assert cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S == 10.0
+
+    def test_log_forwarder_poll_interval_default(self) -> None:
+        """LOG_FORWARDER_POLL_INTERVAL_S defaults to 1.0."""
+        from silvasonic.controller.settings import ControllerSettings
+
+        cfg = ControllerSettings()
+        assert cfg.LOG_FORWARDER_POLL_INTERVAL_S == 1.0
+
+    def test_monitor_poll_interval_env_override(self) -> None:
+        """CONTROLLER_MONITOR_POLL_INTERVAL_S respects env override."""
+        with patch.dict("os.environ", {"SILVASONIC_CONTROLLER_MONITOR_POLL_INTERVAL_S": "30.0"}):
+            from silvasonic.controller.settings import ControllerSettings
+
+            cfg = ControllerSettings()
+            assert cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S == 30.0
+
+    def test_log_forwarder_poll_interval_env_override(self) -> None:
+        """LOG_FORWARDER_POLL_INTERVAL_S respects env override."""
+        with patch.dict("os.environ", {"SILVASONIC_LOG_FORWARDER_POLL_INTERVAL_S": "5.0"}):
+            from silvasonic.controller.settings import ControllerSettings
+
+            cfg = ControllerSettings()
+            assert cfg.LOG_FORWARDER_POLL_INTERVAL_S == 5.0
 
 
 # ---------------------------------------------------------------------------
@@ -447,3 +483,339 @@ class TestMainGuard:
             warnings.simplefilter("ignore", RuntimeWarning)
             runpy.run_module("silvasonic.controller.__main__", run_name="__main__")
             mock_start.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _emit_status_summary
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestEmitStatusSummary:
+    """Tests for the _emit_status_summary method."""
+
+    async def test_summary_logs_container_names(self) -> None:
+        """_emit_status_summary logs container names and stats."""
+        svc = _make_bare_service()
+        svc._container_manager.list_managed.return_value = [
+            {"name": "silvasonic-recorder-mic1", "status": "running"},
+            {"name": "silvasonic-recorder-mic2", "status": "running"},
+        ]
+
+        summary = {
+            "interval_s": 300.0,
+            "interval_reconcile_cycles": 300,
+            "total_reconcile_cycles": 600,
+            "uptime_s": 600,
+        }
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+        ):
+            await svc._emit_status_summary(summary)
+
+        # Summary log should have been emitted
+        info_calls = [c for c in mock_log.info.call_args_list if c[0][0] == "controller.summary"]
+        assert len(info_calls) == 1
+        call_kwargs = info_calls[0].kwargs
+        assert call_kwargs["containers_running"] == 2
+        assert "silvasonic-recorder-mic1" in call_kwargs["container_names"]
+        assert call_kwargs["interval_reconcile_cycles"] == 300
+
+    async def test_summary_handles_podman_error(self) -> None:
+        """_emit_status_summary handles list_managed failure gracefully."""
+        svc = _make_bare_service()
+        svc._container_manager.list_managed.side_effect = RuntimeError("Podman crashed")
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+        ):
+            await svc._emit_status_summary({"uptime_s": 10})
+
+        info_calls = [c for c in mock_log.info.call_args_list if c[0][0] == "controller.summary"]
+        assert len(info_calls) == 1
+        assert info_calls[0].kwargs["containers_running"] == 0
+
+
+# ---------------------------------------------------------------------------
+# DB state-change logging
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestDatabaseStateChangeLogging:
+    """Tests for DB connectivity state-change logging in _monitor_database."""
+
+    async def test_initial_connect_logs_info(self) -> None:
+        """First successful DB check logs controller.database_connected."""
+        svc = _make_bare_service()
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.check_database_connection",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=asyncio.CancelledError,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_database()
+
+        connected_logs = [
+            c for c in mock_log.info.call_args_list if c[0][0] == "controller.database_connected"
+        ]
+        assert len(connected_logs) == 1
+
+    async def test_initial_failure_logs_warning(self) -> None:
+        """First failed DB check logs controller.database_unreachable."""
+        svc = _make_bare_service()
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.check_database_connection",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=asyncio.CancelledError,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_database()
+
+        unreachable_logs = [
+            c
+            for c in mock_log.warning.call_args_list
+            if c[0][0] == "controller.database_unreachable"
+        ]
+        assert len(unreachable_logs) == 1
+
+    async def test_disconnect_logs_warning(self) -> None:
+        """DB going from connected to disconnected logs warning."""
+        svc = _make_bare_service()
+
+        call_count = 0
+        responses = [True, False]  # Connected then disconnected
+
+        async def mock_check() -> bool:
+            nonlocal call_count
+            idx = min(call_count, len(responses) - 1)
+            call_count += 1
+            return responses[idx]
+
+        sleep_count = 0
+
+        async def mock_sleep(_: float) -> None:
+            nonlocal sleep_count
+            sleep_count += 1
+            if sleep_count >= 2:
+                raise asyncio.CancelledError
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.check_database_connection",
+                side_effect=mock_check,
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_database()
+
+        disconnect_logs = [
+            c
+            for c in mock_log.warning.call_args_list
+            if c[0][0] == "controller.database_disconnected"
+        ]
+        assert len(disconnect_logs) == 1
+
+    async def test_reconnect_logs_info(self) -> None:
+        """DB going from disconnected to connected logs info."""
+        svc = _make_bare_service()
+
+        call_count = 0
+        responses = [False, True]  # Disconnected then connected
+
+        async def mock_check() -> bool:
+            nonlocal call_count
+            idx = min(call_count, len(responses) - 1)
+            call_count += 1
+            return responses[idx]
+
+        sleep_count = 0
+
+        async def mock_sleep(_: float) -> None:
+            nonlocal sleep_count
+            sleep_count += 1
+            if sleep_count >= 2:
+                raise asyncio.CancelledError
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.check_database_connection",
+                side_effect=mock_check,
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_database()
+
+        reconnect_logs = [
+            c for c in mock_log.info.call_args_list if c[0][0] == "controller.database_reconnected"
+        ]
+        assert len(reconnect_logs) == 1
+
+
+# ---------------------------------------------------------------------------
+# Podman state-change logging
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestPodmanStateChangeLogging:
+    """Tests for Podman connectivity state-change logging in _monitor_podman."""
+
+    async def test_initial_connect_logs_info(self) -> None:
+        """First successful Podman ping logs controller.podman_connected."""
+        svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
+        svc._podman_client.ping.return_value = True
+        svc._podman_client.connect.return_value = None
+        svc._podman_client.list_managed_containers.return_value = []
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=asyncio.CancelledError,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_podman()
+
+        connected_logs = [
+            c for c in mock_log.info.call_args_list if c[0][0] == "controller.podman_connected"
+        ]
+        assert len(connected_logs) == 1
+
+    async def test_disconnect_logs_warning(self) -> None:
+        """Podman going from alive to dead logs warning."""
+        svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
+        svc._podman_client.connect.return_value = None
+        svc._podman_client.list_managed_containers.return_value = []
+
+        call_count = 0
+        ping_results = [True, False]
+
+        def mock_ping() -> bool:
+            nonlocal call_count
+            idx = min(call_count, len(ping_results) - 1)
+            call_count += 1
+            return ping_results[idx]
+
+        svc._podman_client.ping = mock_ping
+
+        sleep_count = 0
+
+        async def mock_sleep(_: float) -> None:
+            nonlocal sleep_count
+            sleep_count += 1
+            if sleep_count >= 2:
+                raise asyncio.CancelledError
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_podman()
+
+        disconnect_logs = [
+            c
+            for c in mock_log.warning.call_args_list
+            if c[0][0] == "controller.podman_disconnected"
+        ]
+        assert len(disconnect_logs) == 1
+
+    async def test_reconnect_logs_info(self) -> None:
+        """Podman going from dead to alive logs info."""
+        svc = _make_bare_service()
+        svc._podman_client.socket_path = "/run/podman/podman.sock"
+        svc._podman_client.connect.return_value = None
+        svc._podman_client.list_managed_containers.return_value = []
+
+        call_count = 0
+        ping_results = [False, True]
+
+        def mock_ping() -> bool:
+            nonlocal call_count
+            idx = min(call_count, len(ping_results) - 1)
+            call_count += 1
+            return ping_results[idx]
+
+        svc._podman_client.ping = mock_ping
+
+        sleep_count = 0
+
+        async def mock_sleep(_: float) -> None:
+            nonlocal sleep_count
+            sleep_count += 1
+            if sleep_count >= 2:
+                raise asyncio.CancelledError
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch(
+                "silvasonic.controller.__main__.asyncio.sleep",
+                side_effect=mock_sleep,
+            ),
+            patch("silvasonic.controller.__main__.log") as mock_log,
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await svc._monitor_podman()
+
+        reconnect_logs = [
+            c for c in mock_log.info.call_args_list if c[0][0] == "controller.podman_reconnected"
+        ]
+        assert len(reconnect_logs) == 1

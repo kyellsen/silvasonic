@@ -9,7 +9,7 @@ manufacturer: RODE Microphones
 model: NT-USB
 audio:
   sample_rate: 48000
-  channels: 1
+  channels: 2  # Hardware requires stereo capture (ALSA constraint)
   format: S16LE
   match:
     usb_vendor_id: "19f7"

@@ -91,6 +91,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      controller:
+        condition: service_healthy
     networks:
       - silvasonic-net
     healthcheck:

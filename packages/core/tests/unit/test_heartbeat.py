@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from silvasonic.core.heartbeat import (
-    DEFAULT_HEARTBEAT_TTL_S,
+    HEARTBEAT_TTL_MULTIPLIER,
     HeartbeatPayload,
     HeartbeatPublisher,
 )
@@ -145,7 +145,8 @@ class TestHeartbeatPublisher:
         redis_mock.set.assert_called_once()
         call_args = redis_mock.set.call_args
         assert call_args[0][0] == "silvasonic:status:test-01"
-        assert call_args[1]["ex"] == DEFAULT_HEARTBEAT_TTL_S
+        expected_ttl = max(30, int(pub._interval * HEARTBEAT_TTL_MULTIPLIER))
+        assert call_args[1]["ex"] == expected_ttl
 
         redis_mock.publish.assert_called_once()
         pub_args = redis_mock.publish.call_args

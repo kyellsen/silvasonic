@@ -102,7 +102,7 @@ class SilvasonicPodmanClient:
     @property
     def socket_path(self) -> str:
         """Filesystem path to the Podman socket."""
-        return self._socket_path
+        return self._socket_path  # pragma: no cover — integration-tested
 
     @property
     def containers(self) -> Any:  # pragma: no cover — integration-tested

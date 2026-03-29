@@ -130,3 +130,64 @@ class TestConfigureLogging:
 
         root = logging.getLogger()
         assert any(isinstance(h, logging.StreamHandler) for h in root.handlers)
+
+
+@pytest.mark.unit
+class TestDevModeProcessors:
+    """Tests for dev-mode log formatting processors."""
+
+    def test_shorten_timestamp_full_iso(self) -> None:
+        """Full ISO timestamp is shortened to HH:MM:SS."""
+        from silvasonic.core.logging import _shorten_timestamp
+
+        ed: dict[str, object] = {"timestamp": "2026-03-29T10:01:58.119872Z"}
+        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        assert result["timestamp"] == "10:01:58"
+
+    def test_shorten_timestamp_no_subseconds(self) -> None:
+        """ISO timestamp without sub-seconds is shortened correctly."""
+        from silvasonic.core.logging import _shorten_timestamp
+
+        ed: dict[str, object] = {"timestamp": "2026-03-29T10:01:58Z"}
+        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        assert result["timestamp"] == "10:01:58"
+
+    def test_shorten_timestamp_missing_key(self) -> None:
+        """Missing timestamp key is a no-op."""
+        from silvasonic.core.logging import _shorten_timestamp
+
+        ed: dict[str, object] = {"event": "test"}
+        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        assert "timestamp" not in result
+
+    def test_shorten_timestamp_non_string(self) -> None:
+        """Non-string timestamp is left unchanged."""
+        from silvasonic.core.logging import _shorten_timestamp
+
+        ed: dict[str, object] = {"timestamp": 12345}
+        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        assert result["timestamp"] == 12345
+
+    def test_shorten_logger_name_dotted(self) -> None:
+        """Fully qualified logger name is shortened to last component."""
+        from silvasonic.core.logging import _shorten_logger_name
+
+        ed: dict[str, object] = {"logger_name": "silvasonic.controller.seeder"}
+        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        assert result["logger_name"] == "seeder"
+
+    def test_shorten_logger_name_simple(self) -> None:
+        """Single-component logger name is left unchanged."""
+        from silvasonic.core.logging import _shorten_logger_name
+
+        ed: dict[str, object] = {"logger_name": "__main__"}
+        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        assert result["logger_name"] == "__main__"
+
+    def test_shorten_logger_name_missing(self) -> None:
+        """Missing logger_name key is a no-op."""
+        from silvasonic.core.logging import _shorten_logger_name
+
+        ed: dict[str, object] = {"event": "test"}
+        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        assert "logger_name" not in result

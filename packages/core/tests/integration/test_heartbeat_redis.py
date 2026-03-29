@@ -23,7 +23,7 @@ from redis.asyncio import Redis
 from silvasonic.core.health import HealthMonitor
 from silvasonic.core.heartbeat import (
     DEFAULT_HEARTBEAT_INTERVAL_S,
-    DEFAULT_HEARTBEAT_TTL_S,
+    HEARTBEAT_TTL_MULTIPLIER,
     HeartbeatPublisher,
 )
 from silvasonic.core.redis import get_redis_connection
@@ -85,11 +85,10 @@ class TestHeartbeatPublishRedis:
         assert "meta" in payload
         assert payload["meta"]["resources"]["cpu_percent"] == 5.0
 
-        # Verify TTL is set (should be ≤ DEFAULT_HEARTBEAT_TTL_S)
+        # Verify TTL is set (should be <= interval * multiplier)
+        expected_ttl = max(30, int(DEFAULT_HEARTBEAT_INTERVAL_S * HEARTBEAT_TTL_MULTIPLIER))
         ttl = await redis.ttl(key)
-        assert 0 < ttl <= DEFAULT_HEARTBEAT_TTL_S, (
-            f"Expected TTL 1-{DEFAULT_HEARTBEAT_TTL_S}s, got {ttl}"
-        )
+        assert 0 < ttl <= expected_ttl, f"Expected TTL 1-{expected_ttl}s, got {ttl}"
 
         await cast(Any, redis).aclose()
 

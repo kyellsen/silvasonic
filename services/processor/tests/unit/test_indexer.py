@@ -153,3 +153,69 @@ class TestIdempotency:
         assert result.new == 0
         # commit should NOT be called (no new rows)
         session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+class TestResolveRawPathFallback:
+    """Verify resolve_raw_path when 'processed' is absent from path."""
+
+    def test_path_without_processed_unchanged(self) -> None:
+        """Path without 'processed' component is returned as-is."""
+        original = Path("/data/recorder/mic-01/data/raw/seg.wav")
+        result = indexer.resolve_raw_path(original)
+        assert result == original
+
+
+@pytest.mark.unit
+class TestIndexRecordings:
+    """Verify index_recordings full insert path and error handling."""
+
+    async def test_new_file_indexed_and_committed(self, tmp_path: Path) -> None:
+        """New WAV file is inserted into DB and session is committed."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        wav = dev_dir / "2026-03-26T01-35-00_10s.wav"
+        _create_wav(wav, duration_s=1.0, sample_rate=48000)
+
+        # Also create the corresponding raw file
+        raw_dir = tmp_path / "mic-01" / "data" / "raw"
+        raw_dir.mkdir(parents=True)
+        _create_wav(raw_dir / "2026-03-26T01-35-00_10s.wav", duration_s=1.0)
+
+        # Mock session: fetchone returns None (no existing entry) → INSERT
+        select_result = MagicMock()
+        select_result.fetchone.return_value = None
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[select_result, AsyncMock()])
+        session.commit = AsyncMock()
+
+        result = await indexer.index_recordings(session, tmp_path)
+        assert result.new == 1
+        assert result.skipped == 0
+        assert result.errors == 0
+        session.commit.assert_called_once()
+
+    async def test_extraction_error_counted(self, tmp_path: Path) -> None:
+        """Corrupt WAV file triggers error counter, not crash."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        corrupt = dev_dir / "2026-03-26T01-35-00_10s.wav"
+        corrupt.write_bytes(b"NOT_A_WAV")
+
+        # Mock session: fetchone returns None (no existing entry)
+        select_result = MagicMock()
+        select_result.fetchone.return_value = None
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=select_result)
+        session.commit = AsyncMock()
+
+        result = await indexer.index_recordings(session, tmp_path)
+        assert result.errors == 1
+        assert result.new == 0
+        assert len(result.error_details) == 1
+        # commit should NOT be called (no successful inserts)
+        session.commit.assert_not_called()
+        # rollback MUST be called to reset the aborted transaction state
+        session.rollback.assert_called_once()

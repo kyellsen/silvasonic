@@ -13,8 +13,10 @@ import asyncio
 from typing import TYPE_CHECKING, NoReturn
 
 import structlog
+from silvasonic.core.constants import RECONNECT_DELAY_S
 
 if TYPE_CHECKING:
+    from silvasonic.controller.controller_stats import ControllerStats
     from silvasonic.controller.reconciler import ReconciliationLoop
 
 log = structlog.get_logger()
@@ -38,6 +40,11 @@ class NudgeSubscriber:
         """Initialize with a ReconciliationLoop and Redis URL."""
         self._reconciler = reconciler
         self._redis_url = redis_url
+        self._stats: ControllerStats | None = None
+
+    def set_stats(self, stats: ControllerStats) -> None:
+        """Wire a ControllerStats instance for nudge counting."""
+        self._stats = stats
 
     def _handle_message(self, raw: dict[str, object]) -> None:
         """Process a single Pub/Sub message.
@@ -52,10 +59,12 @@ class NudgeSubscriber:
         if isinstance(data, bytes):
             data = data.decode("utf-8", errors="replace")
 
-        log.info("nudge_subscriber.received", payload=data)
+        log.debug("nudge_subscriber.received", payload=data)
 
         if data == "reconcile":
             self._reconciler.trigger()
+            if self._stats is not None:
+                self._stats.record_nudge()
 
     async def run(self) -> NoReturn:
         """Listen for nudge messages and trigger reconciliation.
@@ -78,8 +87,8 @@ class NudgeSubscriber:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                log.warning("nudge_subscriber.disconnected", reconnect_in=5)
-                await asyncio.sleep(5)
+                log.warning("nudge_subscriber.disconnected", reconnect_in=RECONNECT_DELAY_S)
+                await asyncio.sleep(RECONNECT_DELAY_S)
             finally:
                 if client is not None:
                     await client.aclose()

@@ -50,6 +50,9 @@ from .conftest import (
     seed_test_profile,
 )
 
+# system_network and run_id fixtures are auto-discovered from conftest.py
+# (re-exported from _processor_helpers.py)
+
 pytestmark = [
     pytest.mark.system,
 ]
@@ -195,14 +198,23 @@ class TestSeedingAndDevicePipeline:
 class TestContainerLifecycle:
     """Verify real Podman container start/stop/reconcile."""
 
-    def test_start_and_stop_recorder(self, tmp_path: Path) -> None:
+    def test_start_and_stop_recorder(
+        self,
+        tmp_path: Path,
+        system_network: str,
+    ) -> None:
         """Start a real Recorder container, verify it runs, stop it."""
         require_recorder_image()
 
         container_name = f"silvasonic-recorder-system-test-lifecycle-{TEST_RUN_ID}"
         workspace = tmp_path / "recorder" / "lifecycle"
         workspace.mkdir(parents=True, exist_ok=True)
-        spec = make_test_spec(container_name, "system-test-lifecycle", workspace)
+        spec = make_test_spec(
+            container_name,
+            "system-test-lifecycle",
+            workspace,
+            network=system_network,
+        )
 
         client = SilvasonicPodmanClient(
             socket_path=PODMAN_SOCKET,
@@ -238,7 +250,11 @@ class TestContainerLifecycle:
                 client.containers.get(container_name).remove(force=True)
             client.close()
 
-    def test_sync_state_starts_and_stops(self, tmp_path: Path) -> None:
+    def test_sync_state_starts_and_stops(
+        self,
+        tmp_path: Path,
+        system_network: str,
+    ) -> None:
         """sync_state() starts missing and stops orphaned containers."""
         require_recorder_image()
 
@@ -250,8 +266,18 @@ class TestContainerLifecycle:
         workspace_o = tmp_path / "recorder" / "orphan"
         workspace_o.mkdir(parents=True, exist_ok=True)
 
-        spec_desired = make_test_spec(name_desired, "desired-device", workspace_d)
-        spec_orphan = make_test_spec(name_orphan, "orphan-device", workspace_o)
+        spec_desired = make_test_spec(
+            name_desired,
+            "desired-device",
+            workspace_d,
+            network=system_network,
+        )
+        spec_orphan = make_test_spec(
+            name_orphan,
+            "orphan-device",
+            workspace_o,
+            network=system_network,
+        )
 
         client = SilvasonicPodmanClient(
             socket_path=PODMAN_SOCKET,
@@ -285,7 +311,11 @@ class TestContainerLifecycle:
                     client.containers.get(name).remove(force=True)
             client.close()
 
-    def test_graceful_shutdown_stops_all(self, tmp_path: Path) -> None:
+    def test_graceful_shutdown_stops_all(
+        self,
+        tmp_path: Path,
+        system_network: str,
+    ) -> None:
         """Simulated graceful shutdown stops all managed containers."""
         require_recorder_image()
 
@@ -306,7 +336,12 @@ class TestContainerLifecycle:
             for i, name in enumerate(names):
                 workspace = tmp_path / "recorder" / f"shutdown-{i}"
                 workspace.mkdir(parents=True, exist_ok=True)
-                spec = make_test_spec(name, f"shutdown-device-{i}", workspace)
+                spec = make_test_spec(
+                    name,
+                    f"shutdown-device-{i}",
+                    workspace,
+                    network=system_network,
+                )
                 mgr.start(spec)
 
             # Verify both running
@@ -352,7 +387,11 @@ class TestRecorderMockCapture:
     Recorder containers but never verified WAV output.
     """
 
-    def test_mock_source_produces_wav(self, tmp_path: Path) -> None:
+    def test_mock_source_produces_wav(
+        self,
+        tmp_path: Path,
+        system_network: str,
+    ) -> None:
         """Container with mock_source produces WAV files in workspace."""
         import wave
 
@@ -366,7 +405,7 @@ class TestRecorderMockCapture:
         spec = Tier2ServiceSpec(
             image=RECORDER_IMAGE,
             name=container_name,
-            network="silvasonic-net",
+            network=system_network,
             environment={
                 "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
                 "SILVASONIC_RECORDER_MOCK_SOURCE": "true",

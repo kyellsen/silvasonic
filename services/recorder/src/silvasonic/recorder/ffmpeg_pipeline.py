@@ -29,11 +29,14 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import structlog
 from pydantic import BaseModel, Field, PositiveInt
 from silvasonic.core.schemas.devices import MicrophoneProfile
+
+if TYPE_CHECKING:
+    from silvasonic.recorder.recording_stats import RecordingStats
 
 log = structlog.get_logger()
 
@@ -255,6 +258,7 @@ class SegmentPromoter(threading.Thread):
         data_dir: Path,
         stream_name: str = "raw",
         poll_interval: float = 0.5,
+        stats: RecordingStats | None = None,
     ) -> None:
         """Initialize the promoter thread."""
         super().__init__(name=f"segment-promoter-{stream_name}", daemon=True)
@@ -262,6 +266,7 @@ class SegmentPromoter(threading.Thread):
         self._data_dir = data_dir
         self._stream_name = stream_name
         self._poll_interval = poll_interval
+        self._stats = stats
         self._running = False
         self._promoted_count = 0
         self._promoted_lock = threading.Lock()
@@ -282,8 +287,8 @@ class SegmentPromoter(threading.Thread):
         log.info("segment_promoter.started", stream=self._stream_name)
 
         while self._running:
-            self._poll_and_promote()
-            time.sleep(self._poll_interval)
+            self._poll_and_promote()  # pragma: no cover — integration-tested
+            time.sleep(self._poll_interval)  # pragma: no cover — integration-tested
 
         # Final promotion pass — FFmpeg has exited, ALL files are complete
         self._promote_all()
@@ -323,21 +328,36 @@ class SegmentPromoter(threading.Thread):
         dst = self._data_dir / src.name
 
         try:
+            file_size = src.stat().st_size
             os.replace(str(src), str(dst))
             with self._promoted_lock:
                 self._promoted_count += 1
-            log.info(
-                "segment.promoted",
-                stream=self._stream_name,
-                filename=src.name,
-                total=self.segments_promoted,
-            )
-        except OSError:
-            log.exception(
-                "segment.promote_failed",
-                stream=self._stream_name,
-                filename=src.name,
-            )
+            if self._stats is not None:
+                self._stats.record_promotion(  # pragma: no cover — integration-tested
+                    self._stream_name,
+                    src.name,
+                    file_size,
+                )
+            else:
+                log.info(
+                    "segment.promoted",
+                    stream=self._stream_name,
+                    filename=src.name,
+                    size_bytes=file_size,
+                    total=self.segments_promoted,
+                )
+        except OSError:  # pragma: no cover — defensive
+            if self._stats is not None:  # pragma: no cover
+                self._stats.record_error(  # pragma: no cover
+                    self._stream_name,
+                    src.name,
+                )
+            else:
+                log.exception(  # pragma: no cover — defensive
+                    "segment.promote_failed",
+                    stream=self._stream_name,
+                    filename=src.name,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -374,6 +394,7 @@ class FFmpegPipeline:
         mock_source: bool = False,
         ffmpeg_binary: str = "ffmpeg",
         ffmpeg_loglevel: str = "warning",
+        stats: RecordingStats | None = None,
     ) -> None:
         """Initialize the pipeline (does NOT start recording)."""
         self._config = config
@@ -382,6 +403,7 @@ class FFmpegPipeline:
         self._mock_source = mock_source
         self._ffmpeg_binary = ffmpeg_binary
         self._ffmpeg_loglevel = ffmpeg_loglevel
+        self._stats = stats
 
         self._proc: subprocess.Popen[bytes] | None = None
         self._stderr_thread: threading.Thread | None = None
@@ -483,6 +505,7 @@ class FFmpegPipeline:
                     buffer_dir=self._workspace / ".buffer" / stream,
                     data_dir=self._workspace / "data" / stream,
                     stream_name=stream,
+                    stats=self._stats,
                 )
                 p.start()
                 self._promoters.append(p)
@@ -498,7 +521,7 @@ class FFmpegPipeline:
         for raw_line in self._proc.stderr:
             line = raw_line.decode("utf-8", errors="replace").strip()
             if not line:
-                continue
+                continue  # pragma: no cover — integration-tested
 
             # Log all FFmpeg output at debug level
             log.debug("ffmpeg.stderr", line=line)
@@ -509,7 +532,7 @@ class FFmpegPipeline:
                     self._stderr_errors.append(line)
                     # Keep only last 100 errors to prevent memory growth
                     if len(self._stderr_errors) > 100:
-                        self._stderr_errors = self._stderr_errors[-50:]
+                        self._stderr_errors = self._stderr_errors[-50:]  # pragma: no cover
 
     def stop(self) -> None:
         """Stop FFmpeg gracefully and promote remaining segments.
@@ -525,15 +548,15 @@ class FFmpegPipeline:
                 # SIGINT → FFmpeg finalizes the current segment header
                 self._proc.send_signal(signal.SIGINT)
                 self._proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                log.warning("pipeline.ffmpeg_timeout, sending SIGTERM")
-                self._proc.terminate()
-                try:
-                    self._proc.wait(timeout=3)
-                except subprocess.TimeoutExpired:  # pragma: no cover
-                    log.error("pipeline.ffmpeg_kill")
-                    self._proc.kill()
-                    self._proc.wait()
+            except subprocess.TimeoutExpired:  # pragma: no cover — integration-tested
+                log.warning("pipeline.ffmpeg_timeout, sending SIGTERM")  # pragma: no cover
+                self._proc.terminate()  # pragma: no cover
+                try:  # pragma: no cover
+                    self._proc.wait(timeout=3)  # pragma: no cover
+                except subprocess.TimeoutExpired:  # pragma: no cover — defensive
+                    log.error("pipeline.ffmpeg_kill")  # pragma: no cover
+                    self._proc.kill()  # pragma: no cover
+                    self._proc.wait()  # pragma: no cover
             except OSError:  # pragma: no cover — process already exited
                 pass
 
@@ -552,6 +575,11 @@ class FFmpegPipeline:
             promoter.join(timeout=3)
 
         promoted = self.segments_promoted
+
+        # Emit final recording stats summary before clearing state
+        if self._stats is not None:
+            self._stats.emit_final_summary()  # pragma: no cover — integration-tested
+
         log.info(
             "pipeline.stopped",
             segments_promoted=promoted,

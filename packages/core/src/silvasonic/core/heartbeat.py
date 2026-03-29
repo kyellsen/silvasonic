@@ -7,7 +7,7 @@ pattern, ADR-0017).
 Each heartbeat performs two Redis operations:
 
 1. ``SET silvasonic:status:<instance_id> <payload> EX <TTL>`` — snapshot
-   readable anytime (TTL: see ``DEFAULT_HEARTBEAT_TTL_S``).
+   readable anytime (TTL: ``interval * HEARTBEAT_TTL_MULTIPLIER``).
 2. ``PUBLISH silvasonic:status <payload>`` — live push notification.
 
 Heartbeats are best-effort, fire-and-forget.  A failed publish does NOT
@@ -30,10 +30,17 @@ from redis.asyncio import Redis
 logger = structlog.get_logger()
 
 DEFAULT_HEARTBEAT_INTERVAL_S: float = 10.0
-"""Default seconds between heartbeat publishes."""
+"""Default seconds between heartbeat publishes.
 
-DEFAULT_HEARTBEAT_TTL_S: int = 30
-"""Default TTL (seconds) for heartbeat Redis keys (should be ≥ 3x interval)."""
+Override per service via ``SILVASONIC_HEARTBEAT_INTERVAL_S``.
+Lower values (e.g. 5) improve dashboard responsiveness but increase
+Redis traffic.  Higher values (e.g. 30) save resources on
+battery-powered deployments.
+"""
+
+HEARTBEAT_TTL_MULTIPLIER: int = 3
+"""TTL = interval * multiplier.  Ensures the Redis key survives
+at least 2 missed heartbeats before expiring."""
 
 
 StatusProvider = Callable[[], dict[str, Any]]
@@ -148,7 +155,8 @@ class HeartbeatPublisher:
         json_payload = json.dumps(payload.model_dump())
         key = f"silvasonic:status:{self._instance_id}"
         try:
-            await self._redis.set(key, json_payload, ex=DEFAULT_HEARTBEAT_TTL_S)
+            ttl = max(30, int(self._interval * HEARTBEAT_TTL_MULTIPLIER))
+            await self._redis.set(key, json_payload, ex=ttl)
             await self._redis.publish(self._channel, json_payload)
         except Exception as exc:
             logger.warning("heartbeat_publish_failed", error=str(exc))

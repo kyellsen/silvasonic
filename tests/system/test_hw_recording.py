@@ -42,13 +42,25 @@ from silvasonic.recorder.ffmpeg_pipeline import PROCESSED_SAMPLE_RATE, FFmpegCon
 from silvasonic.recorder.workspace import ensure_workspace
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ._processor_helpers import (
+    DATABASE_IMAGE,
+    PROCESSOR_IMAGE,
+    make_processor_env,
+    podman_logs,
+    podman_run,
+    podman_stop_rm,
+    psql_query,
+    require_database_image,
+    require_processor_image,
+    seed_test_devices,
+    wait_for_db,
+)
 from .conftest import (
     PODMAN_SOCKET,
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
     TEST_RUN_ID,
-    ensure_test_network,
     require_recorder_image,
 )
 
@@ -303,6 +315,7 @@ class TestFullHardwareLifecycle:
         self,
         primary_device: DeviceInfo,
         seeded_db: async_sessionmaker[AsyncSession],
+        hw_redis: tuple[str, int, str],
         tmp_path: Path,
     ) -> None:
         """Full lifecycle: Plug → Scan → Match → DB → Container → WAV output.
@@ -316,7 +329,8 @@ class TestFullHardwareLifecycle:
         6. Stop container and verify WAV files in workspace.
         """
         require_recorder_image()
-        ensure_test_network()
+
+        _redis_host, _redis_port, hw_network = hw_redis
 
         session_factory = seeded_db
 
@@ -368,7 +382,7 @@ class TestFullHardwareLifecycle:
         test_spec = Tier2ServiceSpec(
             image=RECORDER_IMAGE,
             name=test_name,
-            network=spec.network,
+            network=hw_network,
             environment={
                 **spec.environment,
                 "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
@@ -477,13 +491,14 @@ class TestFullHardwareLifecycle:
 class TestFullPipelineE2E:
     """Ultimate E2E: USB scan → DB → Redis → Container → WAV + Heartbeat.
 
-    This is the comprehensive production-path confidence test for v0.4.0.
+    This is the comprehensive production-path confidence test for v0.5.0.
     Unlike ``TestFullHardwareLifecycle``, this test also includes:
 
-    - A real Redis on ``silvasonic-net`` for heartbeat verification.
+    - A real Redis on an isolated test network for heartbeat verification.
     - WAV header validation (sample rate, channels, format).
     - Redis heartbeat assertions (service, health, watchdog metadata).
     - Container health-endpoint check.
+    - Processor Indexer pipeline (v0.5.0): real WAV → DB registration.
     """
 
     _WAIT_SECONDS = 18  # Enough for 2-3 segment promotions (3s segments)
@@ -492,7 +507,7 @@ class TestFullPipelineE2E:
         self,
         primary_device: DeviceInfo,
         seeded_db: async_sessionmaker[AsyncSession],
-        hw_redis: tuple[str, int],
+        hw_redis: tuple[str, int, str],
         tmp_path: Path,
     ) -> None:
         """Full pipeline: Scan → Match → DB → Container → WAV + Redis heartbeat.
@@ -506,10 +521,9 @@ class TestFullPipelineE2E:
         6. Container health endpoint returns 200.
         """
         require_recorder_image()
-        ensure_test_network()
 
         session_factory = seeded_db
-        redis_host, redis_port = hw_redis
+        redis_host, redis_port, hw_network = hw_redis
 
         # ── Step 1: Match profile ──────────────────────────────────
         matcher = ProfileMatcher()
@@ -558,7 +572,7 @@ class TestFullPipelineE2E:
         test_spec = Tier2ServiceSpec(
             image=RECORDER_IMAGE,
             name=test_name,
-            network=spec.network,
+            network=hw_network,
             environment={
                 **spec.environment,
                 "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
@@ -760,3 +774,231 @@ class TestFullPipelineE2E:
             with contextlib.suppress(Exception):
                 client.containers.get(test_name).remove(force=True)
             client.close()
+
+    @pytest.mark.timeout(120)
+    async def test_hw_recorder_to_processor_pipeline(
+        self,
+        primary_device: DeviceInfo,
+        seeded_db: async_sessionmaker[AsyncSession],
+        hw_redis: tuple[str, int, str],
+        tmp_path: Path,
+    ) -> None:
+        """Real USB mic → Recorder → WAV → Processor Indexer → recordings in DB.
+
+        v0.5.0 HW test that validates the complete production pipeline:
+
+        1. Recorder captures real audio from USB microphone.
+        2. WAV files are promoted to device workspace.
+        3. Standalone DB + Processor containers pick up those files.
+        4. Processor Indexer registers recordings in the DB.
+        5. Assert recordings rows have correct metadata.
+
+        This test uses real hardware audio, a real containerized DB,
+        and a real Processor — the full production path.
+        """
+        require_recorder_image()
+        require_processor_image()
+        require_database_image()
+
+        _redis_host, _redis_port, hw_network = hw_redis
+
+        session_factory = seeded_db
+
+        # ── Step 1: Match profile + enroll ──────────────────────────
+        matcher = ProfileMatcher()
+        async with session_factory() as session:
+            match_result = await matcher.match(primary_device, session)
+
+        if match_result.score < 100:
+            pytest.skip(
+                f"Primary mic ({primary_device.alsa_name}) did not match "
+                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score})"
+            )
+
+        from silvasonic.controller.device_repository import upsert_device
+
+        async with session_factory() as session:
+            await upsert_device(
+                primary_device,
+                session,
+                profile_slug=match_result.profile_slug,
+                enrollment_status="enrolled",
+            )
+            await session.commit()
+
+        # ── Step 2: Evaluate → get spec ─────────────────────────────
+        evaluator = DeviceStateEvaluator()
+        async with session_factory() as session:
+            specs = await evaluator.evaluate(session)
+
+        matching_specs = [
+            s
+            for s in specs
+            if s.labels.get("io.silvasonic.device_id") == primary_device.stable_device_id
+        ]
+        assert len(matching_specs) == 1
+        spec = matching_specs[0]
+
+        # ── Step 3: Setup infrastructure ────────────────────────────
+        # Start a standalone DB on the HW test network
+        db_name = f"silvasonic-db-hw-proc-{TEST_RUN_ID}"
+        processor_name = f"silvasonic-processor-hw-{TEST_RUN_ID}"
+        test_name = f"silvasonic-recorder-hw-proc-{TEST_RUN_ID}"
+
+        workspace = tmp_path / "hw_proc_pipeline"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace.chmod(0o777)
+
+        # Recordings root mirrors production layout: {root}/{device_id}/data/processed/
+        recordings_root = tmp_path / "recorder_data"
+        device_dir = recordings_root / primary_device.stable_device_id
+        device_dir.mkdir(parents=True, exist_ok=True)
+        recordings_root.chmod(0o777)
+        device_dir.chmod(0o777)
+
+        client = SilvasonicPodmanClient(
+            socket_path=PODMAN_SOCKET,
+            max_retries=2,
+            retry_delay=0.5,
+        )
+        client.connect()
+
+        try:
+            # Start DB container
+            podman_run(
+                db_name,
+                DATABASE_IMAGE,
+                env={
+                    "POSTGRES_USER": "silvasonic",
+                    "POSTGRES_PASSWORD": "silvasonic",
+                    "POSTGRES_DB": "silvasonic",
+                },
+                network=hw_network,
+                network_aliases=["database", "silvasonic-database"],
+            )
+            wait_for_db(db_name, timeout=30)
+
+            # Seed device so FK constraints are satisfied
+            seed_test_devices(db_name, [primary_device.stable_device_id])
+
+            # ── Step 4: Start Recorder with real /dev/snd ──────────
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
+
+            test_spec = Tier2ServiceSpec(
+                image=RECORDER_IMAGE,
+                name=test_name,
+                network=hw_network,
+                environment={
+                    **spec.environment,
+                    "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
+                    "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
+                },
+                labels={
+                    **spec.labels,
+                    "io.silvasonic.test": "system_hw_proc",
+                    "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
+                },
+                mounts=[
+                    MountSpec(
+                        source=str(device_dir),
+                        target="/app/workspace",
+                        read_only=False,
+                    ),
+                ],
+                devices=["/dev/snd"],
+                group_add=["audio"],
+                privileged=False,
+                restart_policy=RestartPolicy(name="no", max_retry_count=0),
+                memory_limit="256m",
+                cpu_limit=1.0,
+                oom_score_adj=-999,
+            )
+
+            info = mgr.start(test_spec)
+            assert info is not None, "Recorder container start failed"
+
+            # ── Step 5: Wait for WAV segments ──────────────────────
+            print("\n  ⏳ Waiting 20s for Recorder to capture real audio...")
+            time.sleep(20)
+
+            # Verify WAV files were produced
+            raw_dir = device_dir / "data" / "raw"
+            proc_dir = device_dir / "data" / "processed"
+            raw_wavs = list(raw_dir.glob("*.wav")) if raw_dir.exists() else []
+            proc_wavs = list(proc_dir.glob("*.wav")) if proc_dir.exists() else []
+
+            if not proc_wavs:
+                logs = subprocess.run(
+                    ["podman", "logs", test_name],
+                    capture_output=True,
+                    text=True,
+                )
+                print(f"\n--- RECORDER LOGS ---\n{logs.stderr}\n{logs.stdout}")
+
+            assert len(proc_wavs) >= 1, (
+                f"Recorder did not produce processed WAV files. "
+                f"raw: {len(raw_wavs)}, processed: {len(proc_wavs)}"
+            )
+            print(f"  ✅ Recorder produced {len(raw_wavs)} raw, {len(proc_wavs)} processed WAV(s)")
+
+            # ── Step 6: Start Processor ────────────────────────────
+            podman_run(
+                processor_name,
+                PROCESSOR_IMAGE,
+                env={
+                    **make_processor_env(),
+                    "SILVASONIC_REDIS_URL": "redis://silvasonic-redis:6379/0",
+                },
+                volumes=[f"{recordings_root}:/data/recorder:z"],
+                network=hw_network,
+            )
+
+            print("  ⏳ Waiting 15s for Processor to index...")
+            time.sleep(15)
+
+            # ── Step 7: Verify recordings in DB ────────────────────
+            count_str = psql_query(db_name, "SELECT COUNT(*) FROM recordings")
+            count = int(count_str) if count_str else 0
+
+            if count == 0:
+                print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
+
+            assert count >= 1, (
+                f"Processor did not index any recordings from real hardware. "
+                f"WAV files on disk: {len(proc_wavs)}"
+            )
+
+            # Verify metadata (duration, sample_rate, sensor_id)
+            rows_str = psql_query(
+                db_name,
+                "SELECT sensor_id, file_processed, duration, sample_rate FROM recordings LIMIT 5",
+            )
+            for line in rows_str.splitlines():
+                parts = line.split("|")
+                if len(parts) < 4:
+                    continue
+                sensor_id = parts[0].strip()
+                duration = float(parts[2].strip())
+                sample_rate = int(parts[3].strip())
+                assert sensor_id == primary_device.stable_device_id, (
+                    f"sensor_id mismatch: {sensor_id} != {primary_device.stable_device_id}"
+                )
+                assert duration > 0, f"Recording duration must be > 0, got {duration}"
+                assert sample_rate > 0, f"Sample rate must be > 0, got {sample_rate}"
+
+            print(
+                f"\n  🎉 HW Recorder → Processor Pipeline PASSED: "
+                f"{count} recording(s) indexed from {len(proc_wavs)} WAV file(s) "
+                f"(real hardware audio from {PRIMARY_MIC.name})"
+            )
+
+            # ── Teardown ──────────────────────────────────────────
+            mgr.stop(test_name, timeout=10)
+            mgr.remove(test_name)
+
+        finally:
+            with contextlib.suppress(Exception):
+                client.containers.get(test_name).remove(force=True)
+            client.close()
+            podman_stop_rm(processor_name)
+            podman_stop_rm(db_name)

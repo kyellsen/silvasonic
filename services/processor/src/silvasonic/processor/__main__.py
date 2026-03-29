@@ -4,7 +4,7 @@ The Processor is an **immutable Tier 1** service responsible for:
 - **Indexer:** Scans Recorder workspace for promoted WAV files, extracts
   metadata, and registers them in the ``recordings`` table.
 - **Janitor:** Monitors disk utilization and enforces the escalating
-  retention policy to prevent storage exhaustion (Phase 4).
+  retention policy to prevent storage exhaustion (ADR-0011 §6).
 
 Inherits the full ``SilvaService`` managed lifecycle: structured logging,
 health monitoring, Redis heartbeats with liveness watchdog, and graceful
@@ -20,7 +20,8 @@ import structlog
 from silvasonic.core.config_schemas import ProcessorSettings
 from silvasonic.core.database.session import get_session
 from silvasonic.core.service import SilvaService
-from silvasonic.processor import indexer, reconciliation
+from silvasonic.processor import indexer, janitor, reconciliation
+from silvasonic.processor.janitor import RetentionMode
 from silvasonic.processor.settings import ProcessorEnvSettings
 
 log = structlog.get_logger()
@@ -44,6 +45,7 @@ class ProcessorService(SilvaService):
         super().__init__(
             instance_id="processor",
             redis_url=cfg.REDIS_URL,
+            heartbeat_interval=cfg.HEARTBEAT_INTERVAL_S,
         )
         # Runtime config from DB — loaded in load_config(), defaults until then
         self._settings = ProcessorSettings()
@@ -53,6 +55,11 @@ class ProcessorService(SilvaService):
         self._total_indexed: int = 0
         self._last_indexed_at: datetime | None = None
         self._reconciled_count: int = 0
+
+        # Janitor metrics (reported in heartbeat)
+        self._disk_usage_percent: float = 0.0
+        self._janitor_mode: str = RetentionMode.IDLE.value
+        self._files_deleted_total: int = 0
 
     async def load_config(self) -> None:
         """Read ProcessorSettings from system_config table (ADR-0023).
@@ -80,7 +87,7 @@ class ProcessorService(SilvaService):
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Service-specific heartbeat metadata (ADR-0019 §2.4)."""
-        meta: dict[str, Any] = {
+        return {
             "indexer": {
                 "total_indexed": self._total_indexed,
                 "last_indexed_at": (
@@ -88,8 +95,12 @@ class ProcessorService(SilvaService):
                 ),
                 "reconciled_count": self._reconciled_count,
             },
+            "janitor": {
+                "disk_usage_percent": round(self._disk_usage_percent, 1),
+                "current_mode": self._janitor_mode,
+                "files_deleted_total": self._files_deleted_total,
+            },
         }
-        return meta
 
     async def run(self) -> None:
         """Main service loop — Reconciliation Audit + Indexer polling.
@@ -110,14 +121,27 @@ class ProcessorService(SilvaService):
             log.exception("processor.reconciliation_failed")
             self.health.update_status("indexer", False, "reconciliation_failed")
 
-        # --- Phase 2: Indexer polling loop ---
+        # --- Phase 2: Indexer + Janitor polling loop ---
+        janitor_every_n = max(
+            1,
+            int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
+        )
+        janitor_counter = 0
+
         log.info(
             "processor.indexer_started",
             interval=self._settings.indexer_poll_interval,
             recordings_dir=str(self._recordings_dir),
         )
+        log.info(
+            "processor.janitor_started",
+            interval=self._settings.janitor_interval_seconds,
+            every_n_cycles=janitor_every_n,
+            batch_size=self._settings.janitor_batch_size,
+        )
 
         while not self._shutdown_event.is_set():
+            # --- Indexer (every cycle) ---
             try:
                 async with get_session() as session:
                     result = await indexer.index_recordings(session, self._recordings_dir)
@@ -132,6 +156,22 @@ class ProcessorService(SilvaService):
             except Exception:
                 log.exception("processor.indexer_error")
                 self.health.update_status("indexer", False, "error")
+
+            # --- Janitor (every N cycles) ---
+            janitor_counter += 1
+            if janitor_counter >= janitor_every_n:
+                janitor_counter = 0
+                try:
+                    jr = await janitor.run_cleanup_safe(self._recordings_dir, self._settings)
+                    self._disk_usage_percent = jr.disk_usage_percent
+                    self._janitor_mode = jr.mode.value
+                    self._files_deleted_total += jr.files_deleted
+                    healthy = jr.errors == 0
+                    detail = f"{jr.mode.value} - deleted {jr.files_deleted}"
+                    self.health.update_status("janitor", healthy, detail)
+                except Exception:
+                    log.exception("processor.janitor_error")
+                    self.health.update_status("janitor", False, "error")
 
             self.health.touch()
             await asyncio.sleep(self._settings.indexer_poll_interval)

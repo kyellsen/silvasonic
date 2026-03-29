@@ -20,6 +20,7 @@ from typing import Any
 import structlog
 from silvasonic.core.service import SilvaService
 from silvasonic.recorder.ffmpeg_pipeline import FFmpegConfig, FFmpegPipeline
+from silvasonic.recorder.recording_stats import RecordingStats
 from silvasonic.recorder.settings import RecorderSettings
 from silvasonic.recorder.watchdog import RecordingWatchdog
 from silvasonic.recorder.workspace import ensure_workspace
@@ -44,6 +45,7 @@ class RecorderService(SilvaService):
         super().__init__(
             instance_id=self._cfg.instance_id,
             redis_url=self._cfg.redis_url,
+            heartbeat_interval=self._cfg.heartbeat_interval_s,
         )
         # Build pipeline config from injected profile (or defaults)
         profile = self._cfg.parse_profile()
@@ -121,7 +123,11 @@ class RecorderService(SilvaService):
             await self._shutdown_event.wait()
             return
 
-        # Step 3: Start FFmpeg pipeline
+        # Step 3: Create stats tracker + FFmpeg pipeline
+        stats = RecordingStats(
+            startup_duration_s=self._cfg.recorder_log_startup_s,
+            summary_interval_s=self._cfg.recorder_log_summary_interval_s,
+        )
         self._pipeline = FFmpegPipeline(
             config=self._pipeline_config,
             workspace=workspace,
@@ -129,6 +135,7 @@ class RecorderService(SilvaService):
             mock_source=use_mock,
             ffmpeg_binary=self._cfg.ffmpeg_binary,
             ffmpeg_loglevel=self._cfg.ffmpeg_loglevel,
+            stats=stats,
         )
 
         try:
@@ -149,13 +156,14 @@ class RecorderService(SilvaService):
             max_restarts=self._cfg.recorder_watchdog_max_restarts,
             check_interval_s=self._cfg.recorder_watchdog_check_interval_s,
             stall_timeout_s=self._cfg.recorder_watchdog_stall_timeout_s,
+            base_backoff_s=self._cfg.recorder_watchdog_base_backoff_s,
         )
         rec_task = asyncio.create_task(self._monitor_recording())
 
         try:
             # Watchdog handles monitoring + restarts; exits on shutdown or give-up
             await self._watchdog.watch(self._shutdown_event)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # pragma: no cover — integration-tested
             pass
         finally:
             rec_task.cancel()
@@ -229,13 +237,18 @@ class RecorderService(SilvaService):
                 if is_recording:
                     details = f"Recording active (segments: {segments}, errors: {errors})"
                 else:
+                    log.warning(
+                        "recording.ffmpeg_exited_unexpectedly",
+                        segments=segments,
+                        errors=errors,
+                    )
                     details = "FFmpeg process exited unexpectedly"
             else:
                 is_recording = False
                 details = "Pipeline not initialized"
 
             self.health.update_status("recording", is_recording, details)
-            await asyncio.sleep(5)
+            await asyncio.sleep(self._cfg.recorder_health_poll_interval_s)
 
 
 if __name__ == "__main__":

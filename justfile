@@ -120,7 +120,7 @@ clear:
 clean:
     @{{ BOOTSTRAP_PYTHON }} scripts/clean.py
 
-# ☢️  clean + .venv + Silvasonic-Images löschen (Full Reset)
+# ☢️  clean + .venv + alle Silvasonic Container/Volumes/Networks/Images löschen
 nuke:
     @{{ BOOTSTRAP_PYTHON }} scripts/nuke.py
 

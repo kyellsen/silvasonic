@@ -1,15 +1,73 @@
-# Factory defaults — seeded into system_config on Controller startup (ADR-0023).
-# Values are inserted with ON CONFLICT DO NOTHING: user-modified values are never
-# overwritten. After a database reset, all defaults are restored automatically.
+# ==============================================================================
+# Factory Defaults - seeded into system_config on Controller startup (ADR-0023)
+# ==============================================================================
+#
+# Values are inserted with ON CONFLICT DO NOTHING: user-modified values
+# in the database are NEVER overwritten by these defaults.
+# After a database reset, all defaults are restored automatically.
+#
+# These settings are editable at runtime via the Web-UI (Settings page).
+# Changes in the Web-UI are persisted in the database and take effect
+# immediately (or after service restart, depending on the service).
+#
+# The key names (system, auth, processor, uploader, birdnet) map to entries
+# in the system_config table and are validated against Pydantic schemas
+# in packages/core/src/silvasonic/core/config_schemas.py.
+#
+# Schema defaults MUST match the values below.
+# See also: .env.example for infrastructure-level settings.
+#
+# Section order: cross-cutting first, then by roadmap milestone.
 
+# --- Station Identity & Limits (key: "system") ---
 system:
+  # GPS coordinates of the monitoring station (used for sunrise/sunset calculation)
   latitude: 53.55
   longitude: 9.99
+  # Maximum number of concurrent Recorder containers
   max_recorders: 5
+  # Maximum number of concurrent Uploader workers (v0.6.0)
   max_uploaders: 3
-  station_name: "Silvasonic Dev"
+  # Human-readable name shown in the Web-UI header
+  station_name: "Silvasonic MVP"
+  # Automatically enroll newly detected USB microphones (true/false)
   auto_enrollment: true
 
+# --- Default Admin Credentials (key: "auth") ---
 auth:
   default_username: "admin"
-  default_password: "silvasonic"  # MUST be changed in production!
+  default_password: "1234"  # MUST be changed in production!
+
+# --- Processor: Indexer & Storage Retention (key: "processor", v0.5.0) ---
+processor:
+  # Disk usage thresholds (%) that trigger escalating retention modes.
+  # IDLE -> WARNING -> CRITICAL -> EMERGENCY (oldest files deleted first).
+  janitor_threshold_warning: 70.0
+  janitor_threshold_critical: 80.0
+  janitor_threshold_emergency: 90.0
+  # How often (seconds) the Janitor checks disk usage.  Range: 10-600.
+  janitor_interval_seconds: 60
+  # Maximum files to delete per Janitor cycle.  Range: 10-500.
+  janitor_batch_size: 50
+  # How often (seconds) the Indexer scans for new WAV files.  Range: 1-30.
+  indexer_poll_interval: 2.0
+
+# --- Uploader: Cloud Sync (key: "uploader", v0.6.0) ---
+uploader:
+  # Enable/disable cloud upload entirely
+  enabled: true
+  # Seconds between upload batch checks.  Range: 10-300.
+  poll_interval: 30
+  # Bandwidth limit for uploads (rsync/rclone format, e.g. "1M", "500k")
+  bandwidth_limit: "1M"
+  # Upload schedule: only upload between these hours (24h format).
+  # Set both to null to upload continuously.
+  schedule_start_hour: 22
+  schedule_end_hour: 6
+
+# --- BirdNET Inference (key: "birdnet", v0.7.0) ---
+birdnet:
+  # Minimum confidence score (0.0-1.0) to accept a species detection.
+  # Lower = more detections (but more false positives).
+  # Higher = fewer detections (but higher accuracy).
+  confidence_threshold: 0.25

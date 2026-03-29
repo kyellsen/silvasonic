@@ -1,8 +1,12 @@
-"""Shared fixtures for cross-cutting integration tests.
+"""Shared fixtures for Processor integration tests.
 
-Re-exports session-scoped container fixtures from ``silvasonic-test-utils``
-and provides an autouse DB cleanup fixture for parallel-safe execution
-with ``pytest-xdist``.
+Provides an autouse cleanup fixture that resets DB state after each
+test, ensuring parallel-safe execution with ``pytest-xdist``.
+
+With ``-n 4`` each xdist worker gets its **own** session-scoped
+``postgres_container``.  Tests on the same worker share that DB and
+run sequentially.  The autouse fixture guarantees a clean slate
+between tests so that leftover rows never cause false positives.
 """
 
 from __future__ import annotations
@@ -12,9 +16,6 @@ from collections.abc import Iterator
 
 import asyncpg  # type: ignore[import-untyped]
 import pytest
-from silvasonic.test_utils.containers import postgres_container as postgres_container
-from silvasonic.test_utils.containers import redis_container as redis_container
-from silvasonic.test_utils.containers import shared_network as shared_network
 from testcontainers.postgres import PostgresContainer
 
 # Tables deleted in FK-safe order (children before parents).
@@ -23,8 +24,6 @@ _CLEANUP_TABLES = (
     "storage_remotes",
     "devices",
     "microphone_profiles",
-    "users",
-    "system_config",
 )
 
 
@@ -47,7 +46,7 @@ async def _delete_all(container: PostgresContainer) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:  # noqa: F811
+def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
     """Reset application tables after each test for parallel safety.
 
     Runs **after** every integration test in this directory.  Deletes

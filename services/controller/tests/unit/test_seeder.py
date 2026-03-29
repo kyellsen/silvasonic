@@ -1,13 +1,16 @@
 """Unit tests for ConfigSeeder, ProfileBootstrapper, AuthSeeder, run_all_seeders.
 
 Covers defaults insertion, skip-existing, Pydantic validation, YAML loading,
-bcrypt hashing, and edge cases (missing files, invalid YAML, .gitkeep).
+bcrypt hashing, edge cases (missing files, invalid YAML, .gitkeep), and
+schema_map ↔ defaults.yml parity.
 """
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import yaml
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
@@ -92,7 +95,12 @@ class TestPathResolvers:
 # Test fixtures
 # ---------------------------------------------------------------------------
 def _make_defaults_yml(tmp_path: Path) -> Path:
-    """Create a valid defaults.yml for testing."""
+    """Create a valid defaults.yml covering ALL seeder keys.
+
+    Mirrors the real defaults.yml structure so that ConfigSeeder exercises
+    every entry in its schema_map (system, processor, uploader, birdnet)
+    plus the auth block handled by AuthSeeder.
+    """
     yml = tmp_path / "defaults.yml"
     yml.write_text(
         """
@@ -107,6 +115,24 @@ system:
 auth:
   default_username: "admin"
   default_password: "testpass"
+
+processor:
+  janitor_threshold_warning: 70.0
+  janitor_threshold_critical: 80.0
+  janitor_threshold_emergency: 90.0
+  janitor_interval_seconds: 60
+  janitor_batch_size: 50
+  indexer_poll_interval: 2.0
+
+uploader:
+  enabled: true
+  poll_interval: 30
+  bandwidth_limit: "1M"
+  schedule_start_hour: 22
+  schedule_end_hour: 6
+
+birdnet:
+  confidence_threshold: 0.25
 """,
         encoding="utf-8",
     )
@@ -168,7 +194,7 @@ class TestConfigSeeder:
     """Tests for the ConfigSeeder class."""
 
     async def test_seed_inserts_defaults(self, tmp_path: Path) -> None:
-        """ConfigSeeder inserts system config defaults into empty DB."""
+        """ConfigSeeder inserts all schema_map keys from defaults.yml."""
         yml = _make_defaults_yml(tmp_path)
         seeder = ConfigSeeder(defaults_path=yml)
 
@@ -177,12 +203,17 @@ class TestConfigSeeder:
 
         await seeder.seed(session)
 
-        # Should have called session.add for "system" key
-        assert session.add.call_count == 1
-        added_obj = session.add.call_args[0][0]
-        assert added_obj.key == "system"
-        assert added_obj.value["station_name"] == "Test Station"
-        assert added_obj.value["auto_enrollment"] is True
+        # Should seed all 4 config keys (auth is handled by AuthSeeder)
+        assert session.add.call_count == 4
+        added_keys = {call[0][0].key for call in session.add.call_args_list}
+        assert added_keys == {"system", "processor", "uploader", "birdnet"}
+
+        # Spot-check specific values
+        added_by_key = {call[0][0].key: call[0][0].value for call in session.add.call_args_list}
+        assert added_by_key["system"]["station_name"] == "Test Station"
+        assert added_by_key["processor"]["janitor_batch_size"] == 50
+        assert added_by_key["uploader"]["bandwidth_limit"] == "1M"
+        assert added_by_key["birdnet"]["confidence_threshold"] == 0.25
 
     async def test_seed_skips_existing_values(self, tmp_path: Path) -> None:
         """ConfigSeeder skips keys that already exist in DB."""
@@ -623,3 +654,82 @@ class TestRunAllSeeders:
             profile_seed.assert_called_once_with(session)
             auth_seed.assert_called_once()
             session.commit.assert_called_once()
+
+
+# ===================================================================
+# Defaults YAML ↔ Schema Parity (Drift Guard)
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestDefaultsYamlParity:
+    """Ensure the real defaults.yml stays in sync with the seeder's schema_map.
+
+    These tests catch three classes of drift:
+    1. A key added to defaults.yml but missing from schema_map (would be
+       seeded without validation).
+    2. A key added to schema_map but missing from defaults.yml (would
+       never be seeded).
+    3. A YAML value that no longer passes Pydantic validation (typo in
+       defaults.yml, schema field renamed, etc.).
+    """
+
+    @staticmethod
+    def _load_real_defaults() -> dict[str, Any]:
+        """Load the real config/defaults.yml from the service tree."""
+        config_dir = Path(__file__).resolve().parents[2] / "config"
+        defaults_path = config_dir / "defaults.yml"
+        assert defaults_path.exists(), f"defaults.yml not found at {defaults_path}"
+        with defaults_path.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        assert isinstance(data, dict)
+        return data
+
+    @staticmethod
+    def _get_schema_map() -> dict[str, type]:
+        """Return the same schema_map the seeder uses at runtime."""
+        from silvasonic.core.config_schemas import (
+            BirdnetSettings,
+            ProcessorSettings,
+            SystemSettings,
+            UploaderSettings,
+        )
+
+        return {
+            "system": SystemSettings,
+            "processor": ProcessorSettings,
+            "uploader": UploaderSettings,
+            "birdnet": BirdnetSettings,
+        }
+
+    def test_yaml_keys_covered_by_schema_map(self) -> None:
+        """Every config key in defaults.yml (except 'auth') has a schema_map entry."""
+        defaults = self._load_real_defaults()
+        schema_map = self._get_schema_map()
+        yaml_config_keys = {k for k in defaults if k != "auth"}
+        missing = yaml_config_keys - set(schema_map)
+        assert not missing, f"YAML keys without schema_map entry: {missing}"
+
+    def test_schema_map_keys_present_in_yaml(self) -> None:
+        """Every schema_map key has a corresponding section in defaults.yml."""
+        defaults = self._load_real_defaults()
+        schema_map = self._get_schema_map()
+        missing = set(schema_map) - set(defaults)
+        assert not missing, f"schema_map keys missing from defaults.yml: {missing}"
+
+    def test_all_yaml_values_pass_pydantic_validation(self) -> None:
+        """Every YAML section validates against its Pydantic schema."""
+        defaults = self._load_real_defaults()
+        schema_map = self._get_schema_map()
+        for key, schema_cls in schema_map.items():
+            section = defaults.get(key)
+            assert section is not None, f"Section '{key}' missing from defaults.yml"
+            # This will raise ValidationError if the values don't match the schema
+            instance = schema_cls(**section)
+            # Round-trip: ensure model_dump matches the original YAML values
+            dumped = instance.model_dump()
+            for field_name, yaml_value in section.items():
+                assert dumped[field_name] == yaml_value, (
+                    f"Pydantic default mismatch for {key}.{field_name}: "
+                    f"YAML={yaml_value!r}, schema={dumped[field_name]!r}"
+                )

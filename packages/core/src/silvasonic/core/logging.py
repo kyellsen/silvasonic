@@ -6,6 +6,39 @@ from typing import Any
 import structlog
 
 
+def _shorten_timestamp(
+    _logger: logging.Logger, _method: str, event_dict: dict[str, Any]
+) -> dict[str, Any]:
+    """Truncate ISO timestamp to second precision for human readability.
+
+    ``2026-03-29T10:01:58.119872Z`` → ``10:01:58``
+
+    Only applied in dev mode; production JSON keeps full precision.
+    """
+    ts = event_dict.get("timestamp", "")
+    if isinstance(ts, str) and "T" in ts:
+        # Extract HH:MM:SS from ISO format, drop date + sub-seconds
+        time_part = ts.split("T", 1)[1]
+        event_dict["timestamp"] = time_part.split(".")[0].rstrip("Z")
+    return event_dict
+
+
+def _shorten_logger_name(
+    _logger: logging.Logger, _method: str, event_dict: dict[str, Any]
+) -> dict[str, Any]:
+    """Shorten logger name to its last dotted component.
+
+    ``silvasonic.controller.seeder`` → ``seeder``
+
+    The event name already carries semantic context (e.g. ``seeder.profiles.inserted``),
+    so the full module path is redundant in dev console output.
+    """
+    name = event_dict.get("logger_name", "")
+    if isinstance(name, str) and "." in name:
+        event_dict["logger_name"] = name.rsplit(".", 1)[-1]
+    return event_dict
+
+
 def configure_logging(service_name: str) -> None:
     """Configures modern, container-first structured logging for Silvasonic.
 
@@ -42,6 +75,11 @@ def configure_logging(service_name: str) -> None:
         structlog.processors.UnicodeDecoder(),
     ]
 
+    # Dev-only: human-friendly timestamp + short logger name
+    if dev_mode:
+        shared_processors.append(_shorten_timestamp)
+        shared_processors.append(_shorten_logger_name)
+
     # 4. Environment-Specific Rendering
     #
     # Three modes:
@@ -61,7 +99,10 @@ def configure_logging(service_name: str) -> None:
         renderer = structlog.processors.JSONRenderer()
     else:
         # DEV: Colored console output (works with and without TTY)
-        renderer = structlog.dev.ConsoleRenderer(colors=is_interactive)
+        renderer = structlog.dev.ConsoleRenderer(
+            colors=is_interactive,
+            pad_event_to=40,
+        )
 
     # 5. Bridge: Standard Library -> Structlog Format
     # `foreign_pre_chain` ensures third-party logs get timestamps and service names

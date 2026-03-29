@@ -21,6 +21,7 @@ from typing import Any, NoReturn
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
+from silvasonic.controller.controller_stats import ControllerStats
 from silvasonic.controller.device_scanner import DeviceScanner
 from silvasonic.controller.log_forwarder import LogForwarder
 from silvasonic.controller.nudge_subscriber import NudgeSubscriber
@@ -36,6 +37,9 @@ from silvasonic.core.service import SilvaService
 
 log = structlog.get_logger()
 
+# Internal tick rate for the main loop (health touch + summary check).
+_MAIN_TICK_S: float = 1.0
+
 
 class ControllerService(SilvaService):
     """Controller service — orchestrates Tier 2 services.
@@ -50,15 +54,18 @@ class ControllerService(SilvaService):
 
     def __init__(self) -> None:
         """Initialize with Redis URL and Podman client from environment."""
-        cfg = ControllerSettings()
-        self.service_port = cfg.CONTROLLER_PORT
+        self._cfg = ControllerSettings()
+        self.service_port = self._cfg.CONTROLLER_PORT
         super().__init__(
             instance_id="controller",
-            redis_url=cfg.REDIS_URL,
+            redis_url=self._cfg.REDIS_URL,
+            heartbeat_interval=self._cfg.HEARTBEAT_INTERVAL_S,
         )
         self._host_resources = HostResourceCollector()
         self._podman_client = SilvasonicPodmanClient()
         self._container_manager = ContainerManager(self._podman_client)
+        # Stats tracker (created here, wired to reconciler in run())
+        self._stats: ControllerStats | None = None
         # Phase 4: USB device detection
         self._device_scanner = DeviceScanner()
         self._profile_matcher = ProfileMatcher()
@@ -66,16 +73,21 @@ class ControllerService(SilvaService):
             self._container_manager,
             device_scanner=self._device_scanner,
             profile_matcher=self._profile_matcher,
+            interval=self._cfg.RECONCILE_INTERVAL_S,
         )
         self._nudge_subscriber = NudgeSubscriber(
             self._reconciliation_loop,
-            redis_url=cfg.REDIS_URL,
+            redis_url=self._cfg.REDIS_URL,
         )
         # Phase 5: Live Log Streaming (ADR-0022)
         self._log_forwarder = LogForwarder(
             self._podman_client,
-            redis_url=cfg.REDIS_URL,
+            redis_url=self._cfg.REDIS_URL,
+            poll_interval=self._cfg.LOG_FORWARDER_POLL_INTERVAL_S,
         )
+        # DB/Podman state tracking for state-change logging
+        self._db_was_connected: bool | None = None
+        self._podman_was_connected: bool | None = None
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Include host-level resource metrics in heartbeat (ADR-0019 §2.4)."""
@@ -100,9 +112,18 @@ class ControllerService(SilvaService):
 
         Starts background health monitors and runs until shutdown.
         Calls ``self.health.touch()`` each iteration to keep the
-        liveness watchdog alive.
+        liveness watchdog alive.  Emits periodic status summaries.
         """
         self.health.update_status("controller", True, "running")
+
+        # Create stats tracker with envvar-configured durations
+        self._stats = ControllerStats(
+            startup_duration_s=self._cfg.CONTROLLER_LOG_STARTUP_S,
+            summary_interval_s=self._cfg.CONTROLLER_LOG_SUMMARY_INTERVAL_S,
+        )
+        # Wire stats into reconciler and nudge subscriber
+        self._reconciliation_loop.set_stats(self._stats)
+        self._nudge_subscriber.set_stats(self._stats)
 
         # Start all background tasks as a managed group
         tasks = [
@@ -115,12 +136,20 @@ class ControllerService(SilvaService):
         try:
             while not self._shutdown_event.is_set():
                 self.health.touch()
-                await asyncio.sleep(1)
+                # Emit periodic status summary
+                if self._stats is not None:
+                    summary = self._stats.get_summary_if_due()
+                    if summary is not None:
+                        await self._emit_status_summary(summary)  # pragma: no cover — system-tested
+                await asyncio.sleep(_MAIN_TICK_S)
         except asyncio.CancelledError:  # pragma: no cover — integration-tested
             pass
         finally:
             for task in tasks:
                 task.cancel()
+            # Emit final summary before shutdown
+            if self._stats is not None:
+                self._stats.emit_final_summary()
             # Phase 6: Graceful Shutdown — stop all owned Tier 2 containers
             await self._stop_all_tier2()
             self._podman_client.close()
@@ -151,21 +180,56 @@ class ControllerService(SilvaService):
         except Exception:
             log.exception("controller.shutdown.failed")
 
+    async def _emit_status_summary(self, summary: dict[str, object]) -> None:
+        """Collect live state and emit a periodic controller status summary."""
+        # Collect current container list
+        try:
+            containers = await asyncio.to_thread(
+                self._container_manager.list_managed,
+            )
+            container_names = [str(c.get("name", "")) for c in containers]
+        except Exception:
+            container_names = []
+
+        log.info(
+            "controller.summary",
+            containers_running=len(container_names),
+            container_names=container_names,
+            db_connected=self._db_was_connected,
+            podman_connected=self._podman_was_connected,
+            **summary,
+        )
+
     async def _monitor_database(self) -> NoReturn:
-        """Periodically check database connectivity and update health status."""
+        """Periodically check database connectivity and update health status.
+
+        Logs state changes (connected ↔ disconnected) individually.
+        """
         while True:
             is_connected = await check_database_connection()
             self.health.update_status(
                 "database", is_connected, "Connected" if is_connected else "Connection failed"
             )
-            await asyncio.sleep(10)
+            # Log state changes
+            if self._db_was_connected is not None and is_connected != self._db_was_connected:
+                if is_connected:
+                    log.info("controller.database_reconnected")
+                else:
+                    log.warning("controller.database_disconnected")
+            elif self._db_was_connected is None:
+                if is_connected:
+                    log.info("controller.database_connected")
+                else:
+                    log.warning("controller.database_unreachable")
+            self._db_was_connected = is_connected
+            await asyncio.sleep(self._cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S)
 
     async def _monitor_podman(self) -> None:
         """Periodically verify Podman socket connectivity (ADR-0013).
 
         On first call, attempts to connect to the Podman socket with
         retry logic.  Then periodically pings the engine and reports
-        the number of managed containers.
+        the number of managed containers.  Logs state changes.
 
         If the socket path does not exist on disk (e.g. in smoke-test
         containers without a mounted Podman socket), the component is
@@ -195,6 +259,19 @@ class ControllerService(SilvaService):
                 is_alive,
                 "Connected" if is_alive else "Socket unreachable",
             )
+            # Log state changes
+            if self._podman_was_connected is not None and is_alive != self._podman_was_connected:
+                if is_alive:
+                    log.info("controller.podman_reconnected")
+                else:
+                    log.warning("controller.podman_disconnected")
+            elif self._podman_was_connected is None:
+                if is_alive:
+                    log.info("controller.podman_connected")
+                else:
+                    log.warning("controller.podman_unreachable")
+            self._podman_was_connected = is_alive
+
             if is_alive:
                 containers = await asyncio.to_thread(
                     self._podman_client.list_managed_containers,
@@ -204,7 +281,7 @@ class ControllerService(SilvaService):
                     True,
                     f"{len(containers)} managed containers",
                 )
-            await asyncio.sleep(10)
+            await asyncio.sleep(self._cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S)
 
 
 if __name__ == "__main__":

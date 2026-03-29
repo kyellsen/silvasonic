@@ -11,7 +11,6 @@ import pytest
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.nudge_subscriber import NudgeSubscriber
 from silvasonic.controller.reconciler import (
-    DEFAULT_RECONCILE_INTERVAL_S,
     DeviceStateEvaluator,
     ReconciliationLoop,
 )
@@ -178,7 +177,7 @@ class TestReconciliationLoop:
     def test_trigger_sets_event(self) -> None:
         """trigger() sets the asyncio Event for immediate reconciliation."""
         mgr = MagicMock()
-        loop = ReconciliationLoop(mgr, interval=DEFAULT_RECONCILE_INTERVAL_S)
+        loop = ReconciliationLoop(mgr, interval=1.0)
 
         assert not loop._trigger_event.is_set()
         loop.trigger()
@@ -298,7 +297,9 @@ class TestReconciliationLoop:
 
         scanner = MagicMock()
         matcher = MagicMock()
-        loop = ReconciliationLoop(mgr, device_scanner=scanner, profile_matcher=matcher)
+        loop = ReconciliationLoop(
+            mgr, device_scanner=scanner, profile_matcher=matcher, interval=1.0
+        )
 
         with (
             patch.object(
@@ -560,3 +561,205 @@ class TestNudgeSubscriber:
             await sub.run()
 
         assert call_count >= 2
+
+
+# ===================================================================
+# ReconciliationLoop + ControllerStats Integration
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestReconciliationLoopStats:
+    """Tests for stats tracking in ReconciliationLoop."""
+
+    def test_set_stats_wires_instance(self) -> None:
+        """set_stats() stores the ControllerStats reference."""
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        loop = ReconciliationLoop(mgr, interval=1.0)
+
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
+        loop.set_stats(stats)
+
+        assert loop._stats is stats
+
+    async def test_reconcile_cycle_records_stats(self) -> None:
+        """Successful reconciliation cycle records in stats."""
+        import asyncio
+
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        mgr.list_managed.return_value = []
+        mgr.sync_state = MagicMock()
+
+        loop = ReconciliationLoop(mgr, interval=0.01)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
+        loop.set_stats(stats)
+
+        call_count = 0
+
+        async def mock_reconcile() -> None:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 3:
+                raise asyncio.CancelledError
+
+        with (
+            patch.object(loop, "_reconcile_once", side_effect=mock_reconcile),
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await loop.run()
+
+        # 2 successful cycles before cancel on 3rd
+        assert stats._total_reconcile_cycles == 2
+
+    async def test_reconcile_error_records_stats(self) -> None:
+        """Failed reconciliation cycle records error in stats."""
+        import asyncio
+
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        loop = ReconciliationLoop(mgr, interval=0.01)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
+        loop.set_stats(stats)
+
+        call_count = 0
+
+        async def failing_reconcile() -> None:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                raise asyncio.CancelledError
+            raise RuntimeError("DB down")
+
+        with (
+            patch.object(loop, "_reconcile_once", side_effect=failing_reconcile),
+            pytest.raises(asyncio.CancelledError),
+        ):
+            await loop.run()
+
+        assert stats._total_reconcile_errors == 1
+
+    async def test_reconcile_once_tracks_container_start(self) -> None:
+        """_reconcile_once records container starts when desired > actual."""
+        from unittest.mock import patch as _patch
+
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        mgr.list_managed.return_value = []  # No containers running
+        mgr.sync_state = MagicMock()
+
+        spec = _make_spec(name="silvasonic-recorder-new-mic")
+        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
+        reconciler.set_stats(stats)
+
+        with (
+            patch.object(
+                reconciler._evaluator,
+                "evaluate",
+                new_callable=AsyncMock,
+                return_value=[spec],  # One desired container
+            ),
+            _patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_session,
+            _patch(
+                "silvasonic.controller.controller_stats.log",
+            ),
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+            await reconciler._reconcile_once()
+
+        assert stats._total_containers_started == 1
+
+    async def test_reconcile_once_tracks_container_stop(self) -> None:
+        """_reconcile_once records container stops when actual > desired."""
+        from unittest.mock import patch as _patch
+
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        mgr.list_managed.return_value = [
+            {"name": "silvasonic-recorder-orphaned", "status": "running"}
+        ]
+        mgr.sync_state = MagicMock()
+
+        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
+        reconciler.set_stats(stats)
+
+        with (
+            patch.object(
+                reconciler._evaluator,
+                "evaluate",
+                new_callable=AsyncMock,
+                return_value=[],  # No desired containers
+            ),
+            _patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_session,
+            _patch(
+                "silvasonic.controller.controller_stats.log",
+            ),
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+            await reconciler._reconcile_once()
+
+        assert stats._total_containers_stopped == 1
+
+
+# ===================================================================
+# NudgeSubscriber + ControllerStats Integration
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestNudgeSubscriberStats:
+    """Tests for stats tracking in NudgeSubscriber."""
+
+    def test_set_stats_wires_instance(self) -> None:
+        """set_stats() stores the ControllerStats reference."""
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        reconciler = MagicMock()
+        sub = NudgeSubscriber(reconciler)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
+        sub.set_stats(stats)
+
+        assert sub._stats is stats
+
+    def test_reconcile_nudge_records_stats(self) -> None:
+        """Reconcile nudge increments nudge counter in stats."""
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        reconciler = MagicMock()
+        sub = NudgeSubscriber(reconciler)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
+        sub.set_stats(stats)
+
+        sub._handle_message({"type": "message", "data": b"reconcile"})
+        sub._handle_message({"type": "message", "data": b"reconcile"})
+
+        assert stats._total_nudges == 2
+
+    def test_non_reconcile_nudge_no_stats(self) -> None:
+        """Non-reconcile messages do not increment nudge counter."""
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        reconciler = MagicMock()
+        sub = NudgeSubscriber(reconciler)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
+        sub.set_stats(stats)
+
+        sub._handle_message({"type": "message", "data": b"restart"})
+
+        assert stats._total_nudges == 0

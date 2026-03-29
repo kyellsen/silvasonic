@@ -2,6 +2,9 @@
 
 Each schema corresponds to a key in the ``system_config`` table.
 Defaults here MUST mirror ``config/defaults.yml``.
+
+Order: cross-cutting (system, auth) first, then by roadmap milestone
+(processor v0.5, uploader v0.6, birdnet v0.7).
 """
 
 from __future__ import annotations
@@ -16,28 +19,30 @@ class SystemSettings(BaseModel):
     longitude: float = 9.99
     max_recorders: int = 5
     max_uploaders: int = 3
-    station_name: str = "Silvasonic Dev"
+    station_name: str = "Silvasonic MVP"
     auto_enrollment: bool = True
 
 
-class BirdnetSettings(BaseModel):
-    """BirdNET inference settings (key: ``birdnet``)."""
+class AuthDefaults(BaseModel):
+    """Default admin credentials (key: ``auth``)."""
 
-    confidence_threshold: float = 0.25
+    default_username: str = "admin"
+    default_password: str = "1234"
 
 
 class ProcessorSettings(BaseModel):
-    """Processor / Janitor settings (key: ``processor``)."""
+    """Processor / Janitor settings (key: ``processor``, v0.5.0)."""
 
     janitor_threshold_warning: float = 70.0
     janitor_threshold_critical: float = 80.0
     janitor_threshold_emergency: float = 90.0
     janitor_interval_seconds: int = 60
+    janitor_batch_size: int = 50
     indexer_poll_interval: float = 2.0
 
 
 class UploaderSettings(BaseModel):
-    """Uploader settings (key: ``uploader``)."""
+    """Uploader settings (key: ``uploader``, v0.6.0)."""
 
     enabled: bool = True
     poll_interval: int = 30
@@ -50,8 +55,7 @@ class UploaderSettings(BaseModel):
     # batch_burst_limit: int = 50
 
 
-class AuthDefaults(BaseModel):
-    """Default admin credentials (key: ``auth``)."""
+class BirdnetSettings(BaseModel):
+    """BirdNET inference settings (key: ``birdnet``, v0.7.0)."""
 
-    default_username: str = "admin"
-    default_password: str = "silvasonic"
+    confidence_threshold: float = 0.25

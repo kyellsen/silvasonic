@@ -65,7 +65,7 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 | Frontend | `tailwindcss`, `daisyui` (v5), `echarts`, `wavesurfer.js` (v7) (ADR-0021) |
 | Data     | `numpy`, `polars` (**no** `pandas`)                                       |
 | Audio    | `ffmpeg` (capture & resample — ADR-0024), `soundfile` (analysis services only)    |
-| Test     | `pytest`, `playwright`, `testcontainers`, `polyfactory`                   |
+| Test     | `pytest`, `pytest-xdist`, `playwright`, `testcontainers`, `polyfactory`    |
 | Tools    | `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit`                           |
 
 ## 6. Testing Rules

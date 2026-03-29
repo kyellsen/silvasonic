@@ -107,6 +107,14 @@ class RecorderEnvConfig(BaseSettings):
     RECORDER_WORKSPACE_LOCAL: str | None = None
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Container image for Recorder instances
+    RECORDER_IMAGE: str = "localhost/silvasonic_recorder:latest"
+
+    # Maximum restart attempts for the Podman restart policy (Level 2 recovery).
+    # After this many consecutive failures, Podman stops restarting the container.
+    # Range: 1-20.  Default 5.
+    RECORDER_RESTART_MAX_RETRIES: int = 5
+
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -201,7 +209,7 @@ def build_recorder_spec(
     workspace_dir = container_name.removeprefix("silvasonic-recorder-")
 
     return Tier2ServiceSpec(
-        image="localhost/silvasonic_recorder:latest",
+        image=env.RECORDER_IMAGE,
         name=container_name,
         network=network,
         environment={
@@ -234,6 +242,7 @@ def build_recorder_spec(
         devices=["/dev/snd:/dev/snd"],
         group_add=["audio"],
         privileged=True,  # ADR-0007 §6
+        restart_policy=RestartPolicy(max_retry_count=env.RECORDER_RESTART_MAX_RETRIES),
         memory_limit=memory_limit,
         cpu_limit=cpu_limit,
         oom_score_adj=_RECORDER_OOM_SCORE_ADJ,

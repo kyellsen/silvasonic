@@ -69,6 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         service_name="web-mock",
         service_port=WEB_MOCK_PORT,
         redis_url=REDIS_URL,
+        heartbeat_interval=_settings.HEARTBEAT_INTERVAL_S,
         skip_health_server=True,  # Uvicorn already serves /healthy on this port
     ) as ctx:
         app.state.ctx = ctx

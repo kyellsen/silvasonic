@@ -33,7 +33,11 @@ from common import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Per-suite parallel workers (0 = sequential).
-UNIT_WORKERS = int(os.environ.get("SILVASONIC_UNIT_WORKERS", "6"))
+# Override via SILVASONIC_{UNIT,INTEGRATION,SYSTEM}_WORKERS env vars.
+UNIT_WORKERS = int(os.environ.get("SILVASONIC_UNIT_WORKERS", "8"))
+INTEGRATION_WORKERS = int(os.environ.get("SILVASONIC_INTEGRATION_WORKERS", "6"))
+# System tests: 6 is the sweet-spot.  At 8+ workers the rootless Podman
+# socket becomes a bottleneck (60s read timeouts on the API).
 SYSTEM_WORKERS = int(os.environ.get("SILVASONIC_SYSTEM_WORKERS", "6"))
 
 
@@ -74,6 +78,8 @@ def cmd_integration() -> list[str]:
         "pytest",
         "-m",
         "integration",
+        "-n",
+        str(INTEGRATION_WORKERS),
         "--tb=short",
         "-q",
         "-rs",

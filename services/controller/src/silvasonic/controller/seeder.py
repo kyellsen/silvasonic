@@ -88,12 +88,13 @@ class ConfigSeeder:
         if defaults is None:
             return
 
-        # Only seed keys that have a Pydantic schema mapping
+        # Only seed keys that have a Pydantic schema mapping.
+        # Order matches defaults.yml: cross-cutting first, then by milestone.
         schema_map: dict[str, type] = {
             "system": SystemSettings,
-            "birdnet": BirdnetSettings,
             "processor": ProcessorSettings,
             "uploader": UploaderSettings,
+            "birdnet": BirdnetSettings,
         }
 
         for key, value in defaults.items():

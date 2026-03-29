@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Full nuclear reset: clean + destroy .venv + remove all Silvasonic images.
+"""Full nuclear reset: clean + destroy .venv + remove all Silvasonic Podman artifacts.
 
 Consolidates all cleanup into a single script:
-  1. clean (clear + trash + volumes + workspace)
+  1. clean (clear + trash + compose volumes + workspace)
   2. Remove .venv
-  3. Remove all Silvasonic container images
+  3. Remove orphaned Silvasonic containers (test leftovers etc.)
+  4. Remove Silvasonic volumes
+  5. Remove Silvasonic networks
+  6. Remove all Silvasonic container images
 
 Podman-only (see ADR-0004, ADR-0013).
 """
@@ -27,6 +30,70 @@ def remove_venv() -> None:
 
     shutil.rmtree(venv_dir, ignore_errors=True)
     print_success("☢️  .venv destroyed.")
+
+
+def _podman_list(resource: str, filter_arg: str, fmt: str) -> list[str]:
+    """List Podman resources matching a filter, return non-empty lines."""
+    try:
+        result = run_command(
+            ["podman", resource, "ls", "-a", "--filter", filter_arg, "--format", fmt]
+            if resource != "network"
+            else ["podman", resource, "ls", "--filter", filter_arg, "--format", fmt],
+            check=False,
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        print_error("Container engine 'podman' not found in PATH.")
+        sys.exit(1)
+
+    if result.returncode != 0:
+        return []
+
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def remove_silvasonic_containers() -> None:
+    """Remove all containers whose name starts with 'silvasonic-'."""
+    names = _podman_list("container", "name=silvasonic-", "{{.Names}}")
+
+    if not names:
+        print_success("No Silvasonic containers found.")
+        return
+
+    print_step(f"Removing {len(names)} Silvasonic container(s)...")
+    for name in names:
+        run_command(["podman", "rm", "-f", name], check=False)
+    print_success(f"Removed {len(names)} Silvasonic container(s).")
+
+
+def remove_silvasonic_volumes() -> None:
+    """Remove all volumes whose name contains 'silvasonic'."""
+    volumes = _podman_list("volume", "name=silvasonic", "{{.Name}}")
+
+    if not volumes:
+        print_success("No Silvasonic volumes found.")
+        return
+
+    print_step(f"Removing {len(volumes)} Silvasonic volume(s)...")
+    for vol in volumes:
+        run_command(["podman", "volume", "rm", "-f", vol], check=False)
+    print_success(f"Removed {len(volumes)} Silvasonic volume(s).")
+
+
+def remove_silvasonic_networks() -> None:
+    """Remove all networks whose name contains 'silvasonic'."""
+    networks = _podman_list("network", "name=silvasonic", "{{.Name}}")
+    # Never remove the default "podman" network
+    networks = [n for n in networks if n != "podman"]
+
+    if not networks:
+        print_success("No Silvasonic networks found.")
+        return
+
+    print_step(f"Removing {len(networks)} Silvasonic network(s)...")
+    for net in networks:
+        run_command(["podman", "network", "rm", "-f", net], check=False)
+    print_success(f"Removed {len(networks)} Silvasonic network(s).")
 
 
 def remove_silvasonic_images() -> None:
@@ -79,7 +146,19 @@ def main() -> None:
     print_step("Removing virtual environment...")
     remove_venv()
 
-    # 3. Remove container images
+    # 3. Remove orphaned Silvasonic containers (test leftovers etc.)
+    print_step("Removing orphaned Silvasonic containers...")
+    remove_silvasonic_containers()
+
+    # 4. Remove Silvasonic volumes
+    print_step("Removing Silvasonic volumes...")
+    remove_silvasonic_volumes()
+
+    # 5. Remove Silvasonic networks
+    print_step("Removing Silvasonic networks...")
+    remove_silvasonic_networks()
+
+    # 6. Remove container images
     print_step("Removing Silvasonic container images...")
     remove_silvasonic_images()
 

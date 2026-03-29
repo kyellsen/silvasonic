@@ -18,6 +18,7 @@ from silvasonic.controller.log_forwarder import (
     LogForwarder,
     _parse_log_line,
 )
+from silvasonic.core.constants import RECONNECT_DELAY_S
 
 
 # ---------------------------------------------------------------------------
@@ -460,8 +461,8 @@ class TestLogForwarderRun:
 
         # First error → _cancel_all_tasks + sleep(5), then CancelledError → _cancel_all_tasks
         assert mock_cancel.await_count >= 1
-        # Verify reconnect sleep was called with 5 seconds
-        mock_sleep.assert_any_call(5)
+        # Verify reconnect sleep was called with centralized delay
+        mock_sleep.assert_any_call(RECONNECT_DELAY_S)
 
     async def test_run_closes_redis_in_finally(self) -> None:
         """Redis connection is closed in the finally block."""

@@ -81,6 +81,9 @@ def _get_engine() -> AsyncEngine:
         settings.database_url,
         echo=os.getenv("SILVASONIC_SQL_ECHO", "False").lower() == "true",
         future=True,
+        connect_args={"timeout": 5},  # asyncpg connect timeout (default: 60s)
+        pool_timeout=5,  # Max wait for pool connection (default: 30s)
+        pool_pre_ping=True,  # Detect stale connections before use
     )
 
 

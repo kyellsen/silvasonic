@@ -144,6 +144,13 @@ class TestControllerLifecycleRedis:
 
         svc._host_resources = HostResourceCollector()
         SilvaService.__init__(svc, redis_url=url, instance_id="ctrl-db-01", heartbeat_interval=0.5)
+        # _monitor_database uses these attrs set in ControllerService.__init__
+        svc._db_was_connected = None
+        svc._podman_was_connected = None
+        # _monitor_database reads self._cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S
+        from silvasonic.controller.settings import ControllerSettings
+
+        svc._cfg = ControllerSettings()
 
         with patch("silvasonic.core.service_context.start_health_server"):
             await svc._setup()

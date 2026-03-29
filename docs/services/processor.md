@@ -1,6 +1,6 @@
 # Processor Service
 
-> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Port:** 9200
+> **Status:** partial - Indexer + Janitor implemented · **Tier:** 1 · **Instances:** Single · **Port:** 9200
 
 **TO-BE:** Background workhorse for data ingestion, metadata indexing, and storage retention management. Bridges the gap between raw audio files on disk and the database. Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
 
@@ -53,6 +53,8 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 | **Panic**        | > 90%     | **Oldest** files regardless of status                         | `CRITICAL` |
 
 *   **Soft Delete:** Files are physically removed, but the database row is preserved with `local_deleted=TRUE` to maintain the historical inventory.
+*   **Batch Size:** Deletions are limited to `janitor_batch_size` (default: **50**) per cleanup cycle to prevent I/O storms and excessive database load.
+*   **Uploader-Fallback:** When no Uploader is configured (no active `storage_remotes` rows), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until Panic threshold is reached when the Uploader service has not been deployed yet. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
 *   **Fallback:** In Panic Mode, if the database is offline, falls back to filesystem `mtime` for blind cleanup.
 *   **Split-Brain Healing:** After DB recovery, the Indexer's startup Reconciliation Audit automatically detects and corrects orphaned `local_deleted = false` rows for files that no longer exist on disk. See §3 Indexer.
 
@@ -106,6 +108,7 @@ As an **Immutable Container** (ADR-0019), the Processor reads these settings *on
 | `janitor_threshold_critical`  | `80.0`  | Defensive Trigger (%)          |
 | `janitor_threshold_emergency` | `90.0`  | Panic Trigger (%)              |
 | `janitor_interval_seconds`    | `60`    | Seconds between cleanup cycles |
+| `janitor_batch_size`          | `50`    | Max files deleted per cycle    |
 | `indexer_poll_interval`       | `2.0`   | Seconds between indexing scans |
 
 **Update Mechanism (State Reconciliation):**

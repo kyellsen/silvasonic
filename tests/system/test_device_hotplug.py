@@ -45,7 +45,6 @@ from .conftest import (
     SOCKET_AVAILABLE,
     TEST_RUN_ID,
     HwMicConfig,
-    ensure_test_network,
     require_recorder_image,
 )
 
@@ -195,10 +194,12 @@ class TestHardwareSpawnCycle:
         self,
         tmp_path: Path,
         seeded_db: async_sessionmaker[AsyncSession],
+        hw_redis: tuple[str, int, str],
     ) -> None:
         """Detection → matching → DB upsert → evaluation → real container spawn."""
         require_recorder_image()
-        ensure_test_network()
+
+        _redis_host, _redis_port, hw_network = hw_redis
         session_factory = seeded_db
 
         # Scan real hardware — find the primary mic
@@ -249,7 +250,7 @@ class TestHardwareSpawnCycle:
         test_spec = Tier2ServiceSpec(
             image=RECORDER_IMAGE,
             name=test_name,
-            network=spec.network,
+            network=hw_network,
             environment=spec.environment,
             labels={
                 **spec.labels,

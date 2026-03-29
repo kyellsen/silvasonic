@@ -216,6 +216,7 @@ async def index_recordings(
             )
 
         except Exception:
+            await session.rollback()
             result.errors += 1
             result.error_details.append(rel_processed)
             log.exception("indexer.error", file=rel_processed)

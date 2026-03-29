@@ -151,3 +151,130 @@ class TestServiceHeartbeats:
         assert "resources" in payload["meta"]
 
         redis_client.close()
+
+
+def _extract_pg_errors(logs: str) -> list[str]:
+    """Extract PostgreSQL ERROR and FATAL log lines with their DETAIL/HINT context.
+
+    PostgreSQL logs multi-line error blocks like::
+
+        ERROR:  insert or update on table "recordings" violates foreign key ...
+        DETAIL:  Key (sensor_id)=(ghost) is not present in table "devices".
+        STATEMENT:  INSERT INTO recordings ...
+
+    This function collects the ERROR/FATAL line plus any immediately following
+    DETAIL, HINT, CONTEXT, or STATEMENT lines as a single block.
+
+    Returns:
+        A list of error blocks, each as a joined multi-line string.
+    """
+    lines = logs.splitlines()
+    errors: list[str] = []
+    i = 0
+    # Context prefixes that PostgreSQL appends after an ERROR line
+    continuation_markers = ("DETAIL:", "HINT:", "CONTEXT:", "STATEMENT:")
+
+    while i < len(lines):
+        line = lines[i]
+        # Match PostgreSQL log format: "... ERROR:" or "... FATAL:"
+        if " ERROR:" in line or " FATAL:" in line:
+            block = [line.strip()]
+            # Collect continuation lines (DETAIL, HINT, STATEMENT)
+            j = i + 1
+            while j < len(lines):
+                next_line = lines[j].strip()
+                # Check if line contains any continuation marker
+                if any(marker in next_line for marker in continuation_markers):
+                    block.append(next_line)
+                    j += 1
+                else:
+                    break
+            errors.append("\n".join(block))
+            i = j
+        else:
+            i += 1
+
+    return errors
+
+
+def _deduplicate_errors(errors: list[str]) -> list[str]:
+    """Remove duplicate error blocks, preserving order."""
+    seen: set[str] = set()
+    unique: list[str] = []
+    for err in errors:
+        if err not in seen:
+            seen.add(err)
+            unique.append(err)
+    return unique
+
+
+@pytest.mark.smoke
+class TestDatabaseIntegrity:
+    """Verify the database container has no errors during smoke test operation.
+
+    This is a generic safety-net test that catches any PostgreSQL errors
+    (FK violations, constraint errors, connection failures, etc.) that
+    occurred while other smoke tests were running.  If this test fails,
+    the assertion message includes the exact error lines from the DB logs
+    for immediate debugging.
+    """
+
+    def test_no_database_errors(
+        self,
+        database_container: DockerContainer,
+        controller_container: DockerContainer,
+        processor_container: DockerContainer,
+    ) -> None:
+        """Database container logs must contain zero ERROR or FATAL entries.
+
+        Depends on controller and processor containers to ensure their
+        interactions with the database have already occurred before we
+        inspect the logs.  This catches issues like:
+        - Foreign key constraint violations
+        - Schema migration failures
+        - Connection pool exhaustion
+        - Data type mismatches
+        """
+        # Ensure fixtures ran — no-op but establishes dependency ordering
+        _ = controller_container
+        _ = processor_container
+
+        # Give the DB a moment to flush any pending log writes
+        time.sleep(1)
+
+        _stdout, stderr = database_container.get_logs()
+        db_logs = (stderr or b"").decode(errors="replace")
+
+        # PostgreSQL writes errors to stderr
+        errors = _extract_pg_errors(db_logs)
+
+        # Filter out expected, harmless messages
+        filtered: list[str] = []
+        harmless_patterns = [
+            # TimescaleDB startup noise
+            "FATAL:  the database system is starting up",
+            "FATAL:  the database system is shutting down",
+        ]
+        for err in errors:
+            if not any(pattern in err for pattern in harmless_patterns):
+                filtered.append(err)
+
+        filtered = _deduplicate_errors(filtered)
+
+        if filtered:
+            # Build a detailed failure message for debugging
+            error_report = "\n\n".join(f"  [{i + 1}] {err}" for i, err in enumerate(filtered))
+            msg = (
+                f"\n{'=' * 72}\n"
+                f"  DATABASE ERROR LOG — {len(filtered)} error(s) detected\n"
+                f"{'=' * 72}\n\n"
+                f"{error_report}\n\n"
+                f"{'=' * 72}\n"
+                f"  These errors occurred during smoke test operation.\n"
+                f"  Common causes:\n"
+                f"    • FK violation: device not enrolled before recording indexed\n"
+                f"    • Schema mismatch: init SQL out of sync with application code\n"
+                f"    • Connection issues: service started before DB was ready\n"
+                f"{'=' * 72}"
+            )
+            pytest.fail(msg)

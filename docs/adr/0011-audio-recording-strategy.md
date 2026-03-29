@@ -66,16 +66,24 @@ The Live stream is **best-effort** — if Icecast is unavailable, the Recorder c
 
 Each Recorder pushes its Opus stream to a dedicated **mount point** on the Icecast server (e.g. `/mic-ultramic.opus`). The Web-Interface allows the user to select which microphone to listen to by switching the mount point URL.
 
-## 6. Future: Retention Policy (v0.5.0 — The Janitor)
+## 6. Retention Policy (v0.5.0 — The Janitor)
 
-> **Status:** Planned  
+> **Status:** Implemented (since v0.5.0)
 > **Service:** `processor` (Tier 1, Critical)
 
-To prevent storage exhaustion on the edge device, the `processor` service implements a centralized background cleanup task, colloquially called "The Janitor".
+To prevent storage exhaustion on the edge device (typical: 256 GB NVMe), the `processor` service implements a centralized background cleanup task, colloquially called "The Janitor".
 
 ### Design Decision
 
 We have decided to enforce **Data Capture Integrity** via an escalating retention policy based on local disk utilization. As storage fills up, the policy progressively sacrifices first local analysis completeness, and eventually remote backup guarantees, to ensure the Recorder never faces a "Disk Full" scenario and never stops recording.
+
+### Batch Size Limit
+
+Deletions are limited to `janitor_batch_size` (default: **50**) files per cleanup cycle to prevent I/O storms and excessive database load. At 10-second segments, this corresponds to ~8 minutes of audio per batch.
+
+### Uploader-Fallback (Pre-v0.6.0)
+
+When no Uploader is configured (no active `storage_remotes` rows in the database), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
 

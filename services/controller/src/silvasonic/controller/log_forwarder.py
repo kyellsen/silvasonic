@@ -25,14 +25,15 @@ from datetime import UTC, datetime
 from typing import Any, NoReturn
 
 import structlog
+from silvasonic.core.constants import RECONNECT_DELAY_S
 
 log = structlog.get_logger()
 
 # Redis channel for live log streaming (ADR-0022)
 LOGS_CHANNEL = "silvasonic:logs"
 
-# How often to poll for new/removed containers (seconds).
-POLL_INTERVAL_S: float = 1.0
+# Default poll interval for container sync (seconds).
+DEFAULT_POLL_INTERVAL_S: float = 1.0
 
 
 def _parse_log_line(
@@ -102,7 +103,7 @@ class LogForwarder:
         podman_client: Any,
         redis_url: str = "redis://localhost:6379/0",
         *,
-        poll_interval: float = POLL_INTERVAL_S,
+        poll_interval: float = DEFAULT_POLL_INTERVAL_S,
     ) -> None:
         """Initialize with a Podman client and Redis URL.
 
@@ -140,9 +141,9 @@ class LogForwarder:
                 await self._cancel_all_tasks()
                 raise  # pragma: no cover
             except Exception:
-                log.warning("log_forwarder.error", reconnect_in=5)
+                log.warning("log_forwarder.error", reconnect_in=RECONNECT_DELAY_S)
                 await self._cancel_all_tasks()
-                await asyncio.sleep(5)
+                await asyncio.sleep(RECONNECT_DELAY_S)
             finally:
                 if redis is not None:
                     await redis.aclose()

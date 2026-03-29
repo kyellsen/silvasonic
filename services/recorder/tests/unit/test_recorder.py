@@ -48,6 +48,7 @@ def bare_service() -> "RecorderService":
     svc._cfg.recorder_watchdog_max_restarts = 5
     svc._cfg.recorder_watchdog_check_interval_s = 5.0
     svc._cfg.recorder_watchdog_stall_timeout_s = 60.0
+    svc._cfg.recorder_health_poll_interval_s = 5.0
     svc._pipeline_config = FFmpegConfig()
     svc._pipeline = None
     svc._watchdog = None
@@ -104,7 +105,9 @@ class TestRecorderConfig:
 
             RecorderService()
             mock_super.assert_called_once_with(
-                instance_id="recorder", redis_url="redis://custom:1234/5"
+                instance_id="recorder",
+                redis_url="redis://custom:1234/5",
+                heartbeat_interval=10.0,
             )
 
     def test_init_with_profile_json(self) -> None:
@@ -163,6 +166,24 @@ class TestRecorderSettings:
 
         settings = RecorderSettings()
         assert settings.parse_profile() is None
+
+    def test_health_poll_interval_default(self) -> None:
+        """recorder_health_poll_interval_s defaults to 5.0."""
+        from silvasonic.recorder.settings import RecorderSettings
+
+        settings = RecorderSettings()
+        assert settings.recorder_health_poll_interval_s == 5.0
+
+    def test_health_poll_interval_env_override(self) -> None:
+        """recorder_health_poll_interval_s respects env override."""
+        with patch.dict(
+            os.environ,
+            {"SILVASONIC_RECORDER_HEALTH_POLL_INTERVAL_S": "10.0"},
+        ):
+            from silvasonic.recorder.settings import RecorderSettings
+
+            settings = RecorderSettings()
+            assert settings.recorder_health_poll_interval_s == 10.0
 
     def test_parse_profile_valid(self) -> None:
         """parse_profile() returns MicrophoneProfile for valid JSON."""

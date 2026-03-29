@@ -1,6 +1,6 @@
 """Full CI pipeline.
 
-Lock → Audit → Lint → Type → Unit → Int → Containerfile → Build → System → Smoke → E2E.
+Lock → Audit → Containerfile → Lint → Type → Unit → Int → Clear → Build → System → Smoke → E2E.
 
 Dep Audit runs pip-audit to check for known vulnerabilities in dependencies.
 
@@ -249,11 +249,11 @@ def main() -> None:
     all_stages: list[tuple[str, int, Callable[[], None]]] = [
         ("Lock-File Check", 1, _stage_lock_check),
         ("Dep Audit", 2, _stage_dep_audit),
-        ("Ruff Lint", 3, _stage_ruff),
-        ("Mypy", 4, _stage_mypy),
-        ("Unit Tests", 5, _stage_unit_tests),
-        ("Integration Tests", 6, _stage_integration_tests),
-        ("Containerfile Lint", 7, _stage_containerfile_lint),
+        ("Containerfile Lint", 3, _stage_containerfile_lint),
+        ("Ruff Lint", 4, _stage_ruff),
+        ("Mypy", 5, _stage_mypy),
+        ("Unit Tests", 6, _stage_unit_tests),
+        ("Integration Tests", 7, _stage_integration_tests),
         ("Clear", 8, _stage_clear),
         ("Build Images", 9, _stage_build),
         ("System Tests", 10, _stage_system_tests),

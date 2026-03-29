@@ -27,16 +27,10 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
+    from silvasonic.controller.controller_stats import ControllerStats
     from silvasonic.controller.device_scanner import DeviceInfo
 
 log = structlog.get_logger()
-
-# TODO(production): Consider increasing to 3.0s if CPU/DB load is too high.
-# Each cycle does: procfs read + 2-3 DB roundtrips + 1 Podman API call.
-# At 1s → ~180 DB queries/min.  At 3s → ~60.  UX difference is negligible.
-# UI actions (enable/disable) are always instant via NudgeSubscriber (Redis).
-DEFAULT_RECONCILE_INTERVAL_S: float = 1.0
-"""Default interval (seconds) between reconciliation cycles."""
 
 
 class DeviceStateEvaluator:
@@ -125,7 +119,7 @@ class ReconciliationLoop:
         *,
         device_scanner: DeviceScanner | None = None,
         profile_matcher: ProfileMatcher | None = None,
-        interval: float = DEFAULT_RECONCILE_INTERVAL_S,
+        interval: float,
     ) -> None:
         """Initialize with a ContainerManager and reconciliation interval."""
         self._manager = container_manager
@@ -134,6 +128,11 @@ class ReconciliationLoop:
         self._matcher = profile_matcher
         self._interval = interval
         self._trigger_event = asyncio.Event()
+        self._stats: ControllerStats | None = None
+
+    def set_stats(self, stats: ControllerStats) -> None:
+        """Wire a ControllerStats instance for cycle tracking."""
+        self._stats = stats
 
     def trigger(self) -> None:
         """Trigger an immediate reconciliation cycle (called by NudgeSubscriber)."""
@@ -151,8 +150,12 @@ class ReconciliationLoop:
         while True:
             try:
                 await self._reconcile_once()
+                if self._stats is not None:
+                    self._stats.record_reconcile_cycle()
             except Exception:
                 log.exception("reconciler.cycle_failed")
+                if self._stats is not None:
+                    self._stats.record_reconcile_error()
 
             # Wait for interval OR immediate trigger
             try:
@@ -178,7 +181,18 @@ class ReconciliationLoop:
         # Step 3: Get actual running containers
         actual = await asyncio.to_thread(self._manager.list_managed)
 
-        # Step 4: Reconcile desired vs. actual
+        # Step 4: Track container actions in stats (before sync)
+        if self._stats is not None:
+            desired_names = {spec.name for spec in desired}
+            actual_names = {str(c.get("name", "")) for c in actual}
+            for name in desired_names - actual_names:
+                self._stats.record_container_start(name)
+            for c in actual:
+                name = str(c.get("name", ""))
+                if name not in desired_names:
+                    self._stats.record_container_stop(name)
+
+        # Step 5: Reconcile desired vs. actual
         await asyncio.to_thread(
             self._manager.sync_state,
             desired,

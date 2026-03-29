@@ -68,53 +68,6 @@ SOCKET_AVAILABLE = _is_podman_reachable()
 RECORDER_IMAGE = "localhost/silvasonic_recorder:latest"
 
 
-# ---------------------------------------------------------------------------
-# Production stack guard — abort if the Compose stack is running
-# ---------------------------------------------------------------------------
-
-
-def _abort_if_prod_running() -> None:
-    """Fail fast if the production Compose stack is running.
-
-    System tests share the ``silvasonic-net`` network with the production
-    stack.  If production containers are running, spawned test Recorder
-    containers could reach the **production Redis** instead of the
-    Testcontainers Redis.  This guard prevents that scenario.
-
-    Uses the same label filter as ``scripts/stop.py``
-    (``io.silvasonic.owner=controller``) so only actual production
-    containers are detected — test containers (owner ``controller-test-*``)
-    are ignored.
-    """
-    import subprocess
-
-    result = subprocess.run(
-        [
-            "podman",
-            "ps",
-            "--filter",
-            "label=io.silvasonic.owner=controller",
-            "--format",
-            "{{.Names}}",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    names = [n for n in result.stdout.strip().splitlines() if n]
-    if names:
-        pytest.exit(
-            f"\n⚠️  Production containers are running: {', '.join(names)}\n"
-            f"   System tests require an isolated environment.\n"
-            f"   Run 'just stop' first, then re-run tests.\n",
-            returncode=1,
-        )
-
-
-if SOCKET_AVAILABLE:
-    _abort_if_prod_running()
-
-
 # Unique per pytest-session — appended to container names and labels so that
 # parallel test runs and the production stack never interfere with each other.
 TEST_RUN_ID = uuid.uuid4().hex[:8]
@@ -138,27 +91,31 @@ def require_recorder_image() -> None:
         pytest.skip("Recorder image not built (run 'just build' first)")
 
 
-_NETWORK_NAME = "silvasonic-net"
-
-
 @pytest.fixture()
-def hw_redis() -> Iterator[tuple[str, int]]:
-    """Ephemeral Redis on ``silvasonic-net`` for hardware E2E tests.
+def hw_redis() -> Iterator[tuple[str, int, str]]:
+    """Ephemeral Redis on an isolated network for hardware E2E tests.
 
-    Starts a Redis container attached to the existing ``silvasonic-net``
-    Podman network with alias ``silvasonic-redis``, so that the spawned
-    Recorder container can reach it at the production-default URL
-    (``redis://silvasonic-redis:6379/0``).
+    Creates its own isolated Podman network with a unique name per test
+    session.  The Redis container gets alias ``silvasonic-redis`` so that
+    Recorder containers can reach it at ``redis://silvasonic-redis:6379/0``
+    within the isolated network.
 
-    Yields ``(host_ip, mapped_port)`` for direct host-side access
-    (heartbeat polling from the test process).
+    Yields ``(host_ip, mapped_port, network_name)`` — the network name is
+    needed so the test can attach Recorder containers to the same network.
     """
-    ensure_test_network()
-    name = f"silvasonic-redis-hwtest-{TEST_RUN_ID}"
+    hw_network = f"silvasonic-hw-test-{TEST_RUN_ID}"
+    container_name = f"silvasonic-redis-hwtest-{TEST_RUN_ID}"
+
+    # Create isolated network for this HW test session
+    subprocess.run(
+        ["podman", "network", "create", hw_network],
+        capture_output=True,
+        timeout=10,
+    )
 
     # Force-remove any stale container from a previous interrupted run
     subprocess.run(
-        ["podman", "rm", "-f", name],
+        ["podman", "rm", "-f", container_name],
         capture_output=True,
         timeout=10,
     )
@@ -170,9 +127,9 @@ def hw_redis() -> Iterator[tuple[str, int]]:
             "run",
             "-d",
             "--name",
-            name,
+            container_name,
             "--network",
-            _NETWORK_NAME,
+            hw_network,
             "--network-alias",
             "silvasonic-redis",
             "-p",
@@ -195,7 +152,7 @@ def hw_redis() -> Iterator[tuple[str, int]]:
         # Wait for Redis to be ready
         for _ in range(20):
             ping = subprocess.run(
-                ["podman", "exec", name, "redis-cli", "ping"],
+                ["podman", "exec", container_name, "redis-cli", "ping"],
                 capture_output=True,
                 text=True,
                 timeout=3,
@@ -206,7 +163,7 @@ def hw_redis() -> Iterator[tuple[str, int]]:
 
         # Get mapped host port
         port_result = subprocess.run(
-            ["podman", "port", name, "6379"],
+            ["podman", "port", container_name, "6379"],
             capture_output=True,
             text=True,
             check=True,
@@ -214,45 +171,34 @@ def hw_redis() -> Iterator[tuple[str, int]]:
         # Output like "0.0.0.0:12345"
         mapped_port = int(port_result.stdout.strip().split(":")[-1])
 
-        yield ("127.0.0.1", mapped_port)
+        yield ("127.0.0.1", mapped_port, hw_network)
     finally:
         with contextlib.suppress(Exception):
             subprocess.run(
-                ["podman", "rm", "-f", name],
+                ["podman", "rm", "-f", container_name],
+                capture_output=True,
+                timeout=10,
+            )
+        with contextlib.suppress(Exception):
+            subprocess.run(
+                ["podman", "network", "rm", "-f", hw_network],
                 capture_output=True,
                 timeout=10,
             )
 
 
-def ensure_test_network() -> None:
-    """Create the ``silvasonic-net`` Podman network if it doesn't exist.
-
-    After a host reboot the network is gone because it is normally
-    created by ``just up`` (compose).  Container-spawning HW tests need
-    the network to be present before they can start containers.
-    """
-    import subprocess
-
-    # Check first — create is idempotent but noisy on stderr.
-    result = subprocess.run(
-        ["podman", "network", "exists", _NETWORK_NAME],
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return  # Already exists.
-
-    subprocess.run(
-        ["podman", "network", "create", _NETWORK_NAME],
-        capture_output=True,
-        check=True,
-    )
-
-
-def make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSpec:
+def make_test_spec(name: str, device_id: str, workspace: Path, *, network: str) -> Tier2ServiceSpec:
     """Create a minimal Recorder spec for system testing.
 
     Shared helper used by ``test_controller_lifecycle.py`` and
     ``test_crash_recovery.py`` to avoid duplicating spec construction.
+
+    Args:
+        name: Container name.
+        device_id: Device ID label value.
+        workspace: Host directory to bind-mount as workspace.
+        network: Podman network to attach the container to.
+            Each test must supply its own isolated network.
 
     The ``io.silvasonic.owner`` label is set to
     ``controller-test-<TEST_RUN_ID>`` so that test containers are invisible
@@ -267,7 +213,7 @@ def make_test_spec(name: str, device_id: str, workspace: Path) -> Tier2ServiceSp
     return Tier2ServiceSpec(
         image=RECORDER_IMAGE,
         name=name,
-        network="silvasonic-net",
+        network=network,
         environment={
             "SILVASONIC_RECORDER_DEVICE": "hw:99,0",
             "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
@@ -578,3 +524,18 @@ def primary_device(usb_devices: list[Any]) -> Any:
     if not found:
         pytest.skip(f"Primary mic {PRIMARY_MIC.name} not connected")
     return found[0]
+
+
+# ---------------------------------------------------------------------------
+# Re-export shared Processor fixtures (pytest auto-discovers from conftest)
+# ---------------------------------------------------------------------------
+# These fixtures are defined in _processor_helpers.py and re-exported here
+# so that both test_processor_lifecycle.py and test_processor_resilience.py
+# can use them without direct fixture imports (which cause F811 lint errors).
+
+from ._processor_helpers import (  # noqa: E402, F401
+    run_id,
+    system_db,
+    system_network,
+    system_redis,
+)

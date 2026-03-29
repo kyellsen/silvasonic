@@ -35,6 +35,8 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.3.0](docs/development/milestone_0_3_0.md)** — Phases & tasks for Tier 2 Container Management
 - **[Milestone v0.4.0](docs/development/milestone_0_4_0.md)** — Phases & tasks for Audio Recording (Dual Stream)
 - **[Milestone v0.5.0](docs/development/milestone_0_5_0.md)** — Phases & tasks for Analysis & Backend Orchestration
+- **[Milestone v0.8.0](docs/development/milestone_0_8_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
+- **[Milestone v1.0.0](docs/development/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 
 ---
 

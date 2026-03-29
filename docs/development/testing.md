@@ -105,16 +105,20 @@ just check-all       # Full CI pipeline (12 stages):
 ### System Tests (`@pytest.mark.system`)
 
 - Test the full Controller lifecycle pipeline with **real Podman** but **mocked hardware**.
-- Use `testcontainers` for DB + Redis, real `SilvasonicPodmanClient` for Podman.
+- Each test gets its own **isolated Podman network** (`silvasonic-test-{run_id}`) via the `system_network` fixture.
+- Use `testcontainers` for DB + Redis (Controller tests), or `podman_run()` with the isolated network (Processor tests).
 - Mock `/proc/asound/cards` and sysfs to simulate device detection without hardware.
 - Skip gracefully when Podman socket is absent or images aren't built.
-- Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop.
+- Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop, crash recovery.
+- **Fully isolated from production** — no shared network with `just start`.
 
 ### Hardware System Tests (`@pytest.mark.system_hw`)
 
 - Test device detection pipeline with **real USB microphone hardware**.
+- Each test session gets its own **isolated Podman network** (`silvasonic-hw-test-{id}`) via the `hw_redis` fixture.
 - Require a USB-Audio device connected (e.g., UltraMic 384K).
 - Skip automatically when no USB-Audio device is detected.
+- **Fully isolated from production** — can run while `just start` is active.
 - **Never** included in CI pipelines — run manually via `just test-hw`.
 
 ### Smoke Tests
@@ -140,11 +144,11 @@ The `just check-all` command runs 12 stages in order:
 | ----- | ------------------ | -------- | ------------------------------------------------ |
 | 1     | Lock-File Check    | No       | `uv lock --check`                                |
 | 2     | Dep Audit          | No       | `pip-audit` (skipped by default in dev)           |
-| 3     | Ruff Lint          | Yes      | Linting + formatting                              |
-| 4     | Mypy               | Yes      | Static type checking                              |
-| 5     | Unit Tests         | Yes      | `@pytest.mark.unit` (parallel, coverage)          |
-| 6     | Integration Tests  | Yes      | `@pytest.mark.integration` (testcontainers)       |
-| 7     | Containerfile Lint | No       | Hadolint (skipped if not installed)               |
+| 3     | Containerfile Lint | No       | Hadolint (skipped if not installed)               |
+| 4     | Ruff Lint          | Yes      | Linting + formatting                              |
+| 5     | Mypy               | Yes      | Static type checking                              |
+| 6     | Unit Tests         | Yes      | `@pytest.mark.unit` (parallel, coverage)          |
+| 7     | Integration Tests  | Yes      | `@pytest.mark.integration` (testcontainers)       |
 | 8     | Clear              | Always   | Clean workspace                                   |
 | 9     | Build Images       | Always   | `just build`                                      |
 | 10    | System Tests       | Yes      | `@pytest.mark.system` (real Podman, needs images) |
@@ -162,6 +166,7 @@ The `just check-all` command runs 12 stages in order:
 | Tool | Purpose |
 | --- | --- |
 | `pytest` | Test runner |
+| `pytest-xdist` | Parallel test execution (`-n` workers) — see §9 |
 | `testcontainers` | Disposable PostgreSQL + Redis for integration tests |
 | `polyfactory` | Pydantic model factories for test data generation |
 | `playwright` | Browser automation for E2E tests |
@@ -184,47 +189,107 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ## 8. Parallel Execution & Isolation
 
-### Safe Combinations (✅ run freely in parallel)
+**Every test level is fully isolated.** All combinations can run in parallel — with each other and with `just start` (production stack).
+
+### Isolation by Level
+
+| Level | Container Infra | Network | Ports | Parallel-safe? | Safe vs. `just start`? |
+| --- | --- | --- | --- | --- | --- |
+| `unit` | None | None | None | ✅ | ✅ |
+| `integration` | `testcontainers` | Random (auto) | Random | ✅ | ✅ |
+| `smoke` | `testcontainers` | `smoke_network` (random) | Random | ✅ | ✅ |
+| `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) | Random | ✅ | ✅ |
+| `system_hw` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | Random | ✅ | ✅ |
+| `just start` | Compose | `silvasonic-net` | Fixed | — | ✅ |
+
+### All Combinations: ✅ Safe
 
 | Suite A | Suite B | Why it's safe |
 | --- | --- | --- |
 | `just test-unit` | **anything** | Pure in-process, no containers, no Podman |
-| `just test-int` | `just test-int` | Testcontainers: ephemeral containers, random ports, own networks |
-| `just test-int` | `just test-system` | Different container pools, no name collisions (`TEST_RUN_ID`) |
-| `just test-int` | `just test-smoke` | Smoke uses own network (`smoke_network`) with distinct aliases |
-| `just test-system` | `just test-system` | Each session gets unique `TEST_RUN_ID` → isolated container names+labels |
-| `just test-system` | `just test-hw` | Both use `TEST_RUN_ID` for isolation |
-| `just test-smoke` | `just test-smoke` | Testcontainers: fully ephemeral |
-| `just stop` | **any test** | `stop.py` filters `owner=controller` (exact); test containers use `owner=controller-test-*` |
-
-### Guarded Combinations (🛡️ automatic protection)
-
-| Suite A | Suite B | Guard |
-| --- | --- | --- |
-| `just start` | `just test-system` | **Auto-abort**: system tests detect running production containers and exit immediately |
-| `just start` | `just test-hw` | **Auto-abort**: same guard applies |
-
-System and hardware tests share the `silvasonic-net` network with the production Compose stack. To prevent test containers from reaching production Redis, the system test `conftest.py` runs a **production stack guard** at import time. If any container with `io.silvasonic.owner=controller` is running, the test session aborts with a clear error message:
-
-```
-⚠️  Production containers are running: silvasonic-controller, ...
-   System tests require an isolated environment.
-   Run 'just stop' first, then re-run tests.
-```
+| `just test-int` | **anything** | `testcontainers`: ephemeral containers, random ports, own networks |
+| `just test-smoke` | **anything** | `testcontainers`: own `smoke_network`, distinct aliases (`test-database`, `test-redis`) |
+| `just test-system` | **anything** | Per-test `silvasonic-test-{run_id}` network via `system_network` fixture |
+| `just test-hw` | **anything** | Per-session `silvasonic-hw-test-{id}` network via `hw_redis` fixture |
+| `just test-system` | `just start` | ✅ No shared network — test and prod are fully separated |
+| `just test-hw` | `just start` | ✅ No shared network — test and prod are fully separated |
+| `just stop` | **any test** | `stop.py` filters `owner=controller` (exact match); tests use `owner=controller-test-*` |
 
 ### Isolation Mechanisms
 
-| Mechanism | Protects against |
-| --- | --- |
-| `TEST_RUN_ID` (UUID per session) | Container name collisions between parallel test runs |
-| `io.silvasonic.owner=controller-test-<ID>` label | `just stop` accidentally removing test containers |
-| Production stack guard (`conftest.py`) | Test containers reaching production Redis via shared network |
-| Testcontainers (integration, smoke) | Shared DB/Redis — each session gets disposable containers |
+| Mechanism | Scope | Protects against |
+| --- | --- | --- |
+| `system_network` fixture | Per test function | DNS alias collisions between parallel system tests |
+| `hw_redis` fixture | Per session | DNS alias collisions between HW tests and prod |
+| `TEST_RUN_ID` (UUID per session) | Per session | Container name collisions between parallel runs |
+| `run_id` (UUID per test) | Per test function | Container name collisions within a single session |
+| `io.silvasonic.owner=controller-test-<ID>` | Per session | `just stop` accidentally removing test containers |
+| `testcontainers.Network()` | Per session | Integration/smoke tests vs. everything else |
+| `podman_run(network=...)` (required, no default) | Per call | Compile-time guarantee that no caller forgets the network |
+| `make_test_spec(..., network=...)` (required kw) | Per call | Compile-time guarantee that no caller forgets the network |
+
+> [!NOTE]
+> The production stack guard (`_abort_if_prod_running()`) was removed. It is no longer needed
+> because all system and hardware tests create their own isolated Podman networks and never
+> share `silvasonic-net` with the production Compose stack.
+
+---
+
+## 9. Parallel Workers & Configuration
+
+All `just test-*` commands delegate to [`scripts/test.py`](../../scripts/test.py) — the **single source of truth** for pytest invocations, worker counts, and coverage arguments.
+
+### Worker Defaults
+
+| Suite | Workers | Env Override | Rationale |
+| --- | --- | --- | --- |
+| `unit` | **8** | `SILVASONIC_UNIT_WORKERS` | Pure in-process, CPU-bound — scales linearly |
+| `integration` | **6** | `SILVASONIC_INTEGRATION_WORKERS` | Each worker spawns its own TimescaleDB testcontainer |
+| `system` | **6** | `SILVASONIC_SYSTEM_WORKERS` | Sweet-spot before Podman socket bottleneck (see below) |
+| `smoke` | **1** (sequential) | — | Requires running Compose stack, no parallelism needed |
+| `system_hw` | **1** (sequential) | — | Single USB mic, hardware-bound |
+| `e2e` | **1** (sequential) | — | Browser tests, inherently sequential |
+
+> [!WARNING]
+> **System test hard ceiling: ~6–7 workers.** The rootless Podman socket is a shared bottleneck.
+> At **8 workers**, `testcontainers` hits 60s read timeouts on the Podman API, causing most tests
+> to SKIP or ERROR. Benchmarked on i9/16c/62GB: W6=140s ✅, W8=67s ❌ (socket timeout).
+
+### Overriding Worker Counts
+
+```bash
+# Temporary override for a single run
+SILVASONIC_INTEGRATION_WORKERS=8 just test-int
+
+# Or export for the session
+export SILVASONIC_UNIT_WORKERS=10
+just check
+```
+
+> [!TIP]
+> On a workstation with many cores (e.g. i9/16 cores, 64GB RAM), raising `INTEGRATION_WORKERS`
+> to 6–8 can halve integration test runtime. Each additional worker spawns one extra
+> TimescaleDB container (~200MB RAM).
+
+
+### Integration Test DB Cleanup
+
+With `pytest-xdist`, each worker gets its own session-scoped `postgres_container` (via `testcontainers`). Tests on the same worker share that DB and run sequentially. An **autouse** `_clean_db_tables` fixture (in each `conftest.py`) deletes all application rows between tests in FK-safe order, ensuring no cross-test contamination.
+
+Affected `conftest.py` files:
+- `services/processor/tests/integration/conftest.py`
+- `services/controller/tests/integration/conftest.py`
+- `tests/integration/conftest.py`
+
+> [!IMPORTANT]
+> When adding new tables to the database schema, you **MUST** add them to the `_CLEANUP_TABLES`
+> tuple in each `conftest.py` above, respecting FK order (children before parents).
 
 ---
 
 ## See Also
 
+- [`scripts/test.py`](../../scripts/test.py) — Single source of truth for test commands and worker counts
 - [AGENTS.md §6](../../AGENTS.md) — Testing rules (markers, directory structure)
 - [AGENTS.md §5](../../AGENTS.md) — Approved test libraries
 - [Release Checklist](release_checklist.md) — Quality gates per release type

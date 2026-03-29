@@ -179,3 +179,89 @@ class TestIndexerIntegration:
             await conn.execute(text("DELETE FROM recordings"))
             await conn.execute(text("DELETE FROM devices"))
         await engine.dispose()
+
+    async def test_fk_violation_handled_gracefully(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """Indexer must not crash when device is missing from DB (FK violation).
+
+        This is the exact scenario from the production bug: WAV files exist on
+        disk for a device that has not yet been enrolled by the Controller.
+        The FK constraint ``recordings.sensor_id → devices.name`` rejects the
+        INSERT.  The Indexer must:
+        1. Count the file as an error (not crash).
+        2. Roll back the aborted transaction so the session remains usable.
+        3. Leave zero rows in the recordings table.
+        """
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        # Setup: WAV exists but device "ghost-mic" is NOT in the devices table
+        _setup_workspace(tmp_path, "ghost-mic", count=1)
+
+        async with factory() as session:
+            result = await indexer.index_recordings(session, tmp_path)
+
+        # Must count as error, not crash
+        assert result.errors == 1, f"Expected 1 error, got {result.errors}"
+        assert result.new == 0
+        assert len(result.error_details) == 1
+        assert "ghost-mic" in result.error_details[0]
+
+        # Session must still be usable after the error (rollback worked)
+        async with factory() as session:
+            rows = await session.execute(text("SELECT COUNT(*) FROM recordings"))
+            assert rows.scalar() == 0, "No recordings should exist after FK violation"
+
+        await engine.dispose()
+
+    async def test_transaction_recovery_after_fk_error(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """After FK-violation on one file, subsequent valid files still get indexed.
+
+        Simulates a mixed workspace where one device directory has no matching
+        DB entry (FK error) and another does.  The Indexer must:
+        1. Roll back the failed INSERT for the unknown device.
+        2. Successfully INSERT the recording for the known device.
+        3. Report both errors and new counts correctly.
+
+        This test would have caught the cascade bug where a single FK-violation
+        poisoned the entire transaction (``current transaction is aborted``).
+        """
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        # Seed only "good-mic", NOT "bad-mic"
+        async with factory() as session:
+            await _seed_device(session, "good-mic")
+
+        # Create WAV files for both devices
+        # "bad-mic" → FK violation (not in devices table)
+        # "good-mic" → should succeed
+        _setup_workspace(tmp_path, "bad-mic", count=1)
+        _setup_workspace(tmp_path, "good-mic", count=1)
+
+        async with factory() as session:
+            result = await indexer.index_recordings(session, tmp_path)
+
+        assert result.errors == 1, f"Expected 1 error (bad-mic), got {result.errors}"
+        assert result.new == 1, f"Expected 1 new (good-mic), got {result.new}"
+
+        # Verify only the valid recording is in the DB
+        async with factory() as session:
+            rows = await session.execute(text("SELECT COUNT(*) FROM recordings"))
+            count = rows.scalar()
+            assert count == 1, f"Expected 1 recording, got {count}"
+
+            sensor_row = await session.execute(text("SELECT sensor_id FROM recordings"))
+            sensor_id = sensor_row.scalar()
+            assert sensor_id == "good-mic", f"Expected 'good-mic', got '{sensor_id}'"
+
+        # Cleanup
+        async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM recordings"))
+            await conn.execute(text("DELETE FROM devices WHERE name = 'good-mic'"))
+        await engine.dispose()

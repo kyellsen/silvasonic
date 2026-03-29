@@ -421,7 +421,7 @@ class TestConfigSchemas:
         assert s.latitude == 53.55
         assert s.longitude == 9.99
         assert s.max_recorders == 5
-        assert s.station_name == "Silvasonic Dev"
+        assert s.station_name == "Silvasonic MVP"
 
     def test_birdnet_settings_defaults(self) -> None:
         """BirdnetSettings has correct defaults."""
@@ -434,6 +434,7 @@ class TestConfigSchemas:
         assert s.janitor_threshold_warning == 70.0
         assert s.janitor_threshold_critical == 80.0
         assert s.janitor_threshold_emergency == 90.0
+        assert s.janitor_batch_size == 50
         assert s.indexer_poll_interval == 2.0
 
     def test_uploader_settings_defaults(self) -> None:
