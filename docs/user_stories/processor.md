@@ -1,6 +1,6 @@
 # User Stories — Processor Service
 
-> **Service:** Processor · **Tier:** 1 (Infrastructure, Immutable) · **Status:** Planned (since v0.5.0)
+> **Service:** Processor · **Tier:** 1 (Infrastructure, Immutable) · **Status:** Implemented (v0.5.0)
 
 ---
 
@@ -12,10 +12,10 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Neue `.wav`-Dateien im Aufnahme-Verzeichnis werden innerhalb weniger Sekunden erkannt (periodisches Scannen, siehe [Processor Service §5](../services/processor.md) für Default-Wert).
-- [ ] Metadaten (Dauer, Sample Rate, Kanäle, Dateigröße) werden automatisch ausgelesen und in die Datenbank geschrieben.
-- [ ] Bereits registrierte Aufnahmen werden nicht doppelt erfasst (idempotent).
-- [ ] Nur vollständig geschriebene Dateien werden erfasst — unvollständige Puffer-Dateien werden ignoriert.
+- [x] Neue `.wav`-Dateien im Aufnahme-Verzeichnis werden innerhalb weniger Sekunden erkannt (periodisches Scannen, siehe [Processor Service §5](../services/processor.md) für Default-Wert).
+- [x] Metadaten (Dauer, Sample Rate, Kanäle, Dateigröße) werden automatisch ausgelesen und in die Datenbank geschrieben.
+- [x] Bereits registrierte Aufnahmen werden nicht doppelt erfasst (idempotent).
+- [x] Nur vollständig geschriebene Dateien werden erfasst — unvollständige Puffer-Dateien werden ignoriert.
 
 ### Nicht-funktionale Anforderungen
 
@@ -43,7 +43,7 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Die Speicherauslastung wird laufend überwacht und bei Bedarf automatisch bereinigt:
+- [x] Die Speicherauslastung wird laufend überwacht und bei Bedarf automatisch bereinigt:
 
 | Stufe         | Schwelle | Was wird gelöscht                                             | Hinweis    |
 | ------------- | -------- | ------------------------------------------------------------- | ---------- |
@@ -51,10 +51,10 @@
 | **Vorsorge**  | > 80%    | Aufnahmen die hochgeladen sind (unabhängig von Analysestatus) | `WARNING`  |
 | **Notfall**   | > 90%    | **Älteste** Aufnahmen unabhängig vom Status                   | `CRITICAL` |
 
-- [ ] Gelöschte Dateien verschwinden von der Festplatte, bleiben aber im Inventar (Datenbank) als Eintrag erhalten — die Aufnahme-Historie geht nicht verloren.
-- [ ] Im Notfall-Modus funktioniert die Bereinigung auch bei einem Datenbankausfall (Fallback auf Dateialter).
-- [ ] Nur der Processor darf Aufnahmedateien löschen — kein anderer Dienst hat Schreibzugriff auf das Aufnahmeverzeichnis.
-- [ ] Löschungen werden nachvollziehbar protokolliert (Dateiname, Löschgrund, Stufe).
+- [x] Gelöschte Dateien verschwinden von der Festplatte, bleiben aber im Inventar (Datenbank) als Eintrag erhalten — die Aufnahme-Historie geht nicht verloren.
+- [x] Im Notfall-Modus funktioniert die Bereinigung auch bei einem Datenbankausfall (Fallback auf Dateialter).
+- [x] Nur der Processor darf Aufnahmedateien löschen — kein anderer Dienst hat Schreibzugriff auf das Aufnahmeverzeichnis.
+- [x] Löschungen werden nachvollziehbar protokolliert (Dateiname, Löschgrund, Stufe).
 
 ### Nicht-funktionale Anforderungen
 
@@ -81,9 +81,9 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Schwellenwerte (Aufräumen / Vorsorge / Notfall) und Scan-Intervalle sind in den Einstellungen änderbar.
+- [x] Schwellenwerte (Aufräumen / Vorsorge / Notfall) und Scan-Intervalle sind in den Einstellungen änderbar.
 - [ ] Nach einer Änderung wird der Dienst automatisch neu gestartet und übernimmt die neuen Werte.
-- [ ] Sinnvolle Standard-Werte sind ab Werk vorbelegt (Schwellenwerte und Intervalle siehe [Processor Service §5](../services/processor.md)).
+- [x] Sinnvolle Standard-Werte sind ab Werk vorbelegt (Schwellenwerte und Intervalle siehe [Processor Service §5](../services/processor.md)).
 
 ### Milestone
 
@@ -107,7 +107,7 @@
 
 - [ ] Die Web-Oberfläche zeigt den aktuellen Daten-Pipeline-Status an (z.B. letzte Erfassung, offener Rückstand, Speicherauslastung, aktuelle Bereinigungsstufe).
 - [ ] Der Status aktualisiert sich in Echtzeit, solange die Station erreichbar ist.
-- [ ] Bei Ausfall der Status-Übertragung läuft die Daten-Pipeline trotzdem störungsfrei weiter.
+- [x] Bei Ausfall der Status-Übertragung läuft die Daten-Pipeline trotzdem störungsfrei weiter.
 
 ### Milestone
 

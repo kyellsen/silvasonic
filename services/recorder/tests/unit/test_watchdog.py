@@ -156,7 +156,7 @@ class TestWatchdogStallDetection:
         shutdown = asyncio.Event()
 
         async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.15)
             shutdown.set()
 
         task = asyncio.create_task(trigger_shutdown())

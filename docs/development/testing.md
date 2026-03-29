@@ -243,7 +243,7 @@ All `just test-*` commands delegate to [`scripts/test.py`](../../scripts/test.py
 
 | Suite | Workers | Env Override | Rationale |
 | --- | --- | --- | --- |
-| `unit` | **8** | `SILVASONIC_UNIT_WORKERS` | Pure in-process, CPU-bound — scales linearly |
+| `unit` | **7** | `SILVASONIC_UNIT_WORKERS` | Pure in-process, CPU-bound — 7 is the sweet-spot |
 | `integration` | **6** | `SILVASONIC_INTEGRATION_WORKERS` | Each worker spawns its own TimescaleDB testcontainer |
 | `system` | **6** | `SILVASONIC_SYSTEM_WORKERS` | Sweet-spot before Podman socket bottleneck (see below) |
 | `smoke` | **1** (sequential) | — | Requires running Compose stack, no parallelism needed |

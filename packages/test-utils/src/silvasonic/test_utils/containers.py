@@ -94,6 +94,9 @@ def postgres_container(shared_network: Network) -> Iterator[PostgresContainer]:
             mode="z",
         )
 
+    # Use tmpfs for data directory: no disk I/O → faster init + writes.
+    postgres.with_kwargs(tmpfs={"/var/lib/postgresql/data": "rw"})
+
     with postgres:
         yield postgres
 

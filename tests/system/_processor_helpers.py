@@ -171,35 +171,52 @@ def podman_logs(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def psql_query(db_container: str, query: str) -> str:
+def psql_query(
+    db_container: str,
+    query: str,
+    *,
+    retries: int = 0,
+    retry_delay: float = 1.0,
+) -> str:
     """Execute a SQL query via psql inside the DB container.
 
     Returns the raw stdout output. Uses ``-t`` (tuples-only) and ``-A``
     (unaligned) for machine-readable output.
+
+    Args:
+        db_container: Name of the running database container.
+        query: SQL statement to execute.
+        retries: Number of retry attempts on transient failure (e.g. DB
+            container restarting its init scripts under parallel load).
+        retry_delay: Seconds to wait between retries.
     """
-    result = subprocess.run(
-        [
-            "podman",
-            "exec",
-            db_container,
-            "psql",
-            "-U",
-            "silvasonic",
-            "-d",
-            "silvasonic",
-            "-t",
-            "-A",
-            "-c",
-            query,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    if result.returncode != 0:
-        msg = f"psql query failed: {result.stderr}"
-        raise RuntimeError(msg)
-    return result.stdout.strip()
+    last_err: RuntimeError | None = None
+    for attempt in range(1 + retries):
+        result = subprocess.run(
+            [
+                "podman",
+                "exec",
+                db_container,
+                "psql",
+                "-U",
+                "silvasonic",
+                "-d",
+                "silvasonic",
+                "-t",
+                "-A",
+                "-c",
+                query,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        last_err = RuntimeError(f"psql query failed: {result.stderr}")
+        if attempt < retries:
+            time.sleep(retry_delay)
+    raise last_err  # type: ignore[misc]
 
 
 def wait_for_db(db_container: str, timeout: float = 30) -> None:
@@ -265,12 +282,16 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
     The Indexer's INSERT into ``recordings`` requires a matching FK in
     ``devices(name)``. In production, the Controller seeds these; in system
     tests, we do it manually.
+
+    Uses retries because under parallel load the PostgreSQL init scripts
+    may briefly restart the server after ``wait_for_db`` succeeds.
     """
     psql_query(
         db_container,
         """INSERT INTO microphone_profiles (slug, name, config)
            VALUES ('test_profile', 'Test Profile', '{}')
            ON CONFLICT (slug) DO NOTHING""",
+        retries=3,
     )
     for dev in device_names:
         psql_query(
@@ -278,6 +299,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
             f"""INSERT INTO devices (name, serial_number, model, config, profile_slug)
                VALUES ('{dev}', '{dev}-serial', 'test-model', '{{}}'::jsonb, 'test_profile')
                ON CONFLICT (name) DO NOTHING""",
+            retries=3,
         )
 
 
@@ -311,6 +333,7 @@ def seed_processor_config(
         f"""INSERT INTO system_config (key, value)
            VALUES ('processor', '{config_json}'::jsonb)
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+        retries=3,
     )
 
 

@@ -309,6 +309,30 @@ class TestPanicFilesystemFallback:
         deleted = panic_filesystem_fallback(tmp_path, batch_size=50)
         assert deleted == 0
 
+    def test_getmtime_oserror_skips_file(self, tmp_path: Path) -> None:
+        """OSError during getmtime (race condition) gracefully skips the file."""
+        sensor_dir = tmp_path / "sensor" / "data" / "processed"
+        sensor_dir.mkdir(parents=True)
+        f = sensor_dir / "vanished.wav"
+        f.write_bytes(b"\x00" * 100)
+
+        with patch("os.path.getmtime", side_effect=OSError("File vanished")):
+            deleted = panic_filesystem_fallback(tmp_path, batch_size=10)
+
+        assert deleted == 0
+
+    def test_unlink_oserror_logged(self, tmp_path: Path) -> None:
+        """OSError during unlink is caught and logged, file not counted."""
+        sensor_dir = tmp_path / "sensor" / "data" / "processed"
+        sensor_dir.mkdir(parents=True)
+        f = sensor_dir / "locked.wav"
+        f.write_bytes(b"\x00" * 100)
+
+        with patch.object(Path, "unlink", side_effect=OSError("Permission denied")):
+            deleted = panic_filesystem_fallback(tmp_path, batch_size=10)
+
+        assert deleted == 0
+
 
 # ---------------------------------------------------------------------------
 # Full Cleanup Cycle
@@ -362,6 +386,62 @@ class TestRunCleanup:
         assert result.disk_usage_percent == 75.0
         assert result.files_deleted == 0
         assert result.uploader_fallback is True
+
+    async def test_delete_error_records_in_result(self) -> None:
+        """Exception during delete_files/soft_delete is caught, counted, and logged."""
+        mock_session = AsyncMock()
+        # has_uploader_configured → no uploader
+        mock_result_uploader = MagicMock()
+        mock_result_uploader.fetchone.return_value = None
+        # find_deletable → 1 row
+        mock_result_find = MagicMock()
+        mock_result_find.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
+
+        mock_session.execute.side_effect = [mock_result_uploader, mock_result_find]
+        settings = ProcessorSettings()
+
+        with (
+            patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
+            patch(
+                "silvasonic.processor.janitor.delete_files",
+                side_effect=OSError("disk error"),
+            ),
+        ):
+            result = await run_cleanup(mock_session, Path("/data"), settings)
+
+        assert result.errors == 1
+        assert result.files_deleted == 0
+        assert "proc.wav" in result.error_details
+        mock_session.commit.assert_not_called()
+
+    async def test_successful_deletion_commits_session(self) -> None:
+        """Successful file deletion triggers session.commit()."""
+        mock_session = AsyncMock()
+        # has_uploader_configured → no uploader
+        mock_result_uploader = MagicMock()
+        mock_result_uploader.fetchone.return_value = None
+        # find_deletable → 1 row
+        mock_result_find = MagicMock()
+        mock_result_find.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
+        # soft_delete UPDATE result (needed for 3rd execute call)
+        mock_result_update = MagicMock()
+
+        mock_session.execute.side_effect = [
+            mock_result_uploader,
+            mock_result_find,
+            mock_result_update,
+        ]
+        settings = ProcessorSettings()
+
+        with (
+            patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
+            patch("silvasonic.processor.janitor.delete_files", return_value=2),
+        ):
+            result = await run_cleanup(mock_session, Path("/data"), settings)
+
+        assert result.files_deleted == 1
+        assert result.errors == 0
+        mock_session.commit.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

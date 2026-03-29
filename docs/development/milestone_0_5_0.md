@@ -2,7 +2,7 @@
 
 > **Target:** v0.5.0 — Processor Service (Indexer + Janitor), `recordings` Schema & Indices, Processor Config Seeding, Controller Integration
 >
-> **Status:** 🔨 In Progress
+> **Status:** ✅ Done
 >
 > **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0025](../adr/0025-recordings-standard-table.md), [Processor Service Spec](../services/processor.md), [Service Blueprint](service_blueprint.md)
 >

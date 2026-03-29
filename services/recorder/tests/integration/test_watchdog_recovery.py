@@ -83,8 +83,11 @@ class TestWatchdogRecovery:
         shutdown = asyncio.Event()
 
         async def trigger_shutdown() -> None:
-            # Wait long enough for watchdog to detect crash, restart, and produce segments
-            await asyncio.sleep(5.0)
+            # Poll until recovery is confirmed (max 5s safety ceiling)
+            for _ in range(50):
+                if watchdog.restart_count >= 1 and pipeline.segments_promoted > pre_crash_count:
+                    break
+                await asyncio.sleep(0.1)
             shutdown.set()
 
         task = asyncio.create_task(trigger_shutdown())

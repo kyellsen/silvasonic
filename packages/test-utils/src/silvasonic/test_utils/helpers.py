@@ -92,6 +92,7 @@ def wait_for_log(
     container: DockerContainer,
     message: str,
     timeout: float = 60.0,
+    poll_interval: float = 0.5,
 ) -> None:
     """Wait for a specific log message to appear in container stdout/stderr.
 
@@ -102,6 +103,7 @@ def wait_for_log(
         container: A ``testcontainers`` ``DockerContainer`` instance.
         message: The substring to wait for in combined stdout + stderr.
         timeout: Maximum seconds to wait. Defaults to 60.
+        poll_interval: Seconds between log polls. Defaults to 0.5.
 
     Raises:
         TimeoutError: If the message does not appear within ``timeout`` seconds.
@@ -112,6 +114,6 @@ def wait_for_log(
         logs = (stdout or b"").decode(errors="replace") + (stderr or b"").decode(errors="replace")
         if message in logs:
             return
-        time.sleep(2)
+        time.sleep(poll_interval)
     msg = f"Log message '{message}' not found within {timeout}s"
     raise TimeoutError(msg)

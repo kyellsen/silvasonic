@@ -1,6 +1,6 @@
 # Processor Service
 
-> **Status:** partial - Indexer + Janitor implemented · **Tier:** 1 · **Instances:** Single · **Port:** 9200
+> **Status:** implemented · **Tier:** 1 · **Instances:** Single · **Port:** 9200
 
 **TO-BE:** Background workhorse for data ingestion, metadata indexing, and storage retention management. Bridges the gap between raw audio files on disk and the database. Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
 

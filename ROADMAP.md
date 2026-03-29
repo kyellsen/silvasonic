@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.4.0 — Audio Recording (Dual Stream) ✅
+> **Status:** v0.5.0 — Analysis & Backend Orchestration ✅
 
 ---
 
@@ -12,7 +12,7 @@
 | **v0.2.0** | Service Infrastructure — Redis container, `SilvaService` base class, `core.service`, `core.redis`, `core.heartbeat`. All services inherit unified lifecycle. Heartbeats go live (ADR-0019). Web-Mock dev UI                                                               | ✅ Done        |
 | **v0.3.0** | Tier 2 Container Management — Podman lifecycle, USB Detection, Profile Matching & Auto-Enrollment, Config Seeding, Log Streaming (ADR-0022), Reconciliation Loop                                                                                                              | ✅ Done        |
 | **v0.4.0** | Robust Audio Engine — FFmpeg Dual Stream (Raw `data/raw` + Processed `data/processed` 48kHz S16LE), Segment Promotion, Graceful Shutdown, Watchdog & Auto-Recovery                                                                                                            | ✅ Done        |
-| **v0.5.0** | Analysis & Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding                                                                                                                                   | 🔨 In Progress |
+| **v0.5.0** | Analysis & Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding                                                                                                                                   | ✅ Done        |
 | v0.6.0     | Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)                                                                                                                                                                                            | ⏳ Planned     |
 | v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ⏳ Planned     |
 | v0.8.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | ⏳ Planned     |

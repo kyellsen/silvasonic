@@ -51,7 +51,6 @@ def db_container(integration_network: Network) -> Generator[DockerContainer]:
     )
     container.start()
     wait_for_log(container, "database system is ready to accept connections")
-    time.sleep(2)
     yield container
     container.stop()
 
