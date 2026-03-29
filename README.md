@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.4.0 — Audio Recording (Dual Stream) ✅
+> **Status:** v0.5.0 — Analysis & Backend Orchestration ✅
 
 ---
 
