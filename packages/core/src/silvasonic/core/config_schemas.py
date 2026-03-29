@@ -47,11 +47,10 @@ class UploaderSettings(BaseModel):
     enabled: bool = True
     poll_interval: int = 30
     bandwidth_limit: str = "1M"
-    schedule_start_hour: int | None = 22
-    schedule_end_hour: int | None = 6
+    schedule_start_hour: int | None = None
+    schedule_end_hour: int | None = None
 
     # --- Future implementation details (v0.6.0) ---
-    # retry_max_attempts: int = 5
     # batch_burst_limit: int = 50
 
 

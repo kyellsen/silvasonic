@@ -128,8 +128,8 @@ uploader:
   enabled: true
   poll_interval: 30
   bandwidth_limit: "1M"
-  schedule_start_hour: 22
-  schedule_end_hour: 6
+  schedule_start_hour: null
+  schedule_end_hour: null
 
 birdnet:
   confidence_threshold: 0.25

@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 import pytest
+import structlog
 from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner
 from silvasonic.controller.profile_matcher import ProfileMatcher
@@ -32,6 +33,8 @@ from .conftest import (
     SECONDARY_MIC,
     HwMicConfig,
 )
+
+log = structlog.get_logger()
 
 pytestmark = [
     pytest.mark.system_hw,
@@ -114,16 +117,11 @@ def _settle_wait(seconds: int, label: str = "Settling") -> None:
     sys.stdout.flush()
 
 
-def _section_banner(title: str) -> None:
-    """Print a prominent section header."""
-    print()
-    print(f"{'━' * _W}")
-    print(f"  {title}")
-    print(f"{'━' * _W}")
-
-
 def _prompt_action(verb: str, mic_name: str) -> None:
-    """Print a boxed action prompt with step counter and wait for Enter."""
+    """Print a boxed action prompt with step counter and wait for Enter.
+
+    Uses box-drawing characters for clear interactive UX.
+    """
     global _action_step
     _action_step += 1
     step_label = (
@@ -136,15 +134,6 @@ def _prompt_action(verb: str, mic_name: str) -> None:
     print(f"║  🔌 {verb} {mic_name:<{_W - 10}}║")
     print(f"╚{'═' * (_W - 2)}╝")
     input("  ⏎  Press Enter when ready… ")
-
-
-def _print_device_info(device: DeviceInfo) -> None:
-    """Print formatted device details."""
-    print(f"     name       = {device.alsa_name}")
-    print(f"     device     = {device.alsa_device}")
-    print(f"     stable_id  = {device.stable_device_id}")
-    if device.usb_vendor_id:
-        print(f"     usb        = VID:{device.usb_vendor_id} PID:{device.usb_product_id}")
 
 
 def _assert_detected(mic: HwMicConfig, *, expect_count: int = 1) -> list[DeviceInfo]:
@@ -167,7 +156,7 @@ def _assert_gone(mic: HwMicConfig) -> None:
     assert len(found) == 0, (
         f"{mic.name} still detected after unplug! Found: {[d.alsa_name for d in found]}"
     )
-    print(f"  ✅ {mic.name} — gone (unplug confirmed)")
+    log.info("test.device_gone", mic=mic.name)
 
 
 def _assert_reappeared(mic: HwMicConfig) -> DeviceInfo:
@@ -181,8 +170,14 @@ def _assert_reappeared(mic: HwMicConfig) -> DeviceInfo:
     assert not device.stable_device_id.startswith("alsa-card"), (
         f"Stable ID should use USB identity, not ALSA fallback: {device.stable_device_id}"
     )
-    print(f"  ✅ {mic.name} — re-detected")
-    _print_device_info(device)
+    log.info(
+        "test.device_redetected",
+        mic=mic.name,
+        alsa_name=device.alsa_name,
+        device=device.alsa_device,
+        stable_id=device.stable_device_id,
+        usb=f"VID:{device.usb_vendor_id} PID:{device.usb_product_id}",
+    )
     return device
 
 
@@ -221,13 +216,18 @@ class TestDualMicDetection:
     def test_both_mics_detected_simultaneously(self) -> None:
         """Scanner finds both configured mics at the same time."""
         assert SECONDARY_MIC is not None  # guarded by skipif
-        _section_banner("Dual-Mic Detection")
+        log.info("test.section", title="Dual-Mic Detection")
         primary = _assert_detected(PRIMARY_MIC)
         secondary = _assert_detected(SECONDARY_MIC)
-        print(f"  ✅ {PRIMARY_MIC.name}")
-        _print_device_info(primary[0])
-        print(f"  ✅ {SECONDARY_MIC.name}")
-        _print_device_info(secondary[0])
+        log.info(
+            "test.dual_mic_detected",
+            primary_name=primary[0].alsa_name,
+            primary_device=primary[0].alsa_device,
+            primary_id=primary[0].stable_device_id,
+            secondary_name=secondary[0].alsa_name,
+            secondary_device=secondary[0].alsa_device,
+            secondary_id=secondary[0].stable_device_id,
+        )
 
     async def test_both_mics_matched_to_correct_profiles(
         self,
@@ -259,11 +259,12 @@ class TestDualMicDetection:
             f"Expected slug '{SECONDARY_MIC.slug}', got '{secondary_match.profile_slug}'"
         )
 
-        print(
-            f"\n  ✅ {PRIMARY_MIC.name} → "
-            f"{primary_match.profile_slug} (score={primary_match.score})"
-            f"\n  ✅ {SECONDARY_MIC.name} → "
-            f"{secondary_match.profile_slug} (score={secondary_match.score})"
+        log.info(
+            "test.profiles_matched",
+            primary_profile=primary_match.profile_slug,
+            primary_score=primary_match.score,
+            secondary_profile=secondary_match.profile_slug,
+            secondary_score=secondary_match.score,
         )
 
     async def test_both_mics_upserted_with_distinct_ids(
@@ -290,9 +291,10 @@ class TestDualMicDetection:
             await session.commit()
             assert dev1.name != dev2.name
 
-        print(
-            f"\n  ✅ {PRIMARY_MIC.name} → {primary.stable_device_id}"
-            f"\n  ✅ {SECONDARY_MIC.name} → {secondary.stable_device_id}"
+        log.info(
+            "test.devices_upserted",
+            primary_id=primary.stable_device_id,
+            secondary_id=secondary.stable_device_id,
         )
 
 
@@ -324,10 +326,13 @@ class TestPrimaryMicHotPlug:
 
     def test_primary_detected_before_unplug(self) -> None:
         """Primary mic must be present before hot-plug sequence."""
-        _section_banner(f"Single-Mic Hot-Plug · {PRIMARY_MIC.name}")
+        log.info("test.section", title=f"Single-Mic Hot-Plug · {PRIMARY_MIC.name}")
         found = _assert_detected(PRIMARY_MIC)
-        print(f"  ✅ {PRIMARY_MIC.name} — present")
-        _print_device_info(found[0])
+        log.info(
+            "test.device_present",
+            mic=PRIMARY_MIC.name,
+            stable_id=found[0].stable_device_id,
+        )
 
     def test_primary_disappears_on_unplug(self) -> None:
         """After unplug, primary mic is gone from scan results."""
@@ -358,10 +363,13 @@ class TestSecondaryMicHotPlug:
     def test_secondary_detected_before_unplug(self) -> None:
         """Secondary mic must be present before hot-plug sequence."""
         assert SECONDARY_MIC is not None  # guarded by skipif
-        _section_banner(f"Single-Mic Hot-Plug · {SECONDARY_MIC.name}")
+        log.info("test.section", title=f"Single-Mic Hot-Plug · {SECONDARY_MIC.name}")
         found = _assert_detected(SECONDARY_MIC)
-        print(f"  ✅ {SECONDARY_MIC.name} — present")
-        _print_device_info(found[0])
+        log.info(
+            "test.device_present",
+            mic=SECONDARY_MIC.name,
+            stable_id=found[0].stable_device_id,
+        )
 
     def test_secondary_disappears_on_unplug(self) -> None:
         """After unplug, secondary mic is gone from scan results."""
@@ -396,20 +404,24 @@ class TestDualMicHotPlug:
     def test_unplug_secondary_primary_survives(self) -> None:
         """Unplug secondary → primary still detected, secondary gone."""
         assert SECONDARY_MIC is not None
-        _section_banner("Dual-Mic Hot-Plug · Cross-Isolation")
+        log.info("test.section", title="Dual-Mic Hot-Plug · Cross-Isolation")
         _prompt_action("UNPLUG", f"{SECONDARY_MIC.name}  ⚠ ONLY this one!")
         _settle_wait(_SETTLE_UNPLUG_S, "udev settle")
 
         _assert_gone(SECONDARY_MIC)
         _assert_detected(PRIMARY_MIC)
-        print(f"  ✅ Isolation OK — {PRIMARY_MIC.name} survived")
+        log.info("test.isolation_ok", surviving=PRIMARY_MIC.name)
 
     def test_replug_secondary_both_detected(self) -> None:
         """Re-plug secondary → both mics detected again."""
         assert SECONDARY_MIC is not None
         _do_replug(SECONDARY_MIC)
         _assert_detected(PRIMARY_MIC)
-        print(f"  ✅ Both present: {PRIMARY_MIC.name} + {SECONDARY_MIC.name}")
+        log.info(
+            "test.both_present",
+            primary=PRIMARY_MIC.name,
+            secondary=SECONDARY_MIC.name,
+        )
 
     def test_unplug_primary_secondary_survives(self) -> None:
         """Unplug primary → secondary still detected, primary gone."""
@@ -419,7 +431,7 @@ class TestDualMicHotPlug:
 
         _assert_gone(PRIMARY_MIC)
         _assert_detected(SECONDARY_MIC)
-        print(f"  ✅ Isolation OK — {SECONDARY_MIC.name} survived")
+        log.info("test.isolation_ok", surviving=SECONDARY_MIC.name)
 
     def test_replug_primary_both_detected(self) -> None:
         """Re-plug primary → both mics detected with stable IDs."""
@@ -434,6 +446,10 @@ class TestDualMicHotPlug:
                 f"Stable ID should use USB identity: {dev.stable_device_id}"
             )
 
-        _section_banner("Hot-Plug Complete ✓")
-        print(f"  {PRIMARY_MIC.name:<30} id={device.stable_device_id}")
-        print(f"  {SECONDARY_MIC.name:<30} id={secondary.stable_device_id}")
+        log.info(
+            "test.hotplug_complete",
+            primary_name=PRIMARY_MIC.name,
+            primary_id=device.stable_device_id,
+            secondary_name=SECONDARY_MIC.name,
+            secondary_id=secondary.stable_device_id,
+        )

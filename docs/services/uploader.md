@@ -57,15 +57,17 @@
 
 ### Static Configuration (Environment Variables & Mounts)
 
-| Variable / Mount             | Description                       | Default / Example                                                |
-| ---------------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| Health port                  | Internal health endpoint          | `9500`                                                           |
-| `SILVASONIC_RCLONE_CONFIG`   | Path to Rclone configuration file | `/config/rclone/rclone.conf`                                     |
-| `STORAGE_REMOTE_SLUG`        | Identifier for the storage target | `nextcloud-main`                                                 |
-| `STORAGE_REMOTE_TYPE`        | Protocol (s3, webdav, sftp)       | `webdav`                                                         |
-| `STORAGE_REMOTE_ENDPOINT`    | Remote URL                        | `https://cloud.example.com/remote.php/dav/files/user/silvasonic` |
-| `/mnt/data/recordings:ro`    | Recorder workspace (read-only)    | (Consumer Principle)                                             |
-| `/mnt/data/config/rclone:ro` | Rclone configuration secrets      | (Consumer Principle)                                             |
+| Variable / Mount                       | Description                                      | Default / Example            |
+| -------------------------------------- | ------------------------------------------------ | ---------------------------- |
+| Health port                            | Internal health endpoint                         | `9500`                       |
+| `SILVASONIC_STORAGE_REMOTE_SLUG`       | Identifier for the storage target (DB lookup key)| `nextcloud-main`             |
+| `SILVASONIC_REDIS_URL`                 | Redis connection URL                             | `redis://redis:6379/0`       |
+| `SILVASONIC_INSTANCE_ID`               | Instance identifier for heartbeats               | `nextcloud-main`             |
+| `POSTGRES_HOST`, `POSTGRES_PORT`, etc. | DB connection (reads `storage_remotes`, `recordings`, `system_config`) | (from Controller injection) |
+| Recorder workspace `:ro`               | Recorder workspace (read-only, Consumer Principle, ADR-0009)          | (bind mount)                |
+
+> [!NOTE]
+> Remote type, endpoint, and credentials are stored in the `storage_remotes.config` JSONB column and read from the database on startup — not via environment variables. The Uploader generates a temporary `rclone.conf` at runtime from this data (see Milestone v0.6.0 Phase 4).
 
 ### Dynamic Configuration (Database)
 
@@ -76,8 +78,8 @@ Runtime-tunable settings stored in the `system_config` table under key `uploader
 | `enabled`             | Global toggle for upload activity    | `true`            |
 | `poll_interval`       | Seconds between checking DB for work | `30`              |
 | `bandwidth_limit`     | Rclone `--bwlimit` parameter String  | `"1M"`            |
-| `schedule_start_hour` | Optional hour to start daily window  | `22`              |
-| `schedule_end_hour`   | Optional hour to end daily window    | `6`               |
+| `schedule_start_hour` | Opt-in: hour to start daily upload window  | `null` (24/7)     |
+| `schedule_end_hour`   | Opt-in: hour to end daily upload window    | `null` (24/7)     |
 
 **Update Mechanism (State Reconciliation):**
 1. User changes settings in Web UI.

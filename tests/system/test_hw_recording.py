@@ -28,6 +28,7 @@ import time
 from pathlib import Path
 
 import pytest
+import structlog
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import (
     MountSpec,
@@ -64,6 +65,8 @@ from .conftest import (
     require_recorder_image,
 )
 
+log = structlog.get_logger()
+
 pytestmark = [
     pytest.mark.system_hw,
 ]
@@ -84,6 +87,122 @@ def _has_usb_audio_device() -> bool:
 
 
 _USB_PRESENT = _has_usb_audio_device()
+
+
+# ---------------------------------------------------------------------------
+# Polling helpers (replace fixed time.sleep)
+# ---------------------------------------------------------------------------
+
+
+def _wait_for_wavs(
+    directory: Path,
+    *,
+    min_count: int = 1,
+    timeout: float = 20,
+    poll_interval: float = 1.0,
+) -> list[Path]:
+    """Poll for WAV files with early return.
+
+    Args:
+        directory: Directory to scan for ``*.wav`` files.
+        min_count: Minimum number of files required.
+        timeout: Maximum seconds to wait.
+        poll_interval: Seconds between polls.
+
+    Returns:
+        List of found WAV file paths (may be fewer than *min_count*
+        if timeout is reached).
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        wavs = list(directory.glob("*.wav")) if directory.exists() else []
+        if len(wavs) >= min_count:
+            return wavs
+        time.sleep(poll_interval)
+    return list(directory.glob("*.wav")) if directory.exists() else []
+
+
+def _wait_for_db_rows(
+    db_container: str,
+    query: str,
+    *,
+    min_count: int = 1,
+    timeout: float = 20,
+    poll_interval: float = 2.0,
+) -> int:
+    """Poll a DB count query until *min_count* rows exist.
+
+    Args:
+        db_container: Name of the running database container.
+        query: SQL ``SELECT COUNT(*)`` query.
+        min_count: Minimum row count to satisfy.
+        timeout: Maximum seconds to wait.
+        poll_interval: Seconds between polls.
+
+    Returns:
+        Final row count.
+    """
+    deadline = time.monotonic() + timeout
+    count = 0
+    while time.monotonic() < deadline:
+        try:
+            count_str = psql_query(db_container, query)
+            count = int(count_str) if count_str else 0
+            if count >= min_count:
+                return count
+        except Exception:
+            pass
+        time.sleep(poll_interval)
+    return count
+
+
+def _ffprobe_wav(path: Path) -> tuple[int, int, str]:
+    """Return (sample_rate, channels, codec) via ffprobe.
+
+    Args:
+        path: Path to the WAV file.
+
+    Returns:
+        Tuple of (sample_rate, channels, codec_name).
+    """
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=sample_rate,channels,codec_name",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode == 0, f"ffprobe failed on {path.name}: {result.stderr}"
+    parts = result.stdout.strip().split(",")
+    assert len(parts) >= 3, f"Unexpected ffprobe output: {result.stdout}"
+    return int(parts[1]), int(parts[2]), parts[0]
+
+
+def _dump_container_logs(container_name: str) -> None:
+    """Log container stdout/stderr via structlog for debugging."""
+    try:
+        result = subprocess.run(
+            ["podman", "logs", container_name],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        log.warning(
+            "test.container_logs",
+            container=container_name,
+            stdout=result.stdout[-500:] if result.stdout else "",
+            stderr=result.stderr[-500:] if result.stderr else "",
+        )
+    except Exception as exc:
+        log.warning("test.container_logs_failed", container=container_name, error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -110,10 +229,13 @@ class TestDeviceValidation:
         card_num = alsa_device.split(":")[1].split(",")[0] if ":" in alsa_device else alsa_device
         card_marker = f"card {card_num}:"
         assert card_marker in result.stdout, f"Device {alsa_device} not found in arecord -l output"
+
+        card_line = ""
         for line in result.stdout.splitlines():
             if card_marker in line:
-                print(f"\n  ✅ {alsa_device} queryable: {line.strip()}")
+                card_line = line.strip()
                 break
+        log.info("test.alsa_queryable", device=alsa_device, card_info=card_line)
 
     def test_ffmpeg_accepts_device(self, primary_device: DeviceInfo) -> None:
         """FFmpeg can open the ALSA device for a brief capture."""
@@ -146,11 +268,11 @@ class TestDeviceValidation:
         assert result.returncode == 0, (
             f"FFmpeg failed to open {alsa_device} at {sample_rate} Hz: {result.stderr}"
         )
-        print(f"\n  ✅ FFmpeg accepts {alsa_device} at {sample_rate} Hz")
+        log.info("test.ffmpeg_accepted", device=alsa_device, sample_rate=sample_rate)
 
 
 # ---------------------------------------------------------------------------
-# Test: Real Audio Capture (FFmpeg pipeline → WAV)
+# Test: Real Audio Capture (FFmpeg pipeline → WAV + header validation)
 # ---------------------------------------------------------------------------
 
 
@@ -160,6 +282,7 @@ class TestRealAudioCapture:
 
     Uses a short segment duration (3s) to keep test runtime reasonable.
     The pipeline runs for ~8s to ensure at least one segment is promoted.
+    Validates both file creation and WAV header metadata.
     """
 
     _SEGMENT_S = 3
@@ -192,12 +315,18 @@ class TestRealAudioCapture:
         time.sleep(duration_s)
         pipeline.stop()
 
-    def test_pipeline_captures_audio(
+    def test_pipeline_captures_valid_audio(
         self,
         primary_device: DeviceInfo,
         tmp_path: Path,
     ) -> None:
-        """FFmpegPipeline with real device produces at least 1 WAV file."""
+        """FFmpegPipeline with real device produces valid WAV files.
+
+        Verifies:
+        1. At least 1 raw and 1 processed WAV file created.
+        2. Raw WAV header matches expected sample rate and codec.
+        3. Processed WAV has correct downsampled rate.
+        """
         workspace = tmp_path / "capture_test"
         pipeline = self._make_pipeline(
             workspace,
@@ -208,6 +337,7 @@ class TestRealAudioCapture:
         self._run_pipeline(pipeline, self._CAPTURE_S)
         assert not pipeline.is_active, "Pipeline should be inactive after stop()"
 
+        # Verify raw WAV files
         data_dir = workspace / "data" / "raw"
         wav_files = list(data_dir.glob("*.wav"))
         assert len(wav_files) >= 1, (
@@ -215,37 +345,22 @@ class TestRealAudioCapture:
             f"found {len(wav_files)}. "
             f"Buffer dir contents: {list((workspace / '.buffer' / 'raw').glob('*'))}"
         )
-        print(f"\n  ✅ Captured {len(wav_files)} raw WAV file(s) in {data_dir}")
 
+        # Verify processed WAV files
         proc_dir = workspace / "data" / "processed"
         proc_wavs = list(proc_dir.glob("*.wav"))
         assert len(proc_wavs) >= 1, (
             f"Expected at least 1 processed WAV in {proc_dir}, found {len(proc_wavs)}"
         )
-        print(f"  ✅ Captured {len(proc_wavs)} processed WAV file(s) in {proc_dir}")
 
-    def test_wav_is_valid(
-        self,
-        primary_device: DeviceInfo,
-        tmp_path: Path,
-    ) -> None:
-        """Captured WAV file has valid metadata (use ffprobe)."""
-        workspace = tmp_path / "wav_valid_test"
-        pipeline = self._make_pipeline(
-            workspace,
-            primary_device.alsa_device,
-            PRIMARY_MIC.sample_rate,
+        log.info(
+            "test.capture_complete",
+            raw_count=len(wav_files),
+            processed_count=len(proc_wavs),
         )
 
-        self._run_pipeline(pipeline, self._CAPTURE_S)
-
-        data_dir = workspace / "data" / "raw"
-        wav_files = list(data_dir.glob("*.wav"))
-        assert len(wav_files) >= 1, "No WAV files captured"
-
-        wav_path = wav_files[0]
-        # Use ffprobe to validate WAV metadata
-        result = subprocess.run(
+        # Validate raw WAV header
+        raw_result = subprocess.run(
             [
                 "ffprobe",
                 "-v",
@@ -254,22 +369,23 @@ class TestRealAudioCapture:
                 "stream=sample_rate,channels,codec_name",
                 "-of",
                 "csv=p=0",
-                str(wav_path),
+                str(wav_files[0]),
             ],
             capture_output=True,
             text=True,
             timeout=5,
         )
-        assert result.returncode == 0, f"ffprobe failed: {result.stderr}"
-        parts = result.stdout.strip().split(",")
-        assert len(parts) >= 2, f"Unexpected ffprobe output: {result.stdout}"
-        print(f"\n  ✅ Raw WAV valid: {wav_path.name} ({result.stdout.strip()})")
+        assert raw_result.returncode == 0, f"ffprobe failed: {raw_result.stderr}"
+        parts = raw_result.stdout.strip().split(",")
+        assert len(parts) >= 2, f"Unexpected ffprobe output: {raw_result.stdout}"
 
-        # Verify processed WAV
-        proc_dir = workspace / "data" / "processed"
-        proc_wavs = list(proc_dir.glob("*.wav"))
-        assert len(proc_wavs) >= 1, "No processed WAV files captured"
+        log.info(
+            "test.raw_wav_valid",
+            file=wav_files[0].name,
+            metadata=raw_result.stdout.strip(),
+        )
 
+        # Validate processed WAV header
         proc_result = subprocess.run(
             [
                 "ffprobe",
@@ -285,12 +401,17 @@ class TestRealAudioCapture:
             text=True,
             timeout=5,
         )
-        assert result.returncode == 0
+        assert proc_result.returncode == 0, f"ffprobe failed: {proc_result.stderr}"
         proc_sr = proc_result.stdout.strip()
         assert proc_sr == str(PROCESSED_SAMPLE_RATE), (
             f"Processed WAV SR {proc_sr} != {PROCESSED_SAMPLE_RATE}"
         )
-        print(f"  ✅ Processed WAV valid: {proc_wavs[0].name} ({proc_sr} Hz)")
+
+        log.info(
+            "test.processed_wav_valid",
+            file=proc_wavs[0].name,
+            sample_rate=int(proc_sr),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +446,7 @@ class TestFullHardwareLifecycle:
         2. Match against seeded profiles → auto-enroll.
         3. Evaluate desired state → Tier2ServiceSpec.
         4. Start container with REAL /dev/snd passthrough.
-        5. Wait for recording (short segment duration).
+        5. Poll for WAV files (replaces fixed sleep).
         6. Stop container and verify WAV files in workspace.
         """
         require_recorder_image()
@@ -421,45 +542,27 @@ class TestFullHardwareLifecycle:
             assert info is not None, "Container start failed"
             assert info.get("name") == test_name
 
-            # Step 6: Wait for container to record at least one segment
-            wait_seconds = 20
-            print(f"\n  ⏳ Waiting {wait_seconds}s for container to record audio...")
-            time.sleep(wait_seconds)
+            # Step 6: Poll for WAV files (replaces fixed 20s sleep)
+            data_dir = workspace / "data" / "raw"
+            log.info("test.waiting_for_wavs", directory=str(data_dir), timeout_s=20)
+            _wait_for_wavs(data_dir, min_count=1, timeout=20)
 
             # Step 7: Stop container gracefully (promotes final segment)
             mgr.stop(test_name, timeout=10)
 
             # Step 8: Verify WAV files exist in the workspace
-            data_dir = workspace / "data" / "raw"
             buffer_dir = workspace / ".buffer" / "raw"
-
             wav_in_data = list(data_dir.glob("*.wav")) if data_dir.exists() else []
             wav_in_buffer = list(buffer_dir.glob("*.wav")) if buffer_dir.exists() else []
             total_wavs = len(wav_in_data) + len(wav_in_buffer)
 
             if total_wavs < 1:
-                try:
-                    logs = subprocess.run(
-                        ["podman", "logs", test_name], capture_output=True, text=True
-                    )
-                    print(
-                        f"\n--- CONTAINER LOGS ({test_name}) ---\n"
-                        f"{logs.stderr}\n{logs.stdout}\n"
-                        "----------------------------------"
-                    )
-                except Exception as e:
-                    print(f"Could not fetch podman logs: {e}")
+                _dump_container_logs(test_name)
 
             assert total_wavs >= 1, (
                 f"No WAV files found in workspace {workspace}. "
                 f"data/raw: {wav_in_data}, .buffer/raw: {wav_in_buffer}. "
                 f"Check container logs with: podman logs {test_name}"
-            )
-
-            print(
-                f"\n  ✅ Full lifecycle verified: "
-                f"{len(wav_in_data)} promoted + "
-                f"{len(wav_in_buffer)} buffered raw WAV file(s)"
             )
 
             # Verify processed WAV files
@@ -471,6 +574,13 @@ class TestFullHardwareLifecycle:
             assert total_proc >= 1, (
                 f"No processed WAV files found in {workspace}. "
                 f"data/processed: {proc_in_data}, .buffer/processed: {proc_in_buffer}"
+            )
+
+            log.info(
+                "test.lifecycle_verified",
+                raw_promoted=len(wav_in_data),
+                raw_buffered=len(wav_in_buffer),
+                processed_total=total_proc,
             )
 
             # Cleanup
@@ -500,8 +610,6 @@ class TestFullPipelineE2E:
     - Container health-endpoint check.
     - Processor Indexer pipeline (v0.5.0): real WAV → DB registration.
     """
-
-    _WAIT_SECONDS = 18  # Enough for 2-3 segment promotions (3s segments)
 
     async def test_full_pipeline_with_heartbeat(
         self,
@@ -613,31 +721,16 @@ class TestFullPipelineE2E:
             assert info is not None, "Container start failed"
             assert info.get("name") == test_name
 
-            print(f"\n  ⏳ Recording for {self._WAIT_SECONDS}s...")
-            time.sleep(self._WAIT_SECONDS)
-
-            # ── Step 5: Assert WAV files exist ─────────────────────
+            # ── Step 5: Poll for WAV files (replaces fixed 18s sleep) ──
             raw_data = workspace / "data" / "raw"
             proc_data = workspace / "data" / "processed"
 
-            raw_wavs = list(raw_data.glob("*.wav")) if raw_data.exists() else []
-            proc_wavs = list(proc_data.glob("*.wav")) if proc_data.exists() else []
+            log.info("test.waiting_for_wavs", directory=str(raw_data), timeout_s=20)
+            raw_wavs = _wait_for_wavs(raw_data, min_count=1, timeout=20)
+            proc_wavs = _wait_for_wavs(proc_data, min_count=1, timeout=5)
 
             if not raw_wavs and not proc_wavs:
-                # Dump container logs for debugging
-                try:
-                    logs = subprocess.run(
-                        ["podman", "logs", test_name],
-                        capture_output=True,
-                        text=True,
-                    )
-                    print(
-                        f"\n--- CONTAINER LOGS ({test_name}) ---\n"
-                        f"{logs.stderr}\n{logs.stdout}\n"
-                        "----------------------------------"
-                    )
-                except Exception as e:
-                    print(f"Could not fetch container logs: {e}")
+                _dump_container_logs(test_name)
 
             assert len(raw_wavs) >= 1, (
                 f"No raw WAV files in {raw_data}. Check container logs: podman logs {test_name}"
@@ -646,44 +739,36 @@ class TestFullPipelineE2E:
                 f"No processed WAV files in {proc_data}. "
                 f"Check container logs: podman logs {test_name}"
             )
-            print(f"  ✅ WAV files: {len(raw_wavs)} raw, {len(proc_wavs)} processed")
+            log.info(
+                "test.wav_files_found",
+                raw_count=len(raw_wavs),
+                processed_count=len(proc_wavs),
+            )
 
             # ── Step 6: Validate WAV headers (via ffprobe) ────────
-            def _ffprobe_wav(path: Path) -> tuple[int, int, str]:
-                """Return (sample_rate, channels, codec) via ffprobe."""
-                result = subprocess.run(
-                    [
-                        "ffprobe",
-                        "-v",
-                        "error",
-                        "-show_entries",
-                        "stream=sample_rate,channels,codec_name",
-                        "-of",
-                        "csv=p=0",
-                        str(path),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                assert result.returncode == 0, f"ffprobe failed on {path.name}: {result.stderr}"
-                parts = result.stdout.strip().split(",")
-                assert len(parts) >= 3, f"Unexpected ffprobe output: {result.stdout}"
-                return int(parts[1]), int(parts[2]), parts[0]
-
             raw_sr, raw_ch, raw_codec = _ffprobe_wav(raw_wavs[0])
             assert raw_ch >= 1
             assert raw_sr == PRIMARY_MIC.sample_rate, (
                 f"Raw WAV sample rate {raw_sr} != expected {PRIMARY_MIC.sample_rate}"
             )
-            print(f"  ✅ Raw WAV: {raw_sr} Hz, {raw_ch} ch, {raw_codec}")
+            log.info(
+                "test.raw_wav_valid",
+                sample_rate=raw_sr,
+                channels=raw_ch,
+                codec=raw_codec,
+            )
 
             proc_sr, proc_ch, proc_codec = _ffprobe_wav(proc_wavs[0])
             assert proc_ch >= 1
             assert proc_sr == PROCESSED_SAMPLE_RATE, (
                 f"Processed WAV sample rate {proc_sr} != expected {PROCESSED_SAMPLE_RATE}"
             )
-            print(f"  ✅ Processed WAV: {proc_sr} Hz, {proc_ch} ch, {proc_codec}")
+            log.info(
+                "test.processed_wav_valid",
+                sample_rate=proc_sr,
+                channels=proc_ch,
+                codec=proc_codec,
+            )
 
             # ── Step 7: Assert Redis heartbeat ─────────────────────
             import json
@@ -698,8 +783,6 @@ class TestFullPipelineE2E:
             )
 
             # Poll for heartbeat (recorder writes every ~2s)
-            # Key format: silvasonic:status:<instance_id> (instance_id = device ID, NOT "recorder")
-            # We must check the JSON payload's "service" field to find the recorder heartbeat.
             heartbeat_raw: str | None = None
             for _ in range(15):
                 keys: list[str] = list(redis_client.keys("silvasonic:status:*"))  # type: ignore[arg-type]
@@ -729,22 +812,20 @@ class TestFullPipelineE2E:
             assert payload["meta"]["recording"]["raw_enabled"] is True
             assert payload["meta"]["recording"]["processed_enabled"] is True
 
-            # Phase 5: Watchdog metadata
             assert "watchdog_restarts" in payload["meta"]["recording"], (
                 "Watchdog metadata missing from heartbeat"
             )
             assert payload["meta"]["recording"]["watchdog_restarts"] == 0
 
-            print(
-                "  ✅ Redis heartbeat verified: "
-                f"service={payload['service']}, "
-                f"health={payload['health']['status']}, "
-                f"watchdog_restarts={payload['meta']['recording']['watchdog_restarts']}"
+            log.info(
+                "test.heartbeat_verified",
+                service=payload["service"],
+                health=payload["health"]["status"],
+                watchdog_restarts=payload["meta"]["recording"]["watchdog_restarts"],
             )
             redis_client.close()
 
             # ── Step 8: Health endpoint ────────────────────────────
-            # The container exposes port 9500 — check via podman exec
             health_result = subprocess.run(
                 [
                     "podman",
@@ -759,17 +840,13 @@ class TestFullPipelineE2E:
                 timeout=5,
             )
             assert health_result.returncode == 0, f"Health endpoint failed: {health_result.stderr}"
-            print("  ✅ Health endpoint: 200 OK")
+            log.info("test.health_endpoint_ok", status=200)
 
             # ── Teardown ───────────────────────────────────────────
             mgr.stop(test_name, timeout=10)
             mgr.remove(test_name)
 
-            print(
-                "\n  🎉 Full Pipeline E2E PASSED: "
-                "USB → DB → Podman → FFmpeg → WAV ✓ → "
-                "Redis Heartbeat ✓ → Health ✓"
-            )
+            log.info("test.e2e_passed", pipeline="USB→DB→Podman→FFmpeg→WAV→Redis→Health")
         finally:
             with contextlib.suppress(Exception):
                 client.containers.get(test_name).remove(force=True)
@@ -840,7 +917,6 @@ class TestFullPipelineE2E:
         spec = matching_specs[0]
 
         # ── Step 3: Setup infrastructure ────────────────────────────
-        # Start a standalone DB on the HW test network
         db_name = f"silvasonic-db-hw-proc-{TEST_RUN_ID}"
         processor_name = f"silvasonic-processor-hw-{TEST_RUN_ID}"
         test_name = f"silvasonic-recorder-hw-proc-{TEST_RUN_ID}"
@@ -917,29 +993,26 @@ class TestFullPipelineE2E:
             info = mgr.start(test_spec)
             assert info is not None, "Recorder container start failed"
 
-            # ── Step 5: Wait for WAV segments ──────────────────────
-            print("\n  ⏳ Waiting 20s for Recorder to capture real audio...")
-            time.sleep(20)
-
-            # Verify WAV files were produced
-            raw_dir = device_dir / "data" / "raw"
+            # ── Step 5: Poll for WAV segments (replaces fixed 20s sleep) ──
             proc_dir = device_dir / "data" / "processed"
+            log.info("test.waiting_for_recorder", directory=str(proc_dir), timeout_s=20)
+            proc_wavs = _wait_for_wavs(proc_dir, min_count=1, timeout=20)
+
+            raw_dir = device_dir / "data" / "raw"
             raw_wavs = list(raw_dir.glob("*.wav")) if raw_dir.exists() else []
-            proc_wavs = list(proc_dir.glob("*.wav")) if proc_dir.exists() else []
 
             if not proc_wavs:
-                logs = subprocess.run(
-                    ["podman", "logs", test_name],
-                    capture_output=True,
-                    text=True,
-                )
-                print(f"\n--- RECORDER LOGS ---\n{logs.stderr}\n{logs.stdout}")
+                _dump_container_logs(test_name)
 
             assert len(proc_wavs) >= 1, (
                 f"Recorder did not produce processed WAV files. "
                 f"raw: {len(raw_wavs)}, processed: {len(proc_wavs)}"
             )
-            print(f"  ✅ Recorder produced {len(raw_wavs)} raw, {len(proc_wavs)} processed WAV(s)")
+            log.info(
+                "test.recorder_output",
+                raw_count=len(raw_wavs),
+                processed_count=len(proc_wavs),
+            )
 
             # ── Step 6: Start Processor ────────────────────────────
             podman_run(
@@ -953,15 +1026,20 @@ class TestFullPipelineE2E:
                 network=hw_network,
             )
 
-            print("  ⏳ Waiting 15s for Processor to index...")
-            time.sleep(15)
-
-            # ── Step 7: Verify recordings in DB ────────────────────
-            count_str = psql_query(db_name, "SELECT COUNT(*) FROM recordings")
-            count = int(count_str) if count_str else 0
+            # ── Step 7: Poll for recordings in DB (replaces fixed 15s sleep) ──
+            log.info("test.waiting_for_indexer", timeout_s=20)
+            count = _wait_for_db_rows(
+                db_name,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=1,
+                timeout=20,
+            )
 
             if count == 0:
-                print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
+                log.warning(
+                    "test.indexer_no_rows",
+                    processor_logs=podman_logs(processor_name),
+                )
 
             assert count >= 1, (
                 f"Processor did not index any recordings from real hardware. "
@@ -986,10 +1064,11 @@ class TestFullPipelineE2E:
                 assert duration > 0, f"Recording duration must be > 0, got {duration}"
                 assert sample_rate > 0, f"Sample rate must be > 0, got {sample_rate}"
 
-            print(
-                f"\n  🎉 HW Recorder → Processor Pipeline PASSED: "
-                f"{count} recording(s) indexed from {len(proc_wavs)} WAV file(s) "
-                f"(real hardware audio from {PRIMARY_MIC.name})"
+            log.info(
+                "test.processor_pipeline_passed",
+                recordings_indexed=count,
+                wav_files=len(proc_wavs),
+                mic=PRIMARY_MIC.name,
             )
 
             # ── Teardown ──────────────────────────────────────────

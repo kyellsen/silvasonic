@@ -93,7 +93,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.6.0
+- **Milestone:** v0.6.0 (Backend: UploaderSettings Schema, Schedule, Bandwidth Limit) + v0.8.0 (Frontend: Web-Interface)
 
 ### Referenzen
 
@@ -118,7 +118,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.6.0
+- **Milestone:** v0.6.0 (Backend: Heartbeat Payload) + v0.8.0 (Frontend: Dashboard)
 
 ### Referenzen
 

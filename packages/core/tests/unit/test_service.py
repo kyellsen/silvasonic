@@ -442,8 +442,8 @@ class TestConfigSchemas:
         s = UploaderSettings()
         assert s.enabled is True
         assert s.bandwidth_limit == "1M"
-        assert s.schedule_start_hour == 22
-        assert s.schedule_end_hour == 6
+        assert s.schedule_start_hour is None
+        assert s.schedule_end_hour is None
 
     def test_system_settings_override(self) -> None:
         """SystemSettings accepts overrides."""

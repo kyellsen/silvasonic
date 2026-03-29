@@ -22,6 +22,7 @@
 | v1.1.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                                                                                                                                                                           | ⏳ Planned     |
 | v1.2.0     | Weather — Environmental data correlation                                                                                                                                                                                                                                  | ⏳ Planned     |
 | v1.3.0     | BatDetect — On-device bat species classification                                                                                                                                                                                                                          | ⏳ Planned     |
+| v1.4.0     | Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Uploader extension, analytics-optimized)                                                                                                                                             | ⏳ Planned     |
 | v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                                                                                                                                                                     | ⏳ Planned     |
 
 ---
@@ -35,6 +36,7 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.3.0](docs/development/milestone_0_3_0.md)** — Phases & tasks for Tier 2 Container Management
 - **[Milestone v0.4.0](docs/development/milestone_0_4_0.md)** — Phases & tasks for Audio Recording (Dual Stream)
 - **[Milestone v0.5.0](docs/development/milestone_0_5_0.md)** — Phases & tasks for Analysis & Backend Orchestration
+- **[Milestone v0.6.0](docs/development/milestone_0_6_0.md)** — Phases & tasks for Uploader (FLAC Compression & Cloud Sync)
 - **[Milestone v0.8.0](docs/development/milestone_0_8_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
 - **[Milestone v1.0.0](docs/development/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 

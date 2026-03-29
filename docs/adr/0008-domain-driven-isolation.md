@@ -4,7 +4,7 @@
 
 
 ## 1. Context & Problem
-> **NOTE:** References to `processor`, `uploader`, or `janitor` refer to future services. Currently, only `recorder` and `controller` exist.
+> **NOTE:** The `processor` (v0.5.0) and `uploader` (v0.6.0) are implemented. References to `birdnet`, `batdetect`, or `weather` refer to planned services.
 In a microservice architecture sharing a file system, there is a risk of a "Spaghetti" data layout where multiple services read/write to common directories. This leads to race conditions, accidental data deletion ("Noisy Neighbor"), and unclear ownership responsibilities. We need a layout that enforces ownership and structure.
 
 ## 2. Decision
