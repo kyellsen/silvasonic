@@ -19,7 +19,7 @@
 #### Einstecken & Entfernen
 - [x] **Reaktionszeit ≤ 1 Sekunde** — der Reconciliation-Loop pollt alle 1 Sekunde nach Änderungen.
 - [x] Ein neu erkanntes Mikrofon wird automatisch in der Geräteliste als `pending` / `status=online` angelegt.
-- [x] Das Entfernen eines Mikrofons setzt `status=offline` und beendet die zugehörige Aufnahme sauber.
+- [x] Das temporäre Entfernen eines Mikrofons (USB Flapping) wird per Grace-Period überbrückt. Ein längerer Disconnect setzt `status=offline` und beendet die zugehörige Aufnahme sauber.
 
 #### Stabile Wiedererkennung
 - [x] Ein erneut eingestecktes Mikrofon wird anhand seiner stabilen Geräte-ID wiedererkannt (Vendor-ID + Product-ID + Serial, bzw. Port-Fallback).

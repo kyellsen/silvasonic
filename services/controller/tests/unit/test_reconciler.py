@@ -612,6 +612,40 @@ class TestReconciliationLoop:
         mock_session.commit.assert_awaited_once()
         assert "old-device-001" not in loop._missing_devices
 
+    async def test_rescan_hardware_clears_tracker_if_reconnected(self) -> None:
+        """_rescan_hardware removes device from missing tracker if it reconnects during grace."""
+        mgr = MagicMock()
+        scanner = MagicMock()
+
+        loop = ReconciliationLoop(mgr, device_scanner=scanner, interval=1.0)
+        loop._missing_devices["old-device-001"] = 100.0
+
+        mock_device = MagicMock()
+        mock_device.stable_device_id = "old-device-001"
+
+        scanner.scan_all.return_value = [mock_device]
+        mock_session = AsyncMock()
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch("silvasonic.controller.reconciler.get_session") as mock_get_session,
+            patch("silvasonic.controller.reconciler.upsert_device", new_callable=AsyncMock),
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+
+            await loop._rescan_hardware()
+
+        assert "old-device-001" not in loop._missing_devices
+
     async def test_rescan_hardware_no_scanner(self) -> None:
         """_rescan_hardware is a no-op when scanner is None."""
         mgr = MagicMock()

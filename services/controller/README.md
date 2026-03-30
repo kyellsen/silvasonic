@@ -17,7 +17,7 @@
 ## User Benefit
 
 *   **Plug-and-Play:** Automatically detects connected microphones within **≤ 1 second** (via polling in the reconciliation loop) and spins up the appropriate Recorder containers with the correct configuration (Profile Injection).
-*   **Resilience:** Automatically repairs broken services via the reconciliation loop. A disconnected microphone is detected within 1 second and its Recorder is stopped cleanly.
+*   **Resilience:** Automatically repairs broken services via the reconciliation loop. A disconnected microphone is detected within 1 second and its Recorder is stopped cleanly after a short grace period (debouncing) to survive USB flapping.
 *   **Control:** Allows enabling/disabling features via the Web-Interface to save power, CPU, or storage — all routed through DB desired state, never direct commands.
 
 ---
@@ -114,9 +114,9 @@ A `DeviceScanner` runs inside the reconciliation loop (interval: 1 second):
 *   Enumerates all ALSA cards via `/proc/asound/cards`.
 *   Correlates each card with its USB parent via `sysfs` to extract stable identifiers (VID, PID, Serial).
 *   Detects new devices → DB write + profile matching + recorder spawning.
-*   Detects removed devices → sets `status=offline` + stops recorder.
+*   Detects removed devices → debounces transient drops (grace period) → sets `status=offline` + safely stops recorder.
 
-**Timing:** USB plug → kernel detects (~50 ms) → next poll cycle (≤ 1 s) → DB write + reconcile → **total ≤ 1 second**.
+**Timing:** USB plug → kernel detects (~50 ms) → next poll cycle (≤ 1 s) → DB write + reconcile → **device online ≤ 1 second**. Disconnects are delayed by a configurable grace period (e.g. 3s) to prevent USB flapping.
 
 > **Design Decision:** Polling was chosen over event-driven udev monitoring (Netlink) because Netlink sockets do not function in rootless Podman containers (User-Namespace limitation). USB metadata is read directly from `sysfs` attribute files (`pathlib`) — no external libraries required.
 

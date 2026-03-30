@@ -96,7 +96,7 @@ class Tier2ServiceSpec(BaseModel):
         """
         import hashlib
 
-        data = self.model_dump(exclude={"labels"})
+        data = self.model_dump(exclude={"labels"}, mode="json")
         payload = json.dumps(data, sort_keys=True)
         return hashlib.sha256(payload.encode()).hexdigest()[:12]
 

@@ -67,7 +67,6 @@ Thumbs.db
 site/
 
 prompts/*
-docs/development/issues/*
 COMMANDS.md
 *.wav
 
