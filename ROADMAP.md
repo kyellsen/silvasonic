@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.5.0 — Analysis & Backend Orchestration ✅
+> **Status:** v0.5.1 — Analysis & Backend Orchestration ✅
 
 ---
 
@@ -13,6 +13,7 @@
 | **v0.3.0** | Tier 2 Container Management — Podman lifecycle, USB Detection, Profile Matching & Auto-Enrollment, Config Seeding, Log Streaming (ADR-0022), Reconciliation Loop                                                                                                              | ✅ Done        |
 | **v0.4.0** | Robust Audio Engine — FFmpeg Dual Stream (Raw `data/raw` + Processed `data/processed` 48kHz S16LE), Segment Promotion, Graceful Shutdown, Watchdog & Auto-Recovery                                                                                                            | ✅ Done        |
 | **v0.5.0** | Analysis & Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding                                                                                                                                   | ✅ Done        |
+| **v0.5.1** | Architecture & Stability Fixes — Core Data Integrity, USB Debouncing, Workspace mapping                                                                                                                                                                                   | ✅ Current     |
 | v0.6.0     | Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)                                                                                                                                                                                            | ⏳ Planned     |
 | v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ⏳ Planned     |
 | v0.8.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | ⏳ Planned     |

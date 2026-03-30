@@ -26,9 +26,9 @@ the following are **mandatory** before tagging:
 > A Feature Release **MUST NOT** be tagged if any of the above gates fails.
 > Fix all issues first, then re-run `just check-all` until clean.
 
-### Patch Release (Bug-Fix: `X.Y.Z` where `Z > 0`)
+### Patch Release (Bug-Fix / Stabilization: `X.Y.Z` where `Z > 0`)
 
-Bug fixes only — no new features, no behavior changes.
+Bug fixes only. Pre-v1.0.0, internal behavior changes or architecture refactorings that enforce system stability and core directives (like data integrity) without introducing new user-facing features are permitted to maintain a clean baseline.
 
 - [ ] **`just check-all` passes**
 - [ ] **Regression test** for the fixed bug (recommended, ideally mandatory)

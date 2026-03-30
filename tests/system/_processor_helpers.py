@@ -291,7 +291,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
         """INSERT INTO microphone_profiles (slug, name, config)
            VALUES ('test_profile', 'Test Profile', '{}')
            ON CONFLICT (slug) DO NOTHING""",
-        retries=3,
+        retries=10,
     )
     for dev in device_names:
         psql_query(
@@ -306,7 +306,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
                 )
                 ON CONFLICT (name) DO NOTHING
             """,
-            retries=3,
+            retries=10,
         )
 
 
@@ -340,7 +340,7 @@ def seed_processor_config(
         f"""INSERT INTO system_config (key, value)
            VALUES ('processor', '{config_json}'::jsonb)
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
-        retries=3,
+        retries=10,
     )
 
 
