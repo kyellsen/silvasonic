@@ -154,7 +154,7 @@ class RecordingWatchdog:
                     max_restarts=self._max_restarts,
                     last_failure=failure_reason,
                 )
-                break
+                raise RuntimeError(f"Watchdog exhausted all {self._max_restarts} restart attempts")
 
             # Stop the failed pipeline
             self._pipeline.stop()

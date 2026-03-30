@@ -335,10 +335,10 @@ class TestRecorderServiceRun:
         mock_pipeline.start.assert_called_once()
         mock_pipeline.stop.assert_called_once()
 
-    async def test_run_handles_pipeline_start_failure(
+    async def test_run_crashes_on_pipeline_start_failure(
         self, bare_service: "RecorderService", tmp_path: MagicMock
     ) -> None:
-        """run() handles pipeline start failure gracefully."""
+        """run() crashes when pipeline fails to start (Level-2 Recovery)."""
         bare_service._shutdown_event = asyncio.Event()
         bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
 
@@ -348,12 +348,9 @@ class TestRecorderServiceRun:
         with (
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
+            pytest.raises(RuntimeError, match="Initial pipeline start failed"),
         ):
             await bare_service.run()
-
-        # Should have returned without crashing
-        status = bare_service.health.get_status()
-        assert status["components"]["recorder"]["healthy"] is False
 
     async def test_run_handles_cancellation(
         self, bare_service: "RecorderService", tmp_path: MagicMock

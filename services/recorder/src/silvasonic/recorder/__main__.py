@@ -131,7 +131,7 @@ class RecorderService(SilvaService):
 
         try:
             self._pipeline.start()
-        except Exception:
+        except Exception as exc:
             log.exception(
                 "recorder.pipeline_start_failed",
                 device=device,
@@ -139,7 +139,7 @@ class RecorderService(SilvaService):
                 format=self._pipeline_config.format,
             )
             self.health.update_status("recorder", False, "Pipeline start failed")
-            return
+            raise RuntimeError("Initial pipeline start failed") from exc
 
         # Step 4: Start watchdog + monitor loop
         self._watchdog = RecordingWatchdog(

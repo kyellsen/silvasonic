@@ -187,7 +187,8 @@ class TestWatchdogBackoff:
         )
 
         shutdown = asyncio.Event()
-        await watchdog.watch(shutdown)
+        with pytest.raises(RuntimeError, match="Watchdog exhausted all 3 restart attempts"):
+            await watchdog.watch(shutdown)
 
         # Should have attempted 3 restarts, then given up
         assert watchdog.restart_count == 3
@@ -211,7 +212,8 @@ class TestWatchdogMaxRestarts:
         )
 
         shutdown = asyncio.Event()
-        await watchdog.watch(shutdown)
+        with pytest.raises(RuntimeError, match="Watchdog exhausted all 2 restart attempts"):
+            await watchdog.watch(shutdown)
 
         assert watchdog.is_giving_up is True
         assert watchdog.restart_count == 2
@@ -244,7 +246,8 @@ class TestWatchdogRestartCounter:
         )
 
         shutdown = asyncio.Event()
-        await watchdog.watch(shutdown)
+        with pytest.raises(RuntimeError, match="Watchdog exhausted all 3 restart attempts"):
+            await watchdog.watch(shutdown)
 
         assert watchdog.restart_count == 3
         assert call_count == 3
@@ -333,7 +336,10 @@ class TestWatchdogStartFailure:
         )
 
         shutdown = asyncio.Event()
-        with patch("silvasonic.recorder.watchdog.log"):
+        with (
+            patch("silvasonic.recorder.watchdog.log"),
+            pytest.raises(RuntimeError, match="Watchdog exhausted all 2 restart attempts"),
+        ):
             await watchdog.watch(shutdown)
 
         assert watchdog.restart_count == 2
