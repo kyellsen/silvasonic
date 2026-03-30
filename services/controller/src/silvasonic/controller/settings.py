@@ -38,6 +38,11 @@ class ControllerSettings(BaseSettings):
     # Range: 0.5-10.  Default 1.0 is responsive without busy-looping.
     RECONCILE_INTERVAL_S: float = 1.0
 
+    # How long (seconds) to wait before marking a missing device offline.
+    # Debounces momentary USB hotplugging or 'flapping'.
+    # Default: 3.0 allows for quick ALSA reinits without destroying the running container.
+    DEVICE_OFFLINE_GRACE_PERIOD_S: float = 3.0
+
     # --- Logging: Two-Phase Strategy ---
     # Phase 1 (Startup): Every event is logged individually for operator confidence.
     # Phase 2 (Steady State): Events are accumulated into periodic summaries.

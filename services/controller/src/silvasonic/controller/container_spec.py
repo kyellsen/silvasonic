@@ -87,6 +87,19 @@ class Tier2ServiceSpec(BaseModel):
     cpu_limit: float = Field(..., description="CPU limit (e.g., 1.0 = 1 core)")
     oom_score_adj: int = Field(..., description="OOM priority (-999=protected, 500=expendable)")
 
+    @property
+    def config_hash(self) -> str:
+        """Deterministic sha256 hash of the container configuration.
+
+        Excludes labels, enabling the system to detect when a container's
+        hardware mapping or environment has drifted (e.g., ALSA index change).
+        """
+        import hashlib
+
+        data = self.model_dump(exclude={"labels"})
+        payload = json.dumps(data, sort_keys=True)
+        return hashlib.sha256(payload.encode()).hexdigest()[:12]
+
 
 # ---------------------------------------------------------------------------
 # Factory: Recorder
@@ -234,7 +247,7 @@ def build_recorder_spec(
     workspace_dir = generate_workspace_name(profile.slug, device)
     container_name = f"silvasonic-recorder-{workspace_dir}"
 
-    return Tier2ServiceSpec(
+    spec = Tier2ServiceSpec(
         image=env.RECORDER_IMAGE,
         name=container_name,
         network=network,
@@ -273,3 +286,7 @@ def build_recorder_spec(
         cpu_limit=cpu_limit,
         oom_score_adj=_RECORDER_OOM_SCORE_ADJ,
     )
+
+    # Inject config hash into labels for drift detection
+    spec.labels["io.silvasonic.config_hash"] = spec.config_hash
+    return spec

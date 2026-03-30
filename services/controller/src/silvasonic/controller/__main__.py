@@ -74,6 +74,7 @@ class ControllerService(SilvaService):
             device_scanner=self._device_scanner,
             profile_matcher=self._profile_matcher,
             interval=self._cfg.RECONCILE_INTERVAL_S,
+            grace_period_s=self._cfg.DEVICE_OFFLINE_GRACE_PERIOD_S,
         )
         self._nudge_subscriber = NudgeSubscriber(
             self._reconciliation_loop,

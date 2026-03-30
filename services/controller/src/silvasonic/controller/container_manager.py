@@ -246,26 +246,45 @@ class ContainerManager:
 
         - Start containers that are desired but not running.
         - Stop containers that are running but not desired.
+        - Restart containers whose config_hash has drifted.
         - Adopt containers that are already running and desired.
 
         Args:
             desired: Specs for containers that should be running.
             actual: Info dicts for containers currently running.
         """
-        desired_names = {spec.name for spec in desired}
-        actual_names = {str(c.get("name", "")) for c in actual}
+        desired_specs_by_name = {spec.name: spec for spec in desired}
+        actual_containers_by_name = {str(c.get("name", "")): c for c in actual}
 
-        # Start missing containers
-        for spec in desired:
-            if spec.name not in actual_names:
+        # Start missing or drifted containers
+        for name, spec in desired_specs_by_name.items():
+            actual_container = actual_containers_by_name.get(name)
+
+            if not actual_container:
                 log.info("container_manager.starting_missing", name=spec.name)
                 self.start(spec)
             else:
-                log.debug("container_manager.already_running", name=spec.name)
+                # Type guard for labels dictionary
+                labels = actual_container.get("labels", {})
+                if not isinstance(labels, dict):
+                    labels = {}
+
+                actual_hash = labels.get("io.silvasonic.config_hash", "")
+
+                if actual_hash != spec.config_hash:
+                    log.info(
+                        "container_manager.restarting_config_drift",
+                        name=spec.name,
+                        old_hash=actual_hash,
+                        new_hash=spec.config_hash,
+                    )
+                    self.stop_and_remove(name)
+                    self.start(spec)
+                else:
+                    log.debug("container_manager.already_running", name=spec.name)
 
         # Stop and remove orphaned containers (ADR-0017: immutable → recreate)
-        for container in actual:
-            name = str(container.get("name", ""))
-            if name not in desired_names:
+        for name in actual_containers_by_name:
+            if name not in desired_specs_by_name:
                 log.info("container_manager.stopping_orphaned", name=name)
                 self.stop_and_remove(name)

@@ -519,8 +519,8 @@ class TestReconciliationLoop:
         assert call_kwargs.kwargs["profile_slug"] is None
         assert call_kwargs.kwargs["enrollment_status"] == "pending"
 
-    async def test_rescan_hardware_marks_offline(self) -> None:
-        """_rescan_hardware marks devices offline when no longer detected."""
+    async def test_rescan_hardware_ignores_missing_within_grace_period(self) -> None:
+        """_rescan_hardware does not mark devices offline if within grace period."""
         mgr = MagicMock()
         scanner = MagicMock()
         scanner.scan_all.return_value = []  # No devices found
@@ -530,9 +530,9 @@ class TestReconciliationLoop:
             device_scanner=scanner,
             profile_matcher=None,
             interval=1.0,
+            grace_period_s=3.0,
         )
 
-        # Simulate one device currently online in DB
         mock_device = MagicMock()
         mock_device.name = "old-device-001"
         mock_device.status = "online"
@@ -551,13 +551,66 @@ class TestReconciliationLoop:
                 new_callable=AsyncMock,
                 side_effect=lambda fn, *a, **kw: fn(*a, **kw),
             ),
+            patch("time.monotonic", return_value=100.0),
         ):
             mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_get_session.return_value.__aexit__ = AsyncMock()
+
+            # Initial scan, device missing -> records time but keeps online
+            await loop._rescan_hardware()
+            assert mock_device.status == "online"
+            assert "old-device-001" in loop._missing_devices
+            assert loop._missing_devices["old-device-001"] == 100.0
+
+            # Second scan 2 seconds later -> still online
+            with patch("time.monotonic", return_value=102.0):
+                await loop._rescan_hardware()
+            assert mock_device.status == "online"
+
+    async def test_rescan_hardware_marks_offline_after_grace_period(self) -> None:
+        """_rescan_hardware marks devices offline after grace period expires."""
+        mgr = MagicMock()
+        scanner = MagicMock()
+        scanner.scan_all.return_value = []
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=None,
+            interval=1.0,
+            grace_period_s=3.0,
+        )
+        # Device already missing since t=100.0
+        loop._missing_devices["old-device-001"] = 100.0
+
+        mock_device = MagicMock()
+        mock_device.name = "old-device-001"
+        mock_device.status = "online"
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_device]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch("time.monotonic", return_value=103.1),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+
             await loop._rescan_hardware()
 
         assert mock_device.status == "offline"
         mock_session.commit.assert_awaited_once()
+        assert "old-device-001" not in loop._missing_devices
 
     async def test_rescan_hardware_no_scanner(self) -> None:
         """_rescan_hardware is a no-op when scanner is None."""
@@ -799,6 +852,63 @@ class TestReconciliationLoopStats:
             await reconciler._reconcile_once()
 
         assert stats._total_containers_stopped == 1
+
+    async def test_reconcile_once_tracks_config_drift(self) -> None:
+        """_reconcile_once tracks container restarts due to config drift."""
+        from unittest.mock import patch as _patch
+
+        from silvasonic.controller.controller_stats import ControllerStats
+
+        mgr = MagicMock()
+        # Actual running container has an OLD config hash label
+        mgr.list_managed.return_value = [
+            {
+                "name": "silvasonic-recorder-drift",
+                "status": "running",
+                "labels": {"io.silvasonic.config_hash": "old_hash_123"},
+            }
+        ]
+        mgr.sync_state = MagicMock()
+
+        # Desired spec has a NEW config hash (simulating config drift)
+        spec = _make_spec(
+            name="silvasonic-recorder-drift",
+            labels={"io.silvasonic.config_hash": "new_hash_456"},
+        )
+
+        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
+        reconciler.set_stats(stats)
+
+        from unittest.mock import PropertyMock
+
+        with (
+            _patch(
+                "silvasonic.controller.container_spec.Tier2ServiceSpec.config_hash",
+                new_callable=PropertyMock,
+                return_value="new_hash_456",
+            ),
+            patch.object(
+                reconciler._evaluator,
+                "evaluate",
+                new_callable=AsyncMock,
+                return_value=[spec],
+            ),
+            _patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_session,
+            _patch(
+                "silvasonic.controller.controller_stats.log",
+            ),
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+            await reconciler._reconcile_once()
+
+        # Both a stop and a start should be tracked due to the drift restart
+        assert stats._total_containers_stopped == 1
+        assert stats._total_containers_started == 1
 
 
 # ===================================================================

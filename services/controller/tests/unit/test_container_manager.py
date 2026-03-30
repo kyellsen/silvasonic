@@ -586,7 +586,11 @@ class TestContainerManager:
         spec = _make_spec(name="silvasonic-recorder-active")
         desired = [spec]
         actual: list[dict[str, object]] = [
-            {"name": "silvasonic-recorder-active", "status": "running"},
+            {
+                "name": "silvasonic-recorder-active",
+                "status": "running",
+                "labels": {"io.silvasonic.config_hash": spec.config_hash},
+            },
         ]
 
         mgr.sync_state(desired, actual)
@@ -638,6 +642,56 @@ class TestContainerManager:
         mgr.sync_state(desired, actual)
 
         # Should start "new", nothing to stop
+        client.containers.run.assert_called_once()
+
+    def test_reconcile_restarts_on_config_drift(self) -> None:
+        """reconcile() stops and restarts container passing identical name but mismatched config."""
+        from podman.errors import NotFound
+
+        mock_container = MagicMock()
+        mock_container.id = "drift123"
+        mock_container.name = "silvasonic-recorder-drift"
+        mock_container.status = "running"
+        mock_container.labels = {"io.silvasonic.config_hash": "old_hash_123"}
+
+        client = MagicMock()
+        client.is_connected = True
+
+        # Simulate NotFound after removal to prevent start() from trying to stop it again
+        def mock_get(name: str) -> MagicMock:
+            if mock_container.remove.called:
+                raise NotFound("already removed")
+            return mock_container
+
+        client.containers.get.side_effect = mock_get
+        client.containers.run.return_value = mock_container
+        mgr = ContainerManager(client)
+
+        from unittest.mock import PropertyMock, patch
+
+        spec = _make_spec(
+            name="silvasonic-recorder-drift",
+            labels={"io.silvasonic.config_hash": "new_hash_456"},
+        )
+
+        desired = [spec]
+        actual: list[dict[str, object]] = [
+            {
+                "name": "silvasonic-recorder-drift",
+                "status": "running",
+                "labels": {"io.silvasonic.config_hash": "old_hash_123"},
+            }
+        ]
+
+        with patch(
+            "silvasonic.controller.container_spec.Tier2ServiceSpec.config_hash",
+            new_callable=PropertyMock,
+        ) as mock_hash:
+            mock_hash.return_value = "new_hash_456"
+            mgr.sync_state(desired, actual)
+
+        mock_container.stop.assert_called_once()
+        mock_container.remove.assert_called_once()
         client.containers.run.assert_called_once()
 
     def test_reconcile_empty_state(self) -> None:

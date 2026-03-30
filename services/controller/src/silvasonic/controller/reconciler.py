@@ -12,6 +12,7 @@ and reconciles against actual state from Podman (running containers queried by l
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, NoReturn
 
 import structlog
@@ -124,6 +125,7 @@ class ReconciliationLoop:
         device_scanner: DeviceScanner | None = None,
         profile_matcher: ProfileMatcher | None = None,
         interval: float,
+        grace_period_s: float = 3.0,
     ) -> None:
         """Initialize with a ContainerManager and reconciliation interval."""
         self._manager = container_manager
@@ -131,6 +133,8 @@ class ReconciliationLoop:
         self._scanner = device_scanner
         self._matcher = profile_matcher
         self._interval = interval
+        self._grace_period_s = grace_period_s
+        self._missing_devices: dict[str, float] = {}
         self._trigger_event = asyncio.Event()
         self._stats: ControllerStats | None = None
 
@@ -187,13 +191,26 @@ class ReconciliationLoop:
 
         # Step 4: Track container actions in stats (before sync)
         if self._stats is not None:
-            desired_names = {spec.name for spec in desired}
-            actual_names = {str(c.get("name", "")) for c in actual}
-            for name in desired_names - actual_names:
-                self._stats.record_container_start(name)
-            for c in actual:
-                name = str(c.get("name", ""))
-                if name not in desired_names:
+            desired_specs = {spec.name: spec for spec in desired}
+            actual_containers = {str(c.get("name", "")): c for c in actual}
+
+            for name, spec in desired_specs.items():
+                if name not in actual_containers:
+                    self._stats.record_container_start(name)
+                else:
+                    # Check for config drift (re-create cycle)
+                    c = actual_containers[name]
+                    labels = c.get("labels", {})
+                    actual_hash = ""
+                    if isinstance(labels, dict):
+                        actual_hash = labels.get("io.silvasonic.config_hash", "")
+
+                    if actual_hash != spec.config_hash:
+                        self._stats.record_container_stop(name)
+                        self._stats.record_container_start(name)
+
+            for name in actual_containers:
+                if name not in desired_specs:
                     self._stats.record_container_stop(name)
 
         # Step 5: Reconcile desired vs. actual
@@ -270,14 +287,43 @@ class ReconciliationLoop:
         current_ids: set[str],
         session: AsyncSession,
     ) -> None:
-        """Mark previously online devices as offline if no longer detected."""
+        """Mark previously online devices as offline if no longer detected.
+
+        Uses a time-based grace period (hysteresis) to debounce temporary
+        USB hotplugging or flappying.
+        """
+        now = time.monotonic()
+
+        # Reset grace period for devices that reappeared
+        reappeared_ids = current_ids.intersection(self._missing_devices)
+        for device_id in reappeared_ids:
+            del self._missing_devices[device_id]
+            log.info("reconciler.device_reappeared_in_grace", device_id=device_id)
+
         result = await session.execute(select(Device).where(Device.status == "online"))
         online_devices = result.scalars().all()
+        online_names = {d.name for d in online_devices}
+
+        # Clear orphaned state for devices that are no longer online in the DB
+        # Use list(keys()) to prevent RuntimeError: dictionary changed size during iteration
+        for device_id in list(self._missing_devices.keys()):
+            if device_id not in online_names and device_id not in current_ids:
+                del self._missing_devices[device_id]
 
         for device in online_devices:
             if device.name not in current_ids:
-                device.status = "offline"
-                log.info("reconciler.device_offline", device_id=device.name)
+                if device.name not in self._missing_devices:
+                    # First time missing -> start grace period
+                    self._missing_devices[device.name] = now
+                    log.debug("reconciler.device_missing_start_grace", device_id=device.name)
+                elif now - self._missing_devices[device.name] >= self._grace_period_s:
+                    # Grace period expired -> mark offline
+                    device.status = "offline"
+                    del self._missing_devices[device.name]
+                    log.info("reconciler.device_offline", device_id=device.name)
+                else:
+                    # Missing but still within grace period -> do nothing
+                    log.debug("reconciler.device_missing_in_grace", device_id=device.name)
 
     async def _rescan_hardware(self) -> None:
         """Rescan USB audio devices and sync state to DB.
