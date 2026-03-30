@@ -453,10 +453,13 @@ class TestStopAllTier2:
         svc = _make_bare_service()
         svc._container_manager.list_managed.side_effect = RuntimeError("Podman gone")
 
-        with patch(
-            "silvasonic.controller.__main__.asyncio.to_thread",
-            new_callable=AsyncMock,
-            side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+        with (
+            patch(
+                "silvasonic.controller.__main__.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+            patch("silvasonic.controller.__main__.log"),
         ):
             # Should not raise
             await svc._stop_all_tier2()

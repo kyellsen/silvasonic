@@ -50,6 +50,25 @@ async def upsert_device(
     if existing is not None:
         existing.status = "online"
         existing.last_seen = datetime.now(UTC)
+        existing.model = device_info.alsa_name
+
+        # --- BUGFIX: Sync volatile hardware state ---
+        # We create a new dict to ensure SQLAlchemy registers the JSONB mutation
+        updated_config = dict(existing.config) if existing.config else {}
+        updated_config.update(
+            {
+                "alsa_card_index": device_info.alsa_card_index,
+                "alsa_device": device_info.alsa_device,
+                "alsa_name": device_info.alsa_name,
+                "usb_vendor_id": device_info.usb_vendor_id,
+                "usb_product_id": device_info.usb_product_id,
+                "usb_serial": device_info.usb_serial,
+                "usb_bus_path": device_info.usb_bus_path,
+            }
+        )
+        existing.config = updated_config
+        # --------------------------------------------
+
         if profile_slug and not existing.profile_slug:  # pragma: no cover — integration-tested
             existing.profile_slug = profile_slug
             existing.enrollment_status = enrollment_status

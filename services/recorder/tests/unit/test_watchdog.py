@@ -14,7 +14,7 @@ Tests the RecordingWatchdog class including:
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from silvasonic.recorder.watchdog import RecordingWatchdog
@@ -333,7 +333,8 @@ class TestWatchdogStartFailure:
         )
 
         shutdown = asyncio.Event()
-        await watchdog.watch(shutdown)
+        with patch("silvasonic.recorder.watchdog.log"):
+            await watchdog.watch(shutdown)
 
         assert watchdog.restart_count == 2
         assert watchdog.is_giving_up is True

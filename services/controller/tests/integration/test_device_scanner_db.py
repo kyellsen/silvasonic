@@ -221,3 +221,59 @@ stream:
         assert row is not None
         assert row[0] == "enrolled"
         assert row[1] == "test_profile"
+
+    async def test_upsert_device_updates_volatile_hardware_config(
+        self,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """TDD Test for Issue 003: Volatile ALSA Configuration Drift."""
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        # --- SCHRITT 1: Erstes Einstecken (Initial Setup) ---
+        initial_info = DeviceInfo(
+            alsa_card_index=1,
+            alsa_name="TestMic",
+            alsa_device="hw:1,0",
+            usb_vendor_id="1234",
+            usb_product_id="5678",
+            usb_serial="SN-999",
+            usb_bus_path="1-1.1",
+        )
+        async with session_factory() as session:
+            await upsert_device(initial_info, session)
+            await session.commit()
+
+        # --- SCHRITT 2: Re-Plug (Simulated Drift) ---
+        new_info = DeviceInfo(
+            alsa_card_index=2,
+            alsa_name="TestMic (Updated)",
+            alsa_device="hw:2,0",
+            usb_vendor_id="1234",
+            usb_product_id="5678",
+            usb_serial="SN-999",
+            usb_bus_path="1-1.2",
+        )
+        async with session_factory() as session:
+            await upsert_device(new_info, session)
+            await session.commit()
+
+        # --- SCHRITT 3: Verify DB updates using RAW SQL (Consistency) ---
+        async with session_factory() as session:
+            result = await session.execute(
+                text("SELECT model, config FROM devices WHERE name = '1234-5678-SN-999'")
+            )
+            row = result.one_or_none()
+
+        await engine.dispose()
+
+        assert row is not None
+        model = row[0]
+        config = row[1]
+
+        # Verify changes were persisted by SQLAlchemy correctly
+        assert model == "TestMic (Updated)", "Model string did not update!"
+        assert config["alsa_device"] == "hw:2,0", "ALSA device string did not update!"
+        assert config["alsa_card_index"] == 2, "ALSA card index did not update!"
+        assert config["usb_bus_path"] == "1-1.2", "USB bus path did not update!"

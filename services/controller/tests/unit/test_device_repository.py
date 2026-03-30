@@ -50,16 +50,33 @@ class TestUpsertDevice:
         existing = MagicMock()
         existing.name = f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
         existing.profile_slug = "ultramic_384_evo"
+        existing.config = {
+            "alsa_card_index": 2,
+            "alsa_device": "hw:2,0",
+            "alsa_name": "UltraMic 384K",
+        }
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         session = AsyncMock(add=MagicMock())
         session.execute.return_value = mock_result
 
+        # Modify device_info to simulate hardware drift
+        device_info.alsa_card_index = 3
+        device_info.alsa_device = "hw:3,0"
+        device_info.alsa_name = "UltraMic 384K (Updated)"
+        device_info.usb_bus_path = "1-4.1"
+
         device = await upsert_device(device_info, session)
 
         assert device.status == "online"
         assert device.last_seen is not None
+        assert device.model == "UltraMic 384K (Updated)"
+        assert device.config["alsa_card_index"] == 3
+        assert device.config["alsa_device"] == "hw:3,0"
+        assert device.config["alsa_name"] == "UltraMic 384K (Updated)"
+        assert device.config["usb_bus_path"] == "1-4.1"
+        assert device.config["usb_vendor_id"] == _MOCK_VID
         session.add.assert_not_called()
 
     async def test_upsert_assigns_profile_to_new_device(self, device_info: DeviceInfo) -> None:

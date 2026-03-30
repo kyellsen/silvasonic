@@ -235,9 +235,12 @@ class TestGetUsbInfoForCard:
 
     def test_exception_returns_empty(self) -> None:
         """Returns empty UsbInfo on unexpected exceptions (logged)."""
-        with patch(
-            "silvasonic.controller.device_scanner.Path",
-        ) as mock_path_cls:
+        with (
+            patch(
+                "silvasonic.controller.device_scanner.Path",
+            ) as mock_path_cls,
+            patch("silvasonic.controller.device_scanner.log"),
+        ):
             mock_card_path = MagicMock()
             mock_card_path.exists.return_value = True
             mock_card_path.resolve.side_effect = RuntimeError("unexpected")
