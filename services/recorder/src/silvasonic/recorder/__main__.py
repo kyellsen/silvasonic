@@ -14,7 +14,6 @@ the subprocess lifecycle and atomic segment promotion.
 """
 
 import asyncio
-import subprocess
 from typing import Any
 
 import structlog
@@ -43,9 +42,9 @@ class RecorderService(SilvaService):
         """Initialize with settings from environment."""
         self._cfg = RecorderSettings()
         super().__init__(
-            instance_id=self._cfg.instance_id,
-            redis_url=self._cfg.redis_url,
-            heartbeat_interval=self._cfg.heartbeat_interval_s,
+            instance_id=self._cfg.INSTANCE_ID,
+            redis_url=self._cfg.REDIS_URL,
+            heartbeat_interval=self._cfg.HEARTBEAT_INTERVAL_S,
         )
         # Build pipeline config from controller-injected config (or defaults)
         injected_config = self._cfg.parse_injected_config()
@@ -70,7 +69,7 @@ class RecorderService(SilvaService):
         """Include recording metadata in heartbeat (ADR-0019 §2.4)."""
         meta: dict[str, Any] = {
             "recording": {
-                "device": self._cfg.recorder_device,
+                "device": self._cfg.RECORDER_DEVICE,
                 "sample_rate": self._pipeline_config.sample_rate,
                 "channels": self._pipeline_config.channels,
                 "format": self._pipeline_config.format,
@@ -83,7 +82,7 @@ class RecorderService(SilvaService):
                 "watchdog_restarts": self._watchdog.restart_count if self._watchdog else 0,
                 "watchdog_max_restarts": self._watchdog.max_restarts
                 if self._watchdog
-                else self._cfg.recorder_watchdog_max_restarts,
+                else self._cfg.RECORDER_WATCHDOG_MAX_RESTARTS,
                 "watchdog_giving_up": self._watchdog.is_giving_up if self._watchdog else False,
                 "watchdog_last_failure": self._watchdog.last_failure_reason
                 if self._watchdog
@@ -96,10 +95,14 @@ class RecorderService(SilvaService):
         """Main recording lifecycle.
 
         1. Ensure workspace directories exist.
-        2. Pre-flight device validation (optional).
-        3. Start FFmpeg pipeline.
-        4. Wait for shutdown signal (FFmpeg works autonomously).
-        5. Stop pipeline and promote final segments.
+        2. Start FFmpeg pipeline with controller-injected device.
+        3. Wait for shutdown signal (FFmpeg works autonomously).
+        4. Stop pipeline and promote final segments.
+
+        Device validation is **not** done here — the Controller already verified
+        the device via ``/proc/asound/cards`` + sysfs before injecting it.
+        If the device is unavailable, FFmpeg will fail and the multi-level
+        recovery chain (Watchdog → Container Restart → Reconciliation) handles it.
         """
         self.health.update_status("recorder", True, "running")
 
@@ -107,34 +110,22 @@ class RecorderService(SilvaService):
         workspace = self._cfg.workspace_path
         ensure_workspace(workspace)
 
-        # Step 2: Pre-flight device validation
-        device = self._cfg.recorder_device
-
-        if self._cfg.skip_device_check:
-            log.info("recorder.device_check_skipped")
-            self.health.update_status("recorder", True, "idle — device check skipped")
-            await self._shutdown_event.wait()
-            return
-
-        use_mock = self._cfg.recorder_mock_source
-
-        if not use_mock and not self._validate_device(device):
-            self.health.update_status("recorder", False, "Device validation failed")
-            await self._shutdown_event.wait()
-            return
+        # Step 2: Resolve device and mock settings
+        device = self._cfg.RECORDER_DEVICE
+        use_mock = self._cfg.RECORDER_MOCK_SOURCE
 
         # Step 3: Create stats tracker + FFmpeg pipeline
         stats = RecordingStats(
-            startup_duration_s=self._cfg.recorder_log_startup_s,
-            summary_interval_s=self._cfg.recorder_log_summary_interval_s,
+            startup_duration_s=self._cfg.RECORDER_LOG_STARTUP_S,
+            summary_interval_s=self._cfg.RECORDER_LOG_SUMMARY_INTERVAL_S,
         )
         self._pipeline = FFmpegPipeline(
             config=self._pipeline_config,
             workspace=workspace,
             device=device,
             mock_source=use_mock,
-            ffmpeg_binary=self._cfg.ffmpeg_binary,
-            ffmpeg_loglevel=self._cfg.ffmpeg_loglevel,
+            ffmpeg_binary=self._cfg.FFMPEG_BINARY,
+            ffmpeg_loglevel=self._cfg.FFMPEG_LOGLEVEL,
             stats=stats,
         )
 
@@ -153,10 +144,10 @@ class RecorderService(SilvaService):
         # Step 4: Start watchdog + monitor loop
         self._watchdog = RecordingWatchdog(
             self._pipeline,
-            max_restarts=self._cfg.recorder_watchdog_max_restarts,
-            check_interval_s=self._cfg.recorder_watchdog_check_interval_s,
-            stall_timeout_s=self._cfg.recorder_watchdog_stall_timeout_s,
-            base_backoff_s=self._cfg.recorder_watchdog_base_backoff_s,
+            max_restarts=self._cfg.RECORDER_WATCHDOG_MAX_RESTARTS,
+            check_interval_s=self._cfg.RECORDER_WATCHDOG_CHECK_INTERVAL_S,
+            stall_timeout_s=self._cfg.RECORDER_WATCHDOG_STALL_TIMEOUT_S,
+            base_backoff_s=self._cfg.RECORDER_WATCHDOG_BASE_BACKOFF_S,
         )
         rec_task = asyncio.create_task(self._monitor_recording())
 
@@ -171,57 +162,6 @@ class RecorderService(SilvaService):
             if self._pipeline is not None:
                 self._pipeline.stop()
                 self._pipeline = None
-
-    def _validate_device(self, device: str) -> bool:
-        """Validate that the ALSA audio device exists.
-
-        Uses ``arecord -l`` to list available capture devices and
-        checks if the configured device can be found.
-
-        Args:
-            device: ALSA device string (e.g. ``"hw:2,0"``).
-
-        Returns:
-            ``True`` if the device was found, ``False`` otherwise.
-        """
-        try:
-            result = subprocess.run(
-                ["arecord", "-l"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            output = result.stdout
-
-            # Extract card number from device string (e.g. "hw:2,0" → "2")
-            card_num = device.split(":")[1].split(",")[0] if ":" in device else device
-            card_marker = f"card {card_num}:"
-
-            if card_marker in output:
-                # Find the device name for logging
-                for line in output.splitlines():
-                    if card_marker in line:
-                        log.info(
-                            "recorder.device_validated",
-                            device=device,
-                            info=line.strip(),
-                        )
-                        return True
-
-            # Device not found — log available devices
-            available_lines = [
-                line.strip() for line in output.splitlines() if line.strip().startswith("card ")
-            ]
-            log.error(
-                "recorder.device_not_found",
-                device=device,
-                available_devices=available_lines,
-            )
-            return False
-
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            log.exception("recorder.device_validation_failed", device=device)
-            return False
 
     async def _monitor_recording(self) -> None:
         """Periodically check FFmpeg status and update health.
@@ -248,7 +188,7 @@ class RecorderService(SilvaService):
                 details = "Pipeline not initialized"
 
             self.health.update_status("recording", is_recording, details)
-            await asyncio.sleep(self._cfg.recorder_health_poll_interval_s)
+            await asyncio.sleep(self._cfg.RECORDER_HEALTH_POLL_INTERVAL_S)
 
 
 if __name__ == "__main__":

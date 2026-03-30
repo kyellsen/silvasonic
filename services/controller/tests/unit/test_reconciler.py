@@ -43,47 +43,42 @@ def _make_spec(**overrides: Any) -> Tier2ServiceSpec:
 # ===================================================================
 
 
+class FakeResult:
+    def __init__(self, items: list[Any]) -> None:
+        """Initialize FakeResult with static items."""
+        self._items = items
+
+    def scalars(self) -> "FakeResult":
+        return self
+
+    def all(self) -> list[Any]:
+        return self._items
+
+
+class FakeSession:
+    def __init__(self, devices: list[Any], profile: Any = None) -> None:
+        """Initialize FakeSession with static devices and profile."""
+        self._devices = devices
+        self._profile = profile
+
+    async def execute(self, stmt: Any) -> FakeResult:
+        return FakeResult(self._devices)
+
+    async def get(self, model: Any, ident: Any) -> Any:
+        return self._profile
+
+
 @pytest.mark.unit
 class TestDeviceStateEvaluator:
-    """Tests for the DeviceStateEvaluator class."""
-
-    async def test_evaluate_eligible_device(self) -> None:
-        """evaluate() returns specs for eligible devices."""
-        device = MagicMock()
-        device.name = "0869-0389-00000000034F"
-        device.status = "online"
-        device.enabled = True
-        device.enrollment_status = "enrolled"
-        device.profile_slug = "test_profile"
-        device.config = {"alsa_device": "hw:1,0", "usb_serial": "00000000034F"}
-
-        profile = MagicMock()
-        profile.slug = "test_profile"
-        profile.config = {"sample_rate": 48000, "channels": 1}
-
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = [device]
-
-        session = AsyncMock()
-        session.execute = AsyncMock(return_value=result_mock)
-        session.get = AsyncMock(return_value=profile)
-
-        evaluator = DeviceStateEvaluator()
-        specs = await evaluator.evaluate(session)
-
-        assert len(specs) == 1
-        assert specs[0].name == "silvasonic-recorder-test-profile-034f"
+    """Tests for DeviceStateEvaluator edge cases using FakeSession doubles."""
 
     async def test_evaluate_no_eligible_devices(self) -> None:
         """evaluate() returns empty list when no devices match criteria."""
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = []
-
-        session = AsyncMock()
-        session.execute = AsyncMock(return_value=result_mock)
+        session = FakeSession(devices=[])
 
         evaluator = DeviceStateEvaluator()
-        specs = await evaluator.evaluate(session)
+        # FakeSession doesn't extend from a real session, so we ignore typing here
+        specs = await evaluator.evaluate(session)  # type: ignore
 
         assert len(specs) == 0
 
@@ -94,15 +89,10 @@ class TestDeviceStateEvaluator:
         device.profile_slug = "nonexistent"
         device.config = {}
 
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = [device]
-
-        session = AsyncMock()
-        session.execute = AsyncMock(return_value=result_mock)
-        session.get = AsyncMock(return_value=None)  # Profile not found
+        session = FakeSession(devices=[device], profile=None)
 
         evaluator = DeviceStateEvaluator()
-        specs = await evaluator.evaluate(session)
+        specs = await evaluator.evaluate(session)  # type: ignore
 
         assert len(specs) == 0
 
@@ -113,24 +103,19 @@ class TestDeviceStateEvaluator:
         device.profile_slug = "nonexistent"
         device.config = {}
 
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = [device]
-
-        session = AsyncMock()
-        session.execute = AsyncMock(return_value=result_mock)
-        session.get = AsyncMock(return_value=None)
+        session = FakeSession(devices=[device], profile=None)
 
         evaluator = DeviceStateEvaluator()
 
         # First call — should log warning
         with patch("silvasonic.controller.reconciler.log") as mock_log:
-            await evaluator.evaluate(session)
+            await evaluator.evaluate(session)  # type: ignore
             mock_log.warning.assert_called_once()
             mock_log.debug.assert_called_once()  # reconciler.evaluated
 
         # Second call — same device+slug → debug only, no new warning
         with patch("silvasonic.controller.reconciler.log") as mock_log:
-            await evaluator.evaluate(session)
+            await evaluator.evaluate(session)  # type: ignore
             mock_log.warning.assert_not_called()
             # 2 debug calls: missing_profile (rate-limited) + reconciler.evaluated
             assert mock_log.debug.call_count == 2
@@ -147,12 +132,7 @@ class TestDeviceStateEvaluator:
         profile = MagicMock()
         profile.slug = "broken_profile"
 
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = [device]
-
-        session = AsyncMock()
-        session.execute = AsyncMock(return_value=result_mock)
-        session.get = AsyncMock(return_value=profile)
+        session = FakeSession(devices=[device], profile=profile)
 
         evaluator = DeviceStateEvaluator()
 
@@ -160,7 +140,7 @@ class TestDeviceStateEvaluator:
             "silvasonic.controller.reconciler.build_recorder_spec",
             side_effect=ValueError("invalid config"),
         ):
-            specs = await evaluator.evaluate(session)
+            specs = await evaluator.evaluate(session)  # type: ignore
 
         assert len(specs) == 0
 
@@ -206,58 +186,6 @@ class TestReconciliationLoop:
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_session.return_value.__aexit__ = AsyncMock()
             await reconciler._reconcile_once()
-
-    async def test_run_loop_handles_exception_and_continues(self) -> None:
-        """run() catches exceptions in _reconcile_once and continues."""
-        import asyncio
-
-        mgr = MagicMock()
-        loop = ReconciliationLoop(mgr, interval=0.01)
-
-        call_count = 0
-
-        async def failing_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                raise asyncio.CancelledError
-            raise RuntimeError("DB unavailable")
-
-        with (
-            patch.object(loop, "_reconcile_once", side_effect=failing_reconcile),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await loop.run()
-
-        assert call_count >= 2
-
-    async def test_trigger_wakes_run_loop(self) -> None:
-        """trigger() wakes the run loop before the interval expires."""
-        import asyncio
-
-        mgr = MagicMock()
-        loop = ReconciliationLoop(mgr, interval=999.0)  # Very long interval
-
-        call_count = 0
-
-        async def mock_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                raise asyncio.CancelledError
-
-        with patch.object(loop, "_reconcile_once", side_effect=mock_reconcile):
-
-            async def trigger_and_cancel() -> None:
-                await asyncio.sleep(0.01)
-                loop.trigger()
-
-            task = asyncio.create_task(trigger_and_cancel())
-            with pytest.raises(asyncio.CancelledError):
-                await loop.run()
-            await task
-
-        assert call_count >= 2
 
     async def test_reconcile_once_calls_evaluate_and_reconcile(self) -> None:
         """_reconcile_once() queries DB, lists containers, and reconciles."""

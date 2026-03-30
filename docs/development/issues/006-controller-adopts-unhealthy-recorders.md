@@ -36,8 +36,8 @@ This is a real MVP issue because a field unit can stop capturing audio without t
 
 ## 4. Steps to Reproduce (If applicable)
 1. Start a Recorder with an ALSA device that is temporarily unavailable or invalid.
-2. Let `RecorderService._validate_device()` fail.
-3. Observe that the Recorder process stays alive and waits for shutdown instead of exiting.
+2. FFmpeg will fail to start → Watchdog restarts → Container restart → Reconciliation.
+3. ~~Previously: `RecorderService._validate_device()` would fail and the Recorder would wait idle indefinitely.~~ **RESOLVED:** `_validate_device()` was removed; the Recorder now always attempts to start FFmpeg directly, engaging the multi-level recovery chain.
 4. Observe that the Controller continues to adopt the container because name and config hash still match.
 
 ## 5. Expected Behavior
@@ -50,9 +50,9 @@ Either:
 ## 6. Proposed Solution
 Implement one or both of the following:
 
-1. **Recorder-side fail-fast**
-   - In `RecorderService.run`, if device validation fails or startup cannot establish recording, exit with an exception/non-zero status instead of waiting for shutdown.
-   - This allows Podman `restart: on-failure` to engage.
+1. **Recorder-side fail-fast** ✅ **RESOLVED**
+   - `_validate_device()` was removed. The Recorder always starts FFmpeg directly.
+   - If FFmpeg fails, the Watchdog restarts it (Level 1). If exhausted, the container exits and Podman `restart: on-failure` takes over (Level 2).
 
 2. **Controller-side health-aware reconciliation**
    - Extend Controller reconciliation to inspect Recorder health or a stronger runtime signal than container presence alone.

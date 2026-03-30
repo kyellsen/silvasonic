@@ -6,7 +6,6 @@ Tests the RecorderService (SilvaService subclass) including:
 - RecorderSettings injected config parsing
 - Background health monitor (_monitor_recording)
 - run() lifecycle with shutdown event
-- _validate_device via arecord
 - __main__ guard
 """
 
@@ -39,16 +38,15 @@ def bare_service() -> "RecorderService":
     svc._ctx = MagicMock()
     svc._ctx.health = HealthMonitor()
     svc._cfg = MagicMock()
-    svc._cfg.recorder_device = "hw:mock,0"
-    svc._cfg.skip_device_check = False
-    svc._cfg.recorder_mock_source = False
+    svc._cfg.RECORDER_DEVICE = "hw:mock,0"
+    svc._cfg.RECORDER_MOCK_SOURCE = False
     svc._cfg.workspace_path = MagicMock()
-    svc._cfg.ffmpeg_binary = "ffmpeg"
-    svc._cfg.ffmpeg_loglevel = "warning"
-    svc._cfg.recorder_watchdog_max_restarts = 5
-    svc._cfg.recorder_watchdog_check_interval_s = 5.0
-    svc._cfg.recorder_watchdog_stall_timeout_s = 60.0
-    svc._cfg.recorder_health_poll_interval_s = 5.0
+    svc._cfg.FFMPEG_BINARY = "ffmpeg"
+    svc._cfg.FFMPEG_LOGLEVEL = "warning"
+    svc._cfg.RECORDER_WATCHDOG_MAX_RESTARTS = 5
+    svc._cfg.RECORDER_WATCHDOG_CHECK_INTERVAL_S = 5.0
+    svc._cfg.RECORDER_WATCHDOG_STALL_TIMEOUT_S = 60.0
+    svc._cfg.RECORDER_HEALTH_POLL_INTERVAL_S = 5.0
     svc._pipeline_config = FFmpegConfig()
     svc._pipeline = None
     svc._watchdog = None
@@ -137,11 +135,11 @@ class TestRecorderSettings:
         from silvasonic.recorder.settings import RecorderSettings
 
         settings = RecorderSettings()
-        assert settings.instance_id == "recorder"
-        assert settings.recorder_device == "hw:1,0"
-        assert settings.recorder_config_json is None
-        assert settings.ffmpeg_binary == "ffmpeg"
-        assert settings.ffmpeg_loglevel == "warning"
+        assert settings.INSTANCE_ID == "recorder"
+        assert settings.RECORDER_DEVICE == "hw:1,0"
+        assert settings.RECORDER_CONFIG_JSON is None
+        assert settings.FFMPEG_BINARY == "ffmpeg"
+        assert settings.FFMPEG_LOGLEVEL == "warning"
 
     def test_env_override(self) -> None:
         """Environment variables override defaults."""
@@ -156,8 +154,8 @@ class TestRecorderSettings:
             from silvasonic.recorder.settings import RecorderSettings
 
             settings = RecorderSettings()
-            assert settings.instance_id == "mic-1"
-            assert settings.recorder_device == "hw:3,0"
+            assert settings.INSTANCE_ID == "mic-1"
+            assert settings.RECORDER_DEVICE == "hw:3,0"
             assert settings.workspace_path.as_posix() == "/custom/workspace"
 
     def test_parse_injected_config_none(self) -> None:
@@ -172,7 +170,7 @@ class TestRecorderSettings:
         from silvasonic.recorder.settings import RecorderSettings
 
         settings = RecorderSettings()
-        assert settings.recorder_health_poll_interval_s == 5.0
+        assert settings.RECORDER_HEALTH_POLL_INTERVAL_S == 5.0
 
     def test_health_poll_interval_env_override(self) -> None:
         """recorder_health_poll_interval_s respects env override."""
@@ -183,7 +181,7 @@ class TestRecorderSettings:
             from silvasonic.recorder.settings import RecorderSettings
 
             settings = RecorderSettings()
-            assert settings.recorder_health_poll_interval_s == 10.0
+            assert settings.RECORDER_HEALTH_POLL_INTERVAL_S == 10.0
 
     def test_parse_injected_config_valid(self) -> None:
         """parse_injected_config() returns InjectedRecorderConfig for valid JSON."""
@@ -324,7 +322,6 @@ class TestRecorderServiceRun:
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
             patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
-            patch.object(bare_service, "_validate_device", return_value=True),
         ):
             # Configure watchdog.watch to set shutdown after a short delay
             async def fake_watch(event: asyncio.Event) -> None:
@@ -351,7 +348,6 @@ class TestRecorderServiceRun:
         with (
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
-            patch.object(bare_service, "_validate_device", return_value=True),
         ):
             await bare_service.run()
 
@@ -378,7 +374,6 @@ class TestRecorderServiceRun:
             patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
             patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
-            patch.object(bare_service, "_validate_device", return_value=True),
         ):
 
             async def fake_watch(event: asyncio.Event) -> None:
@@ -391,117 +386,6 @@ class TestRecorderServiceRun:
 
         # Pipeline should have been stopped
         mock_pipeline.stop.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# _validate_device
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestValidateDevice:
-    """Tests for the _validate_device() pre-flight check."""
-
-    def test_validate_device_success(self, bare_service: "RecorderService") -> None:
-        """_validate_device returns True when arecord finds the card."""
-        arecord_output = (
-            "**** List of CAPTURE Hardware Devices ****\n"
-            "card 2: UltraMic [UltraMic 384K], device 0: USB Audio [USB Audio]\n"
-            "  Subdevices: 1/1\n"
-            "  Subdevice #0: subdevice #0\n"
-        )
-        mock_result = MagicMock()
-        mock_result.stdout = arecord_output
-
-        with patch("silvasonic.recorder.__main__.subprocess.run", return_value=mock_result):
-            result = bare_service._validate_device("hw:2,0")
-
-        assert result is True
-
-    def test_validate_device_failure(self, bare_service: "RecorderService") -> None:
-        """_validate_device returns False when card number not found."""
-        arecord_output = (
-            "**** List of CAPTURE Hardware Devices ****\n"
-            "card 1: Headphones [bcm2835 Headphones], device 0: USB Audio [USB Audio]\n"
-        )
-        mock_result = MagicMock()
-        mock_result.stdout = arecord_output
-
-        with patch("silvasonic.recorder.__main__.subprocess.run", return_value=mock_result):
-            result = bare_service._validate_device("hw:99,0")
-
-        assert result is False
-
-    def test_validate_device_handles_timeout(self, bare_service: "RecorderService") -> None:
-        """_validate_device returns False when arecord times out."""
-        import subprocess
-
-        with patch(
-            "silvasonic.recorder.__main__.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd="arecord", timeout=5),
-        ):
-            result = bare_service._validate_device("hw:2,0")
-
-        assert result is False
-
-
-@pytest.mark.unit
-class TestRunDeviceValidation:
-    """Tests for the run() device validation abort path."""
-
-    async def test_run_waits_on_device_validation_failure(
-        self, bare_service: "RecorderService", tmp_path: MagicMock
-    ) -> None:
-        """run() waits for shutdown when _validate_device returns False."""
-        bare_service._shutdown_event = asyncio.Event()
-        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
-        bare_service._cfg.skip_device_check = False
-
-        with (
-            patch("silvasonic.recorder.__main__.ensure_workspace"),
-            patch.object(bare_service, "_validate_device", return_value=False),
-            patch("silvasonic.recorder.__main__.FFmpegPipeline") as mock_pipeline_cls,
-        ):
-            # Trigger shutdown after a short delay so run() unblocks
-            async def trigger_shutdown() -> None:
-                await asyncio.sleep(0.1)
-                bare_service._shutdown_event.set()
-
-            shutdown_task = asyncio.create_task(trigger_shutdown())
-            await bare_service.run()
-            await shutdown_task
-
-        # Pipeline should never have been created
-        mock_pipeline_cls.assert_not_called()
-        # Health should indicate failure
-        status = bare_service.health.get_status()
-        assert status["components"]["recorder"]["healthy"] is False
-
-    async def test_run_skips_device_check_when_configured(
-        self, bare_service: "RecorderService", tmp_path: MagicMock
-    ) -> None:
-        """run() enters idle mode when skip_device_check is True."""
-        bare_service._shutdown_event = asyncio.Event()
-        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
-        bare_service._cfg.skip_device_check = True
-
-        with (
-            patch("silvasonic.recorder.__main__.ensure_workspace"),
-            patch("silvasonic.recorder.__main__.FFmpegPipeline") as mock_pipeline_cls,
-        ):
-
-            async def trigger_shutdown() -> None:
-                await asyncio.sleep(0.1)
-                bare_service._shutdown_event.set()
-
-            shutdown_task = asyncio.create_task(trigger_shutdown())
-            await bare_service.run()
-            await shutdown_task
-
-        # Pipeline should never have been created
-        mock_pipeline_cls.assert_not_called()
-        # Health should be OK (idle mode)
-        status = bare_service.health.get_status()
-        assert status["components"]["recorder"]["healthy"] is True
-        assert "idle" in status["components"]["recorder"]["details"]
 
 
 # ---------------------------------------------------------------------------

@@ -301,7 +301,7 @@ class TestControllerServiceRun:
         svc = _make_bare_service()
         svc._shutdown_event = asyncio.Event()
 
-        # Mock the monitor methods to be no-ops
+        # Mock the monitor methods to be slow no-ops so they don't finish before cancellation
         async def noop_forever() -> None:
             await asyncio.Event().wait()
 
@@ -309,22 +309,23 @@ class TestControllerServiceRun:
         svc._nudge_subscriber.run = MagicMock(side_effect=noop_forever)
         svc._log_forwarder.run = MagicMock(side_effect=noop_forever)
 
+        # Trigger shutdown immediately before starting the loop to prevent hanging
+        svc._shutdown_event.set()
+
         with (
             patch.object(svc, "_monitor_database", side_effect=noop_forever),
             patch.object(svc, "_monitor_podman", side_effect=noop_forever),
-            patch(
-                "silvasonic.controller.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=lambda _: svc._shutdown_event.set(),
-            ),
+            patch.object(svc, "_stop_all_tier2", new_callable=AsyncMock) as mock_stop_tier2,
         ):
             await svc.run()
 
-        # Health should have been initialized
+        # Health should have been initialized (it happens before the loop)
         status = svc.health.get_status()
         assert "controller" in status["components"]
-        # Podman client should be closed
+
+        # Verify clean shutdown procedures are executed
         svc._podman_client.close.assert_called_once()
+        mock_stop_tier2.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
