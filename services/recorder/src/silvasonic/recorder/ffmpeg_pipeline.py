@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Literal
 
 import structlog
 from pydantic import BaseModel, Field, PositiveInt
-from silvasonic.core.schemas.devices import MicrophoneProfile
+from silvasonic.recorder.schemas import InjectedRecorderConfig
 
 if TYPE_CHECKING:
     from silvasonic.recorder.recording_stats import RecordingStats
@@ -87,16 +87,16 @@ class FFmpegConfig(BaseModel):
     processed_enabled: bool = Field(default=True, description="Write processed stream")
 
     @classmethod
-    def from_profile(cls, profile: MicrophoneProfile) -> FFmpegConfig:
-        """Build config from a validated MicrophoneProfile."""
+    def from_injected_config(cls, config: InjectedRecorderConfig) -> FFmpegConfig:
+        """Build config from a validated controller-injected runtime config."""
         return cls(
-            sample_rate=profile.audio.sample_rate,
-            channels=profile.audio.channels,
-            format=profile.audio.format,
-            segment_duration_s=profile.stream.segment_duration_s,
-            gain_db=profile.processing.gain_db,
-            raw_enabled=profile.stream.raw_enabled,
-            processed_enabled=profile.stream.processed_enabled,
+            sample_rate=config.audio.sample_rate,
+            channels=config.audio.channels,
+            format=config.audio.format,
+            segment_duration_s=config.stream.segment_duration_s,
+            gain_db=config.processing.gain_db,
+            raw_enabled=config.stream.raw_enabled,
+            processed_enabled=config.stream.processed_enabled,
         )
 
     @property

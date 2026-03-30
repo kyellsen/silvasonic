@@ -40,19 +40,18 @@ class TestFFmpegConfig:
         assert cfg.raw_enabled is True
         assert cfg.processed_enabled is True
 
-    def test_from_profile(self) -> None:
-        """from_profile extracts all fields from a MicrophoneProfile."""
-        profile = MagicMock()
-        profile.audio.sample_rate = 384000
-        profile.audio.channels = 1
-        profile.audio.format = "S24LE"
-        profile.processing.gain_db = 6.0
-        profile.processing.chunk_size = 8192
-        profile.stream.segment_duration_s = 30
-        profile.stream.raw_enabled = True
-        profile.stream.processed_enabled = False
+    def test_from_injected_config(self) -> None:
+        """from_injected_config extracts all fields from an InjectedRecorderConfig."""
+        config = MagicMock()
+        config.audio.sample_rate = 384000
+        config.audio.channels = 1
+        config.audio.format = "S24LE"
+        config.processing.gain_db = 6.0
+        config.stream.segment_duration_s = 30
+        config.stream.raw_enabled = True
+        config.stream.processed_enabled = False
 
-        cfg = FFmpegConfig.from_profile(profile)
+        cfg = FFmpegConfig.from_injected_config(config)
         assert cfg.sample_rate == 384000
         assert cfg.channels == 1
         assert cfg.format == "S24LE"

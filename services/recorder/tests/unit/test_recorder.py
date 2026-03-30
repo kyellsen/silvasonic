@@ -3,7 +3,7 @@
 Tests the RecorderService (SilvaService subclass) including:
 - Package import
 - Service configuration and settings
-- RecorderSettings profile parsing
+- RecorderSettings injected config parsing
 - Background health monitor (_monitor_recording)
 - run() lifecycle with shutdown event
 - _validate_device via arecord
@@ -110,8 +110,8 @@ class TestRecorderConfig:
                 heartbeat_interval=10.0,
             )
 
-    def test_init_with_profile_json(self) -> None:
-        """__init__ uses from_profile when valid config JSON is present."""
+    def test_init_with_injected_config_json(self) -> None:
+        """__init__ uses from_injected_config when valid config JSON is present."""
         config = {"audio": {"sample_rate": 96000, "channels": 1, "format": "S16LE"}}
         with (
             patch.dict(os.environ, {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(config)}),
@@ -160,12 +160,12 @@ class TestRecorderSettings:
             assert settings.recorder_device == "hw:3,0"
             assert settings.workspace_path.as_posix() == "/custom/workspace"
 
-    def test_parse_profile_none(self) -> None:
-        """parse_profile() returns None when no config JSON is set."""
+    def test_parse_injected_config_none(self) -> None:
+        """parse_injected_config() returns None when no config JSON is set."""
         from silvasonic.recorder.settings import RecorderSettings
 
         settings = RecorderSettings()
-        assert settings.parse_profile() is None
+        assert settings.parse_injected_config() is None
 
     def test_health_poll_interval_default(self) -> None:
         """recorder_health_poll_interval_s defaults to 5.0."""
@@ -185,8 +185,8 @@ class TestRecorderSettings:
             settings = RecorderSettings()
             assert settings.recorder_health_poll_interval_s == 10.0
 
-    def test_parse_profile_valid(self) -> None:
-        """parse_profile() returns MicrophoneProfile for valid JSON."""
+    def test_parse_injected_config_valid(self) -> None:
+        """parse_injected_config() returns InjectedRecorderConfig for valid JSON."""
         config = {
             "audio": {
                 "sample_rate": 384000,
@@ -201,12 +201,12 @@ class TestRecorderSettings:
             from silvasonic.recorder.settings import RecorderSettings
 
             settings = RecorderSettings()
-            profile = settings.parse_profile()
-            assert profile is not None
-            assert profile.audio.sample_rate == 384000
+            parsed = settings.parse_injected_config()
+            assert parsed is not None
+            assert parsed.audio.sample_rate == 384000
 
-    def test_parse_profile_invalid_json(self) -> None:
-        """parse_profile() returns None for invalid JSON."""
+    def test_parse_injected_config_invalid_json(self) -> None:
+        """parse_injected_config() returns None for invalid JSON."""
         with patch.dict(
             os.environ,
             {"SILVASONIC_RECORDER_CONFIG_JSON": "not json{{{"},
@@ -214,10 +214,10 @@ class TestRecorderSettings:
             from silvasonic.recorder.settings import RecorderSettings
 
             settings = RecorderSettings()
-            assert settings.parse_profile() is None
+            assert settings.parse_injected_config() is None
 
-    def test_parse_profile_missing_audio(self) -> None:
-        """parse_profile() returns None when 'audio' section is missing."""
+    def test_parse_injected_config_missing_audio(self) -> None:
+        """parse_injected_config() returns None when 'audio' section is missing."""
         with patch.dict(
             os.environ,
             {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps({"processing": {}})},
@@ -225,7 +225,7 @@ class TestRecorderSettings:
             from silvasonic.recorder.settings import RecorderSettings
 
             settings = RecorderSettings()
-            assert settings.parse_profile() is None
+            assert settings.parse_injected_config() is None
 
 
 # ---------------------------------------------------------------------------

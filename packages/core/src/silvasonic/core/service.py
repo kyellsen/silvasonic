@@ -96,7 +96,7 @@ class SilvaService:
         self._run_task: asyncio.Task[None] | None = None
 
     # ------------------------------------------------------------------
-    # Delegated properties — preserve backwards-compatible surface area
+    # Delegated properties — convenience access to shared infrastructure
     # ------------------------------------------------------------------
 
     @property

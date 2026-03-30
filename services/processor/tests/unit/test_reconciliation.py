@@ -89,7 +89,7 @@ class TestReconciliationAudit:
     async def test_raw_only_recording_file_checked(self, tmp_path: Path) -> None:
         """Raw-only recording (file_processed=NULL) uses file_raw for check.
 
-        Regression test for Bug #2: When file_processed is NULL,
+        Regression test for raw-only devices: When file_processed is NULL,
         COALESCE(file_processed, file_raw) returns file_raw. The audit
         must not crash with TypeError (PosixPath / NoneType).
 

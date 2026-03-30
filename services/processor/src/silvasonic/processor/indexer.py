@@ -184,7 +184,7 @@ async def index_recordings(
     session: AsyncSession,
     recordings_dir: Path,
     *,
-    skip_files: set[str] | None = None,
+    errored_files: set[str] | None = None,
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
 
@@ -197,21 +197,22 @@ async def index_recordings(
     Args:
         session: Active async DB session.
         recordings_dir: Root of the Recorder workspace.
-        skip_files: Optional set of relative paths to skip (error blacklist).
+        errored_files: Optional set of relative paths that previously failed
+            metadata extraction.  Skipped immediately without DB interaction.
 
     Returns:
         IndexResult with counts of new, skipped, and errored files.
     """
     result = IndexResult()
-    _skip = skip_files or set()
+    _errored = errored_files or set()
     wav_files = scan_workspace(recordings_dir)
 
     for wav_path in wav_files:
         is_raw = _is_raw_path(wav_path)
         rel_path = _relative_path(wav_path, recordings_dir)
 
-        # Bug #2 fix: skip files that failed in a previous cycle
-        if rel_path in _skip:
+        # Skip files that failed extraction in a previous cycle
+        if rel_path in _errored:
             result.skipped += 1
             continue
 

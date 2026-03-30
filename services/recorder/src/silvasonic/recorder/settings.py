@@ -1,8 +1,10 @@
 """Pydantic settings for the Recorder service.
 
 Reads configuration from ``SILVASONIC_*`` environment variables.
-The optional ``SILVASONIC_RECORDER_CONFIG_JSON`` contains the full
-Microphone Profile (serialized by the Controller, ADR-0016).
+The optional ``SILVASONIC_RECORDER_CONFIG_JSON`` contains the
+controller-injected runtime config (audio/processing/stream sections,
+serialized from ``MicrophoneProfile.config`` JSONB by the Controller,
+ADR-0016).
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from pathlib import Path
 import structlog
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from silvasonic.core.schemas.devices import MicrophoneProfile
+from silvasonic.recorder.schemas import InjectedRecorderConfig
 
 log = structlog.get_logger()
 
@@ -96,12 +98,13 @@ class RecorderSettings(BaseSettings):
     # Range: 1-30.  Default 5 provides quick failure detection without busy-looping.
     recorder_health_poll_interval_s: float = 5.0
 
-    def parse_profile(self) -> MicrophoneProfile | None:
-        """Parse ``recorder_config_json`` into a :class:`MicrophoneProfile`.
+    def parse_injected_config(self) -> InjectedRecorderConfig | None:
+        """Parse ``recorder_config_json`` into an :class:`InjectedRecorderConfig`.
 
         Returns:
-            Validated ``MicrophoneProfile`` or ``None`` if no config is set
-            or parsing fails (best-effort — Recorder starts with defaults).
+            Validated ``InjectedRecorderConfig`` or ``None`` if no config
+            is set or parsing fails (best-effort — Recorder starts with
+            defaults).
         """
         if not self.recorder_config_json:
             return None
@@ -112,20 +115,12 @@ class RecorderSettings(BaseSettings):
             log.warning("settings.config_json_invalid", detail="JSON decode failed")
             return None
 
-        # The Controller serializes profile.config which contains
-        # audio/processing/stream sections but NOT the top-level
-        # metadata (slug, name, etc.).  We need to provide required
-        # fields to satisfy the MicrophoneProfile schema.
-        if "slug" not in raw:
-            raw["slug"] = "injected"
-        if "name" not in raw:
-            raw["name"] = "Injected Profile"
         if "audio" not in raw:
             log.warning("settings.config_json_no_audio", detail="Missing 'audio' section")
             return None
 
         try:
-            return MicrophoneProfile(**raw)
+            return InjectedRecorderConfig(**raw)
         except ValidationError as exc:  # pragma: no cover — edge-case validation
             log.warning(
                 "settings.config_json_validation_failed",

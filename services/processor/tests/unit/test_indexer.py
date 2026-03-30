@@ -251,7 +251,7 @@ class TestIndexRecordings:
 
 @pytest.mark.unit
 class TestDeviceExistenceCheck:
-    """Verify Indexer checks device existence before INSERT (Bug #1 fix)."""
+    """Verify Indexer checks device existence before INSERT."""
 
     async def test_skips_file_when_device_not_registered(self, tmp_path: Path) -> None:
         """File for unregistered device is skipped, not errored.
@@ -286,10 +286,10 @@ class TestDeviceExistenceCheck:
 
 @pytest.mark.unit
 class TestSkipFiles:
-    """Verify error blacklist prevents re-processing of failed files (Bug #2 fix)."""
+    """Verify error blacklist prevents re-processing of failed files."""
 
     async def test_skipped_file_not_reprocessed(self, tmp_path: Path) -> None:
-        """Files in skip_files set are immediately skipped without DB queries.
+        """Files in errored_files set are immediately skipped without DB queries.
 
         Prevents the Indexer from retrying the same broken file every
         polling cycle, which would flood the logs with identical errors.
@@ -305,19 +305,19 @@ class TestSkipFiles:
         result = await indexer.index_recordings(
             session,
             tmp_path,
-            skip_files={"mic-01/data/processed/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"},
+            errored_files={"mic-01/data/processed/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"},
         )
 
         assert result.skipped == 1
         assert result.new == 0
         assert result.errors == 0
-        # No DB interaction at all for skipped files
+        # No DB interaction at all for errored files
         session.execute.assert_not_called()
         session.commit.assert_not_called()
 
 
 # ===================================================================
-# Bug #1: Realistic Production Naming (Name-Mismatch)
+# Realistic Production Naming (Name-Mismatch)
 # ===================================================================
 
 
@@ -333,7 +333,7 @@ class TestRealisticProductionNaming:
     The Indexer extracts workspace_dir from the filesystem and queries
     ``SELECT name FROM devices WHERE workspace_name = :ws_name``.
 
-    See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
+    See: Log Analysis Report 2026-03-30 — Name-Mismatch (workspace_name vs device.name).
     """
 
     async def test_indexes_file_with_production_workspace_name(self, tmp_path: Path) -> None:
@@ -383,7 +383,7 @@ class TestRealisticProductionNaming:
 
 
 # ===================================================================
-# Bug #2: Raw-Only Devices Invisible to Indexer
+# Raw-Only Devices Invisible to Indexer
 # ===================================================================
 
 
@@ -395,7 +395,7 @@ class TestRawOnlyDeviceDiscovery:
     Behringer, Focusrite — 4 of 8 profiles) only produce files in
     ``data/raw/``, not ``data/processed/``.
 
-    See: Gemini Log Analysis Report 2026-03-30 — Bug #2 (RAW-Only).
+    See: Gemini Log Analysis Report 2026-03-30 — RAW-Only device discovery.
     """
 
     def test_scan_workspace_discovers_raw_only_device(self, tmp_path: Path) -> None:

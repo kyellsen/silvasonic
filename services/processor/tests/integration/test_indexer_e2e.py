@@ -270,14 +270,14 @@ class TestIndexerIntegration:
             await conn.execute(text("DELETE FROM devices WHERE name = 'good-mic'"))
         await engine.dispose()
 
-    async def test_skip_files_prevents_reprocessing(
+    async def test_errored_files_prevents_reprocessing(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Files in skip_files are not retried, preventing log flood.
+        """Files in errored_files are not retried, preventing log flood.
 
-        Simulates the Bug #2 scenario: a corrupt WAV causes an error on the
+        Simulates the corrupt-WAV scenario: a corrupt WAV causes an error on the
         first indexing cycle. On the next cycle, the caller passes the error
-        file in skip_files so it is immediately skipped without any DB query.
+        file in errored_files so it is immediately skipped without any DB query.
         """
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
@@ -299,9 +299,11 @@ class TestIndexerIntegration:
         assert r1.errors == 1
         assert len(r1.error_details) == 1
 
-        # Second call: pass error_details as skip_files → no retry
+        # Second call: pass error_details as errored_files → no retry
         async with factory() as session:
-            r2 = await indexer.index_recordings(session, tmp_path, skip_files=set(r1.error_details))
+            r2 = await indexer.index_recordings(
+                session, tmp_path, errored_files=set(r1.error_details)
+            )
         assert r2.skipped == 1, f"Expected 1 skipped, got {r2.skipped}"
         assert r2.errors == 0, f"Expected 0 errors, got {r2.errors}"
 

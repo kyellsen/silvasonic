@@ -47,12 +47,12 @@ class RecorderService(SilvaService):
             redis_url=self._cfg.redis_url,
             heartbeat_interval=self._cfg.heartbeat_interval_s,
         )
-        # Build pipeline config from injected profile (or defaults)
-        profile = self._cfg.parse_profile()
-        if profile is not None:
-            self._pipeline_config = FFmpegConfig.from_profile(profile)
+        # Build pipeline config from controller-injected config (or defaults)
+        injected_config = self._cfg.parse_injected_config()
+        if injected_config is not None:
+            self._pipeline_config = FFmpegConfig.from_injected_config(injected_config)
             log.info(
-                "recorder.profile_loaded",
+                "recorder.config_loaded",
                 sample_rate=self._pipeline_config.sample_rate,
                 channels=self._pipeline_config.channels,
                 format=self._pipeline_config.format,
