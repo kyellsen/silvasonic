@@ -23,8 +23,10 @@ CREATE TABLE devices (
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     profile_slug TEXT,
     config JSONB NOT NULL,
+    workspace_name TEXT,
     PRIMARY KEY (name),
     UNIQUE (serial_number),
+    UNIQUE (workspace_name),
     FOREIGN KEY(profile_slug) REFERENCES microphone_profiles (slug)
 );
 
@@ -111,11 +113,11 @@ CREATE TABLE recordings (
     time TIMESTAMP WITH TIME ZONE NOT NULL,
     sensor_id TEXT NOT NULL,
     file_raw TEXT NOT NULL,
-    file_processed TEXT NOT NULL,
+    file_processed TEXT,
     duration DOUBLE PRECISION NOT NULL,
     sample_rate INTEGER NOT NULL,
     filesize_raw BIGINT NOT NULL,
-    filesize_processed BIGINT NOT NULL,
+    filesize_processed BIGINT NOT NULL DEFAULT 0,
     uploaded BOOLEAN NOT NULL DEFAULT FALSE,
     uploaded_at TIMESTAMP WITH TIME ZONE,
     local_deleted BOOLEAN NOT NULL DEFAULT FALSE,

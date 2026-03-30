@@ -143,6 +143,33 @@ def _short_suffix(device: Device) -> str:
     return f"c{card_idx:03d}"
 
 
+def generate_workspace_name(profile_slug: str, device: Device) -> str:
+    """Generate a human-readable workspace directory name.
+
+    Combines the profile slug with a short hardware-derived suffix.
+    This name is used as the Recorder workspace directory on disk
+    and stored in ``devices.workspace_name`` for the Processor Indexer
+    to resolve ``sensor_id`` from filesystem paths.
+
+    Examples::
+
+        >>> generate_workspace_name("ultramic_384_evo", device_with_serial)
+        'ultramic-384-evo-034f'
+        >>> generate_workspace_name("rode_nt_usb", device_with_bus_path)
+        'rode-nt-usb-p3d6'
+
+    Args:
+        profile_slug: Microphone profile slug (e.g. ``"ultramic_384_evo"``).
+        device: Device row with ``config`` containing hardware identity.
+
+    Returns:
+        Podman-safe, human-readable name (lowercase alphanumeric + hyphens).
+    """
+    safe_slug = _SLUG_RE.sub("-", profile_slug.lower()).strip("-")
+    safe_suffix = _SLUG_RE.sub("", _short_suffix(device).lower())
+    return f"{safe_slug}-{safe_suffix}"
+
+
 def _container_name(profile_slug: str, suffix: str) -> str:
     """Build a Podman-safe, human-readable container name.
 
@@ -204,9 +231,8 @@ def build_recorder_spec(
     recorder_local = env.RECORDER_WORKSPACE_LOCAL or str(Path(workspace_path) / "recorder")
 
     device_id = device.name
-    container_name = _container_name(profile.slug, _short_suffix(device))
-    # Human-readable workspace dir matches container name (strip prefix)
-    workspace_dir = container_name.removeprefix("silvasonic-recorder-")
+    workspace_dir = generate_workspace_name(profile.slug, device)
+    container_name = f"silvasonic-recorder-{workspace_dir}"
 
     return Tier2ServiceSpec(
         image=env.RECORDER_IMAGE,

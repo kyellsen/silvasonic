@@ -32,13 +32,13 @@ class Recording(Base):
     )
 
     file_raw: Mapped[str] = mapped_column(Text, nullable=False)
-    file_processed: Mapped[str] = mapped_column(Text, nullable=False)
+    file_processed: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     duration: Mapped[float] = mapped_column(Float, nullable=False)
     sample_rate: Mapped[int] = mapped_column(Integer, nullable=False)
 
     filesize_raw: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    filesize_processed: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    filesize_processed: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
 
     uploaded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

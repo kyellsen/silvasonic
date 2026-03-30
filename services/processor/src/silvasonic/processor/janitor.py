@@ -186,20 +186,20 @@ async def find_deletable(
 def delete_files(
     recordings_dir: Path,
     file_raw: str,
-    file_processed: str,
+    file_processed: str | None,
 ) -> int:
     """Physically delete raw and processed WAV files from disk.
 
     Args:
         recordings_dir: Root of the Recorder workspace.
         file_raw: Relative path to raw WAV.
-        file_processed: Relative path to processed WAV.
+        file_processed: Relative path to processed WAV (``None`` for raw-only devices).
 
     Returns:
         Number of files actually removed.
     """
     removed = 0
-    for rel_path in (file_raw, file_processed):
+    for rel_path in filter(None, (file_raw, file_processed)):
         full = recordings_dir / rel_path
         if full.exists():
             full.unlink()

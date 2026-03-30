@@ -296,9 +296,16 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
     for dev in device_names:
         psql_query(
             db_container,
-            f"""INSERT INTO devices (name, serial_number, model, config, profile_slug)
-               VALUES ('{dev}', '{dev}-serial', 'test-model', '{{}}'::jsonb, 'test_profile')
-               ON CONFLICT (name) DO NOTHING""",
+            f"""
+                INSERT INTO devices (
+                    name, serial_number, model, config, profile_slug, workspace_name
+                )
+                VALUES (
+                    '{dev}', '{dev}-serial', 'test-model',
+                    '{{}}'::jsonb, 'test_profile', '{dev}'
+                )
+                ON CONFLICT (name) DO NOTHING
+            """,
             retries=3,
         )
 

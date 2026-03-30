@@ -51,15 +51,25 @@ def _setup_workspace(base: Path, sensor: str = "mic-01", count: int = 2) -> list
     return created
 
 
-async def _seed_device(session: AsyncSession, name: str = "mic-01") -> None:
-    """Insert a test device into the devices table."""
+async def _seed_device(
+    session: AsyncSession, name: str = "mic-01", *, workspace_name: str | None = None
+) -> None:
+    """Insert a test device into the devices table.
+
+    Args:
+        session: Active async DB session.
+        name: Device name (stable_device_id).
+        workspace_name: Workspace directory name. Defaults to ``name``
+            for simple test fixtures where dir name == device name.
+    """
+    ws = workspace_name if workspace_name is not None else name
     await session.execute(
         text("""
-            INSERT INTO devices (name, serial_number, model, config)
-            VALUES (:name, :sn, 'TestMic', '{}')
+            INSERT INTO devices (name, serial_number, model, config, workspace_name)
+            VALUES (:name, :sn, 'TestMic', '{}', :ws)
             ON CONFLICT (name) DO NOTHING
         """),
-        {"name": name, "sn": f"SN-{name}"},
+        {"name": name, "sn": f"SN-{name}", "ws": ws},
     )
     await session.commit()
 

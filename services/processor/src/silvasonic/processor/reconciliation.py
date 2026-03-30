@@ -25,8 +25,9 @@ async def run_audit(
     """Reconcile database state with filesystem.
 
     For each recording where ``local_deleted = false``, verify that the
-    ``file_processed`` path exists on disk.  If the file is missing,
-    set ``local_deleted = true``.
+    primary audio file exists on disk.  For dual-stream devices this is
+    ``file_processed``; for raw-only devices it is ``file_raw``.
+    If the file is missing, set ``local_deleted = true``.
 
     Args:
         session: Active async DB session.
@@ -37,7 +38,7 @@ async def run_audit(
     """
     result = await session.execute(
         text("""
-            SELECT id, file_processed
+            SELECT id, COALESCE(file_processed, file_raw) AS check_file
             FROM recordings
             WHERE local_deleted = false
         """)
@@ -45,8 +46,10 @@ async def run_audit(
     rows = result.fetchall()
 
     reconciled = 0
-    for row_id, file_processed in rows:
-        full_path = recordings_dir / file_processed
+    for row_id, check_file in rows:
+        if check_file is None:
+            continue
+        full_path = recordings_dir / check_file
         if not full_path.exists():
             await session.execute(
                 text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
@@ -56,7 +59,7 @@ async def run_audit(
             log.warning(
                 "reconciliation.file_missing",
                 recording_id=row_id,
-                file=file_processed,
+                file=check_file,
                 reason="reconciliation",
             )
 

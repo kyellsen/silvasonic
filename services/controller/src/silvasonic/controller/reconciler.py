@@ -16,7 +16,11 @@ from typing import TYPE_CHECKING, NoReturn
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
-from silvasonic.controller.container_spec import Tier2ServiceSpec, build_recorder_spec
+from silvasonic.controller.container_spec import (
+    Tier2ServiceSpec,
+    build_recorder_spec,
+    generate_workspace_name,
+)
 from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceScanner
 from silvasonic.controller.profile_matcher import ProfileMatcher
@@ -247,12 +251,19 @@ class ReconciliationLoop:
                 profile_slug = None
                 enrollment = "pending"
 
-            await upsert_device(
+            device = await upsert_device(
                 device_info,
                 session,
                 profile_slug=profile_slug,
                 enrollment_status=enrollment,
             )
+
+            # Persist workspace_name for the Processor Indexer cross-service contract.
+            # Only set when a profile is assigned (enrolled devices get workspace dirs).
+            if profile_slug:
+                ws = generate_workspace_name(profile_slug, device)
+                if device.workspace_name != ws:
+                    device.workspace_name = ws
 
     async def _mark_offline_devices(
         self,

@@ -51,13 +51,9 @@ class TestScanWorkspace:
         assert len(result) == 0
 
     def test_only_data_dir_scanned(self, tmp_path: Path) -> None:
-        """Only */data/processed/*.wav is matched, not parent or sibling dirs."""
+        """Only */data/{processed,raw}/*.wav is matched, not stray files."""
         # File in root — should not match
         _create_wav(tmp_path / "stray.wav")
-        # File in data/ (not data/processed/) — should not match
-        other = tmp_path / "mic-01" / "data" / "raw"
-        other.mkdir(parents=True)
-        _create_wav(other / "test.wav")
 
         result = indexer.scan_workspace(tmp_path)
         assert len(result) == 0
@@ -187,7 +183,7 @@ class TestIndexRecordings:
         select_result.fetchone.return_value = None
 
         device_result = MagicMock()
-        device_result.fetchone.return_value = (1,)  # Device exists
+        device_result.fetchone.return_value = ("mic-01",)  # Device exists, returns name
 
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[select_result, device_result, AsyncMock()])
@@ -212,7 +208,7 @@ class TestIndexRecordings:
         select_result.fetchone.return_value = None
 
         device_result = MagicMock()
-        device_result.fetchone.return_value = (1,)  # Device exists
+        device_result.fetchone.return_value = ("mic-01",)  # Device exists, returns name
 
         session = AsyncMock()
         session.execute = AsyncMock(side_effect=[select_result, device_result])
@@ -293,3 +289,130 @@ class TestSkipFiles:
         # No DB interaction at all for skipped files
         session.execute.assert_not_called()
         session.commit.assert_not_called()
+
+
+# ===================================================================
+# Bug #1: Realistic Production Naming (Name-Mismatch)
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestRealisticProductionNaming:
+    """Verify Indexer handles realistic workspace dir vs. device name.
+
+    In production, the Controller creates workspace directories using
+    profile-slug-based naming (e.g., "ultramic-384-evo-034f"), but
+    stores devices.name as the stable_device_id (e.g., "0869-0389-00000000034F").
+    The device's workspace_name column bridges the lookup.
+
+    The Indexer extracts workspace_dir from the filesystem and queries
+    ``SELECT name FROM devices WHERE workspace_name = :ws_name``.
+
+    See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
+    """
+
+    async def test_indexes_file_with_production_workspace_name(self, tmp_path: Path) -> None:
+        """Indexer must index files when workspace dir differs from device.name.
+
+        Setup mirrors the exact production scenario:
+        - Workspace dir: "ultramic-384-evo-034f" (from container_spec)
+        - devices.name in DB: "0869-0389-00000000034F" (from device_scanner)
+        - devices.workspace_name in DB: "ultramic-384-evo-034f" (from reconciler)
+        - The DB contains the device, with workspace_name matching the dir.
+        """
+        workspace_dir = "ultramic-384-evo-034f"  # From build_recorder_spec
+        db_device_name = "0869-0389-00000000034F"  # From upsert_device
+
+        # Create a WAV file in the production-style workspace
+        dev_dir = tmp_path / workspace_dir / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        raw_dir = tmp_path / workspace_dir / "data" / "raw"
+        raw_dir.mkdir(parents=True)
+        _create_wav(dev_dir / "2026-03-30T14-52-47_15s.wav")
+        _create_wav(raw_dir / "2026-03-30T14-52-47_15s.wav")
+
+        # Mock DB responses:
+        # 1. Idempotency check → not indexed yet
+        idempotency_result = MagicMock()
+        idempotency_result.fetchone.return_value = None
+
+        # 2. Device lookup by workspace_name → returns the stable device name
+        device_result = MagicMock()
+        device_result.fetchone.return_value = (db_device_name,)
+
+        # 3. INSERT
+        insert_result = AsyncMock()
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[idempotency_result, device_result, insert_result])
+        session.commit = AsyncMock()
+
+        result = await indexer.index_recordings(session, tmp_path)
+
+        # In the FIXED code: result.new should be 1
+        assert result.new == 1, (
+            f"Indexer failed to index recording from workspace dir "
+            f"'{workspace_dir}'. devices.name in DB is '{db_device_name}'. "
+            f"Got: new={result.new}, skipped={result.skipped}, errors={result.errors}"
+        )
+
+
+# ===================================================================
+# Bug #2: Raw-Only Devices Invisible to Indexer
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestRawOnlyDeviceDiscovery:
+    """Verify that scan_workspace discovers devices with only raw/ data.
+
+    Devices with ``processed_enabled: false`` (Rode NT-USB, Generic USB,
+    Behringer, Focusrite — 4 of 8 profiles) only produce files in
+    ``data/raw/``, not ``data/processed/``.
+
+    See: Gemini Log Analysis Report 2026-03-30 — Bug #2 (RAW-Only).
+    """
+
+    def test_scan_workspace_discovers_raw_only_device(self, tmp_path: Path) -> None:
+        """scan_workspace must find WAV files from raw-only devices.
+
+        A device like the Rode NT-USB (48kHz native, no downsampling)
+        has processed_enabled=False. Its workspace only contains
+        data/raw/*.wav — no data/processed/ directory at all.
+        """
+        # Setup: raw-only workspace (no processed/ dir)
+        raw_dir = tmp_path / "rode-nt-usb-p3d6" / "data" / "raw"
+        raw_dir.mkdir(parents=True)
+        _create_wav(raw_dir / "2026-03-30T14-52-47_15s.wav")
+        _create_wav(raw_dir / "2026-03-30T14-53-02_15s.wav")
+
+        # No processed/ directory exists — processed_enabled=False
+
+        result = indexer.scan_workspace(tmp_path)
+
+        assert len(result) >= 1, (
+            "scan_workspace() found 0 files for raw-only device. "
+            "Devices with processed_enabled=False are invisible to the indexer. "
+            "4 of 8 profiles are affected (rode_nt_usb, generic_usb, "
+            "behringer_uphoria, focusrite_scarlett)."
+        )
+
+    def test_scan_workspace_deduplicates_dual_stream(self, tmp_path: Path) -> None:
+        """When both raw and processed exist, only processed is returned.
+
+        This prevents double-indexing for dual-stream devices.
+        """
+        device_dir = tmp_path / "ultramic-384-evo-034f"
+        processed_dir = device_dir / "data" / "processed"
+        raw_dir = device_dir / "data" / "raw"
+        processed_dir.mkdir(parents=True)
+        raw_dir.mkdir(parents=True)
+
+        filename = "2026-03-30T14-52-47_15s.wav"
+        _create_wav(processed_dir / filename)
+        _create_wav(raw_dir / filename)
+
+        result = indexer.scan_workspace(tmp_path)
+
+        assert len(result) == 1
+        assert "processed" in str(result[0])

@@ -28,6 +28,11 @@ class Device(Base):
 
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
 
+    # Human-readable workspace directory name (e.g. "ultramic-384-evo-034f").
+    # Set by the Controller when a profile is assigned (enrollment).
+    # Used by the Processor Indexer to resolve sensor_id from filesystem paths.
+    workspace_name: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
+
 
 class SystemService(Base):
     """Registry of dynamic services managed by the Controller."""

@@ -17,6 +17,7 @@ from silvasonic.controller.container_spec import (
     _container_name,
     _short_suffix,
     build_recorder_spec,
+    generate_workspace_name,
 )
 
 
@@ -706,3 +707,85 @@ class TestContainerManager:
         mgr.start(spec)
 
         assert mount_dir.exists()
+
+
+# ===================================================================
+# Workspace-to-Device Name Contract (Bug #1: Name-Mismatch)
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestWorkspaceNameContract:
+    """Verify generate_workspace_name contract with build_recorder_spec.
+
+    The function must produce a consistent name that can be stored in
+    ``devices.workspace_name`` and matches the workspace directory
+    derived from ``build_recorder_spec``.
+
+    The Processor Indexer extracts workspace_dir from the filesystem and
+    queries ``SELECT name FROM devices WHERE workspace_name = :ws_name``.
+    The ``workspace_name`` column is set by the Controller during enrollment.
+
+    See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
+    """
+
+    def test_workspace_name_matches_container_dir_serial(self) -> None:
+        """generate_workspace_name matches build_recorder_spec workspace dir.
+
+        Production scenario: Ultramic 384K EVO with USB serial.
+        - device.name (stable_device_id) = "0869-0389-00000000034F"
+        - workspace_name = "ultramic-384-evo-034f" (stored in DB)
+        - container_name = "silvasonic-recorder-ultramic-384-evo-034f"
+        """
+        device = MagicMock()
+        device.name = "0869-0389-00000000034F"
+        device.config = {
+            "alsa_device": "hw:2,0",
+            "usb_serial": "00000000034F",
+            "usb_vendor_id": "0869",
+            "usb_product_id": "0389",
+        }
+
+        profile = MagicMock()
+        profile.slug = "ultramic_384_evo"
+        profile.config = {"audio": {"sample_rate": 384000, "channels": 1}}
+
+        ws = generate_workspace_name(profile.slug, device)
+        spec = build_recorder_spec(device, profile)
+        workspace_dir = spec.name.removeprefix("silvasonic-recorder-")
+
+        assert ws == workspace_dir, (
+            f"Contract violation: generate_workspace_name='{ws}' "
+            f"differs from spec workspace_dir='{workspace_dir}'."
+        )
+        assert ws == "ultramic-384-evo-034f"
+
+    def test_workspace_name_matches_container_dir_bus_path(self) -> None:
+        """generate_workspace_name matches build_recorder_spec workspace dir.
+
+        Production scenario: Rode NT-USB without serial (uses bus path).
+        - device.name (stable_device_id) = "19f7-0003-port3-6"
+        - workspace_name = "rode-nt-usb-p3d6" (stored in DB)
+        """
+        device = MagicMock()
+        device.name = "19f7-0003-port3-6"
+        device.config = {
+            "alsa_device": "hw:1,0",
+            "usb_vendor_id": "19f7",
+            "usb_product_id": "0003",
+            "usb_bus_path": "3-6",
+        }
+
+        profile = MagicMock()
+        profile.slug = "rode_nt_usb"
+        profile.config = {"audio": {"sample_rate": 48000, "channels": 2}}
+
+        ws = generate_workspace_name(profile.slug, device)
+        spec = build_recorder_spec(device, profile)
+        workspace_dir = spec.name.removeprefix("silvasonic-recorder-")
+
+        assert ws == workspace_dir, (
+            f"Contract violation: generate_workspace_name='{ws}' "
+            f"differs from spec workspace_dir='{workspace_dir}'."
+        )
+        assert ws == "rode-nt-usb-p3d6"

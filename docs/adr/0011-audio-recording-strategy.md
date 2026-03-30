@@ -1,6 +1,6 @@
 # ADR-0011: Audio Recording Strategy (Raw vs Processed)
 
-> **Status:** Accepted • **Date:** 2026-01-31
+> **Status:** Accepted (amended 2026-03-30) • **Date:** 2026-01-31
 
 > **NOTE:** The `processor` (v0.5.0) and `uploader` (v0.6.0) are implemented. References to `birdnet`, `batdetect`, or `weather` refer to planned services.
 
@@ -14,9 +14,9 @@ We need a standardized way to handle audio streams to ensure downstream services
 
 **Reasoning:**
 
-1.  **Dual Stream Architecture**: The Recorder service MUST always produce two distinct streams:
-    *   **Raw**: The native, bit-perfect capture from the hardware. Sample rate is variable (hardware-dependent).
-    *   **Processed**: A standardized 48kHz stream derived from the raw input.
+1.  **Logical Dual Stream Architecture**: The Recorder service MUST always produce the **Raw** stream. The **Processed** stream is produced when the device's microphone profile sets `processed_enabled: true` (the default). Profiles for microphones whose native sample rate matches the target (48 kHz) set `processed_enabled: false` — no resampling is needed, so `data/raw` IS the analysis-ready stream.
+    *   **Raw**: The native, bit-perfect capture from the hardware. Sample rate is variable (hardware-dependent). **Always present.**
+    *   **Processed**: A standardized 48 kHz stream derived from the raw input. **Present only when `processed_enabled: true`.**
 
 2.  **Naming Convention**:
     *   Streams and artifacts MUST be named `raw` and `processed`.
@@ -42,12 +42,13 @@ We need a standardized way to handle audio streams to ensure downstream services
 
 ## 4. Consequences
 *   **Positive:**
-    *   **Downstream Compatibility**: Services like BirdNET can blindly consume the `processed` folder knowing it is always 48kHz, removing the need for internal resampling.
-    *   **Hardware Independence**: Replacing a 384kHz mic with a 96kHz mic requires no code changes in downstream consumers, as `processed` remains 48kHz, and `raw` is just handled as "the archival file".
-    *   **Database Schema**: The `recordings` table uses `file_raw` and `file_processed` columns.
-    *   **Filesystem**: The workspace directory structure uses `data/raw` and `data/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
+    *   **Downstream Compatibility**: Services like BirdNET consume the preferred audio via `COALESCE(file_processed, file_raw)`, always receiving 48 kHz data without internal resampling.
+    *   **Hardware Independence**: Replacing a 384 kHz mic with a 96 kHz mic requires no code changes in downstream consumers, as `processed` remains 48 kHz, and `raw` is just handled as "the archival file".
+    *   **Database Schema**: The `recordings` table uses `file_raw` (NOT NULL) and `file_processed` (NULLABLE) columns. Raw-only devices insert `file_processed = NULL` and `filesize_processed = 0`.
+    *   **Filesystem**: The workspace directory structure uses `data/raw` and optionally `data/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
+    *   **Cross-Service Contract**: The Controller stores `devices.workspace_name` during enrollment, which the Processor Indexer uses to resolve filesystem paths to the device's stable identity (`devices.name`).
 *   **Negative:**
-    *   Requires double the storage for local recordings (raw + processed).
+    *   Requires up to double the storage for local recordings when both streams are active (raw + processed).
     *   CPU overhead for real-time resampling to produce the processed stream (handled by FFmpeg, see ADR-0024).
 
 ## 5. Future: Live Opus Stream (v1.1.0)

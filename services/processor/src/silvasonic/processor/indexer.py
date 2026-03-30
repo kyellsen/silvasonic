@@ -1,11 +1,16 @@
 """Indexer — Filesystem polling and recording registration.
 
 Scans the Recorder workspace for promoted WAV files in
-``{recordings_dir}/*/data/processed/*.wav``, extracts metadata via
-``soundfile``, and registers new recordings in the ``recordings`` table.
+``{recordings_dir}/*/data/processed/*.wav`` and ``*/data/raw/*.wav``,
+extracts metadata via ``soundfile``, and registers new recordings in
+the ``recordings`` table.
 
-Idempotent: checks for existing entries by ``file_processed`` before insert.
+Idempotent: checks for existing entries by ``file_processed`` (dual-stream)
+or ``file_raw`` (raw-only) before insert.
 Never touches ``.buffer/`` directories (only promoted, complete segments).
+
+Supports both dual-stream devices (raw + processed) and raw-only devices
+where ``processed_enabled=false`` in the microphone profile.
 """
 
 from __future__ import annotations
@@ -50,7 +55,11 @@ class IndexResult:
 def scan_workspace(recordings_dir: Path) -> list[Path]:
     """Discover all promoted WAV files across all device directories.
 
-    Scans ``{recordings_dir}/*/data/processed/*.wav``.
+    Scans both ``{recordings_dir}/*/data/processed/*.wav`` and
+    ``*/data/raw/*.wav``. If both exist for the same device and
+    filename, only the processed version is returned (it is the
+    primary indexing artifact for dual-stream devices).
+
     Never returns files from ``.buffer/`` directories.
 
     Args:
@@ -59,7 +68,15 @@ def scan_workspace(recordings_dir: Path) -> list[Path]:
     Returns:
         Sorted list of absolute paths to promoted WAV files.
     """
-    return sorted(recordings_dir.glob("*/data/processed/*.wav"))
+    processed = set(recordings_dir.glob("*/data/processed/*.wav"))
+    raw = set(recordings_dir.glob("*/data/raw/*.wav"))
+
+    # Deduplicate: if a processed file exists, skip the raw counterpart.
+    # Use (device_dir_name, filename) as the deduplication key.
+    processed_keys = {(p.parts[-4], p.name) for p in processed}
+    raw_only = {r for r in raw if (r.parts[-4], r.name) not in processed_keys}
+
+    return sorted(processed | raw_only)
 
 
 def parse_timestamp(filename: str) -> datetime:
@@ -102,17 +119,22 @@ def extract_metadata(wav_path: Path) -> WavMeta:
 def resolve_sensor_id(wav_path: Path, recordings_dir: Path) -> str:
     """Extract the sensor/device identifier from the file path.
 
-    Path structure: ``{recordings_dir}/{sensor_id}/data/processed/file.wav``
+    Path structure: ``{recordings_dir}/{sensor_id}/data/{raw|processed}/file.wav``
 
     Args:
         wav_path: Absolute path to the WAV file.
         recordings_dir: Root of the Recorder workspace.
 
     Returns:
-        The sensor_id (device name).
+        The sensor_id (workspace directory name).
     """
     rel = wav_path.relative_to(recordings_dir)
     return rel.parts[0]
+
+
+def _is_raw_path(wav_path: Path) -> bool:
+    """Check if a WAV path is from the raw/ stream (not processed/)."""
+    return "raw" in wav_path.parts
 
 
 def resolve_raw_path(processed_path: Path) -> Path:
@@ -152,7 +174,11 @@ async def index_recordings(
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
 
-    Idempotent: existing entries (by ``file_processed``) are skipped.
+    Idempotent: existing entries (by ``file_processed`` or ``file_raw``
+    for raw-only devices) are skipped.
+
+    Uses ``devices.workspace_name`` to resolve the filesystem directory
+    name to the device's stable identifier (``devices.name``).
 
     Args:
         session: Active async DB session.
@@ -167,19 +193,26 @@ async def index_recordings(
     wav_files = scan_workspace(recordings_dir)
 
     for wav_path in wav_files:
-        rel_processed = _relative_path(wav_path, recordings_dir)
+        is_raw = _is_raw_path(wav_path)
+        rel_path = _relative_path(wav_path, recordings_dir)
 
         # Bug #2 fix: skip files that failed in a previous cycle
-        if rel_processed in _skip:
+        if rel_path in _skip:
             result.skipped += 1
             continue
 
         try:
-            # Idempotency check
-            exists = await session.execute(
-                text("SELECT 1 FROM recordings WHERE file_processed = :fp LIMIT 1"),
-                {"fp": rel_processed},
-            )
+            # Idempotency check — different column depending on stream type
+            if is_raw:
+                exists = await session.execute(
+                    text("SELECT 1 FROM recordings WHERE file_raw = :fr LIMIT 1"),
+                    {"fr": rel_path},
+                )
+            else:
+                exists = await session.execute(
+                    text("SELECT 1 FROM recordings WHERE file_processed = :fp LIMIT 1"),
+                    {"fp": rel_path},
+                )
             if exists.fetchone() is not None:
                 result.skipped += 1
                 continue
@@ -187,26 +220,40 @@ async def index_recordings(
             # Extract metadata
             meta = extract_metadata(wav_path)
             timestamp = parse_timestamp(wav_path.name)
-            sensor_id = resolve_sensor_id(wav_path, recordings_dir)
+            workspace_dir = resolve_sensor_id(wav_path, recordings_dir)
 
-            # Bug #1 fix: verify device exists before INSERT
-            device_exists = await session.execute(
-                text("SELECT 1 FROM devices WHERE name = :name LIMIT 1"),
-                {"name": sensor_id},
+            # Resolve device: look up by workspace_name (cross-service contract)
+            device_row = await session.execute(
+                text("SELECT name FROM devices WHERE workspace_name = :ws_name LIMIT 1"),
+                {"ws_name": workspace_dir},
             )
-            if device_exists.fetchone() is None:
+            row = device_row.fetchone()
+            if row is None:
                 result.skipped += 1
                 log.info(
                     "indexer.device_not_registered",
-                    file=rel_processed,
-                    sensor_id=sensor_id,
+                    file=rel_path,
+                    sensor_id=workspace_dir,
                 )
                 continue
 
-            # Resolve raw file
-            raw_path = resolve_raw_path(wav_path)
-            rel_raw = _relative_path(raw_path, recordings_dir)
-            filesize_raw = os.path.getsize(raw_path) if raw_path.exists() else 0
+            # Use the actual device name (stable_device_id) for the FK
+            device_name = row[0]
+
+            # Resolve file paths for both streams
+            if is_raw:
+                # Raw-only device: no processed file
+                rel_raw = rel_path
+                rel_processed = None
+                filesize_raw = meta.filesize
+                filesize_processed = 0
+            else:
+                # Dual-stream device: processed is primary, derive raw
+                rel_processed = rel_path
+                raw_path = resolve_raw_path(wav_path)
+                rel_raw = _relative_path(raw_path, recordings_dir)
+                filesize_raw = os.path.getsize(raw_path) if raw_path.exists() else 0
+                filesize_processed = meta.filesize
 
             # Insert new recording
             await session.execute(
@@ -221,28 +268,28 @@ async def index_recordings(
                 """),
                 {
                     "time": timestamp,
-                    "sensor_id": sensor_id,
+                    "sensor_id": device_name,
                     "file_raw": rel_raw,
                     "file_processed": rel_processed,
                     "duration": meta.duration,
                     "sample_rate": meta.sample_rate,
                     "filesize_raw": filesize_raw,
-                    "filesize_processed": meta.filesize,
+                    "filesize_processed": filesize_processed,
                 },
             )
             result.new += 1
             log.info(
                 "indexer.indexed",
-                file=rel_processed,
-                sensor_id=sensor_id,
+                file=rel_path,
+                sensor_id=device_name,
                 duration=meta.duration,
             )
 
         except Exception:
             await session.rollback()
             result.errors += 1
-            result.error_details.append(rel_processed)
-            log.exception("indexer.error", file=rel_processed)
+            result.error_details.append(rel_path)
+            log.exception("indexer.error", file=rel_path)
 
     if result.new > 0:
         await session.commit()

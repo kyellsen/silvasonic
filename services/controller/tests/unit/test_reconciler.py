@@ -387,6 +387,90 @@ class TestReconciliationLoop:
         assert call_kwargs.kwargs["profile_slug"] == "ultramic_384"
         assert call_kwargs.kwargs["enrollment_status"] == "enrolled"
 
+    async def test_rescan_hardware_sets_workspace_name(self) -> None:
+        """_rescan_hardware persists workspace_name on enrolled devices.
+
+        Regression test for Bug #1: The Controller must compute and store
+        ``devices.workspace_name`` during enrollment. The Processor Indexer
+        uses this column to resolve filesystem paths to the device's identity.
+
+        If this test fails, the cross-service contract is broken and the
+        Indexer will silently skip all recordings (``device_not_registered``).
+
+        See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
+        """
+        from silvasonic.controller.device_scanner import DeviceInfo
+        from silvasonic.controller.profile_matcher import MatchResult
+
+        mgr = MagicMock()
+        scanner = MagicMock()
+        matcher = MagicMock()
+
+        device_info = DeviceInfo(
+            alsa_card_index=2,
+            alsa_name="UltraMic 384K EVO",
+            alsa_device="hw:2,0",
+            usb_vendor_id="0869",
+            usb_product_id="0389",
+            usb_serial="00000000034F",
+        )
+        scanner.scan_all.return_value = [device_info]
+
+        match_result = MatchResult(
+            profile_slug="ultramic_384_evo",
+            score=100,
+            auto_enroll=True,
+        )
+        matcher.match = AsyncMock(return_value=match_result)
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=matcher,
+            interval=1.0,
+        )
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock device returned by upsert — starts without workspace_name
+        mock_device = MagicMock()
+        mock_device.name = "0869-0389-00000000034F"
+        mock_device.config = {
+            "usb_serial": "00000000034F",
+            "usb_vendor_id": "0869",
+            "usb_product_id": "0389",
+        }
+        mock_device.workspace_name = None
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.upsert_device",
+                new_callable=AsyncMock,
+                return_value=mock_device,
+            ),
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+            await loop._rescan_hardware()
+
+        # Critical assertion: workspace_name must be set
+        assert mock_device.workspace_name == "ultramic-384-evo-034f", (
+            f"Contract violation: Reconciler did not set workspace_name. "
+            f"Device '{mock_device.name}' has workspace_name="
+            f"{mock_device.workspace_name!r} instead of 'ultramic-384-evo-034f'."
+        )
+
     async def test_rescan_hardware_without_matcher(self) -> None:
         """_rescan_hardware upserts devices with pending status when no matcher."""
         from silvasonic.controller.device_scanner import DeviceInfo

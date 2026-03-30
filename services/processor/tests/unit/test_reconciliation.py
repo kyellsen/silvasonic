@@ -85,3 +85,50 @@ class TestReconciliationAudit:
 
         count = await reconciliation.run_audit(session, tmp_path)
         assert count == 3
+
+    async def test_raw_only_recording_file_checked(self, tmp_path: Path) -> None:
+        """Raw-only recording (file_processed=NULL) uses file_raw for check.
+
+        Regression test for Bug #2: When file_processed is NULL,
+        COALESCE(file_processed, file_raw) returns file_raw. The audit
+        must not crash with TypeError (PosixPath / NoneType).
+
+        See: Processor Logs 2026-03-30 — reconciliation_failed TypeError.
+        """
+        # Create the raw file on disk
+        raw_wav = tmp_path / "rode-nt-usb-p3d6" / "data" / "raw" / "audio.wav"
+        raw_wav.parent.mkdir(parents=True)
+        raw_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        # COALESCE returns file_raw since file_processed is NULL
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (10, "rode-nt-usb-p3d6/data/raw/audio.wav"),
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=select_result)
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 0  # File exists, no reconciliation needed
+        session.commit.assert_not_called()
+
+    async def test_null_check_file_skipped(self, tmp_path: Path) -> None:
+        """Row where both file_processed and file_raw are NULL is skipped.
+
+        Edge case safety: should never happen in practice but the audit
+        must not crash.
+        """
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (99, None),  # COALESCE(NULL, NULL) = NULL
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=select_result)
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 0
+        session.commit.assert_not_called()
