@@ -14,7 +14,7 @@
 
 - [ ] Neue Aufnahmen werden automatisch erkannt und in die Cloud hochgeladen — ohne manuellen Eingriff.
 - [ ] Vor dem Upload werden Dateien verlustfrei komprimiert (FLAC), um Bandbreite zu sparen (~50 % kleiner).
-- [ ] Nach bestätigtem Upload wird die Datei in der Datenbank als „hochgeladen" markiert.
+- [ ] Nach bestätigtem Upload auf **alle aktuell aktiven Speicherziele** wird die Datei in der Datenbank als „hochgeladen“ markiert (`uploaded=true`).
 - [ ] Das Gerät funktioniert auch ohne Internetverbindung — Aufnahmen werden lokal gespeichert und bei Verbindung nachgeholt (Store & Forward).
 
 ### Milestone
@@ -37,7 +37,7 @@
 
 ### Akzeptanzkriterien
 
-- [ ] Nach bestätigtem Upload markiert der Uploader die Datei als gesichert.
+- [ ] Nach bestätigtem Upload auf **alle aktiven Speicherziele** markiert der System die Datei als gesichert (`uploaded=true`).
 - [ ] Der Speicher-Bereinigungsdienst (Janitor) darf nur als „hochgeladen" markierte Dateien löschen (→ US-P02).
 - [ ] Das Zusammenspiel aus Upload und Bereinigung hält den lokalen Speicher dauerhaft unter den kritischen Schwellenwerten.
 - [ ] Bei dauerhaft fehlender Internetverbindung greift der Janitor trotzdem — Aufnahme hat immer Vorrang vor Archivierung.
@@ -63,9 +63,9 @@
 ### Akzeptanzkriterien
 
 - [ ] Mehrere Cloud-Speicher können in der Web-Oberfläche konfiguriert werden (z.B. Nextcloud, Amazon S3, SFTP-Server).
-- [ ] Pro Speicherziel läuft eine eigene Upload-Instanz — unabhängig voneinander.
+- [ ] Pro aktivem Speicherziel existiert eine eigene logische Upload-Instanz. Wenn mehr aktive Speicherziele vorhanden sind als `max_uploaders` erlaubt, wählt der Controller deterministisch die laufenden Instanzen in der Reihenfolge `created_at ASC, slug ASC`.
 - [ ] Einzelne Speicherziele können aktiviert und deaktiviert werden, ohne die anderen zu beeinflussen.
-- [ ] Eine Datei gilt erst als vollständig gesichert, wenn sie an **mindestens ein** aktives Speicherziel hochgeladen wurde.
+- [ ] Eine Datei gilt erst als vollständig gesichert (und damit durch den Janitor löschbar), wenn sie an **alle** aktiven Speicherziele erfolgreich hochgeladen wurde. Inaktive Speicherziele blockieren diesen Status nicht.
 
 ### Milestone
 

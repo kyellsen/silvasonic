@@ -44,7 +44,7 @@ def _setup_workspace(base: Path, sensor: str = "mic-01", count: int = 2) -> list
         for stream in ("processed", "raw"):
             d = base / sensor / "data" / stream
             d.mkdir(parents=True, exist_ok=True)
-            wav = d / f"2026-01-01T0{i}-00-00_10s.wav"
+            wav = d / f"2026-01-01T0{i}-00-00Z_10s_1a2b3c4d_0000{i:04d}.wav"
             _create_wav(wav, duration_s=10.0)
             if stream == "processed":
                 created.append(wav)
@@ -290,7 +290,7 @@ class TestIndexerIntegration:
         # Create a corrupt WAV file
         corrupt_dir = tmp_path / "mic-01" / "data" / "processed"
         corrupt_dir.mkdir(parents=True, exist_ok=True)
-        corrupt_wav = corrupt_dir / "2026-01-01T00-00-00_10s.wav"
+        corrupt_wav = corrupt_dir / "2026-01-01T00-00-00Z_10s_1a2b3c4d_00000000.wav"
         corrupt_wav.write_bytes(b"NOT_A_WAV")
 
         # First call: corrupt WAV causes extract_metadata error

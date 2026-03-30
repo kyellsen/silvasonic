@@ -23,11 +23,13 @@ Completeness Signal:
 
 from __future__ import annotations
 
+import datetime
 import os
 import signal
 import subprocess
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -118,6 +120,7 @@ class FFmpegConfig(BaseModel):
         self,
         device: str,
         workspace: Path,
+        run_id: str,
         *,
         mock_source: bool = False,
         ffmpeg_binary: str = "ffmpeg",
@@ -128,6 +131,7 @@ class FFmpegConfig(BaseModel):
         Args:
             device: ALSA device string (e.g. ``"hw:2,0"``).
             workspace: Workspace root path.
+            run_id: Unique 8-character hex ID for collision-proof filenames.
             mock_source: Use lavfi sine generator instead of ALSA.
             ffmpeg_binary: Path to the FFmpeg binary.
             loglevel: FFmpeg log level.
@@ -194,9 +198,7 @@ class FFmpegConfig(BaseModel):
                     "wav",
                     "-reset_timestamps",
                     "1",
-                    "-strftime",
-                    "1",
-                    str(raw_buffer) + "/%Y-%m-%dT%H-%M-%S_" + seg_time + "s.wav",
+                    str(raw_buffer) + f"/{run_id}_%08d.wav",
                 ]
             )
 
@@ -219,13 +221,43 @@ class FFmpegConfig(BaseModel):
                     "wav",
                     "-reset_timestamps",
                     "1",
-                    "-strftime",
-                    "1",
-                    str(proc_buffer) + "/%Y-%m-%dT%H-%M-%S_" + seg_time + "s.wav",
+                    str(proc_buffer) + f"/{run_id}_%08d.wav",
                 ]
             )
 
         return cmd
+
+
+# ---------------------------------------------------------------------------
+# TimestampRegistry
+# ---------------------------------------------------------------------------
+class TimestampRegistry:
+    """Provides thread-safe, monotonically-increasing UTC timestamps.
+
+    Used by SegmentPromoter to ensure that raw and processed streams
+    receive the exact identical timestamp string for the same segment
+    sequence, even if CPU scheduling delays one promoter thread.
+    """
+
+    def __init__(self, max_size: int = 128) -> None:
+        """Initialize the thread-safe registry with an eviction limit."""
+        self._times: dict[tuple[str, int], str] = {}
+        self._lock = threading.Lock()
+        self._max_size = max_size
+
+    def get_timestamp(self, key: tuple[str, int]) -> str:
+        """Get or generate the UTC timestamp for (run_id, seq)."""
+        with self._lock:
+            if key not in self._times:
+                # Evict oldest if we hit the safe limit
+                if len(self._times) >= self._max_size:
+                    oldest_key = next(iter(self._times))
+                    del self._times[oldest_key]
+                # Format: YYYY-MM-DDTHH-MM-SSZ
+                self._times[key] = datetime.datetime.now(datetime.UTC).strftime(
+                    "%Y-%m-%dT%H-%M-%SZ"
+                )
+            return self._times[key]
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +289,8 @@ class SegmentPromoter(threading.Thread):
         buffer_dir: Path,
         data_dir: Path,
         stream_name: str = "raw",
+        segment_duration_s: int = 10,
+        registry: TimestampRegistry | None = None,
         poll_interval: float = 0.5,
         stats: RecordingStats | None = None,
     ) -> None:
@@ -265,6 +299,8 @@ class SegmentPromoter(threading.Thread):
         self._buffer_dir = buffer_dir
         self._data_dir = data_dir
         self._stream_name = stream_name
+        self._segment_duration_s = segment_duration_s
+        self._registry = registry or TimestampRegistry()
         self._poll_interval = poll_interval
         self._stats = stats
         self._running = False
@@ -324,8 +360,22 @@ class SegmentPromoter(threading.Thread):
             self._promote_segment(src)
 
     def _promote_segment(self, src: Path) -> None:
-        """Atomically move a segment from .buffer/ to data/."""
-        dst = self._data_dir / src.name
+        """Atomically move a segment from .buffer/ to data/ taking safe timestamps."""
+        # filename format in .buffer/: {run_id}_{seq}.wav
+        stem = src.stem
+        try:
+            run_id, seq_str = stem.split("_", 1)
+            seq = int(seq_str)
+        except ValueError:
+            # Fallback for completely invalid files, just move them as-is without crashing
+            target_name = src.name
+            log.warning("segment.invalid_name", filename=src.name, stream=self._stream_name)
+        else:
+            # Generate deterministic identical timestamp for this exact (run_id, seq) pair
+            ts_str = self._registry.get_timestamp((run_id, seq))
+            target_name = f"{ts_str}_{self._segment_duration_s}s_{run_id}_{seq:08d}.wav"
+
+        dst = self._data_dir / target_name
 
         try:
             file_size = src.stat().st_size
@@ -458,9 +508,16 @@ class FFmpegPipeline:
         with self._stderr_lock:
             self._stderr_errors.clear()
 
+        # Generate a unique run ID for this pipeline execution to prevent fast-restart collisions
+        # 8 Hex Chars (32-bit) is perfect for short-term directory disambiguation
+        self.run_id = uuid.uuid4().hex[:8]
+        # Refresh the shared registry for promoters to map sequence numbers to wall-clock time
+        self._timestamp_registry = TimestampRegistry()
+
         cmd = self._config.build_ffmpeg_args(
             device=self._device,
             workspace=self._workspace,
+            run_id=self.run_id,
             mock_source=self._mock_source,
             ffmpeg_binary=self._ffmpeg_binary,
             loglevel=self._ffmpeg_loglevel,
@@ -469,6 +526,7 @@ class FFmpegPipeline:
         log.info(
             "pipeline.starting",
             device=self._device if not self._mock_source else "mock (lavfi)",
+            run_id=self.run_id,
             sample_rate=self._config.sample_rate,
             channels=self._config.channels,
             format=self._config.format,
@@ -505,6 +563,8 @@ class FFmpegPipeline:
                     buffer_dir=self._workspace / ".buffer" / stream,
                     data_dir=self._workspace / "data" / stream,
                     stream_name=stream,
+                    segment_duration_s=self._config.segment_duration_s,
+                    registry=self._timestamp_registry,
                     stats=self._stats,
                 )
                 p.start()

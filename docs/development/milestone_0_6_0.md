@@ -4,7 +4,7 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0004](../adr/0004-use-podman.md), [ADR-0007](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0010](../adr/0010-naming-conventions.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-capture.md), [Uploader Service Spec](../services/uploader.md), [Service Blueprint](service_blueprint.md), [Testing Guidelines](testing.md)
+> **References:** [ADR-0004](../adr/0004-use-podman.md), [ADR-0007](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0010](../adr/0010-naming-conventions.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Uploader Service Spec](../services/uploader.md), [Service Blueprint](service_blueprint.md), [Testing Guidelines](testing.md)
 >
 > **User Stories:** [US-U01](../user_stories/uploader.md#us-u01), [US-U02](../user_stories/uploader.md#us-u02), [US-U03](../user_stories/uploader.md#us-u03), [US-U06](../user_stories/uploader.md#us-u06)
 >
@@ -53,9 +53,9 @@ The Uploader is an **immutable Tier 2** service managed by the Controller via `p
 
 The Uploader constructs the remote path from DB fields — no changes to the local Recorder layout.
 
-**Local (flat, short-lived — Janitor cleans up):**
+**Local (resolved via DB, Janitor cleans up):**
 ```
-{workspace}/recorder/{sensor_id}/data/raw/{filename}.wav
+Local paths are resolved by joining the mounted recorder workspace root with recordings.file_raw (stored as relative path in the database).
 ```
 
 **Remote (date-based archive, permanent):**
@@ -195,7 +195,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
     - Name: `silvasonic-uploader-{remote.slug}`
     - Labels: `io.silvasonic.tier=2`, `io.silvasonic.owner=controller`, `io.silvasonic.service=uploader`, `io.silvasonic.device_id={slug}`
     - Environment: `SILVASONIC_STORAGE_REMOTE_SLUG`, `SILVASONIC_REDIS_URL`, `SILVASONIC_INSTANCE_ID`, DB connection vars (`POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`)
-    - Mounts: **Single mount** of the entire recorder workspace — `{host_workspace}/recorder → /workspace/recorder:ro,z` (KISS: one mount covers all recorders, Uploader resolves paths via `recordings.sensor_id` from DB, Consumer Principle ADR-0009)
+    - Mounts: **Single mount** of the entire recorder workspace — `{host_workspace}/recorder → /workspace/recorder:ro,z` (KISS: one mount covers all recorders, Uploader resolves exact file paths by joining the `/workspace/recorder` root with the relative path stored in `recordings.file_raw`, Consumer Principle ADR-0009)
     - Resources: `memory_limit=256m`, `cpu_limit=0.5`, `oom_score_adj=250` (ADR-0020)
     - **No** `devices`, `group_add`, `privileged` (unlike Recorder)
 - [ ] Refactor `DeviceStateEvaluator.evaluate()` in `reconciler.py`:
@@ -203,7 +203,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
   - Add `_evaluate_uploaders(session)`:
     - **Early exit:** If `UploaderSettings.enabled == false` → return empty list (no containers started). This is the "global pause" — checked here, not inside the Uploader container
     - Query `StorageRemote` WHERE `is_active = true`
-    - Respect `max_uploaders` from `SystemSettings` in `system_config`
+    - Respect `max_uploaders` from `SystemSettings` in `system_config`. If there are more active remotes than allowed, Controller must select deterministically by `created_at ASC, slug ASC`.
     - Build `Tier2ServiceSpec` via `build_uploader_spec()` per active remote
     - Skip remotes with invalid config → log warning (rate-limited via `_warned_remotes` set)
   - `evaluate()` returns combined list: `recorder_specs + uploader_specs`
@@ -237,7 +237,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 | `test_evaluates_uploaders_from_active_remotes` | Active `StorageRemote` rows → Uploader specs |
 | `test_inactive_remote_excluded` | `is_active=false` → no spec generated |
 | `test_uploader_enabled_false_returns_empty` | `UploaderSettings.enabled=false` → 0 Uploader specs (global pause) |
-| `test_max_uploaders_respected` | More remotes than `max_uploaders` → list truncated |
+| `test_max_uploaders_respected_order` | More remotes than `max_uploaders` → list truncated, ordered by `created_at ASC, slug ASC` |
 | `test_combined_recorders_and_uploaders` | Devices + remotes → combined spec list |
 | `test_missing_remote_config_logged` | Invalid config → warning logged, remote skipped |
 
@@ -282,7 +282,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 | SystemConfig model | `packages/core/src/silvasonic/core/database/models/system.py` |
 | Async session factory | `packages/core/src/silvasonic/core/database/session.py` |
 | UploaderSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
-| FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-capture.md` |
+| FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-engine.md` |
 | Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
 | Zero Trust / Consumer Principle (ADR-0009) | `docs/adr/0009-zero-trust-data-sharing.md` |
 | Health monitor API | `packages/core/src/silvasonic/core/health.py` |
@@ -304,9 +304,10 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
       )
     ORDER BY r.time ASC LIMIT :batch
     ```
+  - Note for DB indexes: We strongly recommend adding a composite index on `uploads(recording_id, remote_slug, success)` for efficient polling.
   - `recordings.uploaded` is NOT used for polling — it is only the Janitor's deletion signal
   - `batch_size` default comes from `UploaderSettings.batch_size` (added in Phase 1 prerequisite, default: `50`)
-  - `PendingUpload` Pydantic model: `recording_id, file_raw, file_processed, sensor_id, time`
+  - `PendingUpload` Pydantic model: `recording_id, file_raw, sensor_id, time`
 - [ ] Implement `silvasonic/uploader/flac_encoder.py`:
   - `encode_wav_to_flac(wav_path: Path, output_dir: Path) -> Path`
   - ffmpeg subprocess: `ffmpeg -i input.wav -c:a flac -compression_level 5 output.flac`
@@ -334,7 +335,9 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 - [ ] Implement `silvasonic/uploader/audit_logger.py`:
   - `log_upload_attempt(session, recording_id, remote_slug, filename, size, success, error)`:
     - INSERT into `uploads` table (immutable audit log — even failures are recorded)
-    - On success: UPDATE `recordings SET uploaded=true, uploaded_at=now()` — **Janitor signal only** ("at least one remote has this file")
+    - On success: Check if this file has now been successfully uploaded to **ALL currently active remotes**.
+    - `recordings.uploaded` is evaluated against the set of active remotes at the time the completion check is executed. Newly activated remotes do not retroactively invalidate previously completed recordings (`uploaded=true` stays true) unless an explicit reconciliation/backfill mechanism is introduced.
+    - If ALL active remotes are complete: UPDATE `recordings SET uploaded=true, uploaded_at=now()` — **Janitor signal only** ("all required remotes are safe")
     - On failure: `uploads` row with `success=false` — `recordings.uploaded` unchanged
 - [ ] Implement `silvasonic/uploader/upload_stats.py`:
   - `UploadStats` class — Two-Phase Logging (same pattern as `RecordingStats` and `ControllerStats`):
@@ -414,7 +417,8 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 
 | Test | Validates |
 |---|---|
-| `test_success_creates_upload_and_marks_recording` | `success=true` → `uploads` INSERT + `recordings.uploaded=true` |
+| `test_success_creates_upload_and_marks_recording` | `success=true` + all active remotes done → `uploads` INSERT + `recordings.uploaded=true` |
+| `test_success_partial_remotes` | `success=true` but other active remotes pending → `uploads` INSERT, `recordings.uploaded=false` |
 | `test_failure_creates_upload_only` | `success=false` → `uploads` INSERT, `recordings.uploaded` unchanged |
 | `test_audit_log_immutable` | INSERT only, no UPDATE on `uploads` table |
 
@@ -472,7 +476,8 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 | `test_pipeline_skips_already_uploaded_to_this_remote` | Recording with successful `uploads` row for this slug → not re-uploaded |
 | `test_pipeline_still_uploads_to_other_remote` | Recording uploaded to `nextcloud` (uploads row exists) → pipeline for `s3` still picks it up and uploads |
 | `test_pipeline_handles_missing_file` | Recording in DB, file missing → error logged, pipeline continues |
-| `test_uploaded_flag_set_as_janitor_signal` | After successful upload → `recordings.uploaded=true`, `recordings.uploaded_at` set |
+| `test_uploaded_flag_set_as_janitor_signal` | After successful upload to ALL active remotes → `recordings.uploaded=true`, `recordings.uploaded_at` set |
+| `test_inactive_remotes_ignored_for_uploaded_flag` | Upload to active remote completes, inactive remote skipped → `recordings.uploaded=true` |
 
 ---
 
@@ -525,7 +530,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 |---|---|
 | `test_janitor_respects_uploaded_flag` | `uploaded=true` → Janitor Housekeeping may delete; `uploaded=false` → keeps file |
 | `test_uploader_survives_controller_restart` | Kill Controller → Uploader running → new Controller adopts on restart |
-| `test_multi_remote_upload_independence` | Seed 2 `storage_remotes` + recordings → Controller starts 2 Uploaders → both upload all recordings independently → `uploads` table has entries for both remotes → `recordings.uploaded=true` after first success |
+| `test_multi_remote_upload_independence` | Seed 2 `storage_remotes` + recordings → Controller starts 2 Uploaders → both upload all recordings independently → `uploads` table has entries for both remotes → `recordings.uploaded=true` ONLY after BOTH successes |
 
 #### Smoke Tests (`tests/smoke/test_health.py`) — `@pytest.mark.smoke`
 

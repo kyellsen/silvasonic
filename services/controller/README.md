@@ -206,7 +206,9 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 > **Status:** ✅ Implemented
 
-The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices` + `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
+The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices`, `microphone_profiles`, and `storage_remotes` tables) against **actual state** (running containers queried via Podman labels).
+
+While Recorders are mapped 1:1 to plugged devices, Uploaders are mapped 1:1 to configured `storage_remotes` target in the DB. The Controller evaluates active remotes and schedules up to `max_uploaders` instances at a time. If the active remotes exceed `max_uploaders`, they are scheduled deterministically ordered by `created_at ASC, slug ASC`.
 
 Every Tier 2 container is tagged with labels for lifecycle management:
 

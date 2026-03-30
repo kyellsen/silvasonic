@@ -156,8 +156,8 @@ class TestWorkspaceDeviceContract:
         # --- Step 4: Recorder creates WAV files in the workspace ---
         processed_dir = tmp_path / workspace_dir / "data" / "processed"
         raw_dir = tmp_path / workspace_dir / "data" / "raw"
-        _create_wav(processed_dir / "2026-03-30T14-52-47_15s.wav")
-        _create_wav(raw_dir / "2026-03-30T14-52-47_15s.wav")
+        _create_wav(processed_dir / "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav")
+        _create_wav(raw_dir / "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav")
 
         # --- Step 5: Processor indexes the workspace ---
         async with factory() as session:

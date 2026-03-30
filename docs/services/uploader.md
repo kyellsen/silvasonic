@@ -14,15 +14,15 @@
 ## 2. User Benefit
 
 *   **Data Safety:** Recordings are automatically archived to remote storage (Nextcloud, S3, SFTP).
-*   **Indefinite Recording:** Once uploaded, the Janitor can safely delete local copies, enabling continuous operation for months or years.
+*   **Indefinite Recording:** Once a recording has been successfully uploaded to all currently active remotes, the Janitor may treat the local copy as deletable under the normal retention rules.
 *   **Multi-Target:** Different storage providers for different purposes (e.g., Nextcloud for sharing, S3 for long-term archive).
 
 ## 3. Core Responsibilities
 
 ### Inputs
 
-*   **Database (Polling):** Reads `recordings` table for files where `uploaded=false` and `local_deleted=false`.
-*   **Filesystem (Read-Only):** Reads Raw WAV files from the Recorder workspace.
+*   **Database (Polling):** Reads `recordings` table to find files not yet present in the `uploads` table for this specific remote target (per-remote audit log).
+*   **Filesystem (Read-Only):** Resolves local source files by joining the mounted recorder workspace root with the relative path stored in `recordings.file_raw`. `sensor_id` is used for identity and remote path building, not for reconstructing local filesystem paths.
 *   **Database (Config):** Reads `storage_remotes` table for connection parameters (endpoint, credentials, path).
 
 ### Processing
@@ -35,7 +35,7 @@
 
 *   **FLAC Files** uploaded to remote storage.
 *   **Database Rows:** INSERTs into `uploads` table (success/failure, file size, errors).
-*   **Database Updates:** Sets `uploaded=true` on `recordings` row after confirmed upload.
+*   **Database Updates:** Sets `uploaded=true` and `uploaded_at` on the `recordings` row ONLY after a confirmed upload to **ALL currently active remotes**. `uploaded_at` records the timestamp at which the recording first reached the “all currently active remotes uploaded successfully” state. Inactive remotes are ignored. This serves as the Janitor deletion signal.
 *   **Redis Heartbeats:** Via `SilvaService` base class (ADR-0019).
 
 ## 4. Operational Constraints & Rules
@@ -51,7 +51,7 @@
 | **QoS Priority** | `oom_score_adj=250` — Low Priority, below recording priority (ADR-0020) |
 
 > [!NOTE]
-> Each Uploader instance is managed by the Controller as a Tier 2 container. The Controller creates one Uploader per `storage_remotes` entry (similar to one Recorder per Device).
+> Each Uploader instance is managed by the Controller as a Tier 2 container. The Controller creates one Uploader per active `storage_remotes` entry. If the number of active remotes exceeds `max_uploaders` (configured in `system_config`), the Controller schedules instances deterministically ordered by `created_at ASC, slug ASC`.
 
 ## 5. Configuration & Environment
 
@@ -71,7 +71,7 @@
 
 ### Dynamic Configuration (Database)
 
-Runtime-tunable settings stored in the `system_config` table under key `uploader_settings`. As an **Immutable Container** (ADR-0019), the Uploader reads these settings *once* on startup.
+Runtime-tunable settings stored in the `system_config` table under key `uploader`. As an **Immutable Container** (ADR-0019), the Uploader reads these settings *once* on startup.
 
 | Setting               | Description                          | Default / Example |
 | --------------------- | ------------------------------------ | ----------------- |

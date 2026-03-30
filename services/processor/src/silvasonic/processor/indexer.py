@@ -16,6 +16,7 @@ where ``processed_enabled=false`` in the microphone profile.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,10 +28,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
 
-# Filename pattern produced by FFmpeg strftime:
-#   %Y-%m-%dT%H-%M-%S_{duration}s.wav
-#   Example: 2026-03-26T01-35-00_10s.wav
+# Filename pattern produced by FFmpeg pipeline (v0.6+):
+#   Example:  2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav
 _FILENAME_TIME_FORMAT = "%Y-%m-%dT%H-%M-%S"
+_FILENAME_REGEX = re.compile(
+    r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z)_"
+    r"(?P<duration>\d+)s_(?P<run_id>[a-f0-9]{8})_(?P<seq>\d{8})\.wav$"
+)
 
 
 @dataclass
@@ -82,7 +86,7 @@ def scan_workspace(recordings_dir: Path) -> list[Path]:
 def parse_timestamp(filename: str) -> datetime:
     """Parse the recording timestamp from the segment filename.
 
-    Expected format: ``2026-03-26T01-35-00_10s.wav``
+    Expected format: ``2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav`` (v0.6+)
 
     Args:
         filename: WAV filename (basename, not full path).
@@ -93,10 +97,20 @@ def parse_timestamp(filename: str) -> datetime:
     Raises:
         ValueError: If filename does not match expected pattern.
     """
-    # Strip extension and duration suffix: "2026-03-26T01-35-00_10s" → "2026-03-26T01-35-00"
-    stem = Path(filename).stem
-    time_part = stem.rsplit("_", maxsplit=1)[0]
-    return datetime.strptime(time_part, _FILENAME_TIME_FORMAT).replace(tzinfo=UTC)
+    match = _FILENAME_REGEX.match(filename)
+    if not match:
+        raise ValueError(f"Filename does not match expected pattern: {filename}")
+
+    # For strptime, we strip the mandatory 'Z' suffix
+    ts_str = match.group("timestamp")[:-1]
+
+    dt = datetime.strptime(ts_str, _FILENAME_TIME_FORMAT).replace(tzinfo=UTC)
+
+    # Issue warning for Pre-NTP jumps (year < 2020) but allow proceeding for downstreams
+    if dt.year < 2020:
+        log.warning("indexer.pre_ntp_timestamp", filename=filename, year=dt.year)
+
+    return dt
 
 
 def extract_metadata(wav_path: Path) -> WavMeta:

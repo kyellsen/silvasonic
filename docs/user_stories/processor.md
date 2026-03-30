@@ -47,9 +47,9 @@
 
 | Stufe         | Schwelle | Was wird gelöscht                                             | Hinweis    |
 | ------------- | -------- | ------------------------------------------------------------- | ---------- |
-| **Aufräumen** | > 70%    | Aufnahmen die hochgeladen UND vollständig analysiert sind     | `INFO`     |
-| **Vorsorge**  | > 80%    | Aufnahmen die hochgeladen sind (unabhängig von Analysestatus) | `WARNING`  |
-| **Notfall**   | > 90%    | **Älteste** Aufnahmen unabhängig vom Status                   | `CRITICAL` |
+| **Aufräumen** | > 70%    | Aufnahmen die hochgeladen (auf **alle** aktiven Ziele) UND vollständig analysiert sind     | `INFO`     |
+| **Vorsorge**  | > 80%    | Aufnahmen die hochgeladen sind (auf **alle** aktiven Ziele, unabhängig von Analysestatus) | `WARNING`  |
+| **Notfall**   | > 90%    | **Älteste** Aufnahmen unabhängig vom Status (auch wenn nicht hochgeladen!)                  | `CRITICAL` |
 
 - [x] Gelöschte Dateien verschwinden von der Festplatte, bleiben aber im Inventar (Datenbank) als Eintrag erhalten — die Aufnahme-Historie geht nicht verloren.
 - [x] Im Notfall-Modus funktioniert die Bereinigung auch bei einem Datenbankausfall (Fallback auf Dateialter).

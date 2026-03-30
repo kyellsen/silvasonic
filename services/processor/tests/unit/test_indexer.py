@@ -34,7 +34,7 @@ class TestScanWorkspace:
         """Scan finds WAV files in */data/processed/ directories."""
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        wav = dev_dir / "2026-03-26T01-35-00_10s.wav"
+        wav = dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
         _create_wav(wav)
 
         result = indexer.scan_workspace(tmp_path)
@@ -45,7 +45,7 @@ class TestScanWorkspace:
         """Files in .buffer/ directories are never returned."""
         buf_dir = tmp_path / "mic-01" / ".buffer" / "processed"
         buf_dir.mkdir(parents=True)
-        _create_wav(buf_dir / "2026-03-26T01-35-00_10s.wav")
+        _create_wav(buf_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
 
         result = indexer.scan_workspace(tmp_path)
         assert len(result) == 0
@@ -63,7 +63,7 @@ class TestScanWorkspace:
         for name in ("mic-01", "mic-02"):
             d = tmp_path / name / "data" / "processed"
             d.mkdir(parents=True)
-            _create_wav(d / "2026-03-26T01-35-00_10s.wav")
+            _create_wav(d / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
 
         result = indexer.scan_workspace(tmp_path)
         assert len(result) == 2
@@ -74,19 +74,34 @@ class TestParseTimestamp:
     """Verify timestamp extraction from filenames."""
 
     def test_standard_filename(self) -> None:
-        """Parse ISO-timestamp from standard segment filename."""
-        ts = indexer.parse_timestamp("2026-03-26T01-35-00_10s.wav")
+        """Parse ISO-timestamp from standard legacy segment filename."""
+        ts = indexer.parse_timestamp("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
+        assert ts == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
+
+    def test_new_filename_format(self) -> None:
+        """Parse ISO-timestamp from new v0.6 format with Z, run_id and seq."""
+        ts = indexer.parse_timestamp("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
         assert ts == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
 
     def test_different_duration(self) -> None:
         """Duration suffix doesn't affect timestamp parsing."""
-        ts = indexer.parse_timestamp("2026-01-01T00-00-00_30s.wav")
+        ts = indexer.parse_timestamp("2026-01-01T00-00-00Z_30s_1a2b3c4d_00000000.wav")
         assert ts == datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
 
     def test_invalid_format_raises(self) -> None:
         """Non-matching filename raises ValueError."""
         with pytest.raises(ValueError):
             indexer.parse_timestamp("not_a_timestamp.wav")
+
+    def test_parse_timestamp_warns_on_1970(self) -> None:
+        """A timestamp with a pre-NTP year logs a warning but parses successfully."""
+        from unittest.mock import patch
+
+        with patch("silvasonic.processor.indexer.log.warning") as mock_warn:
+            ts = indexer.parse_timestamp("1970-01-01T00-01-05Z_10s_1a2b3c4d_00000000.wav")
+            assert ts.year == 1970
+            mock_warn.assert_called_once()
+            assert mock_warn.call_args[1]["year"] == 1970
 
 
 @pytest.mark.unit
@@ -134,7 +149,7 @@ class TestIdempotency:
         """File already in DB (mocked fetchone returns row) is not re-inserted."""
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        _create_wav(dev_dir / "2026-03-26T01-35-00_10s.wav")
+        _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
 
         # Mock session that says "row exists"
         mock_result = MagicMock()
@@ -170,13 +185,13 @@ class TestIndexRecordings:
         """New WAV file is inserted into DB and session is committed."""
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        wav = dev_dir / "2026-03-26T01-35-00_10s.wav"
+        wav = dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
         _create_wav(wav, duration_s=1.0, sample_rate=48000)
 
         # Also create the corresponding raw file
         raw_dir = tmp_path / "mic-01" / "data" / "raw"
         raw_dir.mkdir(parents=True)
-        _create_wav(raw_dir / "2026-03-26T01-35-00_10s.wav", duration_s=1.0)
+        _create_wav(raw_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav", duration_s=1.0)
 
         # Mock session: idempotency → not indexed, device → exists, INSERT
         select_result = MagicMock()
@@ -199,7 +214,7 @@ class TestIndexRecordings:
         """Corrupt WAV file triggers error counter, not crash."""
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        corrupt = dev_dir / "2026-03-26T01-35-00_10s.wav"
+        corrupt = dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
         corrupt.write_bytes(b"NOT_A_WAV")
 
         # Mock session: idempotency → not indexed, device → exists
@@ -237,7 +252,7 @@ class TestDeviceExistenceCheck:
         """
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        _create_wav(dev_dir / "2026-03-26T01-35-00_10s.wav")
+        _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
 
         # Mock: idempotency → not indexed
         idempotency_result = MagicMock()
@@ -271,7 +286,7 @@ class TestSkipFiles:
         """
         dev_dir = tmp_path / "mic-01" / "data" / "processed"
         dev_dir.mkdir(parents=True)
-        _create_wav(dev_dir / "2026-03-26T01-35-00_10s.wav")
+        _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
 
         session = AsyncMock()
         session.execute = AsyncMock()
@@ -280,7 +295,7 @@ class TestSkipFiles:
         result = await indexer.index_recordings(
             session,
             tmp_path,
-            skip_files={"mic-01/data/processed/2026-03-26T01-35-00_10s.wav"},
+            skip_files={"mic-01/data/processed/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"},
         )
 
         assert result.skipped == 1
@@ -328,8 +343,8 @@ class TestRealisticProductionNaming:
         dev_dir.mkdir(parents=True)
         raw_dir = tmp_path / workspace_dir / "data" / "raw"
         raw_dir.mkdir(parents=True)
-        _create_wav(dev_dir / "2026-03-30T14-52-47_15s.wav")
-        _create_wav(raw_dir / "2026-03-30T14-52-47_15s.wav")
+        _create_wav(dev_dir / "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav")
+        _create_wav(raw_dir / "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav")
 
         # Mock DB responses:
         # 1. Idempotency check → not indexed yet
@@ -383,8 +398,8 @@ class TestRawOnlyDeviceDiscovery:
         # Setup: raw-only workspace (no processed/ dir)
         raw_dir = tmp_path / "rode-nt-usb-p3d6" / "data" / "raw"
         raw_dir.mkdir(parents=True)
-        _create_wav(raw_dir / "2026-03-30T14-52-47_15s.wav")
-        _create_wav(raw_dir / "2026-03-30T14-53-02_15s.wav")
+        _create_wav(raw_dir / "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav")
+        _create_wav(raw_dir / "2026-03-30T14-53-02Z_15s_1a2b3c4d_00000000.wav")
 
         # No processed/ directory exists — processed_enabled=False
 
@@ -408,7 +423,7 @@ class TestRawOnlyDeviceDiscovery:
         processed_dir.mkdir(parents=True)
         raw_dir.mkdir(parents=True)
 
-        filename = "2026-03-30T14-52-47_15s.wav"
+        filename = "2026-03-30T14-52-47Z_15s_1a2b3c4d_00000000.wav"
         _create_wav(processed_dir / filename)
         _create_wav(raw_dir / filename)
 

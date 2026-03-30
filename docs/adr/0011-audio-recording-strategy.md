@@ -85,6 +85,7 @@ Deletions are limited to `janitor_batch_size` (default: **50**) files per cleanu
 ### Uploader-Fallback (Pre-v0.6.0)
 
 When no Uploader is configured (no active `storage_remotes` rows in the database), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
+If Uploaders *are* configured, the `uploaded` condition is strictly interpreted as meaning the file has been successfully uploaded to **ALL currently active remotes**.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
 
