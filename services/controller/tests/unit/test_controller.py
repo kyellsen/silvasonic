@@ -5,7 +5,7 @@ Covers the ControllerService (SilvaService subclass) including:
 - get_extra_meta() providing host_resources
 - load_config() DB seeding hook
 - run() lifecycle with shutdown event
-- _stop_all_tier2 shutdown behaviour
+- run() lifecycle with shutdown event
 - _emit_status_summary
 - DB/Podman state-change logging
 
@@ -315,7 +315,6 @@ class TestControllerServiceRun:
         with (
             patch.object(svc, "_monitor_database", side_effect=noop_forever),
             patch.object(svc, "_monitor_podman", side_effect=noop_forever),
-            patch.object(svc, "_stop_all_tier2", new_callable=AsyncMock) as mock_stop_tier2,
         ):
             await svc.run()
 
@@ -325,63 +324,6 @@ class TestControllerServiceRun:
 
         # Verify clean shutdown procedures are executed
         svc._podman_client.close.assert_called_once()
-        mock_stop_tier2.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# _stop_all_tier2
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestStopAllTier2:
-    """Tests for the _stop_all_tier2 shutdown method."""
-
-    async def test_stops_all_managed_containers(self) -> None:
-        """_stop_all_tier2 stops each managed container by name."""
-        svc = _make_bare_service()
-        svc._container_manager.list_managed.return_value = [
-            {"name": "silvasonic-recorder-mic1", "status": "running"},
-            {"name": "silvasonic-recorder-mic2", "status": "running"},
-        ]
-        svc._container_manager.stop.return_value = True
-
-        with patch(
-            "silvasonic.controller.__main__.asyncio.to_thread",
-            new_callable=AsyncMock,
-            side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-        ):
-            await svc._stop_all_tier2()
-
-        assert svc._container_manager.stop_and_remove.call_count == 2
-
-    async def test_stops_no_containers(self) -> None:
-        """_stop_all_tier2 handles gracefully when no containers are running."""
-        svc = _make_bare_service()
-        svc._container_manager.list_managed.return_value = []
-
-        with patch(
-            "silvasonic.controller.__main__.asyncio.to_thread",
-            new_callable=AsyncMock,
-            side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-        ):
-            await svc._stop_all_tier2()
-
-        svc._container_manager.stop.assert_not_called()
-
-    async def test_handles_exception_gracefully(self) -> None:
-        """_stop_all_tier2 catches exceptions without crashing."""
-        svc = _make_bare_service()
-        svc._container_manager.list_managed.side_effect = RuntimeError("Podman gone")
-
-        with (
-            patch(
-                "silvasonic.controller.__main__.asyncio.to_thread",
-                new_callable=AsyncMock,
-                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
-            ),
-            patch("silvasonic.controller.__main__.log"),
-        ):
-            # Should not raise
-            await svc._stop_all_tier2()
 
 
 # ---------------------------------------------------------------------------

@@ -151,35 +151,10 @@ class ControllerService(SilvaService):
             # Emit final summary before shutdown
             if self._stats is not None:
                 self._stats.emit_final_summary()
-            # Phase 6: Graceful Shutdown — stop all owned Tier 2 containers
-            await self._stop_all_tier2()
+            # Tier 2 containers intentionally left running (ADR-0013 §2.4).
+            # On restart, the Controller adopts them via label query.
+            # Explicit teardown is handled by scripts/stop.py.
             self._podman_client.close()
-
-    async def _stop_all_tier2(self) -> None:
-        """Stop all owned Tier 2 containers on shutdown (Phase 6).
-
-        Called during graceful shutdown to ensure all Recorder instances
-        are cleanly stopped before the Controller exits.  Best-effort:
-        if Podman is unreachable, logs a warning and continues.
-        """
-        try:
-            containers = await asyncio.to_thread(
-                self._container_manager.list_managed,
-            )
-            for container in containers:
-                name = str(container.get("name", ""))
-                if name:
-                    log.info("controller.shutdown.stopping", name=name)
-                    await asyncio.to_thread(
-                        self._container_manager.stop_and_remove,
-                        name,
-                    )
-            log.info(
-                "controller.shutdown.all_removed",
-                count=len(containers),
-            )
-        except Exception:
-            log.exception("controller.shutdown.failed")
 
     async def _emit_status_summary(self, summary: dict[str, object]) -> None:
         """Collect live state and emit a periodic controller status summary."""

@@ -38,8 +38,10 @@ start:
 stop:
     @{{ BOOTSTRAP_PYTHON }} scripts/stop.py
 
-# 🔄 Stoppt und startet die Services neu
-restart: stop start
+# 🔄 Stoppt und startet die Services neu (Recorder laufen weiter, ADR-0013)
+restart:
+    @{{ BOOTSTRAP_PYTHON }} scripts/stop.py --keep-tier2
+    @{{ BOOTSTRAP_PYTHON }} scripts/start.py
 
 # 📜 Zeigt die aggregierten Logs aller Services an
 logs:

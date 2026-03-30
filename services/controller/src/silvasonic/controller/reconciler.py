@@ -277,8 +277,8 @@ class ReconciliationLoop:
 
             # Persist workspace_name for the Processor Indexer cross-service contract.
             # Only set when a profile is assigned (enrolled devices get workspace dirs).
-            if profile_slug:
-                ws = generate_workspace_name(profile_slug, device)
+            if device.profile_slug:
+                ws = generate_workspace_name(device.profile_slug, device)
                 if device.workspace_name != ws:
                     device.workspace_name = ws
 

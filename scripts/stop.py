@@ -2,6 +2,7 @@
 """Stop all Silvasonic services via compose."""
 
 import subprocess
+import sys
 
 from common import print_header, print_step, print_success
 from compose import compose
@@ -45,9 +46,20 @@ def _stop_managed_recorders() -> None:
 
 
 def main() -> None:
-    """Stop all Silvasonic services."""
+    """Stop all Silvasonic services.
+
+    Flags:
+        --keep-tier2  Leave Tier 2 containers (Recorders) running.
+                      Used by ``just restart`` so the new Controller
+                      can adopt them without interrupting recordings
+                      (ADR-0013 §2.4).
+    """
     print_header("Stopping Silvasonic Services")
-    _stop_managed_recorders()
+    keep_tier2 = "--keep-tier2" in sys.argv
+    if not keep_tier2:
+        _stop_managed_recorders()
+    else:
+        print_step("Keeping Tier 2 containers (--keep-tier2)")
     compose("down")
     print_success("All Silvasonic services stopped.")
 

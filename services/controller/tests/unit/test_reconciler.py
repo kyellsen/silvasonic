@@ -298,6 +298,7 @@ class TestReconciliationLoop:
             patch(
                 "silvasonic.controller.reconciler.upsert_device",
                 new_callable=AsyncMock,
+                return_value=MagicMock(config={}),
             ) as mock_upsert,
             patch(
                 "silvasonic.controller.reconciler.asyncio.to_thread",
@@ -372,6 +373,7 @@ class TestReconciliationLoop:
             "usb_product_id": "0389",
         }
         mock_device.workspace_name = None
+        mock_device.profile_slug = "ultramic_384_evo"
 
         with (
             patch(
@@ -396,6 +398,87 @@ class TestReconciliationLoop:
         assert mock_device.workspace_name == "ultramic-384-evo-034f", (
             f"Contract violation: Reconciler did not set workspace_name. "
             f"Device '{mock_device.name}' has workspace_name="
+            f"{mock_device.workspace_name!r} instead of 'ultramic-384-evo-034f'."
+        )
+
+    async def test_rescan_hardware_respects_manual_enrollment_workspace_name(self) -> None:
+        """_rescan_hardware persists workspace_name on manually enrolled devices.
+
+        Regression test: When auto_enroll is False, but the device object loaded
+        from DB already contains a profile_slug, generate_workspace_name must still
+        run to ensure cross-service processor contract is fulfilled.
+        """
+        from silvasonic.controller.device_scanner import DeviceInfo
+        from silvasonic.controller.profile_matcher import MatchResult
+
+        mgr = MagicMock()
+        scanner = MagicMock()
+        matcher = MagicMock()
+
+        device_info = DeviceInfo(
+            alsa_card_index=2,
+            alsa_name="UltraMic 384K EVO",
+            alsa_device="hw:2,0",
+            usb_vendor_id="0869",
+            usb_product_id="0389",
+            usb_serial="00000000034F",
+        )
+        scanner.scan_all.return_value = [device_info]
+
+        # auto_enroll is FALSE here (manual UI assignment scenario)
+        match_result = MatchResult(
+            profile_slug=None,
+            score=0,
+            auto_enroll=False,
+        )
+        matcher.match = AsyncMock(return_value=match_result)
+
+        loop = ReconciliationLoop(
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=matcher,
+            interval=1.0,
+        )
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # Mock device returned by upsert — starts without workspace_name, but HAS a profile_slug!
+        mock_device = MagicMock()
+        mock_device.name = "0869-0389-00000000034F"
+        mock_device.config = {
+            "usb_serial": "00000000034F",
+            "usb_vendor_id": "0869",
+            "usb_product_id": "0389",
+        }
+        mock_device.workspace_name = None
+        mock_device.profile_slug = "ultramic_384_evo"  # Simulates persistent manual assignment
+
+        with (
+            patch(
+                "silvasonic.controller.reconciler.get_session",
+            ) as mock_get_session,
+            patch(
+                "silvasonic.controller.reconciler.upsert_device",
+                new_callable=AsyncMock,
+                return_value=mock_device,
+            ),
+            patch(
+                "silvasonic.controller.reconciler.asyncio.to_thread",
+                new_callable=AsyncMock,
+                side_effect=lambda fn, *a, **kw: fn(*a, **kw),
+            ),
+        ):
+            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_get_session.return_value.__aexit__ = AsyncMock()
+            await loop._rescan_hardware()
+
+        # Critical assertion: workspace_name must be set, because mock_device.profile_slug is truthy
+        assert mock_device.workspace_name == "ultramic-384-evo-034f", (
+            f"Contract violation: Reconciler did not set workspace_name for manually "
+            f"enrolled device. Device '{mock_device.name}' has workspace_name="
             f"{mock_device.workspace_name!r} instead of 'ultramic-384-evo-034f'."
         )
 
@@ -425,6 +508,10 @@ class TestReconciliationLoop:
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
 
+        # Provide a mock device to avoid AsyncMock fallbacks for device.profile_slug
+        mock_device = MagicMock()
+        mock_device.profile_slug = None
+
         with (
             patch(
                 "silvasonic.controller.reconciler.get_session",
@@ -432,6 +519,7 @@ class TestReconciliationLoop:
             patch(
                 "silvasonic.controller.reconciler.upsert_device",
                 new_callable=AsyncMock,
+                return_value=mock_device,
             ) as mock_upsert,
             patch(
                 "silvasonic.controller.reconciler.asyncio.to_thread",
@@ -558,9 +646,16 @@ class TestReconciliationLoop:
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
 
+        mock_upserted_device = MagicMock()
+        mock_upserted_device.profile_slug = None
+
         with (
             patch("silvasonic.controller.reconciler.get_session") as mock_get_session,
-            patch("silvasonic.controller.reconciler.upsert_device", new_callable=AsyncMock),
+            patch(
+                "silvasonic.controller.reconciler.upsert_device",
+                new_callable=AsyncMock,
+                return_value=mock_upserted_device,
+            ),
             patch(
                 "silvasonic.controller.reconciler.asyncio.to_thread",
                 new_callable=AsyncMock,
