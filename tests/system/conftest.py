@@ -210,7 +210,7 @@ def make_test_spec(name: str, device_id: str, workspace: Path, *, network: str) 
         Tier2ServiceSpec,
     )
 
-    return Tier2ServiceSpec(
+    spec = Tier2ServiceSpec(
         image=RECORDER_IMAGE,
         name=name,
         network=network,
@@ -241,6 +241,10 @@ def make_test_spec(name: str, device_id: str, workspace: Path, *, network: str) 
         cpu_limit=0.5,
         oom_score_adj=-999,
     )
+
+    # Inject config drift hash for reconciliation system tests
+    spec.labels["io.silvasonic.config_hash"] = spec.config_hash
+    return spec
 
 
 # ---------------------------------------------------------------------------
