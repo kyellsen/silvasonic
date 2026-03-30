@@ -182,12 +182,15 @@ class TestIndexRecordings:
         raw_dir.mkdir(parents=True)
         _create_wav(raw_dir / "2026-03-26T01-35-00_10s.wav", duration_s=1.0)
 
-        # Mock session: fetchone returns None (no existing entry) → INSERT
+        # Mock session: idempotency → not indexed, device → exists, INSERT
         select_result = MagicMock()
         select_result.fetchone.return_value = None
 
+        device_result = MagicMock()
+        device_result.fetchone.return_value = (1,)  # Device exists
+
         session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[select_result, AsyncMock()])
+        session.execute = AsyncMock(side_effect=[select_result, device_result, AsyncMock()])
         session.commit = AsyncMock()
 
         result = await indexer.index_recordings(session, tmp_path)
@@ -203,12 +206,16 @@ class TestIndexRecordings:
         corrupt = dev_dir / "2026-03-26T01-35-00_10s.wav"
         corrupt.write_bytes(b"NOT_A_WAV")
 
-        # Mock session: fetchone returns None (no existing entry)
+        # Mock session: idempotency → not indexed, device → exists
+        # extract_metadata raises before INSERT
         select_result = MagicMock()
         select_result.fetchone.return_value = None
 
+        device_result = MagicMock()
+        device_result.fetchone.return_value = (1,)  # Device exists
+
         session = AsyncMock()
-        session.execute = AsyncMock(return_value=select_result)
+        session.execute = AsyncMock(side_effect=[select_result, device_result])
         session.commit = AsyncMock()
 
         result = await indexer.index_recordings(session, tmp_path)
@@ -219,3 +226,70 @@ class TestIndexRecordings:
         session.commit.assert_not_called()
         # rollback MUST be called to reset the aborted transaction state
         session.rollback.assert_called_once()
+
+
+@pytest.mark.unit
+class TestDeviceExistenceCheck:
+    """Verify Indexer checks device existence before INSERT (Bug #1 fix)."""
+
+    async def test_skips_file_when_device_not_registered(self, tmp_path: Path) -> None:
+        """File for unregistered device is skipped, not errored.
+
+        When the Controller hasn't registered a device yet, the Indexer
+        must skip the file (not crash with FK violation) and count it
+        as skipped — it's a transient timing issue, not a data problem.
+        """
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        _create_wav(dev_dir / "2026-03-26T01-35-00_10s.wav")
+
+        # Mock: idempotency → not indexed
+        idempotency_result = MagicMock()
+        idempotency_result.fetchone.return_value = None
+
+        # Mock: device check → NOT in DB
+        device_result = MagicMock()
+        device_result.fetchone.return_value = None
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[idempotency_result, device_result])
+        session.commit = AsyncMock()
+
+        result = await indexer.index_recordings(session, tmp_path)
+
+        assert result.skipped == 1
+        assert result.new == 0
+        assert result.errors == 0
+        session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+class TestSkipFiles:
+    """Verify error blacklist prevents re-processing of failed files (Bug #2 fix)."""
+
+    async def test_skipped_file_not_reprocessed(self, tmp_path: Path) -> None:
+        """Files in skip_files set are immediately skipped without DB queries.
+
+        Prevents the Indexer from retrying the same broken file every
+        polling cycle, which would flood the logs with identical errors.
+        """
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        _create_wav(dev_dir / "2026-03-26T01-35-00_10s.wav")
+
+        session = AsyncMock()
+        session.execute = AsyncMock()
+        session.commit = AsyncMock()
+
+        result = await indexer.index_recordings(
+            session,
+            tmp_path,
+            skip_files={"mic-01/data/processed/2026-03-26T01-35-00_10s.wav"},
+        )
+
+        assert result.skipped == 1
+        assert result.new == 0
+        assert result.errors == 0
+        # No DB interaction at all for skipped files
+        session.execute.assert_not_called()
+        session.commit.assert_not_called()

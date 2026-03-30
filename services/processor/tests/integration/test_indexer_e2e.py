@@ -180,17 +180,16 @@ class TestIndexerIntegration:
             await conn.execute(text("DELETE FROM devices"))
         await engine.dispose()
 
-    async def test_fk_violation_handled_gracefully(
+    async def test_unregistered_device_skipped_not_errored(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Indexer must not crash when device is missing from DB (FK violation).
+        """Indexer skips files for unregistered devices instead of FK error.
 
         This is the exact scenario from the production bug: WAV files exist on
         disk for a device that has not yet been enrolled by the Controller.
-        The FK constraint ``recordings.sensor_id → devices.name`` rejects the
-        INSERT.  The Indexer must:
-        1. Count the file as an error (not crash).
-        2. Roll back the aborted transaction so the session remains usable.
+        With the device existence check, the Indexer must:
+        1. Skip the file (count as skipped, not error).
+        2. Never attempt the INSERT (no FK violation).
         3. Leave zero rows in the recordings table.
         """
         url = _build_async_url(postgres_container)
@@ -203,32 +202,28 @@ class TestIndexerIntegration:
         async with factory() as session:
             result = await indexer.index_recordings(session, tmp_path)
 
-        # Must count as error, not crash
-        assert result.errors == 1, f"Expected 1 error, got {result.errors}"
+        # Must count as skipped (transient timing issue), not error
+        assert result.skipped == 1, f"Expected 1 skipped, got {result.skipped}"
+        assert result.errors == 0, f"Expected 0 errors, got {result.errors}"
         assert result.new == 0
-        assert len(result.error_details) == 1
-        assert "ghost-mic" in result.error_details[0]
 
-        # Session must still be usable after the error (rollback worked)
+        # Session must still be usable (no aborted transaction)
         async with factory() as session:
             rows = await session.execute(text("SELECT COUNT(*) FROM recordings"))
-            assert rows.scalar() == 0, "No recordings should exist after FK violation"
+            assert rows.scalar() == 0, "No recordings should exist"
 
         await engine.dispose()
 
-    async def test_transaction_recovery_after_fk_error(
+    async def test_unregistered_device_does_not_block_valid_recordings(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """After FK-violation on one file, subsequent valid files still get indexed.
+        """Unregistered device is skipped; valid device recordings still indexed.
 
         Simulates a mixed workspace where one device directory has no matching
-        DB entry (FK error) and another does.  The Indexer must:
-        1. Roll back the failed INSERT for the unknown device.
+        DB entry (skipped) and another does. The Indexer must:
+        1. Skip the unregistered device's file.
         2. Successfully INSERT the recording for the known device.
-        3. Report both errors and new counts correctly.
-
-        This test would have caught the cascade bug where a single FK-violation
-        poisoned the entire transaction (``current transaction is aborted``).
+        3. Report correct skipped and new counts.
         """
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
@@ -239,16 +234,15 @@ class TestIndexerIntegration:
             await _seed_device(session, "good-mic")
 
         # Create WAV files for both devices
-        # "bad-mic" → FK violation (not in devices table)
-        # "good-mic" → should succeed
         _setup_workspace(tmp_path, "bad-mic", count=1)
         _setup_workspace(tmp_path, "good-mic", count=1)
 
         async with factory() as session:
             result = await indexer.index_recordings(session, tmp_path)
 
-        assert result.errors == 1, f"Expected 1 error (bad-mic), got {result.errors}"
+        assert result.skipped == 1, f"Expected 1 skipped (bad-mic), got {result.skipped}"
         assert result.new == 1, f"Expected 1 new (good-mic), got {result.new}"
+        assert result.errors == 0, f"Expected 0 errors, got {result.errors}"
 
         # Verify only the valid recording is in the DB
         async with factory() as session:
@@ -264,4 +258,45 @@ class TestIndexerIntegration:
         async with engine.begin() as conn:
             await conn.execute(text("DELETE FROM recordings"))
             await conn.execute(text("DELETE FROM devices WHERE name = 'good-mic'"))
+        await engine.dispose()
+
+    async def test_skip_files_prevents_reprocessing(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """Files in skip_files are not retried, preventing log flood.
+
+        Simulates the Bug #2 scenario: a corrupt WAV causes an error on the
+        first indexing cycle. On the next cycle, the caller passes the error
+        file in skip_files so it is immediately skipped without any DB query.
+        """
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        # Seed device so device-check passes (we want to test corrupt WAV path)
+        async with factory() as session:
+            await _seed_device(session, "mic-01")
+
+        # Create a corrupt WAV file
+        corrupt_dir = tmp_path / "mic-01" / "data" / "processed"
+        corrupt_dir.mkdir(parents=True, exist_ok=True)
+        corrupt_wav = corrupt_dir / "2026-01-01T00-00-00_10s.wav"
+        corrupt_wav.write_bytes(b"NOT_A_WAV")
+
+        # First call: corrupt WAV causes extract_metadata error
+        async with factory() as session:
+            r1 = await indexer.index_recordings(session, tmp_path)
+        assert r1.errors == 1
+        assert len(r1.error_details) == 1
+
+        # Second call: pass error_details as skip_files → no retry
+        async with factory() as session:
+            r2 = await indexer.index_recordings(session, tmp_path, skip_files=set(r1.error_details))
+        assert r2.skipped == 1, f"Expected 1 skipped, got {r2.skipped}"
+        assert r2.errors == 0, f"Expected 0 errors, got {r2.errors}"
+
+        # Cleanup
+        async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM recordings"))
+            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()

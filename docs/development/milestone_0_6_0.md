@@ -4,9 +4,11 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0023](../adr/0023-configuration-management.md), [Uploader Service Spec](../services/uploader.md), [Service Blueprint](service_blueprint.md)
+> **References:** [ADR-0004](../adr/0004-use-podman.md), [ADR-0007](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0010](../adr/0010-naming-conventions.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-capture.md), [Uploader Service Spec](../services/uploader.md), [Service Blueprint](service_blueprint.md), [Testing Guidelines](testing.md)
 >
 > **User Stories:** [US-U01](../user_stories/uploader.md#us-u01), [US-U02](../user_stories/uploader.md#us-u02), [US-U03](../user_stories/uploader.md#us-u03), [US-U06](../user_stories/uploader.md#us-u06)
+>
+> **Project Rules:** [AGENTS.md](../../AGENTS.md), [VISION.md](../../VISION.md), [Glossary](../glossary.md)
 
 ---
 
@@ -82,8 +84,34 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 
 **Dependency:** None — first phase.
 
+### Source References
+
+> **Read these files before starting Phase 1:**
+
+| Purpose | File |
+|---|---|
+| Service base class (inherit from this) | `packages/core/src/silvasonic/core/service.py` |
+| Service context (Redis, Health, Heartbeat) | `packages/core/src/silvasonic/core/service_context.py` |
+| Recorder `__main__.py` — pattern to copy | `services/recorder/src/silvasonic/recorder/__main__.py` |
+| Recorder `settings.py` — pattern to copy | `services/recorder/src/silvasonic/recorder/settings.py` |
+| UploaderSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
+| Processor `pyproject.toml` — packaging pattern | `services/processor/pyproject.toml` |
+| Processor `Containerfile` — container pattern | `services/processor/Containerfile` |
+| Service Blueprint — scaffold rules | `docs/development/service_blueprint.md` |
+| Naming conventions (ADR-0010) | `docs/adr/0010-naming-conventions.md` |
+| Podman rootless (ADR-0004, ADR-0007) | `docs/adr/0004-use-podman.md`, `docs/adr/0007-rootless-os-compliance.md` |
+| Test guidelines (markers, structure) | `docs/development/testing.md` |
+| Root test config | `pyproject.toml` (pytest section), `conftest.py` |
+
 ### Tasks
 
+- [ ] **Prerequisite: Move `Upload` model** from `packages/core/src/silvasonic/core/database/models/system.py` to `packages/core/src/silvasonic/core/database/models/uploader.py`:
+  - Move `class Upload(Base)` out of `system.py` into `uploader.py` (alongside `StorageRemote`)
+  - Update all imports across the codebase (`system.py` → `uploader.py`)
+  - Verify `just check` passes after the move
+- [ ] **Prerequisite: Add `batch_size` to `UploaderSettings`** in `packages/core/src/silvasonic/core/config_schemas.py`:
+  - Add field: `batch_size: int = 50` to `UploaderSettings`
+  - Add `batch_size: 50` to `services/controller/config/defaults.yml` under `uploader:` section
 - [ ] Scaffold `services/uploader/` following the Service Blueprint (§1):
   - `Containerfile`, `pyproject.toml`, `README.md`
   - `src/silvasonic/uploader/__init__.py`, `__main__.py`, `settings.py`, `py.typed`
@@ -100,9 +128,11 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 - [ ] Add `Containerfile` following the Service Blueprint (§5):
   - Base: `python:3.11-slim-bookworm`
   - System deps: `curl`, `ffmpeg` (FLAC encoding), `rclone` (upload backend)
-  - Port: `9500`
-- [ ] **NO** `compose.yml` entry — Uploader is Tier 2, managed by Controller (ADR-0013, Service Blueprint §6)
-- [ ] Add Uploader image to `justfile` build targets (image name: `silvasonic_uploader`)
+  - Port: `EXPOSE 9500` — **NOT** 9200 like Processor. Uploader uses the unified Tier 2 health port (same as Recorder)
+- [ ] **NO** runtime `compose.yml` entry — Uploader is Tier 2, managed by Controller (ADR-0013, Service Blueprint §6)
+- [ ] Add Uploader build-template to `compose.yml` under `profiles: [managed]` (build-only, NOT for runtime — same pattern as Recorder entry at line 110-137 in `compose.yml`):
+  - This enables `scripts/build.py` to build the image via `compose --profile managed build`
+  - Add `"uploader"` to `MANAGED_SERVICES` list in `scripts/build.py` (alongside `"recorder"`)
 - [ ] **NO** `workspace_dirs.txt` entry — Uploader has no persistent workspace (reads Recorder workspace as `:ro`, temporary FLAC files use in-container `/tmp`)
 
 ### Acceptance Criteria
@@ -138,6 +168,23 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 
 **Dependency:** Phase 1 (Uploader image must exist for container specs).
 
+### Source References
+
+> **Read these files before starting Phase 2:**
+
+| Purpose | File |
+|---|---|
+| Container spec factory (extend this) | `services/controller/src/silvasonic/controller/container_spec.py` |
+| Reconciler / evaluator (extend this) | `services/controller/src/silvasonic/controller/reconciler.py` |
+| ContainerManager (generic, no changes needed) | `services/controller/src/silvasonic/controller/container_manager.py` |
+| Controller settings | `services/controller/src/silvasonic/controller/settings.py` |
+| Defaults YAML (schedule, bandwidth) |  `services/controller/config/defaults.yml` |
+| Tier 2 management (ADR-0013) | `docs/adr/0013-tier2-container-management.md` |
+| Resource limits / QoS (ADR-0020) | `docs/adr/0020-resource-limits-qos.md` |
+| Existing spec tests — pattern to extend | `services/controller/tests/unit/test_container_spec.py` |
+| Existing reconciler tests — pattern to extend | `services/controller/tests/unit/test_reconciler.py` |
+| Controller conftest (DB cleanup order) | `services/controller/tests/conftest.py` |
+
 ### Tasks
 
 - [ ] Add `build_uploader_spec()` factory + `UploaderEnvConfig` to `container_spec.py`:
@@ -161,7 +208,10 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
     - Skip remotes with invalid config → log warning (rate-limited via `_warned_remotes` set)
   - `evaluate()` returns combined list: `recorder_specs + uploader_specs`
 - [ ] Update Controller docstring in `__main__.py`: mention "Tier 2 services (Recorder and Uploader instances)"
-- [ ] Add `"uploads"` to `_CLEANUP_TABLES` in all 3 `conftest.py` files (FK-safe order: `uploads` before `recordings`, before `storage_remotes`)
+- [ ] Add `"uploads"` to `_CLEANUP_TABLES` in FK-safe order (`uploads` before `recordings`, before `storage_remotes`) in these 3 files:
+  - `services/controller/tests/integration/conftest.py`
+  - `services/processor/tests/integration/conftest.py`
+  - `tests/integration/conftest.py`
 
 ### Acceptance Criteria
 
@@ -219,6 +269,25 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 | **Audit Logger** | `audit_logger.py` | Immutable `uploads` table + mark `recordings.uploaded` (Janitor signal) |
 | **Upload Stats** | `upload_stats.py` | Two-Phase Logging: startup detail → periodic summary (mirrors RecordingStats pattern) |
 
+### Source References
+
+> **Read these files before starting Phase 3:**
+
+| Purpose | File |
+|---|---|
+| RecordingStats — Two-Phase pattern to copy | `services/recorder/src/silvasonic/recorder/recording_stats.py` |
+| ControllerStats — Two-Phase pattern reference | `services/controller/src/silvasonic/controller/controller_stats.py` |
+| Recording DB model (query target) | `packages/core/src/silvasonic/core/database/models/recordings.py` |
+| StorageRemote + Upload DB models (both in same file after Phase 1 move) | `packages/core/src/silvasonic/core/database/models/uploader.py` |
+| SystemConfig model | `packages/core/src/silvasonic/core/database/models/system.py` |
+| Async session factory | `packages/core/src/silvasonic/core/database/session.py` |
+| UploaderSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
+| FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-capture.md` |
+| Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
+| Zero Trust / Consumer Principle (ADR-0009) | `docs/adr/0009-zero-trust-data-sharing.md` |
+| Health monitor API | `packages/core/src/silvasonic/core/health.py` |
+| Heartbeat publisher | `packages/core/src/silvasonic/core/heartbeat.py` |
+
 ### Tasks
 
 - [ ] Implement `silvasonic/uploader/work_poller.py`:
@@ -236,6 +305,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
     ORDER BY r.time ASC LIMIT :batch
     ```
   - `recordings.uploaded` is NOT used for polling — it is only the Janitor's deletion signal
+  - `batch_size` default comes from `UploaderSettings.batch_size` (added in Phase 1 prerequisite, default: `50`)
   - `PendingUpload` Pydantic model: `recording_id, file_raw, file_processed, sensor_id, time`
 - [ ] Implement `silvasonic/uploader/flac_encoder.py`:
   - `encode_wav_to_flac(wav_path: Path, output_dir: Path) -> Path`
@@ -243,11 +313,14 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
   - Validate output file (exists, non-zero size)
   - Clean up partial FLAC file on failure
   - No FLAC caching — re-encode on retry (KISS, encoding is <1s per segment on RPi 5)
+- [ ] **Prerequisite: Add `python-slugify` dependency** to `packages/core/pyproject.toml`:
+  - Add `"python-slugify>=8.0.0"` to `[project] dependencies`
+  - Run `uv lock` to regenerate `uv.lock`
 - [ ] Implement `silvasonic/uploader/path_builder.py`:
   - `build_remote_path(station_name, sensor_id, time, filename) -> str`
   - Convention: `silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
   - Date extracted from `recordings.time`, station name from `system_config`
-  - **Station name slugified:** lowercase, non-alphanumeric → `-`, strip leading/trailing `-`. Example: `"Silvasonic Müller-Station [Test]"` → `"silvasonic-mueller-station-test"`. Uses `python-slugify` (already in deps via `text-unidecode`)
+  - **Station name slugified:** `from slugify import slugify` — lowercase, non-alphanumeric → `-`, strip leading/trailing `-`. Example: `"Silvasonic Müller-Station [Test]"` → `"silvasonic-mueller-station-test"`
   - This is the **only module** that knows the remote directory convention
 - [ ] Implement `silvasonic/uploader/rclone_client.py`:
   - `RcloneClient(remote_slug, remote_type, config)`:
@@ -410,6 +483,19 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 **User Stories:** US-U02 (Unbegrenzt weiter aufnehmen), US-U03 (Multi-Target)
 
 **Dependency:** Phase 2 (Controller manages Uploaders) + Phase 3 (Uploader has functional pipeline).
+
+### Source References
+
+> **Read these files before starting Phase 4:**
+
+| Purpose | File |
+|---|---|
+| Existing system tests — pattern to follow | `tests/system/test_processor_lifecycle.py` |
+| Existing resilience tests — pattern to follow | `tests/system/test_processor_resilience.py` |
+| System test helpers | `tests/system/_processor_helpers.py` |
+| Test-utils shared fixtures | `packages/test-utils/src/silvasonic/test_utils/` |
+| Root conftest (Testcontainer setup) | `conftest.py` |
+| Integration conftest (DB sessions) | `tests/integration/conftest.py` |
 
 ### Tasks
 

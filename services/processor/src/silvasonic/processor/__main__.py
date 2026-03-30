@@ -140,11 +140,16 @@ class ProcessorService(SilvaService):
             batch_size=self._settings.janitor_batch_size,
         )
 
+        # Bug #2 fix: persist error blacklist across indexer cycles
+        skip_files: set[str] = set()
+
         while not self._shutdown_event.is_set():
             # --- Indexer (every cycle) ---
             try:
                 async with get_session() as session:
-                    result = await indexer.index_recordings(session, self._recordings_dir)
+                    result = await indexer.index_recordings(
+                        session, self._recordings_dir, skip_files=skip_files
+                    )
                 if result.new > 0:
                     self._total_indexed += result.new
                     self._last_indexed_at = datetime.now(UTC)
@@ -153,6 +158,8 @@ class ProcessorService(SilvaService):
                     self.health.update_status("indexer", False, f"{result.errors} errors")
                 else:
                     self.health.update_status("indexer", True, "idle")
+                # Accumulate error files into blacklist for next cycle
+                skip_files.update(result.error_details)
             except Exception:
                 log.exception("processor.indexer_error")
                 self.health.update_status("indexer", False, "error")

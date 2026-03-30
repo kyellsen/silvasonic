@@ -147,6 +147,8 @@ def _relative_path(wav_path: Path, recordings_dir: Path) -> str:
 async def index_recordings(
     session: AsyncSession,
     recordings_dir: Path,
+    *,
+    skip_files: set[str] | None = None,
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
 
@@ -155,15 +157,22 @@ async def index_recordings(
     Args:
         session: Active async DB session.
         recordings_dir: Root of the Recorder workspace.
+        skip_files: Optional set of relative paths to skip (error blacklist).
 
     Returns:
         IndexResult with counts of new, skipped, and errored files.
     """
     result = IndexResult()
+    _skip = skip_files or set()
     wav_files = scan_workspace(recordings_dir)
 
     for wav_path in wav_files:
         rel_processed = _relative_path(wav_path, recordings_dir)
+
+        # Bug #2 fix: skip files that failed in a previous cycle
+        if rel_processed in _skip:
+            result.skipped += 1
+            continue
 
         try:
             # Idempotency check
@@ -179,6 +188,20 @@ async def index_recordings(
             meta = extract_metadata(wav_path)
             timestamp = parse_timestamp(wav_path.name)
             sensor_id = resolve_sensor_id(wav_path, recordings_dir)
+
+            # Bug #1 fix: verify device exists before INSERT
+            device_exists = await session.execute(
+                text("SELECT 1 FROM devices WHERE name = :name LIMIT 1"),
+                {"name": sensor_id},
+            )
+            if device_exists.fetchone() is None:
+                result.skipped += 1
+                log.info(
+                    "indexer.device_not_registered",
+                    file=rel_processed,
+                    sensor_id=sensor_id,
+                )
+                continue
 
             # Resolve raw file
             raw_path = resolve_raw_path(wav_path)

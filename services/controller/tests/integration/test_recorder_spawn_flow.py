@@ -1134,3 +1134,169 @@ system:
         assert config["processing"]["gain_db"] == 0.0
 
         await engine.dispose()
+
+
+# -----------------------------------------------------------------------
+# Container Name Suffix Uniqueness (US-R05, ADR-0013)
+# -----------------------------------------------------------------------
+
+
+class TestContainerNameSuffixUniqueness:
+    """Verify container names are collision-free when devices share a profile.
+
+    Two devices with the SAME profile slug but different USB serials must
+    produce container names that differ only by the _short_suffix() (last 4
+    hex chars of the serial).  This test validates the complete naming
+    pipeline from device upsert → evaluate → spec generation.
+    """
+
+    async def test_suffix_derived_from_serial_last_4_chars(
+        self,
+        tmp_path: Path,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """Two mics (same profile, different serials) get suffix from serial[-4:].
+
+        Steps:
+        1. Seed profile matching both devices.
+        2. Upsert 2 devices with serials 'SERIAL-AAA001' and 'SERIAL-BBB002'.
+        3. Evaluate → 2 specs.
+        4. Verify names are 'silvasonic-recorder-ultramic-384k-a001' and '-b002'.
+        5. Verify workspace dirs match the unique suffix part.
+        """
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        from silvasonic.controller.seeder import ProfileBootstrapper
+
+        profiles_dir = _seed_matching_profile(tmp_path)
+        async with sf() as session:
+            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
+            await session.commit()
+
+        # Two devices with same VID/PID/profile but different serials
+        mic_a = _make_device("SERIAL-AAA001", card_index=40)
+        mic_b = _make_device("SERIAL-BBB002", card_index=41)
+
+        async with sf() as session:
+            await upsert_device(
+                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            )
+            await upsert_device(
+                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            )
+            await session.commit()
+
+        evaluator = DeviceStateEvaluator()
+        async with sf() as session:
+            all_specs = await evaluator.evaluate(session)
+
+        specs_a = [
+            s
+            for s in all_specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("SERIAL-AAA001")
+        ]
+        specs_b = [
+            s
+            for s in all_specs
+            if s.labels.get("io.silvasonic.device_id") == _device_id("SERIAL-BBB002")
+        ]
+
+        assert len(specs_a) == 1
+        assert len(specs_b) == 1
+
+        name_a = specs_a[0].name
+        name_b = specs_b[0].name
+
+        # Names must differ
+        assert name_a != name_b, f"Name collision: {name_a} == {name_b}"
+
+        # Both should contain the profile slug (normalized to hyphens)
+        assert "ultramic-384k" in name_a, f"Missing profile slug in name: {name_a}"
+        assert "ultramic-384k" in name_b, f"Missing profile slug in name: {name_b}"
+
+        # Suffix should be last 4 chars of serial (lowercased)
+        assert name_a.endswith("a001"), f"Expected suffix 'a001', got name: {name_a}"
+        assert name_b.endswith("b002"), f"Expected suffix 'b002', got name: {name_b}"
+
+        # Verify Podman-safe format: only lowercase + hyphens + digits
+        import re
+
+        for name in [name_a, name_b]:
+            assert re.fullmatch(r"[a-z0-9][a-z0-9-]*[a-z0-9]", name), (
+                f"Name '{name}' is not Podman-safe (only lowercase, digits, hyphens allowed)"
+            )
+
+        # Workspace dirs must also differ and match the container suffix
+        ws_a = Path(specs_a[0].mounts[0].source).name
+        ws_b = Path(specs_b[0].mounts[0].source).name
+        assert ws_a != ws_b, f"Workspace collision: {ws_a} == {ws_b}"
+
+        # Workspace dir = container name minus 'silvasonic-recorder-' prefix
+        assert ws_a == name_a.removeprefix("silvasonic-recorder-"), (
+            f"Workspace '{ws_a}' must match container suffix"
+        )
+        assert ws_b == name_b.removeprefix("silvasonic-recorder-"), (
+            f"Workspace '{ws_b}' must match container suffix"
+        )
+
+        await engine.dispose()
+
+    async def test_suffix_falls_back_to_bus_path_without_serial(
+        self,
+        tmp_path: Path,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """Device without USB serial uses bus_path as suffix fallback.
+
+        Verifies _short_suffix() fallback chain:
+        serial → bus_path → alsa_card_index.
+        """
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        from silvasonic.controller.seeder import ProfileBootstrapper
+
+        profiles_dir = _seed_matching_profile(tmp_path)
+        async with sf() as session:
+            await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
+            await session.commit()
+
+        # Device without serial — uses bus_path "1-3.2" → suffix "p1d3"
+        device_no_serial = DeviceInfo(
+            alsa_card_index=50,
+            alsa_name=_MOCK_ALSA_NAME,
+            alsa_device="hw:50,0",
+            usb_vendor_id=_MOCK_VID,
+            usb_product_id=_MOCK_PID,
+            usb_serial=None,
+            usb_bus_path="1-3.2",
+        )
+
+        async with sf() as session:
+            await upsert_device(
+                device_no_serial,
+                session,
+                profile_slug=_MOCK_PROFILE_SLUG,
+                enrollment_status="enrolled",
+            )
+            await session.commit()
+
+        evaluator = DeviceStateEvaluator()
+        async with sf() as session:
+            all_specs = await evaluator.evaluate(session)
+
+        stable_id = device_no_serial.stable_device_id
+        matching = [s for s in all_specs if s.labels.get("io.silvasonic.device_id") == stable_id]
+        assert len(matching) == 1
+        spec = matching[0]
+
+        # Suffix should be bus_path based: "1-3.2" → "p1d3"
+        assert spec.name.endswith("p1d3"), f"Expected bus_path suffix 'p1d3', got name: {spec.name}"
+
+        # Name must still be valid for Podman
+        assert spec.name.startswith("silvasonic-recorder-")
+
+        await engine.dispose()

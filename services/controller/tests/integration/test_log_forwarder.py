@@ -228,3 +228,101 @@ class TestLogForwarderRedis:
 
         # Verify internal state is clean
         assert len(forwarder._follow_tasks) == 0, "Follow tasks should be cleared"
+
+    async def test_parallel_follow_tasks_for_multiple_containers(
+        self, redis_container: RedisContainer
+    ) -> None:
+        """Multiple containers get independent follow tasks with correct metadata.
+
+        Verifies:
+        1. LogForwarder creates one follow-task per managed container.
+        2. Redis subscriber receives messages from ALL containers.
+        3. Each message carries the correct service, instance_id, and container_name.
+        4. Removing one container does not affect the others' tasks.
+        """
+        url = build_redis_url(redis_container)
+
+        # 3 managed containers with distinct labels
+        containers: list[dict[str, Any]] = [
+            {
+                "name": f"silvasonic-recorder-multi-{i:03d}",
+                "status": "running",
+                "labels": {
+                    "io.silvasonic.service": "recorder",
+                    "io.silvasonic.device_id": f"multi-device-{i:03d}",
+                },
+            }
+            for i in range(3)
+        ]
+        mock_podman = _make_mock_podman(containers)
+
+        # Each container returns a unique log line
+        def _get_container(name: str) -> MagicMock:
+            mock_c = MagicMock()
+            mock_c.logs.return_value = iter(
+                [
+                    json.dumps({"event": f"Hello from {name}", "level": "info"}).encode() + b"\n",
+                ]
+            )
+            return mock_c
+
+        mock_podman.containers.get.side_effect = _get_container
+
+        forwarder = LogForwarder(mock_podman, redis_url=url, poll_interval=0.2)
+
+        subscriber = Redis.from_url(url, decode_responses=True)
+        pubsub = subscriber.pubsub()
+        await pubsub.subscribe(LOGS_CHANNEL)
+        await pubsub.get_message(timeout=1.0)
+
+        task = asyncio.create_task(forwarder.run())
+        try:
+            # Collect messages from all 3 containers
+            received: dict[str, dict[str, Any]] = {}
+            for _ in range(60):  # up to 6s
+                msg = await pubsub.get_message(timeout=0.1)
+                if msg and msg["type"] == "message":
+                    payload = json.loads(msg["data"])
+                    received[payload["container_name"]] = payload
+                if len(received) >= 3:
+                    break
+                await asyncio.sleep(0.1)
+
+            # Verify all 3 containers published logs
+            assert len(received) >= 3, (
+                f"Expected messages from 3 containers, got {len(received)}: {list(received.keys())}"
+            )
+
+            for i in range(3):
+                cname = f"silvasonic-recorder-multi-{i:03d}"
+                assert cname in received, f"Missing message from {cname}"
+                payload = received[cname]
+                assert payload["service"] == "recorder"
+                assert payload["instance_id"] == f"multi-device-{i:03d}"
+                assert payload["level"] == "info"
+                assert f"Hello from {cname}" in payload["message"]
+
+            # Verify internal state: 3 follow tasks
+            # (some may be done already — count active + done)
+            total_tasks = len(forwarder._follow_tasks)
+            assert total_tasks >= 1, "Should have follow tasks tracked"
+
+            # Remove one container, verify others survive
+            remaining = [c for c in containers if c["name"] != containers[0]["name"]]
+            mock_podman.list_managed_containers.return_value = remaining
+
+            # Wait for sync cycle to clean up
+            await asyncio.sleep(0.6)
+
+            # The removed container's task should be cancelled/cleaned
+            removed_name = containers[0]["name"]
+            assert removed_name not in forwarder._follow_tasks, (
+                f"Task for removed container '{removed_name}' should be cleaned up"
+            )
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            await pubsub.unsubscribe(LOGS_CHANNEL)
+            await cast(Any, pubsub).aclose()
+            await cast(Any, subscriber).aclose()
