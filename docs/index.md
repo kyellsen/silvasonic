@@ -35,12 +35,15 @@
 ## Development
 
 - [Development Guide](development/README.md)
+- [Commit Message Guidelines](development/commit.md) — Standardized commit message format
 - [Milestone v0.1.0](development/milestone_0_1_0.md) — Concrete implementation plan for Base Setup
 - [Milestone v0.2.0](development/milestone_0_2_0.md) — Concrete implementation plan for Service Infrastructure
 - [Milestone v0.3.0](development/milestone_0_3_0.md) — Concrete implementation plan for Tier 2 Container Management
 - [Milestone v0.4.0](development/milestone_0_4_0.md) — Audio Recording: Dual Stream, Profile Injection, Generic USB Fallback, Watchdog
 - [Milestone v0.5.0](development/milestone_0_5_0.md) — Analysis & Backend Orchestration: Processor Service (Indexer + Janitor)
 - [Milestone v0.6.0](development/milestone_0_6_0.md) — Uploader (FLAC Compression & Cloud Sync)
+- [Milestone v0.8.0](development/milestone_0_8_0.md) — Web-Interface & Field Deployment
+- [Milestone v1.0.0](development/milestone_1_0_0.md) — Production Release & ML Integration
 - [Milestone Template](development/milestone_template.md) — Template for new milestone documents
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)

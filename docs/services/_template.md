@@ -53,7 +53,7 @@ What does this service own? Describe the data flow.
 | Variable / Mount         | Description          | Default / Example |
 | ------------------------ | -------------------- | ----------------- |
 | `SILVASONIC_<NAME>_PORT` | Health endpoint port | `9500`            |
-| `/mnt/data/<path>:ro`    | …                    | —                 |
+| `${SILVASONIC_WORKSPACE_PATH}/<path>:ro,z` | …                    | —                 |
 
 ## 6. Technology Stack
 

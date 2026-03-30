@@ -73,20 +73,30 @@ class TestScanWorkspace:
 class TestParseTimestamp:
     """Verify timestamp extraction from filenames."""
 
-    def test_standard_filename(self) -> None:
-        """Parse ISO-timestamp from standard legacy segment filename."""
-        ts = indexer.parse_timestamp("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
-        assert ts == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
-
-    def test_new_filename_format(self) -> None:
-        """Parse ISO-timestamp from new v0.6 format with Z, run_id and seq."""
-        ts = indexer.parse_timestamp("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
-        assert ts == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
-
-    def test_different_duration(self) -> None:
-        """Duration suffix doesn't affect timestamp parsing."""
-        ts = indexer.parse_timestamp("2026-01-01T00-00-00Z_30s_1a2b3c4d_00000000.wav")
-        assert ts == datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
+    @pytest.mark.parametrize(
+        ("filename", "expected_ts"),
+        [
+            # Standard segment
+            (
+                "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav",
+                datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC),
+            ),
+            # Segment with 0s and max seq
+            (
+                "2026-01-01T00-00-00Z_30s_1a2b3c4d_99999999.wav",
+                datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC),
+            ),
+            # Maximum limits format and leap year timing
+            (
+                "2028-02-29T23-59-59Z_15s_ffffffff_00000000.wav",
+                datetime(2028, 2, 29, 23, 59, 59, tzinfo=UTC),
+            ),
+        ],
+    )
+    def test_valid_filenames(self, filename: str, expected_ts: datetime) -> None:
+        """Parse ISO-timestamp correctly from various valid v0.6 component combinations."""
+        ts = indexer.parse_timestamp(filename)
+        assert ts == expected_ts
 
     def test_invalid_format_raises(self) -> None:
         """Non-matching filename raises ValueError."""

@@ -90,9 +90,9 @@ workspace/recorder/
 └── {workspace_dir}/          # e.g. "ultramic-384-evo-034f"
     ├── data/
     │   ├── raw/              # pcm_s24le, native sample rate
-    │   │   └── *.wav
+    │   │   └── YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav
     │   └── processed/        # pcm_s16le, 48 kHz
-    │       └── *.wav
+    │       └── YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav
     └── .buffer/
         ├── raw/
         │   └── *.wav         # actively being written
@@ -103,8 +103,8 @@ workspace/recorder/
 **Container view** (`/app/workspace`):
 ```
 /app/workspace/
-├── data/raw/*.wav
-├── data/processed/*.wav
+├── data/raw/YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav
+├── data/processed/YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav
 ├── .buffer/raw/*.wav
 └── .buffer/processed/*.wav
 ```

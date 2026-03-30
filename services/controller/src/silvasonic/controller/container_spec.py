@@ -183,26 +183,19 @@ def generate_workspace_name(profile_slug: str, device: Device) -> str:
     return f"{safe_slug}-{safe_suffix}"
 
 
-def _container_name(profile_slug: str, suffix: str) -> str:
-    """Build a Podman-safe, human-readable container name.
+def generate_recorder_container_name(workspace_name: str) -> str:
+    """Derive the Podman container name from the workspace name.
 
-    Format: ``silvasonic-recorder-{slug}-{suffix}``
+    The container name is intrinsically tied to the workspace directory
+    for deterministic file path resolution and stable identities.
 
-    Slug is lowercased and stripped of non-alphanumeric characters
-    (underscores/special chars replaced by hyphens, consecutive hyphens
-    collapsed).
-
-    Examples::
-
-        >>> _container_name("ultramic_384_evo", "034f")
-        'silvasonic-recorder-ultramic-384-evo-034f'
+    Args:
+        workspace_name: The human-readable workspace directory name.
 
     Returns:
-        Valid Podman container name (lowercase alphanumeric + hyphens).
+        Podman container name (e.g. ``"silvasonic-recorder-..."``).
     """
-    safe_slug = _SLUG_RE.sub("-", profile_slug.lower()).strip("-")
-    safe_suffix = _SLUG_RE.sub("", suffix.lower())
-    return f"silvasonic-recorder-{safe_slug}-{safe_suffix}"
+    return f"silvasonic-recorder-{workspace_name}"
 
 
 def build_recorder_spec(
@@ -245,7 +238,7 @@ def build_recorder_spec(
 
     device_id = device.name
     workspace_dir = generate_workspace_name(profile.slug, device)
-    container_name = f"silvasonic-recorder-{workspace_dir}"
+    container_name = generate_recorder_container_name(workspace_dir)
 
     spec = Tier2ServiceSpec(
         image=env.RECORDER_IMAGE,

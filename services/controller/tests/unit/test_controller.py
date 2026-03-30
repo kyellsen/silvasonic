@@ -1,24 +1,22 @@
 """Unit tests for ControllerService.
 
 Covers the ControllerService (SilvaService subclass) including:
-- Package import
-- Service configuration (port from env)
 - Background health monitors (_monitor_database, _monitor_podman)
 - get_extra_meta() providing host_resources
 - load_config() DB seeding hook
 - run() lifecycle with shutdown event
-- __main__ guard
+- _stop_all_tier2 shutdown behaviour
+- _emit_status_summary
+- DB/Podman state-change logging
+
+Settings-contract tests (defaults, env overrides) live in test_settings.py.
 """
 
 import asyncio
-import os
-import sys
-import warnings
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.controller.__main__ import ControllerService
 from silvasonic.core.health import HealthMonitor
 
 
@@ -52,86 +50,6 @@ def _make_bare_service() -> Any:
     svc._db_was_connected = None
     svc._podman_was_connected = None
     return svc
-
-
-# ---------------------------------------------------------------------------
-# Package import
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestControllerPackage:
-    """Basic package-level tests."""
-
-    def test_package_importable(self) -> None:
-        """Controller package is importable."""
-        import silvasonic.controller
-
-        assert silvasonic.controller is not None
-
-    def test_podman_client_exported(self) -> None:
-        """SilvasonicPodmanClient is exported from the controller package."""
-        from silvasonic.controller import SilvasonicPodmanClient
-
-        assert SilvasonicPodmanClient is not None
-
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestControllerConfig:
-    """Tests for service-level configuration."""
-
-    def test_health_port_default(self) -> None:
-        """service_port defaults to 9100."""
-        _make_bare_service()
-        # Class-level default is 9100
-        assert ControllerService.service_port == 9100
-
-    def test_health_port_env_override(self) -> None:
-        """service_port respects SILVASONIC_CONTROLLER_PORT at instantiation."""
-        with patch.dict("os.environ", {"SILVASONIC_CONTROLLER_PORT": "7777"}):
-            from silvasonic.controller.__main__ import (
-                ControllerService as ControllerSvc,
-            )
-
-            svc = ControllerSvc.__new__(ControllerSvc)
-            # Simulate __init__ reading env var
-            svc.service_port = int(os.environ.get("SILVASONIC_CONTROLLER_PORT", "9100"))
-            assert svc.service_port == 7777
-
-    def test_service_name(self) -> None:
-        """service_name is 'controller'."""
-        assert ControllerService.service_name == "controller"
-
-    def test_monitor_poll_interval_default(self) -> None:
-        """CONTROLLER_MONITOR_POLL_INTERVAL_S defaults to 10.0."""
-        from silvasonic.controller.settings import ControllerSettings
-
-        cfg = ControllerSettings()
-        assert cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S == 10.0
-
-    def test_log_forwarder_poll_interval_default(self) -> None:
-        """LOG_FORWARDER_POLL_INTERVAL_S defaults to 1.0."""
-        from silvasonic.controller.settings import ControllerSettings
-
-        cfg = ControllerSettings()
-        assert cfg.LOG_FORWARDER_POLL_INTERVAL_S == 1.0
-
-    def test_monitor_poll_interval_env_override(self) -> None:
-        """CONTROLLER_MONITOR_POLL_INTERVAL_S respects env override."""
-        with patch.dict("os.environ", {"SILVASONIC_CONTROLLER_MONITOR_POLL_INTERVAL_S": "30.0"}):
-            from silvasonic.controller.settings import ControllerSettings
-
-            cfg = ControllerSettings()
-            assert cfg.CONTROLLER_MONITOR_POLL_INTERVAL_S == 30.0
-
-    def test_log_forwarder_poll_interval_env_override(self) -> None:
-        """LOG_FORWARDER_POLL_INTERVAL_S respects env override."""
-        with patch.dict("os.environ", {"SILVASONIC_LOG_FORWARDER_POLL_INTERVAL_S": "5.0"}):
-            from silvasonic.controller.settings import ControllerSettings
-
-            cfg = ControllerSettings()
-            assert cfg.LOG_FORWARDER_POLL_INTERVAL_S == 5.0
 
 
 # ---------------------------------------------------------------------------
@@ -463,29 +381,6 @@ class TestStopAllTier2:
         ):
             # Should not raise
             await svc._stop_all_tier2()
-
-
-# ---------------------------------------------------------------------------
-# __main__ guard
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestMainGuard:
-    """Tests for the if __name__ == '__main__' guard."""
-
-    def test_main_guard(self) -> None:
-        """The if __name__ == '__main__' guard calls ControllerService().start()."""
-        import runpy
-
-        # Remove cached module to prevent "found in sys.modules" RuntimeWarning
-        sys.modules.pop("silvasonic.controller.__main__", None)
-
-        with (
-            patch("silvasonic.core.service.SilvaService.start", MagicMock()) as mock_start,
-            warnings.catch_warnings(),
-        ):
-            warnings.simplefilter("ignore", RuntimeWarning)
-            runpy.run_module("silvasonic.controller.__main__", run_name="__main__")
-            mock_start.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

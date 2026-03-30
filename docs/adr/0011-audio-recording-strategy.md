@@ -21,13 +21,14 @@ We need a standardized way to handle audio streams to ensure downstream services
 2.  **Naming Convention**:
     *   Streams and artifacts MUST be named `raw` and `processed`.
     *   We explicitly abandon names like `high`, `low`, `high_res`, `low_res` or specific bitrates (`384k`) in naming conventions (variables, directories, database columns).
+    *   **Filename Format**: All files MUST adhere to the v0.6.0 collision-proof format: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}.wav`. Pre-v0.6.0 legacy fallback formats are strictly forbidden.
 
 3.  **Local Storage Format**:
     *   **Format**: `WAV` (linear PCM).
     *   **Motivation**: Minimal CPU overhead for writing; instant availability for local seeking/reading without decoding latency.
     *   **Structure** (see [Filesystem Governance](../arch/filesystem_governance.md) for full directory layout):
-        *   `data/raw/*.wav`
-        *   `data/processed/*.wav`
+        *   `data/raw/YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav`
+        *   `data/processed/YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq}.wav`
 
 4.  **Cloud Storage Format**:
     *   **Format**: `FLAC` (Free Lossless Audio Codec).

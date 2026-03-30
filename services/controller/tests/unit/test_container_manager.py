@@ -14,9 +14,9 @@ from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import (
     MountSpec,
     Tier2ServiceSpec,
-    _container_name,
     _short_suffix,
     build_recorder_spec,
+    generate_recorder_container_name,
     generate_workspace_name,
 )
 
@@ -179,22 +179,14 @@ class TestShortSuffix:
 
 
 @pytest.mark.unit
-class TestContainerName:
-    """Tests for _container_name() — Podman-safe name generation."""
+class TestGenerateRecorderContainerName:
+    """Tests for generate_recorder_container_name() — standard Podman name generation."""
 
     def test_basic_name(self) -> None:
-        """Builds correct name from slug + suffix."""
-        assert _container_name("ultramic_384_evo", "034f") == (
+        """Builds correct container name by prepending standard prefix."""
+        assert generate_recorder_container_name("ultramic-384-evo-034f") == (
             "silvasonic-recorder-ultramic-384-evo-034f"
         )
-
-    def test_underscores_replaced(self) -> None:
-        """Underscores in slug are replaced by hyphens."""
-        assert _container_name("my_fancy_mic", "abcd") == ("silvasonic-recorder-my-fancy-mic-abcd")
-
-    def test_already_lowercase(self) -> None:
-        """Uppercase in slug is lowercased."""
-        assert _container_name("UltraMic_EVO", "1234") == ("silvasonic-recorder-ultramic-evo-1234")
 
 
 # ===================================================================

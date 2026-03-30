@@ -59,7 +59,7 @@
 | Variable / Mount                   | Description                          | Default / Example |
 | ---------------------------------- | ------------------------------------ | ----------------- |
 | `SILVASONIC_BATDETECT_PORT`        | Health endpoint port                 | `9500`            |
-| `/mnt/data/recordings:ro`          | Recorder workspace (read-only mount) | —                 |
+| `${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z` | Recorder workspace (read-only mount) | —                 |
 | `POSTGRES_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
 
 ### Dynamic Configuration (Database)
