@@ -367,7 +367,7 @@ class TestLogForwarderPublish:
         mock_container = MagicMock()
         mock_container.logs.return_value = iter(
             [
-                b"Python startup banner v3.11\n",
+                b"Python startup banner v3.13\n",
             ]
         )
         mock_podman.containers.get.return_value = mock_container
@@ -398,7 +398,7 @@ class TestLogForwarderPublish:
         assert len(published_payloads) >= 1
         payload = json.loads(published_payloads[0])
         assert payload["level"] == "raw"
-        assert payload["message"] == "Python startup banner v3.11"
+        assert payload["message"] == "Python startup banner v3.13"
 
 
 # ---------------------------------------------------------------------------

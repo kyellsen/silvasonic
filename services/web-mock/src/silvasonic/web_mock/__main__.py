@@ -59,7 +59,7 @@ _STATIC_DIR = _settings.STATIC_DIR
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Service infrastructure setup/teardown via ServiceContext.
 
     This is the FastAPI-native equivalent of SilvaService._setup()/_teardown().
@@ -418,7 +418,7 @@ async def console_events(
     Replace with real Redis SUBSCRIBE in the actual web-interface.
     """
 
-    async def generator() -> AsyncGenerator[dict[str, str], None]:
+    async def generator() -> AsyncGenerator[dict[str, str]]:
         lines = [
             ln
             for ln in mock_data.FAKE_LOG_LINES

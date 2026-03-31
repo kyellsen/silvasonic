@@ -44,7 +44,7 @@ from silvasonic.web_mock import mock_data
 # ---------------------------------------------------------------------------
 
 
-async def _mock_get_db() -> AsyncGenerator[AsyncMock, None]:
+async def _mock_get_db() -> AsyncGenerator[AsyncMock]:
     yield AsyncMock()
 
 
@@ -57,7 +57,7 @@ async def _mock_settings() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def lifespan_client() -> Generator[TestClient, None, None]:
+def lifespan_client() -> Generator[TestClient]:
     """App running with real lifespan — Redis & DB mocked (external services).
 
     Real infrastructure exercised:

@@ -29,7 +29,7 @@
 - [x] Register in workspace:
   - Root `pyproject.toml`: add `silvasonic-processor` to `[project] dependencies` and `[tool.uv.sources]`
 - [x] Add `Containerfile` following the Service Blueprint (§5):
-  - Base: `python:3.11-slim-bookworm`
+  - Base: `python:3.13-slim-bookworm`
   - System deps: `curl`, `libsndfile1` (WAV metadata via `soundfile`)
   - Port: `9200`
 - [x] Add Processor to `compose.yml` as Tier 1 service:

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "silvasonic-web-mock"
 description = "Silvasonic Web UI mock — full UI shell with mock data, real DB for Settings persistence."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dynamic = ["version"]
 dependencies = [
     "fastapi>=0.115.0",

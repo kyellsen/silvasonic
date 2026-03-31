@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "silvasonic-processor"
 description = "Data ingestion, metadata indexing, and storage retention for Silvasonic"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = ["silvasonic-core", "soundfile>=0.12.0"]
 dynamic = ["version"]
 

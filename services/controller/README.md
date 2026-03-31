@@ -374,7 +374,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
 *   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
 *   **Core:** `silvasonic.core.service.SilvaService` (base class for Health check and Redis Publisher)
-*   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
+*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
 
 ---
 

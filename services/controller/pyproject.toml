@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "silvasonic-controller"
 description = "Control logic and orchestration service for Silvasonic"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = ["silvasonic-core", "podman>=5.0.0", "pyyaml>=6.0", "bcrypt>=4.0", "cryptography>=46.0.5"]
 dynamic = ["version"]
 

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "silvasonic-test-utils"
 dynamic = ["version"]
 description = "Shared testcontainer fixtures for Silvasonic integration tests"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 keywords = ["silvasonic", "test", "fixtures", "testcontainers"]
 classifiers = []
 dependencies = ["pytest>=8.3.0", "testcontainers>=4.14.1", "silvasonic-core"]

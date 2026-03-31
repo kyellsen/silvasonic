@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.5.1 — Analysis & Backend Orchestration ✅
+> **Status:** v0.5.2 — Core Infrastructure Upgrade ✅
 
 ---
 
@@ -23,7 +23,7 @@ For the long-term vision and design philosophy see **[VISION.md](VISION.md)**. F
 ### Prerequisites
 
 - Linux (e.g., Debian or Fedora)
-- **Python 3.11** (required, `>=3.11, <3.12`)
+- **Python 3.13** (required, `>=3.13, <3.14`)
 - **uv** installed — Python package manager ([Installation](https://docs.astral.sh/uv/getting-started/installation/))
 - **just** installed — command runner ([Installation](https://github.com/casey/just#installation))
 - **Podman** & **podman-compose** installed

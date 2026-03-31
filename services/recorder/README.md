@@ -205,7 +205,7 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 *   **Audio Engine:** `ffmpeg` (subprocess management and capture)
 *   **System Dependencies:** `ffmpeg`, `alsa-utils`
 *   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
-*   **Base Image:** `python:3.11-slim-bookworm` (Dockerfile)
+*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
 
 ---
 

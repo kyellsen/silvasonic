@@ -33,7 +33,7 @@ async def _mock_settings() -> dict[str, Any]:
     return mock_data.SETTINGS.copy()
 
 
-async def _mock_get_db() -> AsyncGenerator[AsyncMock, None]:
+async def _mock_get_db() -> AsyncGenerator[AsyncMock]:
     session = AsyncMock(add=MagicMock())
     yield session
 
@@ -186,7 +186,7 @@ class TestSettingsBehavior:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
 
-        async def _db_new_setting() -> AsyncGenerator[AsyncMock, None]:
+        async def _db_new_setting() -> AsyncGenerator[AsyncMock]:
             session = AsyncMock(add=MagicMock())
             session.execute.return_value = mock_result
             yield session

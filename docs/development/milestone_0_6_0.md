@@ -126,7 +126,7 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 - [ ] Register in workspace:
   - Root `pyproject.toml`: add `silvasonic-uploader` to `[project] dependencies` and `[tool.uv.sources]`
 - [ ] Add `Containerfile` following the Service Blueprint (§5):
-  - Base: `python:3.11-slim-bookworm`
+  - Base: `python:3.13-slim-bookworm`
   - System deps: `curl`, `ffmpeg` (FLAC encoding), `rclone` (upload backend)
   - Port: `EXPOSE 9500` — **NOT** 9200 like Processor. Uploader uses the unified Tier 2 health port (same as Recorder)
 - [ ] **NO** runtime `compose.yml` entry — Uploader is Tier 2, managed by Controller (ADR-0013, Service Blueprint §6)

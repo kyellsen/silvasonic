@@ -89,7 +89,7 @@ Runtime-tunable settings stored in the `system_config` table under key `uploader
 
 ## 6. Technology Stack
 
-*   **Base Image:** `python:3.11-slim-bookworm` (with rclone installed)
+*   **Base Image:** `python:3.13-slim-bookworm` (with rclone installed)
 *   **FLAC Encoding:** `ffmpeg` (via Python `subprocess`). Highly optimized, stable for large files, and streams data without blowing up container memory.
 *   **Upload Protocols:** `rclone` (system binary via Python wrapper). Serves as a universal backend for WebDAV, S3, SFTP, and dozens of other protocols without needing protocol-specific Python libraries.
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
