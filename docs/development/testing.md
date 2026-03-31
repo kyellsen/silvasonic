@@ -10,8 +10,8 @@ Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests with
 
 | Marker      | Description                                          | External Deps                | Typical Duration | In `check-all` |
 | ----------- | ---------------------------------------------------- | ---------------------------- | ---------------- | -------------- |
-| `unit`      | Fast, isolated tests without external dependencies   | None (mocks only)            | < 1s per test    | ✅ Stage 5      |
-| `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 6      |
+| `unit`      | Fast, isolated tests without external dependencies   | None (mocks only)            | < 1s per test    | ✅ Stage 6      |
+| `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 7      |
 | `system`    | Full-stack lifecycle tests with real Podman           | Podman socket + built images | < 60s per test   | ✅ Stage 10     |
 | `system_hw` | Hardware-dependent system tests                      | Podman + real USB microphone | < 60s per test   | ❌ Never        |
 | `smoke`     | Health checks against running containers             | Full stack (`just start`)    | < 30s total      | ✅ Stage 11     |
@@ -63,6 +63,7 @@ just test-smoke      # Smoke tests (built images via Testcontainers)
 just test-e2e        # End-to-end browser tests (Playwright)
 just test            # Quick dev: Unit + Integration
 just test-all        # All tests except hardware (Unit+Int+System+Smoke+E2E)
+just test-cov-all    # Combined coverage map (Unit+Int+System+Smoke+E2E)
 ```
 
 ### Quality Gates
@@ -77,14 +78,15 @@ just check-all       # Full CI pipeline (12 stages):
 
 ### When to Run What
 
-| Situation              | Command          | What it covers                                  |
-| ---------------------- | ---------------- | ----------------------------------------------- |
-| During development     | `just test`      | Unit + Integration (quick feedback)             |
-| Before every commit    | `just check`     | Lint, types, unit tests (no containers)         |
-| Thorough test run      | `just test-all`  | All test suites except hardware                 |
-| Before push / PR       | `just check-all` | Full 12-stage pipeline incl. build              |
-| Before release         | `just check-all` | All automated gates (see Release Checklist)     |
-| With USB mic connected | `just test-hw`   | Real hardware detection + spawning              |
+| Situation              | Command            | What it covers                                  |
+| ---------------------- | ------------------ | ----------------------------------------------- |
+| During development     | `just test`        | Unit + Integration (quick feedback)             |
+| Before every commit    | `just check`       | Lint, types, unit tests (no containers)         |
+| Thorough test run      | `just test-all`    | All test suites except hardware                 |
+| Before push / PR       | `just check-all`   | Full 12-stage pipeline incl. build              |
+| Before release         | `just check-all`   | All automated gates (see Release Checklist)     |
+| Release test audit     | `just test-cov-all`| Combined coverage map for Changed-Path Audit    |
+| With USB mic connected | `just test-hw`     | Real hardware detection + spawning              |
 
 ---
 
@@ -187,7 +189,7 @@ The `just check-all` command runs 12 stages in order:
 | ----- | ------------------ | -------- | ------------------------------------------------ |
 | 1     | Lock-File Check    | No       | `uv lock --check`                                |
 | 2     | Dep Audit          | No       | `pip-audit` (skipped by default in dev)           |
-| 3     | Containerfile Lint | No       | Hadolint (skipped if not installed)               |
+| 3     | Containerfile Lint | No       | Hadolint + `podman-compose config` validation    |
 | 4     | Ruff Lint          | Yes      | Linting + formatting                              |
 | 5     | Mypy               | Yes      | Static type checking                              |
 | 6     | Unit Tests         | Yes      | `@pytest.mark.unit` (parallel, coverage)          |
@@ -284,35 +286,23 @@ All `just test-*` commands delegate to [`scripts/test.py`](../../scripts/test.py
 
 ### Worker Defaults
 
-| Suite | Workers | Env Override | Rationale |
-| --- | --- | --- | --- |
-| `unit` | **7** | `SILVASONIC_UNIT_WORKERS` | Pure in-process, CPU-bound — 7 is the sweet-spot |
-| `integration` | **6** | `SILVASONIC_INTEGRATION_WORKERS` | Each worker spawns its own TimescaleDB testcontainer |
-| `system` | **6** | `SILVASONIC_SYSTEM_WORKERS` | Sweet-spot before Podman socket bottleneck (see below) |
-| `smoke` | **1** (sequential) | — | Requires running Compose stack, no parallelism needed |
-| `system_hw` | **1** (sequential) | — | Single USB mic, hardware-bound |
-| `e2e` | **1** (sequential) | — | Browser tests, inherently sequential |
+Worker counts and their environment variable overrides are defined in [`scripts/test.py`](../../scripts/test.py) — the single source of truth. Do **not** duplicate the defaults here. Refer to the constants at the top of that file (`UNIT_WORKERS`, `INTEGRATION_WORKERS`, `SYSTEM_WORKERS`) for current values.
 
-> [!WARNING]
-> **System test hard ceiling: ~6–7 workers.** The rootless Podman socket is a shared bottleneck.
-> At **8 workers**, `testcontainers` hits 60s read timeouts on the Podman API, causing most tests
-> to SKIP or ERROR. Benchmarked on i9/16c/62GB: W6=140s ✅, W8=67s ❌ (socket timeout).
-
-### Overriding Worker Counts
+Override via environment variables: `SILVASONIC_UNIT_WORKERS`, `SILVASONIC_INTEGRATION_WORKERS`, `SILVASONIC_SYSTEM_WORKERS`.
 
 ```bash
 # Temporary override for a single run
 SILVASONIC_INTEGRATION_WORKERS=8 just test-int
 
 # Or export for the session
-export SILVASONIC_UNIT_WORKERS=10
+export SILVASONIC_UNIT_WORKERS=12
 just check
 ```
 
-> [!TIP]
-> On a workstation with many cores (e.g. i9/16 cores, 64GB RAM), raising `INTEGRATION_WORKERS`
-> to 6–8 can halve integration test runtime. Each additional worker spawns one extra
-> TimescaleDB container (~200MB RAM).
+> [!WARNING]
+> **System test hard ceiling: ~6–7 workers.** The rootless Podman socket is a shared bottleneck.
+> At **8 workers**, `testcontainers` hits 60s read timeouts on the Podman API, causing most tests
+> to SKIP or ERROR.
 
 
 ### Integration Test DB Cleanup

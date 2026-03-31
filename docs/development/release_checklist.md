@@ -64,8 +64,7 @@ This includes:
 - **pytest** — Unit, Integration, System & Smoke Tests
 - **pip-audit** — Dependency Security Audit
 - **uv lock --check** — Lock File Consistency
-- **Containerfile Lint** — Hadolint
-- **Compose Validation** — Schema Check
+- **Containerfile Lint** — Hadolint + Compose YAML Validation
 
 > [!TIP]
 > If you have a USB microphone connected, also run `just test-hw` to validate

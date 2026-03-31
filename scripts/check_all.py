@@ -162,21 +162,33 @@ def _stage_system_tests() -> None:
 
 
 def _stage_containerfile_lint() -> None:
-    """Stage 7: Lint Containerfiles with hadolint (skips if not installed)."""
+    """Stage 3: Lint Containerfiles with hadolint + validate Compose YAML."""
+    failed = False
+
+    # ── Hadolint ──────────────────────────────────────────────────────────
     if not shutil.which("hadolint"):
         print("  ⚠️  hadolint not found — skipping Containerfile lint.")
         print("  Install: https://github.com/hadolint/hadolint#install")
-        return
+    else:
+        containerfiles = sorted(PROJECT_ROOT.glob("services/*/Containerfile"))
+        if not containerfiles:
+            print("  No Containerfiles found.")
+        else:
+            for cf in containerfiles:
+                print(f"  Linting {cf.relative_to(PROJECT_ROOT)} ...")
+                result = subprocess.run(["hadolint", str(cf)], cwd=PROJECT_ROOT)
+                if result.returncode != 0:
+                    failed = True
 
-    containerfiles = sorted(PROJECT_ROOT.glob("services/*/Containerfile"))
-    if not containerfiles:
-        print("  No Containerfiles found.")
-        return
-
-    failed = False
-    for cf in containerfiles:
-        print(f"  Linting {cf.relative_to(PROJECT_ROOT)} ...")
-        result = subprocess.run(["hadolint", str(cf)], cwd=PROJECT_ROOT)
+    # ── Compose Validation ────────────────────────────────────────────────
+    if not shutil.which("podman-compose"):
+        print("  ⚠️  podman-compose not found — skipping Compose validation.")
+    else:
+        print("  Validating compose.yml ...")
+        result = subprocess.run(
+            ["podman-compose", "-f", "compose.yml", "config", "--quiet"],
+            cwd=PROJECT_ROOT,
+        )
         if result.returncode != 0:
             failed = True
 
