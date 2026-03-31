@@ -4,24 +4,24 @@
 
 ---
 
-## US-U01: Aufnahmen automatisch in die Cloud sichern ☁️
+## US-U01: Automatically back up recordings to the cloud ☁️
 
-> **Als** Forscher
-> **möchte ich,** dass meine Aufnahmen automatisch auf einen entfernten Speicher (z.B. Nextcloud, S3) hochgeladen werden,
-> **damit** meine Daten auch bei Geräteverlust, Diebstahl oder Hardwaredefekt sicher sind.
+> **As a researcher**
+> **I want** my recordings to be automatically uploaded to a remote storage (e.g., Nextcloud, S3),
+> **so that** my data is safe even in case of device loss, theft, or hardware failure.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Neue Aufnahmen werden automatisch erkannt und in die Cloud hochgeladen — ohne manuellen Eingriff.
-- [ ] Vor dem Upload werden Dateien verlustfrei komprimiert (FLAC), um Bandbreite zu sparen (~50 % kleiner).
-- [ ] Nach bestätigtem Upload auf **alle aktuell aktiven Speicherziele** wird die Datei in der Datenbank als „hochgeladen“ markiert (`uploaded=true`).
-- [ ] Das Gerät funktioniert auch ohne Internetverbindung — Aufnahmen werden lokal gespeichert und bei Verbindung nachgeholt (Store & Forward).
+- [ ] New recordings are automatically detected and uploaded to the cloud — without manual intervention.
+- [ ] Before upload, files are losslessly compressed (FLAC) to save bandwidth (~50% smaller).
+- [ ] After confirmed upload to **all currently active storage targets**, the file is marked as "uploaded" in the database (`uploaded=true`).
+- [ ] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store & Forward).
 
 ### Milestone
 
 - **Milestone:** v0.6.0
 
-### Referenzen
+### References
 
 - [Uploader Service Docs](../services/uploader.md)
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
@@ -29,73 +29,73 @@
 
 ---
 
-## US-U02: Unbegrenzt weiter aufnehmen ♾️
+## US-U02: Record indefinitely ♾️
 
-> **Als** Nutzer
-> **möchte ich,** dass hochgeladene Aufnahmen automatisch vom lokalen Speicher gelöscht werden dürfen,
-> **damit** die Station über Monate oder Jahre ohne manuelles Eingreifen durchgehend aufnehmen kann.
+> **As a user**
+> **I want to** ensure that uploaded recordings may be automatically deleted from local storage,
+> **so that** the station can record continuously for months or years without manual intervention.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Nach bestätigtem Upload auf **alle aktiven Speicherziele** markiert der System die Datei als gesichert (`uploaded=true`).
-- [ ] Der Speicher-Bereinigungsdienst (Janitor) darf nur als „hochgeladen" markierte Dateien löschen (→ US-P02).
-- [ ] Das Zusammenspiel aus Upload und Bereinigung hält den lokalen Speicher dauerhaft unter den kritischen Schwellenwerten.
-- [ ] Bei dauerhaft fehlender Internetverbindung greift der Janitor trotzdem — Aufnahme hat immer Vorrang vor Archivierung.
+- [ ] After confirmed upload to **all active storage targets**, the system marks the file as backed up (`uploaded=true`).
+- [ ] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).
+- [ ] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.
+- [ ] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.
 
 ### Milestone
 
 - **Milestone:** v0.6.0
 
-### Referenzen
+### References
 
 - [Uploader Service Docs §Outputs](../services/uploader.md)
-- [Processor User Stories — US-P02: Endlos-Aufnahme ohne Speichersorgen](./processor.md)
+- [Processor User Stories — US-P02: Endless recording without storage worries](./processor.md)
 - [ADR-0011 §Retention Policy](../adr/0011-audio-recording-strategy.md)
 
 ---
 
-## US-U03: Mehrere Speicherziele gleichzeitig 🗄️
+## US-U03: Multiple storage targets simultaneously 🗄️
 
-> **Als** Forscher
-> **möchte ich** meine Aufnahmen gleichzeitig an mehrere Speicherziele senden (z.B. Nextcloud für den Austausch, S3 für Langzeitarchiv),
-> **damit** ich verschiedene Sicherungs- und Sharing-Strategien parallel nutzen kann.
+> **As a researcher**
+> **I want to** send my recordings to multiple storage targets simultaneously (e.g., Nextcloud for sharing, S3 for long-term archiving),
+> **so that** I can use different backup and sharing strategies in parallel.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Mehrere Cloud-Speicher können in der Web-Oberfläche konfiguriert werden (z.B. Nextcloud, Amazon S3, SFTP-Server).
-- [ ] Pro aktivem Speicherziel existiert eine eigene logische Upload-Instanz. Wenn mehr aktive Speicherziele vorhanden sind als `max_uploaders` erlaubt, wählt der Controller deterministisch die laufenden Instanzen in der Reihenfolge `created_at ASC, slug ASC`.
-- [ ] Einzelne Speicherziele können aktiviert und deaktiviert werden, ohne die anderen zu beeinflussen.
-- [ ] Eine Datei gilt erst als vollständig gesichert (und damit durch den Janitor löschbar), wenn sie an **alle** aktiven Speicherziele erfolgreich hochgeladen wurde. Inaktive Speicherziele blockieren diesen Status nicht.
+- [ ] Multiple cloud storages can be configured in the web interface (e.g., Nextcloud, Amazon S3, SFTP Server).
+- [ ] For each active storage target, a separate logical upload instance exists. If there are more active storage targets than `max_uploaders` allows, the Controller deterministically selects the running instances in the order `created_at ASC, slug ASC`.
+- [ ] Individual storage targets can be enabled and disabled without affecting the others.
+- [ ] A file is only considered fully backed up (and thus deletable by the Janitor) when it has been successfully uploaded to **all** active storage targets. Inactive storage targets do not block this status.
 
 ### Milestone
 
 - **Milestone:** v0.6.0
 
-### Referenzen
+### References
 
 - [Uploader Service Docs §Configuration](../services/uploader.md)
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 
 ---
 
-## US-U04: Upload-Einstellungen über die Web-Oberfläche anpassen 🎛️
+## US-U04: Adjust upload settings via web interface 🎛️
 
-> **Als** Nutzer
-> **möchte ich** die Upload-Einstellungen (Bandbreite, Zeitfenster, Speicherziel) über die Web-Oberfläche ändern können,
-> **damit** ich den Upload an meine Netzwerksituation und Bedürfnisse anpasse — ohne SSH oder Konfigurationsdateien.
+> **As a user**
+> **I want to** be able to change upload settings (bandwidth, time window, storage targets) via the web interface,
+> **so that** I adjust the upload to my network situation and needs — without SSH or config files.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Bandbreitenlimit ist einstellbar (z.B. „maximal 1 MB/s"), um die Internetverbindung nicht zu überlasten.
-- [ ] Ein Zeitfenster für Uploads kann definiert werden (z.B. nur nachts von 22–6 Uhr), um tagsüber Bandbreite zu sparen.
-- [ ] Neue Speicherziele können über die Web-Oberfläche hinzugefügt, bearbeitet und entfernt werden.
-- [ ] Änderungen werden automatisch übernommen — der Upload-Dienst wird bei Bedarf neu gestartet.
+- [ ] Bandwidth limit is adjustable (e.g., "max 1 MB/s") to avoid overloading the internet connection.
+- [ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day.
+- [ ] New storage targets can be added, edited, and removed via the web interface.
+- [ ] Changes are automatically applied — the upload service restarts if necessary.
 
 ### Milestone
 
-- **Milestone:** v0.6.0 (Backend: UploaderSettings Schema, Schedule, Bandwidth Limit) + v0.8.0 (Frontend: Web-Interface)
+- **Milestone:** v0.6.0 (Backend: UploaderSettings Schema, Schedule, Bandwidth Limit) + v0.8.0 (Frontend: Web Interface)
 
-### Referenzen
+### References
 
 - [Uploader Service Docs §Dynamic Configuration](../services/uploader.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
@@ -103,52 +103,52 @@
 
 ---
 
-## US-U05: Upload-Fortschritt und -Status im Dashboard 📊
+## US-U05: Upload progress and status in dashboard 📊
 
-> **Als** Nutzer
-> **möchte ich** im Dashboard sehen, wie viele Aufnahmen noch hochgeladen werden müssen und ob es Probleme gibt,
-> **damit** ich den Cloud-Sync-Zustand meiner Station jederzeit einschätzen kann.
+> **As a user**
+> **I want to** see in the dashboard how many recordings still need to be uploaded and whether there are problems,
+> **so that** I can assess the cloud sync state of my station at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Das Dashboard zeigt: Anzahl ausstehender Uploads, aktuelle Upload-Geschwindigkeit und letzten erfolgreichen Upload-Zeitpunkt.
-- [ ] Bei fehlgeschlagenen Uploads wird eine Warnung angezeigt (z.B. „Verbindung zu Nextcloud fehlgeschlagen seit 2 Stunden").
-- [ ] Pro Speicherziel ist der Status einzeln einsehbar.
-- [ ] Der Upload-Dienst meldet seinen Status regelmäßig an die Web-Oberfläche.
+- [ ] The dashboard shows: number of pending uploads, current upload speed, and last successful upload time.
+- [ ] A warning is shown for failed uploads (e.g., "Connection to Nextcloud failed for 2 hours").
+- [ ] Status can be viewed individually per storage target.
+- [ ] The upload service reports its status periodically to the web interface.
 
 ### Milestone
 
 - **Milestone:** v0.6.0 (Backend: Heartbeat Payload) + v0.8.0 (Frontend: Dashboard)
 
-### Referenzen
+### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [Uploader Service Docs](../services/uploader.md)
 
 ---
 
-## US-U06: Lückenlose Upload-Nachverfolgung 📋
+## US-U06: Seamless upload tracking 📋
 
-> **Als** Forscher
-> **möchte ich** jederzeit nachvollziehen können, welche Aufnahmen wann und wohin hochgeladen wurden,
-> **damit** ich sicher bin, dass keine Daten auf dem Weg verloren gegangen sind.
+> **As a researcher**
+> **I want to** be able to trace at any time which recordings were uploaded when and where,
+> **so that** I am certain no data was lost on the way.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Jeder Upload-Versuch wird protokolliert — Erfolg, Fehlschlag, Dateigröße, Dauer und Ziel.
-- [ ] Das Upload-Protokoll ist über die Web-Oberfläche einsehbar.
-- [ ] Fehlgeschlagene Uploads werden automatisch erneut versucht.
-- [ ] Dauerhaft fehlgeschlagene Uploads werden als Warnung im Dashboard angezeigt (→ US-U05).
+- [ ] Every upload attempt is logged — success, failure, file size, duration, and target.
+- [ ] The upload log is viewable via the web interface.
+- [ ] Failed uploads are automatically retried.
+- [ ] Persistently failed uploads are shown as a warning in the dashboard (→ US-U05).
 
 ### Milestone
 
 - **Milestone:** v0.6.0
 
-### Referenzen
+### References
 
 - [Uploader Service Docs §Audit Logging](../services/uploader.md)
 
 ---
 
 > [!NOTE]
-> **Aufnahme-Schutz:** Dieser Dienst darf die laufende Aufnahme nicht beeinträchtigen. Ressourcenlimits, QoS-Priorisierung und Datei-Isolation werden zentral über den Controller verwaltet (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
+> **Recording Protection:** This service must not impair the ongoing recording. Resource limits, QoS prioritization, and file isolation are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md)).

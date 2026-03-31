@@ -136,7 +136,50 @@ just check-all       # Full CI pipeline (12 stages):
 
 ---
 
-## 5. `check-all` Pipeline Stages
+## 5. Test Quality & Anti-Patterns
+
+> **Status:** Normative (Mandatory)
+> This section defines the qualitative boundaries for tests. It is especially critical for AI-generated code.
+
+### 5.1 Anti-Patterns (What Tests Must NOT Do)
+
+The following patterns are **FORBIDDEN** and will lead to test rejection:
+- **Existence/Import Tests:** Tests that only verify imports or whether a function exists without asserting observable behavior.
+- **Trivial Equality:** Tests that only assert constants or default values (unless the value itself is an explicit domain contract).
+- **Call-Chain Mirroring:** Tests that identically replicate internal ORM/framework logic or helper structures instead of testing visible behavior.
+- **Mock-Heavy Verification:** Tests whose primary logic consists of setting up mocks rather than verifying domain logic. If mocking is substantially larger than the assertion, the test design is flawed.
+- **Fragile Async Control:** Async or loop tests that rely on brittle `call_count` checks, artificial `CancelledError` injections, or timing tricks when more robust alternatives exist.
+
+### 5.2 Delete vs. Refactor Rule
+
+Particularly for AI-generated tests, distinguish carefully between fixing and deleting:
+- **DELETE** if a test provides no clear business or architectural value.
+- **DELETE** if a test artificially inflates line coverage but would not catch a real regression.
+- **REFACTOR** if a test covers a valuable domain contract but is written in a brittle way.
+
+### 5.3 Layer-Specific Quality Rules
+
+- **Unit Tests (`@pytest.mark.unit`):**
+  - Must test the behavior of small units, not the implementation details.
+  - Zero I/O, zero database access, zero framework internals.
+  - Minimize mocking: use fakes or data structures where possible.
+- **Integration Tests (`@pytest.mark.integration`):**
+  - Must use real PostgreSQL/Redis testcontainers. Mocking the database in integration tests is **FORBIDDEN**.
+  - Must verify actual contracts between components and external dependencies.
+- **System Tests (`@pytest.mark.system`):**
+  - Must focus on full lifecycle effects and state transitions.
+  - Must assert end results, not internal call sequences.
+
+### 5.4 Guidelines for AI Agents
+
+- **Prioritize Simplicity:** AI-generated tests must favor simplicity and readability over exhaustive completeness.
+- **Avoid Coverage-Driven Bloat:** Do not generate tests solely to increase test coverage.
+- **Check Before Adding:** Before an agent adds a new test, it must verify whether an existing higher-level test already covers the same failure space.
+- **Document Intent:** New tests must clearly state (via naming or docstrings) the specific behavior or regression they are safeguarding.
+
+---
+
+## 6. `check-all` Pipeline Stages
 
 The `just check-all` command runs 12 stages in order:
 
@@ -161,12 +204,12 @@ The `just check-all` command runs 12 stages in order:
 
 ---
 
-## 6. Test Infrastructure
+## 7. Test Infrastructure
 
 | Tool | Purpose |
 | --- | --- |
 | `pytest` | Test runner |
-| `pytest-xdist` | Parallel test execution (`-n` workers) — see §9 |
+| `pytest-xdist` | Parallel test execution (`-n` workers) — see §10 |
 | `testcontainers` | Disposable PostgreSQL + Redis for integration tests |
 | `polyfactory` | Pydantic model factories for test data generation |
 | `playwright` | Browser automation for E2E tests |
@@ -175,7 +218,7 @@ The `just check-all` command runs 12 stages in order:
 
 ---
 
-## 7. Naming Conventions
+## 8. Naming Conventions
 
 | Element | Convention | Example |
 | --- | --- | --- |
@@ -187,7 +230,7 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ---
 
-## 8. Parallel Execution & Isolation
+## 9. Parallel Execution & Isolation
 
 **Every test level is fully isolated.** All combinations can run in parallel — with each other and with `just start` (production stack).
 
@@ -235,7 +278,7 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ---
 
-## 9. Parallel Workers & Configuration
+## 10. Parallel Workers & Configuration
 
 All `just test-*` commands delegate to [`scripts/test.py`](../../scripts/test.py) — the **single source of truth** for pytest invocations, worker counts, and coverage arguments.
 

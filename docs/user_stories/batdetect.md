@@ -4,175 +4,175 @@
 
 ---
 
-## US-BD01: Fledermausarten automatisch erkennen 🦇
+## US-BD01: Automatically detect bat species 🦇
 
-> **Als** Forscher
-> **möchte ich,** dass meine Ultraschall-Aufnahmen automatisch auf Fledermausrufe analysiert werden und die erkannten Arten mit Zeitstempel und Zuverlässigkeit in der Datenbank erscheinen,
-> **damit** ich ein vollständiges Fledermaus-Artinventar meines Standorts erhalte — ohne jede Aufnahme manuell im Spektrogramm durchsuchen zu müssen.
+> **As a researcher**
+> **I want** my ultrasound recordings to be automatically analyzed for bat calls and the detected species to appear in the database with timestamp and confidence,
+> **so that** I get a complete bat species inventory of my location — without having to manually search every recording in the spectrogram.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Alle indexierten Aufnahmen mit ausreichend hoher Sample Rate werden automatisch analysiert — ohne manuellen Anstoß.
-- [ ] Pro erkanntem Fledermausruf wird die Art, der Zeitpunkt im Audio und ein Konfidenzwert gespeichert.
-- [ ] Die Analyse nutzt die Originalaufnahme (volle Hardware-Qualität), nicht die heruntergerechnete Standardversion.
-- [ ] Bereits analysierte Aufnahmen werden nicht erneut verarbeitet.
-- [ ] Das Modell ist auf **mitteleuropäische Fledermausarten** (DACH-Region) trainiert oder feinjustiert.
+- [ ] All indexed recordings with a sufficiently high sample rate are automatically analyzed — without manual triggering.
+- [ ] For each detected bat call, the species, the time in the audio, and a confidence value are stored.
+- [ ] The analysis uses the original recording (full hardware quality), not the downsampled standard version.
+- [ ] Already analyzed recordings are not processed again.
+- [ ] The model is trained or fine-tuned on **Central European bat species** (DACH region).
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [BatDetect Service Docs](../services/batdetect.md)
 - [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
-- [Recorder User Stories — US-R03: Originalformat und Standardformat gleichzeitig](./recorder.md)
+- [Recorder User Stories — US-R03: Original format and standard format simultaneously](./recorder.md)
 
 ---
 
-## US-BD02: Nur Ultraschall-Mikrofone analysieren 🎤
+## US-BD02: Analyze only ultrasound microphones 🎤
 
-> **Als** Nutzer
-> **möchte ich,** dass nur Aufnahmen von Mikrofonen analysiert werden, die tatsächlich Ultraschall aufnehmen können,
-> **damit** keine Rechenleistung für Standard-Mikrofone (48 kHz) verschwendet wird, die ohnehin keine Fledermausrufe enthalten.
+> **As a user**
+> **I want** only recordings from microphones that can actually record ultrasound to be analyzed,
+> **so that** no computing power is wasted on standard microphones (48 kHz) which contain no bat calls anyway.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] BatDetect verarbeitet nur Aufnahmen mit einer Sample Rate ≥ 192 kHz (konfigurierbar).
-- [ ] Aufnahmen von Standard-Mikrofonen (z.B. 48 kHz) werden automatisch übersprungen.
-- [ ] Der Filter basiert auf der Sample Rate der aufgenommenen Datei — keine manuelle Zuordnung nötig.
-- [ ] Im Dashboard ist sichtbar, welche Mikrofone für die Fledermaus-Analyse qualifiziert sind.
+- [ ] BatDetect only processes recordings with a sample rate ≥ 192 kHz (configurable).
+- [ ] Recordings from standard microphones (e.g. 48 kHz) are automatically skipped.
+- [ ] The filter is based on the sample rate of the recorded file — no manual assignment necessary.
+- [ ] In the dashboard, it is visible which microphones are qualified for bat analysis.
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [BatDetect Service Docs §Inputs](../services/batdetect.md)
 - [Microphone Profiles](../arch/microphone_profiles.md)
 
 ---
 
-## US-BD03: Analyse nur zu Fledermaus-aktiven Zeiten ⏰
+## US-BD03: Analyze only during bat-active hours ⏰
 
-> **Als** Forscher
-> **möchte ich,** dass die Fledermaus-Analyse nur für Aufnahmen aus den Abend- und Nachtstunden läuft (z.B. 19:00–07:00),
-> **damit** keine Rechenleistung für Tagaufnahmen verschwendet wird, in denen Fledermäuse nicht aktiv sind.
+> **As a researcher**
+> **I want** the bat analysis to only run for recordings from the evening and night hours (e.g. 19:00–07:00),
+> **so that** no computing power is wasted on daytime recordings where bats are not active.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Ein Zeitfenster (Start- und Endstunde) ist über die Web-Oberfläche konfigurierbar (Standard: 19:00–07:00).
-- [ ] Aufnahmen außerhalb des Zeitfensters werden bei der Analyse übersprungen.
-- [ ] Das Zeitfenster kann deaktiviert werden, sodass alle Aufnahmen analysiert werden (z.B. für spezielle Studien).
-- [ ] Änderungen am Zeitfenster werden automatisch übernommen (Dienst-Neustart).
+- [ ] A time window (start and end hour) is configurable via the web interface (default: 19:00–07:00).
+- [ ] Recordings outside the time window are skipped during analysis.
+- [ ] The time window can be disabled so that all recordings are analyzed (e.g., for special studies).
+- [ ] Changes to the time window are automatically applied (service restart).
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [BatDetect Service Docs §Dynamic Configuration](../services/batdetect.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
 
 ---
 
-## US-BD04: Erkennungsgenauigkeit einstellen 🎚️
+## US-BD04: Adjust detection accuracy 🎚️
 
-> **Als** Forscher
-> **möchte ich** den Konfidenz-Schwellenwert für die Fledermaus-Erkennung anpassen können,
-> **damit** ich je nach Bedarf entweder mehr Einzelnachweise (niedriger Schwellenwert) oder weniger Fehlalarme (hoher Schwellenwert) erhalte.
+> **As a researcher**
+> **I want to** be able to adjust the confidence threshold for bat detection,
+> **so that** I receive either more individual records (lower threshold) or fewer false alarms (higher threshold) depending on my needs.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Der Konfidenz-Schwellenwert ist über die Web-Oberfläche einstellbar (Standard: 25 %).
-- [ ] Nachweise unterhalb des Schwellenwerts werden nicht in der Artenliste angezeigt.
-- [ ] Änderungen werden automatisch übernommen — der Dienst startet bei Bedarf neu.
-- [ ] Im Dashboard ist der aktuelle Schwellenwert sichtbar.
+- [ ] The confidence threshold is adjustable via the web interface (default: 25%).
+- [ ] Detections below the threshold are not displayed in the species list.
+- [ ] Changes are automatically applied — the service restarts if necessary.
+- [ ] The current threshold is visible in the dashboard.
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [BatDetect Service Docs §Dynamic Configuration](../services/batdetect.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
 
 ---
 
-## US-BD05: Erkannte Fledermausarten in der Web-Oberfläche ansehen 📋
+## US-BD05: View detected bat species in the web interface 📋
 
-> **Als** Nutzer
-> **möchte ich** in der Web-Oberfläche eine Liste aller erkannten Fledermausarten sehen — mit Häufigkeit, letztem Nachweis und Aktivitätsverlauf,
-> **damit** ich schnell verstehe, welche Fledermausarten an meinem Standort vorkommen und wann sie aktiv sind.
+> **As a user**
+> **I want to** see a list of all detected bat species in the web interface — with frequency, last detection, and activity history,
+> **so that** I quickly understand which bat species occur at my location and when they are active.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Die Web-Oberfläche zeigt eine Artenliste mit Anzahl der Nachweise, letztem Erkennungszeitpunkt und durchschnittlicher Konfidenz.
-- [ ] Jede Art hat eine Detailseite mit Beschreibung, Bild und zeitlichem Aktivitätsverlauf.
-- [ ] Die Liste lässt sich nach Häufigkeit, Datum oder Konfidenz sortieren.
-- [ ] Fledermaus-Nachweise sind klar von Vogel-Nachweisen getrennt (eigener Bereich in der Web-Oberfläche).
+- [ ] The web interface shows a species list with the number of detections, last detection time, and average confidence.
+- [ ] Each species has a detail page with description, image, and temporal activity history.
+- [ ] The list can be sorted by frequency, date, or confidence.
+- [ ] Bat detections are clearly separated from bird detections (separate area in the web interface).
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [BatDetect Service Docs §Outputs](../services/batdetect.md)
 
 ---
 
 > [!NOTE]
-> **Aufnahme-Schutz:** Dieser Dienst darf die laufende Aufnahme nicht beeinträchtigen. Ressourcenlimits, QoS-Priorisierung und Datei-Isolation werden zentral über den Controller verwaltet (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
+> **Recording Protection:** This service must not impair the ongoing recording. Resource limits, QoS prioritization, and file isolation are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
 
 ---
 
-## US-BD06: Analyse-Status im Dashboard 📊
+## US-BD06: Analysis status in dashboard 📊
 
-> **Als** Nutzer
-> **möchte ich** im Dashboard sehen, wie viele Aufnahmen noch auf Fledermaus-Analyse warten und ob BatDetect gerade aktiv ist,
-> **damit** ich den Zustand der Analyse-Pipeline jederzeit einschätzen kann.
+> **As a user**
+> **I want to** see in the dashboard how many recordings are still waiting for bat analysis and whether BatDetect is currently active,
+> **so that** I can assess the state of the analysis pipeline at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Das Dashboard zeigt: Anzahl ausstehender Aufnahmen, zuletzt analysierte Datei und aktuelle Aktivität (aktiv/wartend/offline).
-- [ ] Bei Problemen (z.B. BatDetect gestoppt oder im Rückstand) wird eine Warnung angezeigt.
-- [ ] BatDetect meldet seinen Status regelmäßig an die Web-Oberfläche.
-- [ ] Ressourcenverbrauch (RAM, CPU) ist im Dashboard sichtbar — als Hilfe für die Entscheidung, ob BatDetect aktviert bleiben soll.
+- [ ] The dashboard shows: number of pending recordings, last analyzed file, and current activity (active/waiting/offline).
+- [ ] In case of problems (e.g., BatDetect stopped or lagging), a warning is displayed.
+- [ ] BatDetect reports its status periodically to the web interface.
+- [ ] Resource consumption (RAM, CPU) is visible in the dashboard — to help decide whether BatDetect should remain activated.
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [BatDetect Service Docs](../services/batdetect.md)
 
 ---
 
-## US-BD07: BatDetect ein- und ausschalten 🔌
+## US-BD07: Enable and disable BatDetect 🔌
 
-> **Als** Nutzer
-> **möchte ich** die Fledermaus-Erkennung über die Web-Oberfläche aktivieren oder deaktivieren können,
-> **damit** ich Rechenleistung und Energie spare, wenn ich die Analyse nicht benötige oder kein Ultraschall-Mikrofon angeschlossen ist.
+> **As a user**
+> **I want to** be able to enable or disable bat detection via the web interface,
+> **so that** I save computing power and energy when I don't need the analysis or no ultrasound microphone is connected.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] BatDetect ist **standardmäßig deaktiviert** — der Nutzer muss die Analyse bewusst einschalten.
-- [ ] Bei Aktivierung prüft das System, ob ein Ultraschall-fähiges Mikrofon angeschlossen ist, und warnt falls nicht.
-- [ ] Bei Deaktivierung wird der Dienst sauber beendet — keine laufende Analyse wird abgebrochen.
-- [ ] Bei Reaktivierung arbeitet BatDetect den aufgelaufenen Rückstand selbstständig ab.
-- [ ] Der aktuelle Zustand (aktiv/deaktiviert) ist im Dashboard sichtbar.
+- [ ] BatDetect is **disabled by default** — the user must consciously turn on the analysis.
+- [ ] When enabled, the system checks if an ultrasound-capable microphone is connected and warns if not.
+- [ ] When disabled, the service is cleanly terminated — no ongoing analysis is aborted.
+- [ ] Upon reactivation, BatDetect autonomously processes the accumulated backlog.
+- [ ] The current state (active/disabled) is visible in the dashboard.
 
 ### Milestone
 
 - **Milestone:** v1.3.0
 
-### Referenzen
+### References
 
-- [Controller User Stories — US-C03: Dienste über die Web-Oberfläche steuern](./controller.md)
+- [Controller User Stories — US-C03: Control services via web interface](./controller.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)

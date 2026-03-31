@@ -1,9 +1,8 @@
 # Hardware Specifications
 
-> **STATUS:** STANDARD
-> **SCOPE:** Physical Layer & Provisioning
+> **Status:** Implemented · **Tier:** Hardware
 
-This document defines the certified hardware platforms and peripherals for the Silvasonic recording station.
+This document defines the recommended hardware platforms and peripherals for the Silvasonic recording station.
 
 ## Compute & Storage Classifications
 
@@ -49,7 +48,7 @@ Silvasonic follows a strict storage policy to maximize data integrity and write 
 
 ## Audio Inputs (Tested Devices)
 
-The following USB Class Compliant interfaces have been validated for stability and quality.
+The following USB Class Compliant interfaces are known to work well and have been tested in our project context.
 For technical details on how these devices are configured, see [Microphone Profiles](arch/microphone_profiles.md).
 
 ### Ultrasonic (Bat Monitoring)

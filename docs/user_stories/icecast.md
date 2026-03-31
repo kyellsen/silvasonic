@@ -4,79 +4,79 @@
 
 ---
 
-## US-IC01: Live mithören über den Browser 🔊
+## US-IC01: Listen live via browser 🔊
 
-> **Als** Anwender
-> **möchte ich** den Live-Klang meiner Station direkt im Browser anhören können,
-> **damit** ich vor Ort oder aus der Ferne prüfen kann, ob die Mikrofone korrekt funktionieren — ohne Dateien herunterladen zu müssen.
+> **As a user**
+> **I want to** listen to the live audio of my station directly in the browser,
+> **so that** I can check locally or remotely if the microphones are working correctly — without having to download files.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] In der Web-Oberfläche kann der Live-Audio-Stream per Klick gestartet und gestoppt werden.
-- [ ] Die Wiedergabe beginnt innerhalb weniger Sekunden — kein minutenlanges Puffern.
-- [ ] Der Stream verbraucht nur dann Ressourcen, wenn jemand tatsächlich zuhört.
-- [ ] Auch über eine mobile Verbindung (z.B. Tailscale) ist der Stream nutzbar.
+- [ ] The live audio stream can be started and stopped by clicking in the web interface.
+- [ ] Playback starts within a few seconds — no minutes of buffering.
+- [ ] The stream only consumes resources when someone is actually listening.
+- [ ] The stream is usable even over a mobile connection (e.g. Tailscale).
 
 ### Milestone
 
 - **Milestone:** v1.1.0
 
-### Referenzen
+### References
 
 - [Icecast Service Docs](../services/icecast.md)
 - [ADR-0011: Audio Recording Strategy §5 Live Opus Stream](../adr/0011-audio-recording-strategy.md)
-- [Recorder User Stories — US-R04: Live mithören über den Browser](./recorder.md)
-- [Gateway User Stories — US-GW01: Alles über eine Adresse erreichbar](./gateway.md)
+- [Recorder User Stories — US-R04: Listen live via browser](./recorder.md)
+- [Gateway User Stories — US-GW01: Everything accessible via one address](./gateway.md)
 
 ---
 
-## US-IC02: Mikrofon zum Mithören auswählen 🎤
+## US-IC02: Select microphone for listening 🎤
 
-> **Als** Anwender
-> **möchte ich** bei mehreren angeschlossenen Mikrofonen auswählen können, welches ich gerade live hören möchte,
-> **damit** ich gezielt einzelne Standorte oder Frequenzbereiche überprüfen kann.
+> **As a user**
+> **I want to** be able to select which of my connected microphones I want to listen to live,
+> **so that** I can specifically check individual locations or frequency ranges.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] In der Web-Oberfläche wird eine Liste aller aktuell aktiven Mikrofone angezeigt.
-- [ ] Per Klick kann zwischen den Mikrofonen gewechselt werden — ohne die Seite neu laden zu müssen.
-- [ ] Wird ein Mikrofon abgezogen, verschwindet es aus der Auswahl; wird es wieder angesteckt, erscheint es automatisch.
+- [ ] The web interface displays a list of all currently active microphones.
+- [ ] You can switch between microphones by clicking — without having to reload the page.
+- [ ] If a microphone is disconnected, it disappears from the selection; if reconnected, it appears automatically.
 
 ### Milestone
 
 - **Milestone:** v1.1.0
 
-### Referenzen
+### References
 
 - [Icecast Service Docs §Mount Point Management](../services/icecast.md)
-- [Recorder User Stories — US-R05: Mehrere Mikrofone gleichzeitig](./recorder.md)
-- [Controller User Stories — US-C01: Mikrofon einstecken — sofort erkannt](./controller.md)
+- [Recorder User Stories — US-R05: Multiple microphones simultaneously](./recorder.md)
+- [Controller User Stories — US-C01: Plug in microphone — immediately recognized](./controller.md)
 
 ---
 
-## US-IC03: Audio-Stream extern teilen 🌍
+## US-IC03: Share audio stream externally 🌍
 
-> **Als** Forscher
-> **möchte ich** den Live-Audio-Stream meiner Station als URL weitergeben können,
-> **damit** Kollegen, Studierende oder Citizen-Science-Teilnehmer die Soundscape in Echtzeit verfolgen können — ohne Zugang zur Web-Oberfläche zu benötigen.
+> **As a researcher**
+> **I want to** be able to share the live audio stream of my station as a URL,
+> **so that** colleagues, students, or citizen science participants can follow the soundscape in real-time — without needing access to the web interface.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Jedes Mikrofon hat eine eigene, stabile Stream-URL.
-- [ ] Die URL kann in jedem gängigen Audioplayer (VLC, Browser) geöffnet werden.
-- [ ] Der externe Zugang kann bei Bedarf deaktiviert oder durch ein Passwort geschützt werden.
-- [ ] Die Anzahl gleichzeitiger Zuhörer ist begrenzt, um die Station nicht zu überlasten.
+- [ ] Each microphone has its own stable stream URL.
+- [ ] The URL can be opened in any common audio player (VLC, browser).
+- [ ] External access can be disabled or password-protected if necessary.
+- [ ] The number of simultaneous listeners is limited so as to not overload the station.
 
 ### Milestone
 
 - **Milestone:** v1.1.0
 
-### Referenzen
+### References
 
 - [Icecast Service Docs §Outputs](../services/icecast.md)
-- [Gateway User Stories — US-GW03: Station ist vor unbefugtem Zugriff geschützt](./gateway.md)
+- [Gateway User Stories — US-GW03: Station is protected against unauthorized access](./gateway.md)
 
 ---
 
 > [!NOTE]
-> **Aufnahme-Schutz:** Der Live-Stream ist best-effort — ein Ausfall des Streaming-Servers hat keinen Einfluss auf die laufende Dateiaufnahme. Ressourcenlimits und Priorisierung werden zentral über den Controller verwaltet (→ [US-C04](./controller.md), [US-R02](./recorder.md), [ADR-0011 §5](../adr/0011-audio-recording-strategy.md)).
+> **Recording Protection:** The live stream is best-effort — a failure of the streaming server does not impact ongoing file recording. Resource limits and prioritization are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md), [ADR-0011 §5](../adr/0011-audio-recording-strategy.md)).

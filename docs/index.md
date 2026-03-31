@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-- [Project Readme](readme.md)
-- [Vision](vision.md)
-- [Milestone Roadmap](roadmap.md)
-- [Agents](agents.md)
+- [Project Readme](../README.md)
+- [Vision](../VISION.md)
+- [Milestone Roadmap](../ROADMAP.md)
+- [Agents](../AGENTS.md)
 
 ## Architecture
 
@@ -26,7 +26,7 @@
 
 ## Deployment
 
-- [Deployment Guide](deployment/README.md)
+- [Deployment Guide (Placeholder)](deployment/README.md)
 
 ## ADRs
 
@@ -65,6 +65,6 @@
 
 ## Reference
 
-- [API Reference](api_reference.md)
+- [API Reference (Planned)](api_reference.md)
 - [Glossary](glossary.md) — Canonical domain language definitions
 

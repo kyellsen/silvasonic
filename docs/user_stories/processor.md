@@ -4,29 +4,29 @@
 
 ---
 
-## US-P01: Aufnahmen erscheinen automatisch in der Übersicht 📋
+## US-P01: Recordings appear automatically in the overview 📋
 
-> **Als** Feldforscher
-> **möchte ich,** dass neue Audioaufnahmen automatisch in meiner Übersicht (Web-Oberfläche) erscheinen, sobald sie aufgenommen wurden,
-> **damit** ich keinen manuellen Import-Schritt brauche und die Aufnahmen sofort sichtbar und analysierbar sind.
+> **As a field researcher**
+> **I want** new audio recordings to automatically appear in my overview (web interface) as soon as they are recorded,
+> **so that** I don't need a manual import step and the recordings are immediately visible and analyzable.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Neue `.wav`-Dateien im Aufnahme-Verzeichnis werden innerhalb weniger Sekunden erkannt (periodisches Scannen, siehe [Processor Service §5](../services/processor.md) für Default-Wert).
-- [x] Metadaten (Dauer, Sample Rate, Kanäle, Dateigröße) werden automatisch ausgelesen und in die Datenbank geschrieben.
-- [x] Bereits registrierte Aufnahmen werden nicht doppelt erfasst (idempotent).
-- [x] Nur vollständig geschriebene Dateien werden erfasst — unvollständige Puffer-Dateien werden ignoriert.
+- [x] New `.wav` files in the recording directory are detected within a few seconds (periodic scanning, see [Processor Service §5](../services/processor.md) for default value).
+- [x] Metadata (duration, sample rate, channels, file size) is automatically extracted and written to the database.
+- [x] Already registered recordings are not duplicated (idempotent).
+- [x] Only completely written files are captured — incomplete buffer files are ignored.
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- Das Scannen funktioniert **ohne Redis** — Aufnahme und Indexierung sind in keinem Fall von Redis abhängig (Critical Path).
-- Der Ausfall des Processors blockiert **nicht** die Analyse bereits erfasster Aufnahmen — Analyse-Worker arbeiten eigenständig weiter.
+- Scanning works **without Redis** — recording and indexing are in no case dependent on Redis (Critical Path).
+- A Processor failure does **not** block the analysis of already captured recordings — analysis workers continue to operate independently.
 
 ### Milestone
 
 - **Milestone:** v0.5.0
 
-### Referenzen
+### References
 
 - [Processor Service Docs §Indexer](../services/processor.md)
 - [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
@@ -35,37 +35,37 @@
 
 ---
 
-## US-P02: Endlos-Aufnahme ohne Speichersorgen 💾
+## US-P02: Endless recording without storage worries 💾
 
-> **Als** Feldforscher
-> **möchte ich,** dass mein Gerät unbegrenzt weiter aufnimmt, ohne dass der Speicher vollläuft,
-> **damit** ich die Station wochen- oder monatelang unbeaufsichtigt im Feld lassen kann.
+> **As a field researcher**
+> **I want** my device to record indefinitely without running out of storage,
+> **so that** I can leave the station in the field unattended for weeks or months.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Die Speicherauslastung wird laufend überwacht und bei Bedarf automatisch bereinigt:
+- [x] Storage utilization is continuously monitored and automatically cleaned up if necessary:
 
-| Stufe         | Schwelle | Was wird gelöscht                                             | Hinweis    |
-| ------------- | -------- | ------------------------------------------------------------- | ---------- |
-| **Aufräumen** | > 70%    | Aufnahmen die hochgeladen (auf **alle** aktiven Ziele) UND vollständig analysiert sind     | `INFO`     |
-| **Vorsorge**  | > 80%    | Aufnahmen die hochgeladen sind (auf **alle** aktiven Ziele, unabhängig von Analysestatus) | `WARNING`  |
-| **Notfall**   | > 90%    | **Älteste** Aufnahmen unabhängig vom Status (auch wenn nicht hochgeladen!)                  | `CRITICAL` |
+| Level | Threshold | What gets deleted | Notice |
+|---|---|---|---|
+| **Cleanup** | > 70% | Recordings that are uploaded (to **all** active targets) AND completely analyzed | `INFO` |
+| **Precaution** | > 80% | Recordings that are uploaded (to **all** active targets, independent of analysis status) | `WARNING` |
+| **Emergency** | > 90% | **Oldest** recordings independent of status (even if not uploaded!) | `CRITICAL` |
 
-- [x] Gelöschte Dateien verschwinden von der Festplatte, bleiben aber im Inventar (Datenbank) als Eintrag erhalten — die Aufnahme-Historie geht nicht verloren.
-- [x] Im Notfall-Modus funktioniert die Bereinigung auch bei einem Datenbankausfall (Fallback auf Dateialter).
-- [x] Nur der Processor darf Aufnahmedateien löschen — kein anderer Dienst hat Schreibzugriff auf das Aufnahmeverzeichnis.
-- [x] Löschungen werden nachvollziehbar protokolliert (Dateiname, Löschgrund, Stufe).
+- [x] Deleted files disappear from the hard drive, but remain in the inventory (database) as an entry — the recording history is not lost.
+- [x] In emergency mode, cleanup also works during a database outage (fallback to file age).
+- [x] Only the Processor may delete recording files — no other service has write access to the recording directory.
+- [x] Deletions are logged traceably (filename, deletion reason, level).
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- **Priorität: Weiteraufnahme > Datenarchivierung** — lieber alte Daten löschen als die laufende Aufnahme anhalten.
-- Die Bereinigung ist der Kerngrund, warum der Processor als kritischer Infrastruktur-Dienst eingestuft ist.
+- **Priority: Continue recording > Data archiving** — better to delete old data than to stop the current recording.
+- Cleanup is the core reason why the Processor is classified as a critical infrastructure service.
 
 ### Milestone
 
 - **Milestone:** v0.5.0
 
-### Referenzen
+### References
 
 - [Processor Service Docs §Janitor](../services/processor.md)
 - [ADR-0011: Audio Recording Strategy §6 Retention Policy](../adr/0011-audio-recording-strategy.md)
@@ -73,23 +73,23 @@
 
 ---
 
-## US-P03: Speicherregeln über die Web-Oberfläche anpassen 🎛️
+## US-P03: Adjust storage rules via web interface 🎛️
 
-> **Als** Anwender
-> **möchte ich** die Speicher-Bereinigungsregeln (ab welcher Auslastung aufgeräumt wird) über die Web-Oberfläche anpassen können,
-> **damit** ich das Verhalten an meinen Standort und meine Speicherkapazität anpassen kann — ohne technische Konfigurationsdateien.
+> **As a user**
+> **I want** to adjust the storage cleanup rules (at what utilization cleanup begins) via the web interface,
+> **so that** I can adapt the behavior to my location and storage capacity — without technical configuration files.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Schwellenwerte (Aufräumen / Vorsorge / Notfall) und Scan-Intervalle sind in den Einstellungen änderbar.
-- [ ] Nach einer Änderung wird der Dienst automatisch neu gestartet und übernimmt die neuen Werte.
-- [x] Sinnvolle Standard-Werte sind ab Werk vorbelegt (Schwellenwerte und Intervalle siehe [Processor Service §5](../services/processor.md)).
+- [x] Thresholds (Cleanup / Precaution / Emergency) and scan intervals can be changed in the settings.
+- [x] (via Web-Mock) After a change, the service is automatically restarted and applies the new values.
+- [x] Sensible default values are pre-assigned out-of-the-box (thresholds and intervals see [Processor Service §5](../services/processor.md)).
 
 ### Milestone
 
 - **Milestone:** v0.5.0 (Backend: Config Seeding) + v0.8.0 (Frontend: Web-Interface)
 
-### Referenzen
+### References
 
 - [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
@@ -97,23 +97,23 @@
 
 ---
 
-## US-P04: Daten-Pipeline-Status im Dashboard 📊
+## US-P04: Data pipeline status in dashboard 📊
 
-> **Als** Anwender
-> **möchte ich** im Dashboard auf einen Blick sehen, ob meine Daten-Pipeline läuft — wie viele Aufnahmen noch nicht erfasst sind, in welchem Modus die Speicherbereinigung arbeitet und wie voll mein Speicher ist,
-> **damit** ich den Zustand meiner Station jederzeit einschätzen kann.
+> **As a user**
+> **I want** to see at a glance in the dashboard whether my data pipeline is running — how many recordings are not yet captured, in what mode the storage cleanup is operating, and how full my storage is,
+> **so that** I can assess the state of my station at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Die Web-Oberfläche zeigt den aktuellen Daten-Pipeline-Status an (z.B. letzte Erfassung, offener Rückstand, Speicherauslastung, aktuelle Bereinigungsstufe).
-- [ ] Der Status aktualisiert sich in Echtzeit, solange die Station erreichbar ist.
-- [x] Bei Ausfall der Status-Übertragung läuft die Daten-Pipeline trotzdem störungsfrei weiter.
+- [x] (via Web-Mock) The web interface displays the current data pipeline status (e.g., last capture, open backlog, storage utilization, current cleanup level).
+- [x] (via Web-Mock) The status updates in real-time as long as the station is reachable.
+- [x] If the status transmission fails, the data pipeline still continues without disruption.
 
 ### Milestone
 
 - **Milestone:** v0.5.0 (Backend: Heartbeat Payload) + v0.8.0 (Frontend: Dashboard)
 
-### Referenzen
+### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [Messaging Patterns §Heartbeat Payload](../arch/messaging_patterns.md)

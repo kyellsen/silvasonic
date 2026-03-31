@@ -25,11 +25,11 @@ To satisfy **Data Capture Integrity**, the system employs a **Hybrid Architectur
 
 **Philosophy:** Responsiveness for the User Interface. Best-effort, but reliable in practice (Redis is as stable as the database on this hardware).
 
-*   **Service Heartbeats → Web-Interface:** Every service publishes periodic heartbeats to Redis. The Web-Interface uses the **Read + Subscribe Pattern** for real-time display (see §4).
-*   **Service Control → DB + Nudge:** The Web-Interface writes desired state changes to the database (e.g., `enabled=false`). A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller to act immediately. See [ADR-0017](../adr/0017-service-state-management.md).
+*   **Service Heartbeats → UI Service:** Every service publishes periodic heartbeats to Redis. The UI Service (currently Web-Mock) uses the **Read + Subscribe Pattern** for real-time display (see §4).
+*   **Service Control → DB + Nudge:** The UI Service writes desired state changes to the database (e.g., `enabled=false`). A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller to act immediately. See [ADR-0017](../adr/0017-service-state-management.md).
 
 > [!IMPORTANT]
-> The interactive path is **best-effort**. If Redis is unavailable, the Web-Interface loses real-time status, but all critical operations (recording, analysis, upload) continue via the filesystem/DB path.
+> The interactive path is **best-effort**. If Redis is unavailable, the UI loses real-time status, but all critical operations (recording, analysis, upload) continue via the filesystem/DB path.
 
 ---
 
@@ -48,15 +48,16 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 > **Status:** Implemented (since v0.2.0)
 
-Redis serves exactly **three purposes** for Silvasonic:
+Redis serves exactly **four purposes** for Silvasonic:
 
 | Mechanism                     | Redis Command                             | Purpose                                                     |
 | :---------------------------- | :---------------------------------------- | :---------------------------------------------------------- |
 | **Current Status** (snapshot) | `SET silvasonic:status:<id> <json> EX <TTL>` | Readable anytime. TTL auto-expires key if service stops (see `DEFAULT_HEARTBEAT_TTL_S` in `heartbeat.py`) |
-| **Live Updates** (push)       | `PUBLISH silvasonic:status <json>`        | Real-time notification for subscribers (Web-Interface)      |
-| **Live Logs** (push)          | `PUBLISH silvasonic:logs <json>`          | Container log streaming for Web-Interface (ADR-0022)        |
+| **Live Updates** (push)       | `PUBLISH silvasonic:status <json>`        | Real-time notification for UI subscribers      |
+| **Live Logs** (push)          | `PUBLISH silvasonic:logs <json>`          | Container log streaming for UI subscribers (ADR-0022)        |
+| **State Reconciliation** (nudge)| `PUBLISH silvasonic:nudge "reconcile"` | Wake-up signal for the Controller (ADR-0017)                |
 
-No Redis Streams, no Consumer Groups, no additional channels.
+No Redis Streams, no Consumer Groups, and no other channels beyond these four.
 
 ### Instance ID Convention
 
@@ -73,14 +74,14 @@ Services are identified by a combination of `service` (type) and `instance_id` (
 
 ## 4. Read + Subscribe Pattern
 
-The Web-Interface uses a two-step pattern to ensure no heartbeats are missed:
+The UI Service (currently Web-Mock) uses a two-step pattern to ensure no heartbeats are missed:
 
 ```
 1. On page load:   KEYS silvasonic:status:*  →  read all current statuses
 2. Then:           SUBSCRIBE silvasonic:status  →  receive live updates
 ```
 
-This solves the inherent problem of Pub/Sub (fire-and-forget): if the Web-Interface subscribes *after* a heartbeat was published, it would miss the latest status. The `SET` with TTL ensures the current snapshot is always available.
+This solves the inherent problem of Pub/Sub (fire-and-forget): if the UI subscribes *after* a heartbeat was published, it would miss the latest status. The `SET` with TTL ensures the current snapshot is always available.
 
 ---
 
@@ -100,8 +101,8 @@ Control is **declarative** (DB desired state), not imperative (HTTP commands). T
 ┌──────────────────────────────────────────────────────────────────┐
 │  State Reconciliation (DB + Nudge)                               │
 │                                                                  │
-│  1. Web-Interface ──[DB Write]──► Database (desired state)       │
-│  2. Web-Interface ──[PUBLISH silvasonic:nudge]──► Redis           │
+│  1. UI Service ──[DB Write]──► Database (desired state)            │
+│  2. UI Service ──[PUBLISH silvasonic:nudge]──► Redis               │
 │  3. Controller ──[wakes up, reads DB]──► reconcile()              │
 │  4. Controller ──[podman-py]──► Podman ──► start/stop containers │
 └──────────────────────────────────────────────────────────────────┘
@@ -129,8 +130,8 @@ The nudge is a simple wake-up signal — not a command. If the nudge is lost (Co
 ┌─────────────────────────────────────────────────────────────┐
 │ INTERACTIVE PATH (Redis + DB, v0.2.0+)                      │
 │                                                             │
-│  All Services ──[heartbeat]──► Redis ──► Web-Interface      │
-│  Web-Interface ──[DB write + nudge]──► Controller ──► Podman│
+│  All Services ──[heartbeat]──► Redis ──► UI Service (Web-Mock)  │
+│  UI Service ──[DB write + nudge]──► Controller ──► Podman       │
 └─────────────────────────────────────────────────────────────┘
 ```
 

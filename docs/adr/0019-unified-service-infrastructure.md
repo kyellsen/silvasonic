@@ -1,6 +1,12 @@
 # ADR-0019: Unified Service Infrastructure — SilvaService Pattern
 
 > **Status:** Accepted • **Date:** 2026-02-21
+>
+> **AS-IS Update (2026-03-31):** The architecture has since evolved into a dual-pattern:
+> - **`SilvaService`**: Canonical base class for background workers and immutable services.
+> - **`ServiceContext`**: Modern primitive for HTTP/FastAPI services utilizing FastAPI lifespans directly without subclassing `SilvaService`.
+>
+> Mentions of "current 3 services" reflect the historical state at the time of writing. Furthermore, core modules like `silvasonic.core.redis` are now fully encapsulated by the Context.
 
 ## 1. Context & Problem
 
@@ -16,7 +22,7 @@ Without a unified pattern, each service implements these concerns independently,
 
 ## 2. Decision
 
-**We chose:** A `SilvaService` base class in `silvasonic.core.service` that provides the canonical lifecycle for every Python service.
+**We chose:** A `SilvaService` base class in `silvasonic.core.service` that provides the canonical lifecycle for background workers and immutable Python services.
 
 ### 2.1. Service Classification
 

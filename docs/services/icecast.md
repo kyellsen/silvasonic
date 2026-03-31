@@ -99,6 +99,6 @@
 
 ## 9. References
 
-*   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Triple Stream Architecture (§5)
-*   [Glossary: Icecast, Live Stream, Mount Point, Opus, Triple Stream Architecture](../glossary.md)
+*   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Dual-Stream FFmpeg Pipeline with optional Live Monitoring (§5)
+*   [Glossary: Icecast, Live Stream, Mount Point, Opus](../glossary.md)
 *   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)

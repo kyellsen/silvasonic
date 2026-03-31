@@ -1,6 +1,9 @@
 # Uploader
 
 > **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Multi-instance: one per remote storage target
+>
+> [!WARNING]
+> **Drift Warning:** This is a highly detailed TO-BE specification. Implementation details like `uploader` service internals and the exact database orchestration are highly susceptible to drift once development begins.
 
 **TO-BE:** Data exfiltration service responsible for compressing Raw recordings to FLAC and synchronizing them to remote storage providers. Ensures the field device never depends on network connectivity — recordings are safely stored locally first (Store & Forward).
 
@@ -36,6 +39,10 @@
 *   **FLAC Files** uploaded to remote storage.
 *   **Database Rows:** INSERTs into `uploads` table (success/failure, file size, errors).
 *   **Database Updates:** Sets `uploaded=true` and `uploaded_at` on the `recordings` row ONLY after a confirmed upload to **ALL currently active remotes**. `uploaded_at` records the timestamp at which the recording first reached the “all currently active remotes uploaded successfully” state. Inactive remotes are ignored. This serves as the Janitor deletion signal.
+
+> [!CAUTION]
+> **Contract Test Required:** The `uploaded=true` logic is extremely load-bearing because the Processor Janitor relies on it to safely delete files. Once implemented, this MUST be backed by a strong integration/contract test verifying that a file is never marked as uploaded if even one active remote target failed.
+
 *   **Redis Heartbeats:** Via `SilvaService` base class (ADR-0019).
 
 ## 4. Operational Constraints & Rules

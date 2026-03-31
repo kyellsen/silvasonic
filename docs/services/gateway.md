@@ -1,6 +1,9 @@
 # Gateway Service
 
 > **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** 80 (HTTP), 443 (HTTPS)
+>
+> [!WARNING]
+> **Drift Warning:** This is an illustrative TO-BE specification. Directory structures, ports, and Caddyfile details are placeholders and subject to change during actual implementation.
 
 **TO-BE:** Caddy-based reverse proxy providing a unified entry point, HTTPS termination, internal routing, and authentication for all Silvasonic web services.
 
@@ -57,12 +60,12 @@
 | `SILVASONIC_GATEWAY_HTTPS_PORT` | Host-exposed HTTPS port            | `443`                                                        |
 | `SILVASONIC_DOMAIN_NAME`        | Hostname for the station           | `silvasonic.local`                                           |
 | Caddyfile mount                 | Caddy configuration (read-only)    | `./services/gateway/Caddyfile:/etc/caddy/Caddyfile:ro,z`     |
-| Data mount                      | TLS certificates (ACME), persisted | `${SILVASONIC_WORKSPACE_PATH}/gateway/data:/data:z`          |
-| Config mount                    | Caddy runtime config state         | `${SILVASONIC_WORKSPACE_PATH}/gateway/config:/config:z`      |
+| Named Volume                    | TLS certificates (ACME), persisted | `caddy_data:/data`                                           |
+| Named Volume / Tmpfs            | Caddy runtime config state         | `caddy_config:/config`                                       |
 | Log mount                       | Caddy access/error logs            | `${SILVASONIC_WORKSPACE_PATH}/gateway/logs:/var/log/caddy:z` |
 
 > [!NOTE]
-> Caddy's `/data` (certificates) and `/config` (runtime state) are stored via **bind mounts** into the Gateway workspace — not as Named Volumes. This keeps ADR-0006 intact.
+> Caddy's `/data` (certificates) is an explicit exception in ADR-0006 and uses a **Named Volume** for safe persistence, similar to the database.
 
 ### Example Caddyfile Structure (MVP)
 
@@ -116,6 +119,6 @@
 
 *   [Port Allocation](../arch/port_allocation.md) — Gateway on ports 80/443
 *   [ADR-0003](../adr/0003-frontend-architecture.md) — Frontend Architecture
-*   [ADR-0006](../adr/0006-bind-mounts-over-volumes.md) — Bind Mounts vs. Named Volumes (caddy_data exception TBD)
+*   [ADR-0006](../adr/0006-bind-mounts-over-volumes.md) — Bind Mounts vs. Named Volumes
 *   [Glossary: Gateway](../glossary.md) — canonical definition
 *   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.7.0)

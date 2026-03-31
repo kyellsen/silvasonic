@@ -2,120 +2,120 @@
 
 > **Service:** Web-Interface · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.8.0)
 >
-> **Prototype:** Der [web-mock](../../services/web-mock/README.md) Service (seit v0.2.0) implementiert die vollständige UI-Shell mit Mock-Daten und dient als **lebende UX-Spezifikation**. Alle Seiten-Layouts, Navigations­muster und Interaktions­abläufe sind dort prototypisch umgesetzt — sie sind anschaulicher als Prosa-Beschreibungen.
+> **Prototype:** The [web-mock](../../services/web-mock/README.md) service (since v0.2.0) implements the complete UI shell with mock data and serves as a **living UX specification**. All page layouts, navigation patterns, and interaction flows are prototypically implemented there — they are more illustrative than prose descriptions.
 >
-> **UX-Konzept:** [docs/services/web_interface.md](../services/web_interface.md) — Layout, Routing Rulebook, Action Risk Classification, Page Blueprints, Migration Path.
+> **UX Concept:** [docs/services/web_interface.md](../services/web_interface.md) — Layout, Routing Rulebook, Action Risk Classification, Page Blueprints, Migration Path.
 
 > [!NOTE]
-> **Bewusst wenige Stories:** Seitenbezogene UX-Anforderungen (Dashboard-Widgets, Recorder-Cards, Species-Listen etc.) werden durch den Web-Mock-Prototyp und die [Page Blueprints](../services/web_interface.md#4-page-blueprints) spezifiziert. Funktionale Anforderungen an die Datenanzeige stehen in den jeweiligen Service-User-Stories (z.B. [US-C05](./controller.md#us-c05), [US-P04](./processor.md#us-p04), [US-U05](./uploader.md#us-u05), [US-B02](./birdnet.md#us-b02)). Dieses Dokument beschreibt nur **cross-cutting UI-Verhalten**, das nicht aus dem Prototyp oder den Service-Stories ersichtlich ist.
+> **Intentionally few stories:** Page-specific UX requirements (dashboard widgets, recorder cards, species lists, etc.) are specified by the Web-Mock prototype and the [Page Blueprints](../services/web_interface.md#4-page-blueprints). Functional requirements for data display are in the respective service user stories (e.g., [US-C05](./controller.md#us-c05), [US-P04](./processor.md#us-p04), [US-U05](./uploader.md#us-u05), [US-B02](./birdnet.md#us-b02)). This document describes only **cross-cutting UI behavior** that is not apparent from the prototype or the service stories.
 
 ---
 
-## US-WI01: Anmeldung & Zugangskontrolle 🔐
+## US-WI01: Login & Access Control 🔐
 
-> **Als** Anwender
-> **möchte ich** mich mit Benutzername und Passwort an der Web-Oberfläche anmelden müssen,
-> **damit** Unbefugte im gleichen Netzwerk keinen Zugriff auf meine Aufnahmen und Einstellungen haben.
+> **As a user**
+> **I want to** be required to log in to the web interface with a username and password,
+> **so that** unauthorized persons on the same network have no access to my recordings and settings.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Login-Flow
-- [ ] Alle Seiten erfordern eine aktive Session — ohne Anmeldung wird auf die Login-Seite umgeleitet.
-- [ ] Login-Formular: Benutzername + Passwort, Validierung gegen `users`-Tabelle (bcrypt-Hash, [US-C08](./controller.md#us-c08)).
-- [ ] Nach erfolgreicher Anmeldung: Weiterleitung zur zuletzt besuchten Seite (oder Dashboard als Standard).
-- [ ] Logout-Button in der Sidebar (unterhalb von Settings/About).
+#### Login Flow
+- [ ] All pages require an active session — without login, users are redirected to the login page.
+- [ ] Login form: username + password, validation against `users` table (bcrypt hash, [US-C08](./controller.md#us-c08)).
+- [ ] After successful login: redirection to the last visited page (or Dashboard by default).
+- [ ] Logout button in the sidebar (below Settings/About).
 
-#### Session-Management
-- [ ] Sessions werden serverseitig verwaltet (kein JWT — Silvasonic ist Single-Node, kein verteiltes System).
-- [ ] Session-Timeout nach konfigurierbarer Inaktivitätszeit (Standard: 24 Stunden).
-- [ ] Bei Session-Ablauf: automatische Umleitung zur Login-Seite mit Hinweis.
+#### Session Management
+- [ ] Sessions are managed server-side (no JWT — Silvasonic is single-node, not a distributed system).
+- [ ] Session timeout after configurable inactivity time (default: 24 hours).
+- [ ] On session expiration: automatic redirect to the login page with a notice.
 
-#### Sicherheit
-- [ ] Brute-Force-Schutz: maximal 5 Fehlversuche, dann 30 Sekunden Sperre.
-- [ ] Passwort-Änderung über Settings → User ([Page Blueprint §4.7](../services/web_interface.md#47-settings-tabs)).
-- [ ] Das Standard-Passwort aus der Erstinstallation ([US-C08](./controller.md#us-c08)) wird als änderungsbedürftig markiert.
+#### Security
+- [ ] Brute-force protection: max 5 failed attempts, then 30 seconds lockout.
+- [ ] Password change via Settings → User ([Page Blueprint §4.7](../services/web_interface.md#47-settings-tabs)).
+- [ ] The default password from the initial setup ([US-C08](./controller.md#us-c08)) is marked as requiring a change.
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- Die Anmeldung darf **keine Auswirkung** auf laufende Aufnahmen haben — die Web-Oberfläche ist ein reines Beobachtungs- und Steuerungswerkzeug.
-- Ausnahme: Health-Endpoint (`/healthy`) bleibt **ohne** Authentifizierung erreichbar.
+- Logging in must have **no impact** on running recordings — the web interface is purely an observation and control tool.
+- Exception: Health endpoint (`/healthy`) remains accessible **without** authentication.
 
 ### Milestone
 
 - **Milestone:** v0.8.0
 
-### Referenzen
+### References
 
 - [Web-Interface Service Docs §Settings → User](../services/web_interface.md#47-settings-tabs)
-- [Controller User Stories — US-C08: Funktioniert sofort nach Installation](./controller.md#us-c08)
-- [Gateway User Stories — US-GW03: Station ist vor unbefugtem Zugriff geschützt](./gateway.md#us-gw03)
+- [Controller User Stories — US-C08: Works immediately after installation](./controller.md#us-c08)
+- [Gateway User Stories — US-GW03: Station protected against unauthorized access](./gateway.md#us-gw03)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
 
 ---
 
-## US-WI02: Echtzeit-Status ohne Neuladen 🔄
+## US-WI02: Real-time status without reloading 🔄
 
-> **Als** Anwender
-> **möchte ich,** dass sich der System-Status (Recorder-Zustände, Metriken, Alerts) live aktualisiert, ohne dass ich die Seite neu laden muss,
-> **damit** ich den aktuellen Zustand meiner Station jederzeit auf einen Blick erfassen kann.
+> **As a user**
+> **I want** the system status (recorder states, metrics, alerts) to update live without having to reload the page,
+> **so that** I can assess the current state of my station at a glance at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Live-Updates
-- [ ] Alle Status-Widgets (Dashboard-Cards, Sidebar-Badges, Recorder-Status, Alerts) aktualisieren sich in Echtzeit via Server-Sent Events (SSE).
-- [ ] Der SSE-Endpunkt liefert initial den vollständigen Zustand (`silvasonic:status:*` Keys aus Redis) und danach nur noch Deltas (`SUBSCRIBE silvasonic:status`).
-- [ ] HTMX-basierte DOM-Swaps sorgen für flüssige Updates ohne Full-Page-Reload.
+#### Live Updates
+- [ ] All status widgets (Dashboard cards, Sidebar badges, Recorder status, Alerts) update in real-time via Server-Sent Events (SSE).
+- [ ] The SSE endpoint initially delivers the complete state (`silvasonic:status:*` keys from Redis) and thereafter only deltas (`SUBSCRIBE silvasonic:status`).
+- [ ] HTMX-based DOM swaps ensure fluid updates without full-page reloads.
 
-#### Resilienz
-- [ ] Bei Verbindungsabbruch (z.B. WLAN-Wechsel) versucht der Client automatisch, die SSE-Verbindung wiederherzustellen.
-- [ ] Während der Wiederverbindung wird ein visueller Hinweis angezeigt (z.B. „Verbindung unterbrochen…").
-- [ ] Falls Redis temporär ausfällt, zeigt die UI den letzten bekannten Zustand an — kein leerer Bildschirm.
+#### Resilience
+- [ ] On connection loss (e.g., Wi-Fi change), the client automatically tries to restore the SSE connection.
+- [ ] During reconnection, a visual indicator is shown (e.g., "Connection lost…").
+- [ ] If Redis temporarily fails, the UI shows the last known state — no blank screen.
 
-#### Footer Console (Live-Logs)
-- [ ] Der Web-Mock-Prototyp ([SSE Console](../../services/web-mock/README.md)) wird durch echtes Redis-`SUBSCRIBE silvasonic:logs` ersetzt ([ADR-0022](../adr/0022-live-log-streaming.md)).
-- [ ] Log-Nachrichten werden nach Service filterbar, mit Auto-Scroll und Pause-Funktion.
+#### Footer Console (Live Logs)
+- [ ] The Web-Mock prototype ([SSE Console](../../services/web-mock/README.md)) is replaced by real Redis `SUBSCRIBE silvasonic:logs` ([ADR-0022](../adr/0022-live-log-streaming.md)).
+- [ ] Log messages are filterable by service, with auto-scroll and pause functionality.
 
 ### Milestone
 
 - **Milestone:** v0.8.0
 
-### Referenzen
+### References
 
 - [Web-Interface Service Docs §1.4: State Management & Data Flow](../services/web_interface.md#14-state-management--data-flow)
-- [Web-Mock SSE Console](../../services/web-mock/src/silvasonic/web_mock/__main__.py) — Prototyp-Implementierung
+- [Web-Mock SSE Console](../../services/web-mock/src/silvasonic/web_mock/__main__.py) — Prototype implementation
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
-- [Controller User Stories — US-C09: Dienst-Logs live im Browser](./controller.md#us-c09)
-- [Controller User Stories — US-C05: Systemstatus im Dashboard](./controller.md#us-c05)
+- [Controller User Stories — US-C09: Live service logs in browser](./controller.md#us-c09)
+- [Controller User Stories — US-C05: System status in dashboard](./controller.md#us-c05)
 
 ---
 
-## US-WI03: Nur aktivierte Module anzeigen 📦
+## US-WI03: Show only enabled modules 📦
 
-> **Als** Anwender
-> **möchte ich,** dass in der Navigation nur die Module sichtbar sind, die ich tatsächlich aktiviert habe (z.B. Birds, Bats, Weather),
-> **damit** die Oberfläche übersichtlich bleibt und mich nicht mit Funktionen ablenkt, die ich nicht nutze.
+> **As a user**
+> **I want** only the modules I have actually enabled (e.g., Birds, Bats, Weather) to be visible in the navigation,
+> **so that** the interface remains clean and doesn't distract me with features I don't use.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Modul-Einträge in der Sidebar (Birds, Bats, Weather, Livesound) werden nur angezeigt, wenn das zugehörige Modul in Settings → Modules aktiviert ist.
-- [ ] Der Aktivierungsstatus wird aus der Datenbank gelesen (`system_services`-Tabelle, `enabled`-Flag).
-- [ ] Wird ein Modul aktiviert/deaktiviert, aktualisiert sich die Sidebar **ohne Page-Reload** (HTMX-Swap oder SSE-Push).
-- [ ] Der Zugriff auf die URL eines deaktivierten Moduls (z.B. `/birds` bei deaktiviertem BirdNET) zeigt eine freundliche Hinweis-Seite — kein 404.
-- [ ] Beim Erststart sind alle optionalen Module deaktiviert — nur System-Seiten (Dashboard, Recorders, Processor, Uploaders) sind sichtbar.
+- [ ] Module entries in the sidebar (Birds, Bats, Weather, Livesound) are only displayed if the corresponding module is activated in Settings → Modules.
+- [ ] Activation status is read from the database (`system_services` table, `enabled` flag).
+- [ ] If a module is enabled/disabled, the sidebar updates **without a page reload** (HTMX swap or SSE push).
+- [ ] Accessing the URL of a disabled module (e.g., `/birds` when BirdNET is disabled) shows a friendly notice page — no 404.
+- [ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Uploaders) are visible.
 
 ### Milestone
 
 - **Milestone:** v0.8.0
 
-### Referenzen
+### References
 
 - [Web-Interface Service Docs §3.1: Layout & Navigation](../services/web_interface.md#31-layout--navigation)
-- [Web-Mock Templates](../../services/web-mock/src/silvasonic/web_mock/templates/base.html) — Sidebar-Prototyp (zeigt aktuell immer alle Module)
-- [Controller User Stories — US-C03: Dienste über die Web-Oberfläche steuern](./controller.md#us-c03)
+- [Web-Mock Templates](../../services/web-mock/src/silvasonic/web_mock/templates/base.html) — Sidebar prototype (currently shows all modules)
+- [Controller User Stories — US-C03: Control services via web interface](./controller.md#us-c03)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 
 ---
 
 > [!NOTE]
-> **UX-Spezifikation lebt im Code:** Für alle seitenbezogenen Details (Layouts, Farben, Komponenten, Interaktionen) ist der [web-mock](../../services/web-mock/README.md) die normative Referenz. User Stories beschreiben hier ausschließlich **Verhalten**, das nicht aus dem Prototyp ersichtlich ist.
+> **UX Specification lives in code:** For all page-specific details (layouts, colors, components, interactions), the [web-mock](../../services/web-mock/README.md) is the normative reference. User Stories here solely describe **behavior** that is not apparent from the prototype.

@@ -390,13 +390,25 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 
 ## Configuration
 
-| Variable / Mount             | Description                               | Default / Example                                                 |
+| Environment Variable                         | Description                                            | Default / Example                  |
+| ------------------------------------------ | ------------------------------------------------------ | ---------------------------------- |
+| `SILVASONIC_CONTROLLER_PORT`               | Health endpoint port                                   | `9100`                             |
+| `SILVASONIC_REDIS_URL`                     | Redis connection URL                                   | `redis://localhost:6379/0`         |
+| `SILVASONIC_HEARTBEAT_INTERVAL_S`          | Interval for Redis heartbeat                           | `10.0`                             |
+| `SILVASONIC_RECONCILE_INTERVAL_S`          | Interval for container state evaluation                | `1.0`                              |
+| `SILVASONIC_DEVICE_OFFLINE_GRACE_PERIOD_S` | Delay before stopping containers on USB drop           | `3.0`                              |
+| `SILVASONIC_CONTROLLER_LOG_STARTUP_S`      | Duration of verbose startup logging                    | `300.0`                            |
+| `SILVASONIC_CONTROLLER_LOG_SUMMARY_INTERVAL_S` | Interval for steady-state log summaries         | `300.0`                            |
+| `SILVASONIC_CONTROLLER_MONITOR_POLL_INTERVAL_S`| Interval for DB/Podman health checks             | `10.0`                             |
+| `SILVASONIC_LOG_FORWARDER_POLL_INTERVAL_S` | Interval for Podman-to-Redis log streaming             | `1.0`                              |
+
+### Required Container Mounts & Access
+
+| Mount / Access               | Purpose                                   | Target Path / Group                                               |
 | ---------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
-| `SILVASONIC_CONTROLLER_PORT` | Health endpoint port                      | `9100`                                                            |
-| `SILVASONIC_CONTAINER_SOCKET` | Podman socket path inside container       | `/var/run/container.sock`                                         |
-| `SILVASONIC_NETWORK`         | Podman network name for Tier 2 containers | `silvasonic-net`                                                  |
-| Workspace mount              | Controller workspace                      | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
-| Recorder workspace mount     | Recorder workspace (for provisioning)     | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
+| Podman socket                | Orchestrate Tier 2 containers             | `/var/run/container.sock` (with `podman` group)                   |
+| Controller workspace         | Read system config                        | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
+| Recorder workspace           | Read/provision recorder details           | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
 
 ---
 

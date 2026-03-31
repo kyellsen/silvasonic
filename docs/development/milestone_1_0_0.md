@@ -25,7 +25,6 @@ operational tooling — no new features.
 | **v0.6.0** | Uploader (FLAC compression, remote sync)          |
 | **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS)              |
 | **v0.8.0** | Web-Interface (dashboard, service control)        |
-| **v0.9.0** | BirdNET (on-device avian species classification)  |
 
 ---
 
@@ -47,12 +46,12 @@ deployment. Implement Ansible playbooks for zero-touch fleet provisioning.
 
 ---
 
-## Phase 2: Configuration Architecture Review
+## Phase 2: Configuration Architecture Review (Historical / Deferred)
 
 **Goal:** Re-evaluate filesystem layout, config ownership, and seeding strategy 
-for multi-station fleet deployments.
+for multi-station fleet deployments. This topic has currently been deferred and is kept as a potential future option instead of a strict milestone 1.0.0 target.
 
-### Decision: Config Directory Location
+### Decision: Config Directory Location (Historical Option)
 
 > **Context (from v0.4.0-v0.5.0 discussion):**
 > In v0.4.0 we discussed moving `services/controller/config/` to a repo-root

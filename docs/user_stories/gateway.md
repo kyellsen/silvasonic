@@ -4,24 +4,24 @@
 
 ---
 
-## US-GW01: Alles über eine Adresse erreichbar 🌐
+## US-GW01: Everything accessible via one address 🌐
 
-> **Als** Anwender
-> **möchte ich** alle Funktionen meiner Station — Dashboard, Einstellungen, Live-Audio — über eine einzige Adresse im Browser erreichen,
-> **damit** ich mir keine verschiedenen Ports oder URLs merken muss.
+> **As a user**
+> **I want to** reach all functions of my station — dashboard, settings, live audio — via a single address in the browser,
+> **so that** I don't have to remember different ports or URLs.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Alle Web-Dienste (Web-Interface, Live-Stream) sind über eine gemeinsame Adresse erreichbar (z.B. `https://silvasonic.local`).
-- [ ] Der Nutzer muss keine Portnummern kennen — die Zuordnung zu den internen Diensten erfolgt automatisch.
-- [ ] Statische Inhalte (CSS, Bilder, Schriftarten) werden komprimiert ausgeliefert, damit die Seite auch bei langsamer Verbindung schnell lädt.
-- [ ] Fällt der Gateway aus, laufen Aufnahme und alle anderen Dienste trotzdem ungestört weiter.
+- [ ] All web services (web interface, live stream) are accessible via a common address (e.g., `https://silvasonic.local`).
+- [ ] The user doesn't need to know port numbers — routing to internal services happens automatically.
+- [ ] Static content (CSS, images, fonts) is delivered compressed so the page loads quickly even on slow connections.
+- [ ] If the gateway fails, recording and all other services continue undisturbed.
 
 ### Milestone
 
 - **Milestone:** v0.7.0
 
-### Referenzen
+### References
 
 - [Gateway Service Docs](../services/gateway.md)
 - [Port Allocation](../arch/port_allocation.md)
@@ -30,52 +30,52 @@
 
 ---
 
-## US-GW02: Verbindung ist automatisch verschlüsselt 🔒
+## US-GW02: Connection is automatically encrypted 🔒
 
-> **Als** Anwender
-> **möchte ich,** dass die Verbindung zu meiner Station automatisch verschlüsselt ist,
-> **damit** meine Zugangsdaten und Daten nicht im Klartext übertragen werden — ohne dass ich Zertifikate manuell einrichten muss.
+> **As a user**
+> **I want** the connection to my station to be automatically encrypted,
+> **so that** my credentials and data aren't transmitted in plaintext — without me having to manually set up certificates.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] HTTPS ist standardmäßig aktiviert — der Nutzer muss nichts konfigurieren.
-- [ ] HTTP-Anfragen werden automatisch auf HTTPS umgeleitet.
-- [ ] Im lokalen Netzwerk funktioniert die Verschlüsselung mit einem selbstsignierten Zertifikat; bei Anbindung über Tailscale mit einem gültigen öffentlichen Zertifikat.
-- [ ] Die interne Kommunikation zwischen Gateway und Backend-Diensten bleibt unverschlüsselt (kein Overhead im internen Netz).
+- [ ] HTTPS is enabled by default — the user doesn't have to configure anything.
+- [ ] HTTP requests are automatically redirected to HTTPS.
+- [ ] On the local network, encryption works with a self-signed certificate; when connected via Tailscale, with a valid public certificate.
+- [ ] Internal communication between the gateway and backend services remains unencrypted (no overhead in the internal network).
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- Die Zertifikatsverwaltung muss vollautomatisch ablaufen — kein manuelles Erneuern nötig.
+- Certificate management must run fully automatically — no manual renewal needed.
 
 ### Milestone
 
 - **Milestone:** v0.7.0
 
-### Referenzen
+### References
 
 - [Gateway Service Docs §TLS Termination](../services/gateway.md)
 - [ADR-0014: Dual Deployment Strategy](../adr/0014-dual-deployment-strategy.md)
 
 ---
 
-## US-GW03: Station ist vor unbefugtem Zugriff geschützt 🛡️
+## US-GW03: Station is protected against unauthorized access 🛡️
 
-> **Als** Anwender
-> **möchte ich,** dass meine Station durch ein Passwort geschützt ist,
-> **damit** nicht jeder im Netzwerk auf meine Aufnahmen und Einstellungen zugreifen kann.
+> **As a user**
+> **I want** my station to be protected by a password,
+> **so that** not everyone on the network can access my recordings and settings.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Ohne Anmeldung ist kein Zugriff auf die Web-Oberfläche möglich.
-- [ ] Der Zugangsschutz gilt einheitlich für alle Dienste hinter dem Gateway.
-- [ ] Bei Anbindung über Tailscale kann die Authentifizierung alternativ über die VPN-Zugehörigkeit erfolgen.
-- [ ] Ein Standard-Passwort wird bei der Erstinstallation gesetzt; der Nutzer wird aufgefordert, es zu ändern.
+- [ ] No access to the web interface without login.
+- [ ] Access protection applies uniformly to all services behind the gateway.
+- [ ] When connected via Tailscale, authentication can optionally be handled via VPN identity.
+- [ ] A default password is set during initial installation; the user is prompted to change it.
 
 ### Milestone
 
 - **Milestone:** v0.7.0
 
-### Referenzen
+### References
 
 - [Gateway Service Docs §Authentication](../services/gateway.md)
 - [Web-Interface Service Docs §Access](../services/web_interface.md)
@@ -83,4 +83,4 @@
 ---
 
 > [!NOTE]
-> **Aufnahme-Schutz:** Dieser Dienst darf die laufende Aufnahme nicht beeinträchtigen. Ressourcenlimits und Priorisierung werden zentral über den Controller verwaltet (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
+> **Recording Protection:** This service must not impair the ongoing recording. Resource limits and prioritization are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md)).

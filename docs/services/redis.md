@@ -2,7 +2,7 @@
 
 > **Status:** Implemented · **Tier:** 1 · **Instances:** Single
 
-**TO-BE:** In-memory data store serving as the real-time status bus for the Silvasonic ecosystem. Provides two mechanisms: key-value snapshots with TTL (current state) and Pub/Sub channels (live updates, nudge signals).
+**AS-IS:** In-memory data store serving as the real-time status bus for the Silvasonic ecosystem. Provides two mechanisms: key-value snapshots with TTL (current state) and Pub/Sub channels (live updates, nudge signals, log streaming).
 
 ---
 
@@ -31,7 +31,9 @@
 ### Outputs
 
 *   Status snapshots readable via `KEYS silvasonic:status:*` + `GET`.
-*   Live update stream subscribable via `SUBSCRIBE silvasonic:status`.
+*   Live status update stream subscribable via `SUBSCRIBE silvasonic:status`.
+*   Live log stream subscribable via `SUBSCRIBE silvasonic:logs`.
+*   State reconciliation trigger via `PUBLISH silvasonic:nudge`.
 
 ## 4. Operational Constraints & Rules
 

@@ -1,27 +1,27 @@
 # User Stories — Recorder Service
 
-> **Service:** Recorder · **Tier:** 2 (Immutable) · **Status:** Partial (since v0.2.0)
+> **Service:** Recorder · **Tier:** 2 (Immutable) · **Status:** Implemented (since v0.4.0)
 
 ---
 
-## US-R01: Mikrofon einstecken — Aufnahme läuft 🎙️
+## US-R01: Plug in microphone — recording starts 🎙️
 
-> **Als** Feldforscher
-> **möchte ich** ein USB-Mikrofon einstecken und die Aufnahme startet automatisch mit den richtigen Einstellungen,
-> **damit** ich kein technisches Wissen für die Inbetriebnahme brauche.
+> **As a field researcher**
+> **I want to** plug in a USB microphone and have the recording start automatically with the correct settings,
+> **so that** I don't need technical knowledge for commissioning.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Mikrofon wird innerhalb weniger Sekunden erkannt — Ziel ist ein Nahe-Echtzeit-Gefühl, kein 10-Sekunden-Polling.
-- [x] Passendes Mikrofon-Profil (Sample Rate, Kanäle, Pegel) wird automatisch zugewiesen — bei Bedarf kann der Nutzer im Web-Interface nachsteuern.
-- [x] Eine eigene Aufnahme-Instanz wird mit den korrekten Profil-Einstellungen gestartet.
-- [x] Keine manuelle Konfiguration nötig — weder Konfigurationsdateien noch Umgebungsvariablen.
+- [x] Microphone is recognized within a few seconds — goal is a near real-time feel, not 10-second polling.
+- [x] Matching microphone profile (sample rate, channels, gain) is automatically assigned — if needed, the user can adjust in the web interface.
+- [x] A dedicated recording instance is started with the correct profile settings.
+- [x] No manual configuration required — neither config files nor environment variables.
 
 ### Milestone
 
-- **Milestone:** v0.3.0 (Erkennung & Start) + v0.4.0 (Aufnahme)
+- **Milestone:** v0.3.0 (Detection & Start) + v0.4.0 (Recording)
 
-### Referenzen
+### References
 
 - [Controller README §Device State Evaluation](../../services/controller/README.md)
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
@@ -30,156 +30,156 @@
 
 ---
 
-## US-R02: Aufnahme läuft immer weiter 🛡️
+## US-R02: Recording always continues 🛡️
 
-> **Als** Forscher
-> **möchte ich,** dass die Audioaufnahme unter keinen Umständen unterbrochen wird — weder durch Speicherengpässe, Netzwerkausfall, Neustart anderer Dienste, noch durch laufende Analysen oder Uploads,
-> **damit** keine wissenschaftlichen Daten verloren gehen.
+> **As a researcher**
+> **I want** the audio recording to continue under all circumstances — not interrupted by storage shortages, network outages, restarts of other services, nor by ongoing analysis or uploads,
+> **so that** no scientific data is lost.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Robustheit der Aufnahme
-- [x] Der Aufnahme-Dienst wird vom System als letzter beendet — bei Speicherknappheit werden zuerst Analyse-Dienste gestoppt.
-- [x] Ein Ausfall der Status-Übertragung (Redis) stoppt nicht die Aufnahme.
-- [x] Ein Ausfall des Controllers → Aufnahme läuft ungestört weiter.
-- [x] Bei Fehlern in der Aufnahme-Pipeline erfolgt ein automatischer Neustart.
+#### Recording Robustness
+- [x] The recording service is the last to be terminated by the system — in case of memory shortage, analysis services are stopped first.
+- [x] A failure of status transmission (Redis) does not stop the recording.
+- [x] A failure of the Controller → recording continues undisturbed.
+- [x] On errors in the recording pipeline, an automatic restart occurs.
 
-#### Isolation von anderen Diensten
-- [ ] ~~Kein anderer Dienst (BirdNET, BatDetect, Uploader) darf die Aufnahme beeinträchtigen~~ (Deferred: ab v0.5.0+)
-- [ ] ~~Alle Nicht-Aufnahme-Dienste erhalten CPU- und Speicherlimits~~ (Deferred: ab v0.5.0+)
-- [ ] ~~Analyse- und Upload-Dienste greifen nur **lesend** auf Aufnahmedateien zu~~ (Deferred: ab v0.5.0+)
-- [ ] ~~Der Absturz eines beliebigen Analyse- oder Upload-Dienstes hat keinen Einfluss~~ (Deferred: ab v0.5.0+)
+#### Isolation from other services
+- [x] No other service (BirdNET, BatDetect, Uploader) may impact the recording (Enforced by Controller cgroups).
+- [x] All non-recording services receive CPU and memory limits (Enforced by Controller).
+- [x] Analysis and upload services access recording files **read-only** (Enforced by Zero-Trust mounts).
+- [x] The crash of any analysis or upload service has no impact.
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- **Priorität: Datenerfassung > alles andere** — im Zweifelsfall werden Analyse, Upload oder Web-Zugang beendet, nie die Aufnahme.
+- **Priority: Data capture > everything else** — in doubt, analysis, upload or web access will be terminated, never the recording.
 
 ### Milestone
 
-- **Milestone:** v0.3.0 (Robustheit) + v0.4.0 (Watchdog & Auto-Recovery)
+- **Milestone:** v0.3.0 (Robustness) + v0.4.0 (Watchdog & Auto-Recovery)
 
-### Referenzen
+### References
 
 - [ADR-0020: Resource Limits & QoS](../adr/0020-resource-limits-qos.md)
 - [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
 - [ADR-0009: Zero-Trust Data Sharing](../adr/0009-zero-trust-data-sharing.md)
 - [Recorder README](../../services/recorder/README.md)
-- [Controller User Stories — US-C04: Aufnahme hat immer Vorrang](./controller.md)
+- [Controller User Stories — US-C04: Recording always takes priority](./controller.md)
 
 ---
 
-## US-R03: Originalformat und Standardformat gleichzeitig 🎧
+## US-R03: Original format and standard format simultaneously 🎧
 
-> **Als** Forscher
-> **möchte ich** gleichzeitig eine unveränderte Originalaufnahme (volle Hardware-Qualität) und eine standardisierte Version (48 kHz, 16-Bit) erhalten,
-> **damit** ich das volle Spektrum für wissenschaftliche Analyse habe und ML-Dienste (BirdNET, BatDetect) ein einheitliches Format bekommen.
+> **As a researcher**
+> **I want to** simultaneously obtain an unmodified original recording (full hardware quality) and a standardized version (48 kHz, 16-bit),
+> **so that** I have the full spectrum for scientific analysis and ML services (BirdNET, BatDetect) receive a uniform format.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Originalaufnahme: Hardware-native Sample Rate und Bittiefe → `recorder/{name}/data/raw/*.wav`.
-- [x] Standardaufnahme: 48 kHz, 16-Bit → `recorder/{name}/data/processed/*.wav`.
-- [x] Beide Streams werden gleichzeitig und ohne gegenseitige Beeinträchtigung geschrieben.
-- [x] Unvollständige Segmente verbleiben in `.buffer/` — nur fertig geschriebene Dateien erscheinen in `data/`.
+- [x] Original recording: hardware-native sample rate and bit depth → `recorder/{name}/data/raw/*.wav`.
+- [x] Standard recording: 48 kHz, 16-bit → `recorder/{name}/data/processed/*.wav`.
+- [x] Both streams are written simultaneously without mutual interference.
+- [x] Incomplete segments remain in `.buffer/` — only fully written files appear in `data/`.
 
 ### Milestone
 
 - **Milestone:** v0.4.0
 
-### Referenzen
+### References
 
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
 - [Recorder README](../../services/recorder/README.md)
 
 ---
 
-## US-R04: Live mithören über den Browser 🔊
+## US-R04: Listen live via browser 🔊
 
-> **Als** Nutzer
-> **möchte ich** das Mikrofon in Echtzeit über die Web-Oberfläche mithören können,
-> **damit** ich vor Ort oder remote prüfen kann, ob die Station korrekt aufnimmt — ohne die wissenschaftliche Aufnahme zu beeinträchtigen.
+> **As a user**
+> **I want to** be able to listen to the microphone in real-time via the web interface,
+> **so that** I can check locally or remotely if the station is recording correctly — without affecting the scientific recording.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Ein dritter Audio-Stream wird in niedriger Bitrate (Opus, 64 kbps) an den Streaming-Server gesendet.
-- [ ] Ein Ausfall des Streaming-Servers hat keinen Einfluss auf die Dateiaufnahme (Original + Standard).
-- [ ] In der Web-Oberfläche kann das gewünschte Mikrofon zum Mithören ausgewählt werden.
+- [ ] A third audio stream is sent in low bitrate (Opus, 64 kbps) to the streaming server.
+- [ ] A failure of the streaming server has no impact on file recording (Original + Standard).
+- [ ] In the web interface, the desired microphone can be selected for listening.
 
 ### Milestone
 
 - **Milestone:** v1.1.0
 
-### Referenzen
+### References
 
 - [Icecast Service](../services/icecast.md)
 - [Recorder README](../../services/recorder/README.md)
 
 ---
 
-## US-R05: Mehrere Mikrofone gleichzeitig 🎤🎤
+## US-R05: Multiple microphones simultaneously 🎤🎤
 
-> **Als** Forscher
-> **möchte ich** mehrere USB-Mikrofone gleichzeitig betreiben können,
-> **damit** ich verschiedene Frequenzbereiche oder Standorte parallel erfassen kann.
+> **As a researcher**
+> **I want to** be able to operate multiple USB microphones simultaneously,
+> **so that** I can capture different frequency ranges or locations in parallel.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Pro Mikrofon läuft eine eigene, unabhängige Aufnahme-Instanz.
-- [x] Jede Instanz hat einen eigenen Arbeitsbereich auf der Festplatte (`recorder/{name}/`).
+- [x] One dedicated, independent recording instance runs per microphone.
+- [x] Each instance has its own workspace on the hard drive (`recorder/{name}/`).
 
 > [!NOTE]
-> Einzel-Aktivierung/-Deaktivierung von Mikrofonen ist ein **Controller-Feature** (via Datenbank / Web-Interface) und wird dort dokumentiert.
+> Individual activation/deactivation of microphones is a **Controller feature** (via database / web interface) and is documented there.
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 - [Controller README §Container Labels](../../services/controller/README.md)
 
 ---
 
-## US-R06: Automatische Wiederherstellung bei Fehlern 🔄
+## US-R06: Automatic recovery on errors 🔄
 
-> **Als** Nutzer
-> **möchte ich,** dass eine abgestürzte oder hängende Aufnahme automatisch neu gestartet wird,
-> **damit** die Station auch bei sporadischen Hardwarefehlern ohne mein Eingreifen weiterarbeitet.
+> **As a user**
+> **I want** a crashed or hanging recording to be restarted automatically,
+> **so that** the station continues working without my intervention even with sporadic hardware faults.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Die Aufnahme-Pipeline wird bei erkannten Fehlern (Absturz, Hänger, Prozess-Tod) automatisch neu gestartet.
-- [x] Mehrere Absicherungs-Stufen: interner Watchdog → Container-Neustart → Controller-Prüfung (Reconciliation-Intervall).
-- [x] Fehlstarts werden begrenzt (max. 5 Neuversuche), um Endlosschleifen zu vermeiden.
+- [x] The recording pipeline is automatically restarted on detected errors (crash, hang, process death).
+- [x] Multiple safeguard levels: internal watchdog → container restart → controller check (reconciliation interval).
+- [x] Failed starts are limited (max. 5 retries) to avoid infinite loops.
 
 ### Milestone
 
 - **Milestone:** v0.4.0
 
-### Referenzen
+### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 - [Recorder README](../../services/recorder/README.md)
 
 ---
 
-## US-R07: Aufnahmedauer pro Segment einstellen ⏱️
+## US-R07: Adjust recording duration per segment ⏱️
 
-> **Als** Forscher
-> **möchte ich** die Länge der Aufnahme-Segmente über das Mikrofon-Profil anpassen können,
-> **damit** ich die Dateigröße und Verarbeitungsfrequenz an meinen Anwendungsfall anpassen kann.
+> **As a researcher**
+> **I want to** be able to adjust the length of the recording segments via the microphone profile,
+> **so that** I can adapt the file size and processing frequency to my use case.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Die Segment-Dauer wird aus dem Mikrofon-Profil gelesen (Standard: 10 Sekunden).
-- [ ] ~~Die Segment-Dauer kann im Web-Interface geändert werden~~ (🔮 Future: v0.8.0+)
-- [x] Änderungen werden erst beim nächsten Start der Aufnahme-Instanz wirksam.
+- [x] The segment duration is read from the microphone profile (default: 10 seconds).
+- [ ] ~~The segment duration can be changed in the web interface~~ (🔮 Future: v0.8.0+)
+- [x] Changes only take effect upon the next start of the recording instance.
 
 ### Milestone
 
 - **Milestone:** v0.4.0
 
-### Referenzen
+### References
 
 - [ADR-0016: Hybrid YAML/DB Profiles](../adr/0016-hybrid-yaml-db-profiles.md)
 - [Microphone Profiles](../arch/microphone_profiles.md)

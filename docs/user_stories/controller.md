@@ -1,286 +1,286 @@
 # User Stories — Controller Service
 
-> **Service:** Controller · **Tier:** 1 (Infrastructure) · **Status:** Partial (since v0.1.0)
+> **Service:** Controller · **Tier:** 1 (Infrastructure) · **Status:** Implemented (since v0.3.0)
 
 ---
 
-## US-C01: Mikrofon einstecken — sofort erkannt 🎙️⚡
+## US-C01: Plug in microphone — immediately recognized 🎙️⚡
 
-> **Als Anwender** möchte ich ein USB-Mikrofon einstecken und innerhalb von maximal 1 Sekunde eine Reaktion des Systems sehen,
-> **damit** ich kein technisches Vorwissen brauche, sofort Daten erfasse, und ein abgezogenes Mikrofon sofort sauber behandelt wird.
+> **As a user** I want to plug in a USB microphone and see a system reaction within a maximum of 1 second,
+> **so that** I don't need technical knowledge, capture data immediately, and a disconnected microphone is handled cleanly.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Hardware-Erkennung
-- [x] **Alle** USB-Audio-Geräte am Host werden erkannt — nicht nur solche mit bekanntem Profil.
-- [x] Stabile USB-Identifikation (Vendor-ID, Product-ID, Serial) erfolgt über direktes `sysfs`-Auslesen (`pathlib`) — keine externen Abhängigkeiten.
-- [x] ALSA-Karten werden über `/proc/asound/cards` korreliert, um den ALSA-Gerätenamen (z.B. `hw:2,0`) zu ermitteln.
+#### Hardware Detection
+- [x] **All** USB audio devices on the host are recognized — not just those with a known profile.
+- [x] Stable USB identification (Vendor-ID, Product-ID, Serial) is done via direct `sysfs` reading (`pathlib`) — no external dependencies.
+- [x] ALSA cards are correlated via `/proc/asound/cards` to determine the ALSA device name (e.g. `hw:2,0`).
 
-#### Einstecken & Entfernen
-- [x] **Reaktionszeit ≤ 1 Sekunde** — der Reconciliation-Loop pollt alle 1 Sekunde nach Änderungen.
-- [x] Ein neu erkanntes Mikrofon wird automatisch in der Geräteliste als `pending` / `status=online` angelegt.
-- [x] Das temporäre Entfernen eines Mikrofons (USB Flapping) wird per Grace-Period überbrückt. Ein längerer Disconnect setzt `status=offline` und beendet die zugehörige Aufnahme sauber.
+#### Plugging In & Removal
+- [x] **Reaction time ≤ 1 second** — the reconciliation loop polls for changes every 1 second.
+- [x] A newly detected microphone is automatically created in the device list as `pending` / `status=online`.
+- [x] Temporary removal of a microphone (USB Flapping) is bridged via a grace period. A longer disconnect sets `status=offline` and cleanly stops the associated recording.
 
-#### Stabile Wiedererkennung
-- [x] Ein erneut eingestecktes Mikrofon wird anhand seiner stabilen Geräte-ID wiedererkannt (Vendor-ID + Product-ID + Serial, bzw. Port-Fallback).
-- [x] Es wird kein doppelter Geräteeintrag erzeugt — der bestehende Recorder mit Workspace und Identität wird reaktiviert.
+#### Stable Re-recognition
+- [x] A re-plugged microphone is recognized by its stable device ID (Vendor-ID + Product-ID + Serial, or Port-Fallback).
+- [x] No duplicate device entry is created — the existing recorder with its workspace and identity is reactivated.
 
-#### Profilzuweisung
-- [x] Beim Erkennen eines neuen Geräts wird automatisch geprüft, ob ein passendes Mikrofon-Profil existiert.
-- [x] Bei eindeutigem Match: automatische Zuordnung.
-- [x] Bei keinem oder mehrdeutigem Match: Gerät bleibt ausstehend — Nutzer wählt Profil im Web-Interface.
-- [x] Das korrekte Profil wird der Aufnahme-Instanz automatisch mitgegeben.
+#### Profile Assignment
+- [x] When a new device is detected, it is automatically checked if a matching microphone profile exists.
+- [x] On exact match: automatic assignment.
+- [x] On no or ambiguous match: device remains pending — user selects profile in the Web-Interface.
+- [x] The correct profile is automatically provided to the recording instance.
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- Erkennung muss auf **allen gängigen Linux-Distributionen** und in Rootless-Podman-Containern funktionieren.
-- Polling läuft als Teil des Reconciliation-Loops und darf andere Controller-Funktionen nicht blockieren.
+- Detection must work on **all common Linux distributions** and in rootless Podman containers.
+- Polling runs as part of the reconciliation loop and must not block other Controller functions.
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [Controller README §Device State Evaluation](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0013: Tier 2 Container Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0013-tier2-container-management.md)
-- [ADR-0016: Hybrid YAML/DB Profiles](file:///mnt/data/dev/apps/silvasonic/docs/adr/0016-hybrid-yaml-db-profiles.md)
+- [Controller README §Device State Evaluation](../../services/controller/README.md)
+- [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
+- [ADR-0016: Hybrid YAML/DB Profiles](../adr/0016-hybrid-yaml-db-profiles.md)
 
 ---
 
-## US-C02: Abgestürzte Dienste starten automatisch neu 🛡️
+## US-C02: Crashed services restart automatically 🛡️
 
-> **Als Anwender** möchte ich, dass abgestürzte Aufnahmedienste automatisch neu gestartet werden,
-> **damit** die Aufnahme niemals unbemerkt stoppt.
+> **As a user** I want crashed recording services to automatically restart,
+> **so that** recording never stops unnoticed.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Der regelmäßige Prüfzyklus erkennt fehlende oder abgestürzte Dienste und startet sie neu.
-- [x] Container-Neustart-Richtlinie (`on-failure`, max 5) als erste schnelle Absicherung.
-- [x] Bei Controller-Neustart werden bestehende Aufnahme-Instanzen adoptiert (nicht neu gestartet).
-- [x] Bei Controller-Absturz laufen Aufnahme-Instanzen ungestört weiter.
-- [x] **Priorität: Datenerfassung > sauberes Beenden.**
+- [x] The regular reconciliation cycle detects missing or crashed services and restarts them.
+- [x] Container restart policy (`on-failure`, max 5) as the first fast fallback.
+- [x] On Controller restart, existing recording instances are adopted (not restarted).
+- [x] On Controller crash, recording instances continue running undisturbed.
+- [x] **Priority: Data capture > clean shutdown.**
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [Controller README §Reconciliation Loop](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [Controller README §Shutdown Semantics](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0013 §Restart Policy](file:///mnt/data/dev/apps/silvasonic/docs/adr/0013-tier2-container-management.md)
+- [Controller README §Reconciliation Loop](../../services/controller/README.md)
+- [Controller README §Shutdown Semantics](../../services/controller/README.md)
+- [ADR-0013 §Restart Policy](../adr/0013-tier2-container-management.md)
 
 ---
 
-## US-C03: Dienste über die Web-Oberfläche steuern 🎛️
+## US-C03: Control services via web interface 🎛️
 
-> **Als Anwender** möchte ich Dienste (z.B. BirdNET, Weather) über die Web-Oberfläche aktivieren oder deaktivieren,
-> **damit** ich Ressourcen sparen kann, ohne SSH nutzen zu müssen.
+> **As a user** I want to enable or disable services (e.g., BirdNET, Weather) via the web interface,
+> **so that** I can save resources without having to use SSH.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Der Controller reagiert auf Änderungssignale und liest sofort den gewünschten Zustand aus der Datenbank.
-- [x] Gewünschter Zustand aus `system_services` und `devices` wird korrekt ausgewertet.
-- [x] Dienste werden je nach `enabled`-Flag gestartet oder gestoppt.
-- [x] Bei Konfigurationsänderung: Dienst stoppen und mit neuen Einstellungen neu starten.
-- [x] Falls ein Signal verloren geht (z.B. Controller-Neustart), fängt der Reconciliation-Timer die Änderung auf.
+- [x] The Controller reacts to change signals and immediately reads the desired state from the database.
+- [x] Desired state from `system_services` and `devices` is correctly evaluated.
+- [x] Services are started or stopped based on the `enabled` flag.
+- [x] On configuration change: stop service and restart with new settings.
+- [x] If a signal is lost (e.g., Controller restart), the reconciliation timer catches the change as a fallback.
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [Controller README §Reconcile-Nudge Subscriber](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0017: Service State Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0017-service-state-management.md)
-- [Messaging Patterns §State Reconciliation](file:///mnt/data/dev/apps/silvasonic/docs/arch/messaging_patterns.md)
+- [Controller README §Reconcile-Nudge Subscriber](../../services/controller/README.md)
+- [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
+- [Messaging Patterns §State Reconciliation](../arch/messaging_patterns.md)
 
 ---
 
-## US-C04: Aufnahme hat immer Vorrang ⚡
+## US-C04: Recording always takes priority ⚡
 
-> **Als Anwender** möchte ich sicher sein, dass die Aufnahme niemals durch Speichermangel oder überlastete Analyse-/Upload-Dienste abbricht,
-> **damit** keine Daten verloren gehen — egal welche Dienste gleichzeitig laufen.
+> **As a user** I want to be certain that recording never aborts due to lack of memory or overloaded analysis/upload services,
+> **so that** no data is lost — regardless of which services run concurrently.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Ressourcen-Verwaltung
-- [x] Jeder Dienst-Container erhält Speicher- und CPU-Limits bei der Erstellung.
-- [x] Kein Dienst darf ohne Ressourcen-Limits gestartet werden.
-- [x] Der Controller setzt die Limits zentral bei der Container-Erstellung — einzelne Dienste müssen sich nicht selbst begrenzen.
+#### Resource Management
+- [x] Every service container receives memory and CPU limits upon creation.
+- [x] No service may be started without resource limits.
+- [x] The Controller statically applies limits globally upon container creation — individual services don't have to limit themselves.
 
-#### QoS-Priorisierung
-- [x] Aufnahme-Instanzen sind maximal geschützt (niedrigster OOM-Score) — werden vom System als Letzte beendet.
-- [x] Analyse-Dienste (BirdNET, BatDetect) sind als „verzichtbar" markiert und werden bei Engpässen **zuerst** beendet.
-- [x] Upload- und Infrastruktur-Dienste (Uploader, Gateway) erhalten ebenfalls niedrigere Priorität als die Aufnahme.
+#### QoS Prioritization
+- [x] Recording instances are maximally protected (lowest OOM score) — they are the last to be terminated by the system.
+- [x] Analysis services (BirdNET, BatDetect) are marked as "expendable" and are terminated **first** during bottlenecks.
+- [x] Upload and infrastructure services (Uploader, Gateway) also receive lower priority than recording.
 
-#### Datei-Isolation (Zero-Trust)
-- [x] Alle Nicht-Aufnahme-Dienste erhalten **nur lesenden** Zugriff auf Aufnahmedateien (Read-Only-Bind-Mounts).
-- [x] Nur der Processor darf Aufnahmedateien löschen — kein anderer Dienst hat Schreibzugriff auf das Aufnahmeverzeichnis.
+#### File Isolation (Zero-Trust)
+- [x] All non-recording services receive **read-only** access to recording files (Read-Only Bind Mounts).
+- [x] Only the Processor may delete recording files — no other service has write access to the recording directory.
 
-### Nicht-funktionale Anforderungen
+### Non-Functional Requirements
 
-- **Priorität: Datenerfassung > Analyse > Upload > Web-Zugang** — diese Reihenfolge bestimmt, welche Dienste bei Ressourcenknappheit zuerst beendet werden.
+- **Priority: Data capture > Analysis > Upload > Web Access** — this order determines which services are terminated first during resource scarcity.
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [Controller README §Resource Limits & QoS](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0020: Resource Limits & QoS](file:///mnt/data/dev/apps/silvasonic/docs/adr/0020-resource-limits-qos.md)
-- [ADR-0009: Zero-Trust Data Sharing](file:///mnt/data/dev/apps/silvasonic/docs/adr/0009-zero-trust-data-sharing.md)
-- [Recorder User Stories — US-R02: Aufnahme läuft immer weiter](./recorder.md)
+- [Controller README §Resource Limits & QoS](../../services/controller/README.md)
+- [ADR-0020: Resource Limits & QoS](../adr/0020-resource-limits-qos.md)
+- [ADR-0009: Zero-Trust Data Sharing](../adr/0009-zero-trust-data-sharing.md)
+- [Recorder User Stories — US-R02: Recording always continues](recorder.md)
 
 ---
 
-## US-C05: Systemstatus im Dashboard 📊
+## US-C05: System status in dashboard 📊
 
-> **Als Anwender** möchte ich im Dashboard die Gesamtauslastung meiner Station (CPU, RAM, Speicher) sehen,
-> **damit** ich deren Zustand jederzeit einschätzen kann.
+> **As a user** I want to see the overall utilization of my station (CPU, RAM, storage) in the dashboard,
+> **so that** I can assess its condition at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Der Controller sammelt systemweite Metriken (CPU, RAM, Speicher).
-- [ ] Die Metriken werden regelmäßig an die Web-Oberfläche übertragen.
-- [ ] Die Web-Oberfläche zeigt sowohl Einzel-Dienst- als auch Gesamt-System-Metriken an.
+- [x] The Controller collects system-wide metrics (CPU, RAM, storage).
+- [ ] Metrics are periodically transmitted to the web interface.
+- [ ] The web interface displays both individual service and overall system metrics.
 
 ### Milestone
 
-- **Milestone:** v0.2.0 (Datensammlung) + v0.8.0 (Dashboard-Anzeige)
+- **Milestone:** v0.2.0 (Data Collection) + v0.8.0 (Dashboard Display)
 
-### Referenzen
+### References
 
-- [Controller README §Redis: Heartbeat + Status Aggregator](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0019 §2.4: Heartbeat Payload Schema](file:///mnt/data/dev/apps/silvasonic/docs/adr/0019-unified-service-infrastructure.md)
-
----
-
-## US-C06: Mikrofon-Profile verwalten 🔧
-
-> **Als Anwender** möchte ich, dass vordefinierte Mikrofonprofile automatisch verfügbar sind
-> und neue Profile über die Web-Oberfläche erstellt werden können,
-> **damit** verschiedene Mikrofon-Hardware unterstützt wird.
-
-### Akzeptanzkriterien
-
-- [x] Beim Start: mitgelieferte Standard-Profile werden automatisch geladen.
-- [x] Beim Seed-Vorgang wird pro Profil geprüft: existiert ein gleichnamiges Nutzer-Profil? → Ja: überspringen. Nein: System-Profil laden.
-- [x] Nutzer-Profile werden dadurch niemals überschrieben.
-- [x] Profil-Daten werden gegen das `MicrophoneProfile` Pydantic-Schema validiert, bevor sie gespeichert werden.
-
-### Milestone
-
-- **Milestone:** v0.3.0
-
-### Referenzen
-
-- [Controller README §Profile Injection](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
-- [ADR-0016: Hybrid YAML/DB Profile Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0016-hybrid-yaml-db-profiles.md)
-- [Microphone Profiles](file:///mnt/data/dev/apps/silvasonic/docs/arch/microphone_profiles.md)
+- [Controller README §Redis: Heartbeat + Status Aggregator](../../services/controller/README.md)
+- [ADR-0019 §2.4: Heartbeat Payload Schema](../adr/0019-unified-service-infrastructure.md)
 
 ---
 
-## US-C07: Mikrofon sofort deaktivieren ⛔
+## US-C06: Manage microphone profiles 🔧
 
-> **Als Anwender** möchte ich ein Mikrofon sofort deaktivieren können (z.B. bei Fehlfunktion),
-> **damit** das System ohne Neustart unter Kontrolle bleibt.
+> **As a user** I want predefined microphone profiles to be automatically available
+> and new profiles to be creatable via the web interface,
+> **so that** different microphone hardware is supported.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] `enabled=false` auf Geräte-Ebene → sofortige Aufnahme-Abschaltung.
-- [x] Der Stopp erfolgt unabhängig vom Zuweisungs-Status.
-- [x] Änderungssignal sorgt für sofortige Reaktion; der Reconciliation-Timer dient als Fallback.
-- [x] Die Aufnahme wird sauber beendet (kein harter Abbruch).
+- [x] On startup: bundled standard profiles are automatically loaded.
+- [x] During the seed process, each profile is checked: does a user profile with the same name exist? → Yes: skip. No: load system profile.
+- [x] User profiles are therefore never overwritten.
+- [x] Profile data is validated against the `MicrophoneProfile` Pydantic schema before being saved.
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [Controller README §Enrollment State Machine](file:///mnt/data/dev/apps/silvasonic/services/controller/README.md)
+- [Controller README §Profile Injection](../../services/controller/README.md)
+- [ADR-0016: Hybrid YAML/DB Profile Management](../adr/0016-hybrid-yaml-db-profiles.md)
+- [Microphone Profiles](../arch/microphone_profiles.md)
 
 ---
 
-## US-C08: Funktioniert sofort nach Installation 🏭
+## US-C07: Disable microphone immediately ⛔
 
-> **Als Anwender** möchte ich, dass nach einer Neuinstallation alle sinnvollen Standardwerte geladen werden,
-> **damit** das System sofort betriebsbereit ist.
+> **As a user** I want to be able to disable a microphone immediately (e.g., in case of malfunction),
+> **so that** the system remains under control without a reboot.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Standard-Konfiguration wird beim Start geladen (nur wenn noch nicht vorhanden).
-- [x] Standard-Mikrofonprofile werden aus YAML-Seed-Dateien geladen und aktualisiert (ADR-0016).
-- [x] Ein Standard-Admin-Account wird beim Start angelegt, falls nicht vorhanden (ADR-0023 §2.4). Passwort wird mit bcrypt gehasht.
-- [x] Bereits geänderte Werte und nutzererstellte Profile werden niemals überschrieben.
-- [x] Nach einer Datenbank-Zurücksetzung werden alle Standards beim nächsten Start automatisch wiederhergestellt.
-
-> **Hinweis:** Das Standard-Passwort muss in der Produktion über die Web-Oberfläche geändert werden.
+- [x] `enabled=false` at the device level → immediate recording shutdown.
+- [x] The halt occurs independently of the assignment status.
+- [x] Change signal ensures immediate reaction; the reconciliation timer acts as a fallback.
+- [x] Recording is cleanly terminated (no hard kill).
 
 ### Milestone
 
 - **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [ADR-0023: Configuration Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0023-configuration-management.md)
+- [Controller README §Enrollment State Machine](../../services/controller/README.md)
 
 ---
 
-## US-C09: Dienst-Logs live im Browser 📜
+## US-C08: Works immediately after installation 🏭
 
-> **Als Anwender** möchte ich die Logs aller Dienste live in der Web-Oberfläche sehen,
-> **damit** ich Probleme schnell diagnostizieren kann.
+> **As a user** I want all sensible default values to be loaded after a fresh install,
+> **so that** the system is immediately ready for operation.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [x] Der Controller liest die Logs aller verwalteten Dienste.
-- [ ] Logs werden in Echtzeit an die Web-Oberfläche weitergeleitet.
-- [x] Bei keinem aktiven Zuschauer werden Logs einfach verworfen (kein Ressourcenverbrauch).
-- [ ] Die Web-Oberfläche zeigt Logs mit Auto-Scroll an.
+- [x] Standard configuration is loaded on startup (only if not already present).
+- [x] Standard microphone profiles are loaded and updated from YAML seed files (ADR-0016).
+- [x] A default admin account is created on startup if none exists (ADR-0023 §2.4). Password is hashed with bcrypt.
+- [x] Already changed values and user-created profiles are never overwritten.
+- [x] After a database reset, all defaults are automatically restored on the next startup.
+
+> **Note:** The default password must be changed in production via the web interface.
 
 ### Milestone
 
-- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.8.0 (Web-Anzeige)
+- **Milestone:** v0.3.0
 
-### Referenzen
+### References
 
-- [ADR-0022: Live Log Streaming](file:///mnt/data/dev/apps/silvasonic/docs/adr/0022-live-log-streaming.md)
-- [ADR-0013 §Logging](file:///mnt/data/dev/apps/silvasonic/docs/adr/0013-tier2-container-management.md)
+- [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
 
 ---
 
-## US-C10: Unbekanntes Mikrofon funktioniert sofort 🎤
+## US-C09: Live service logs in browser 📜
 
-> **Als Anwender** möchte ich ein beliebiges USB-Mikrofon einstecken und sofort aufnehmen können,
-> **damit** ich keine Konfiguration benötige und das System auch mit unbekannter Hardware sofort nützlich ist.
+> **As a user** I want to see the logs of all services live in the web interface,
+> **so that** I can rapidly diagnose issues.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-#### Auto-Fallback-Profil
-- [x] Ein `generic_usb` System-Profil wird beim Start geseedet (48 kHz, 1 ch, S16LE, Gain 0 dB).
-- [x] Wenn kein Profil-Match (Score 0) gefunden wird, weist der Controller automatisch `generic_usb` zu.
-- [x] Das Gerät erhält `enrollment_status=enrolled` und `profile_slug=generic_usb`.
-- [x] Der Recorder startet sofort mit den Standard-Settings.
+- [x] The Controller reads the logs of all managed services.
+- [ ] Logs are forwarded in real-time to the web interface.
+- [x] With no active viewers, logs are simply discarded (no resource consumption).
+- [ ] The web interface displays logs with auto-scroll.
 
-#### Upgrade-Pfad
-- [ ] ~~Der Nutzer kann über die Web-Oberfläche ein besseres Profil zuweisen oder ein eigenes erstellen~~ (v0.8.0+).
-- [ ] ~~Beim Profil-Wechsel wird der Recorder automatisch mit neuer Konfiguration neu gestartet~~ (v0.8.0+).
+### Milestone
 
-### Nicht-funktionale Anforderungen
+- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.8.0 (Web Display)
 
-- Das Generic-Profil muss mit **jedem** USB-Audio-Gerät funktionieren (konservative Settings).
-- **Priorität: Aufnahme starten > optimale Qualität** — lieber mit 48 kHz aufnehmen als gar nicht.
+### References
+
+- [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
+- [ADR-0013 §Logging](../adr/0013-tier2-container-management.md)
+
+---
+
+## US-C10: Unknown microphone works immediately 🎤
+
+> **As a user** I want to plug in any USB microphone and record right away,
+> **so that** I need no prior configuration and the system is instantly useful even with unknown hardware.
+
+### Acceptance Criteria
+
+#### Auto-Fallback Profile
+- [x] A `generic_usb` system profile is seeded on startup (48 kHz, 1 ch, S16LE, Gain 0 dB).
+- [x] If no profile match (score 0) is found, the Controller automatically assigns `generic_usb`.
+- [x] The device receives `enrollment_status=enrolled` and `profile_slug=generic_usb`.
+- [x] The recorder starts immediately with standard settings.
+
+#### Upgrade Path
+- [ ] ~~The user can assign a better profile or create a custom one via the web interface~~ (v0.8.0+).
+- [ ] ~~On profile change, the recorder is automatically restarted with the new configuration~~ (v0.8.0+).
+
+### Non-Functional Requirements
+
+- The Generic profile must work with **every** USB audio device (conservative settings).
+- **Priority: Start recording > optimal quality** — better to record at 48 kHz than not at all.
 
 ### Milestone
 
 - **Milestone:** v0.4.0
 
-### Referenzen
+### References
 
-- [ADR-0016: Hybrid YAML/DB Profile Management](file:///mnt/data/dev/apps/silvasonic/docs/adr/0016-hybrid-yaml-db-profiles.md)
-- [Microphone Profiles §Matching Algorithm](file:///mnt/data/dev/apps/silvasonic/docs/arch/microphone_profiles.md)
-- [Milestone v0.4.0](file:///mnt/data/dev/apps/silvasonic/docs/development/milestone_0_4_0.md)
+- [ADR-0016: Hybrid YAML/DB Profile Management](../adr/0016-hybrid-yaml-db-profiles.md)
+- [Microphone Profiles §Matching Algorithm](../arch/microphone_profiles.md)
+- [Milestone v0.4.0](../development/milestone_0_4_0.md)

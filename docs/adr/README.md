@@ -1,4 +1,9 @@
 # Architecture Decision Records
+
+> [!WARNING]
+> Architecture Decision Records (ADRs) capture historical design decisions at a specific point in time. 
+> As the system evolves, the implemented source code may diverge from the original ADR. 
+> **The current source code is always the single source of truth.**
 - [ADR-0001: Use uv as Python Package and Project Manager](0001-use-uv.md)
 - [ADR-0002: Use pyproject.toml for Configuration and Dependencies](0002-use-pyproject-toml.md)
 - [ADR-0003: Frontend Architecture ("The Modern Monolith")](0003-frontend-architecture.md)

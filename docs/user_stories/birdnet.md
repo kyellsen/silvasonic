@@ -4,96 +4,96 @@
 
 ---
 
-## US-B01: Vogelarten automatisch erkennen 🐦
+## US-B01: Automatically detect bird species 🐦
 
-> **Als** Forscher
-> **möchte ich,** dass meine Aufnahmen automatisch auf Vogelstimmen analysiert werden und die erkannten Arten mit Zeitstempel und Zuverlässigkeit in der Datenbank erscheinen,
-> **damit** ich ein vollständiges Artinventar meines Standorts erhalte — ohne jede Aufnahme manuell durchhören zu müssen.
+> **As a researcher**
+> **I want** my recordings to be automatically analyzed for bird calls and the detected species to appear in the database with timestamp and confidence,
+> **so that** I get a complete species inventory of my location — without having to manually listen to every recording.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Alle indexierten Aufnahmen werden automatisch analysiert — ohne manuellen Anstoß.
-- [ ] Pro erkanntem Vogelruf wird die Art, der Zeitpunkt im Audio und ein Konfidenzwert gespeichert.
-- [ ] Die Analyse läuft im Hintergrund und arbeitet den Rückstand selbstständig ab.
-- [ ] Bereits analysierte Aufnahmen werden nicht erneut verarbeitet.
+- [ ] All indexed recordings are automatically analyzed — without manual triggering.
+- [ ] For each detected bird call, the species, the time in the audio, and a confidence value are stored.
+- [ ] The analysis runs in the background and processes the backlog autonomously.
+- [ ] Already analyzed recordings are not processed again.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
 - [BirdNET Service Docs](../services/birdnet.md)
 - [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
 
 ---
 
-## US-B02: Erkannte Arten in der Web-Oberfläche ansehen 📋
+## US-B02: View detected species in the web interface 📋
 
-> **Als** Nutzer
-> **möchte ich** in der Web-Oberfläche eine Liste aller erkannten Vogelarten sehen — mit Häufigkeit, letztem Nachweis und Konfidenz,
-> **damit** ich schnell verstehe, welche Arten an meinem Standort vorkommen.
+> **As a user**
+> **I want to** see a list of all detected bird species in the web interface — with frequency, last detection, and confidence,
+> **so that** I quickly understand which species occur at my location.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Die Web-Oberfläche zeigt eine Artenliste mit Anzahl der Nachweise, letztem Erkennungszeitpunkt und durchschnittlicher Konfidenz.
-- [ ] Jede Art hat eine Detailseite mit Beschreibung, Bild und zeitlichem Aktivitätsverlauf.
-- [ ] Die Liste lässt sich nach Häufigkeit, Datum oder Konfidenz sortieren.
-- [ ] Nur Nachweise oberhalb des eingestellten Konfidenz-Schwellenwerts werden angezeigt.
+- [ ] The web interface shows a species list with the number of detections, last detection time, and average confidence.
+- [ ] Each species has a detail page with description, image, and temporal activity history.
+- [ ] The list can be sorted by frequency, date, or confidence.
+- [ ] Only detections above the configured confidence threshold are displayed.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
 - [BirdNET Service Docs §Outputs](../services/birdnet.md)
 
 ---
 
-## US-B03: Erkennung an den Standort anpassen 📍
+## US-B03: Adapt detection to location 📍
 
-> **Als** Forscher
-> **möchte ich** den Standort meiner Station (Breitengrad, Längengrad) eingeben können,
-> **damit** die Vogelarten-Erkennung auf die regional vorkommenden Arten eingeschränkt wird und weniger Fehlerkennungen liefert.
+> **As a researcher**
+> **I want to** be able to enter the location of my station (latitude, longitude),
+> **so that** the bird species detection is restricted to regionally occurring species, yielding fewer false positives.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Standort-Koordinaten sind in den Systemeinstellungen konfigurierbar (Web-Oberfläche).
-- [ ] BirdNET nutzt die Koordinaten, um das Artenmodell auf die Region einzuschränken.
-- [ ] Änderung der Koordinaten wird automatisch übernommen (Dienst wird bei Bedarf neu gestartet).
-- [ ] Der Default-Standort ist sinnvoll vorbelegt.
+- [ ] Location coordinates are configurable in the system settings (web interface).
+- [ ] BirdNET uses the coordinates to restrict the species model to the region.
+- [ ] Changes to the coordinates are applied automatically (service is restarted if necessary).
+- [ ] The default location is sensibly prefilled.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
 - [BirdNET Service Docs §Dynamic Configuration](../services/birdnet.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
-- [Controller User Stories — US-C08: Funktioniert sofort nach Installation](./controller.md)
+- [Controller User Stories — US-C08: Works immediately after installation](./controller.md)
 
 ---
 
-## US-B04: Erkennungsgenauigkeit einstellen 🎚️
+## US-B04: Adjust detection accuracy 🎚️
 
-> **Als** Forscher
-> **möchte ich** den Konfidenz-Schwellenwert für die Vogelarten-Erkennung anpassen können,
-> **damit** ich je nach Bedarf entweder mehr Einzelnachweise (niedriger Schwellenwert) oder weniger Fehlalarme (hoher Schwellenwert) erhalte.
+> **As a researcher**
+> **I want to** be able to adjust the confidence threshold for bird species detection,
+> **so that** I receive either more individual records (lower threshold) or fewer false alarms (higher threshold) depending on my needs.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Der Konfidenz-Schwellenwert ist über die Web-Oberfläche einstellbar (Standard: 25 %).
-- [ ] Nachweise unterhalb des Schwellenwerts werden nicht in der Artenliste angezeigt.
-- [ ] Änderungen werden automatisch übernommen — der Dienst startet bei Bedarf neu.
-- [ ] Im Dashboard ist der aktuelle Schwellenwert sichtbar.
+- [ ] The confidence threshold is adjustable via the web interface (default: 25%).
+- [ ] Detections below the threshold are not displayed in the species list.
+- [ ] Changes are automatically applied — the service restarts if necessary.
+- [ ] The current threshold is visible in the dashboard.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
 - [BirdNET Service Docs §Dynamic Configuration](../services/birdnet.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
@@ -101,51 +101,51 @@
 ---
 
 > [!NOTE]
-> **Aufnahme-Schutz:** Dieser Dienst darf die laufende Aufnahme nicht beeinträchtigen. Ressourcenlimits, QoS-Priorisierung und Datei-Isolation werden zentral über den Controller verwaltet (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
+> **Recording Protection:** This service must not impair the ongoing recording. Resource limits, QoS prioritization, and file isolation are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
 
 ---
 
-## US-B05: Analyse-Status im Dashboard 📊
+## US-B05: Analysis status in dashboard 📊
 
-> **Als** Nutzer
-> **möchte ich** im Dashboard sehen, wie viele Aufnahmen noch auf Analyse warten und ob BirdNET gerade aktiv ist,
-> **damit** ich den Zustand der Analyse-Pipeline jederzeit einschätzen kann.
+> **As a user**
+> **I want to** see in the dashboard how many recordings are still waiting for analysis and whether BirdNET is currently active,
+> **so that** I can assess the state of the analysis pipeline at any time.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] Das Dashboard zeigt: Anzahl ausstehender Aufnahmen, zuletzt analysierte Datei und aktuelle Aktivität (aktiv/wartend/offline).
-- [ ] Bei Problemen (z.B. BirdNET gestoppt oder im Rückstand) wird eine Warnung angezeigt.
-- [ ] BirdNET meldet seinen Status regelmäßig an die Web-Oberfläche.
+- [ ] The dashboard shows: number of pending recordings, last analyzed file, and current activity (active/waiting/offline).
+- [ ] In case of problems (e.g., BirdNET stopped or lagging), a warning is displayed.
+- [ ] BirdNET reports its status periodically to the web interface.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [BirdNET Service Docs](../services/birdnet.md)
 
 ---
 
-## US-B06: BirdNET ein- und ausschalten 🔌
+## US-B06: Enable and disable BirdNET 🔌
 
-> **Als** Nutzer
-> **möchte ich** die Vogelarten-Erkennung über die Web-Oberfläche aktivieren oder deaktivieren können,
-> **damit** ich Rechenleistung und Energie spare, wenn ich die Analyse nicht benötige.
+> **As a user**
+> **I want to** be able to enable or disable bird species detection via the web interface,
+> **so that** I save computing power and energy when I don't need the analysis.
 
-### Akzeptanzkriterien
+### Acceptance Criteria
 
-- [ ] BirdNET kann über die Web-Oberfläche aktiviert und deaktiviert werden.
-- [ ] Bei Deaktivierung wird der Dienst sauber beendet — keine laufende Analyse wird abgebrochen.
-- [ ] Bei Reaktivierung arbeitet BirdNET den aufgelaufenen Rückstand selbstständig ab.
-- [ ] Der aktuelle Zustand (aktiv/deaktiviert) ist im Dashboard sichtbar.
+- [ ] BirdNET can be enabled and disabled via the web interface.
+- [ ] When disabled, the service is cleanly terminated — no ongoing analysis is aborted.
+- [ ] Upon reactivation, BirdNET autonomously processes the accumulated backlog.
+- [ ] The current state (active/disabled) is visible in the dashboard.
 
 ### Milestone
 
 - **Milestone:** v0.9.0
 
-### Referenzen
+### References
 
-- [Controller User Stories — US-C03: Dienste über die Web-Oberfläche steuern](./controller.md)
+- [Controller User Stories — US-C03: Control services via web interface](./controller.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
