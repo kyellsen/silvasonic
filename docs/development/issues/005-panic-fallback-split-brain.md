@@ -21,7 +21,7 @@ This is caused by a blind spot for paired audio files during extreme error recov
 ## 3. Impact / Consequences
 This occurs only during a "double-failure" scenario (disk >90% + DB offline) but has severe cascading effects:
 * **Data Capture Integrity:** Medium. The backend operates under the false assumption that raw data is safely stored.
-* **System Stability:** Medium. It introduces latent database corruption. Subsequent services that rely on the file paths (like the upcoming v0.6.0 Uploader or v0.9.0 BirdNET) will crash with a `FileNotFoundError` (HTTP 404).
+* **System Stability:** Medium. It introduces latent database corruption. Subsequent services that rely on the file paths (like the upcoming v0.6.0 Uploader or v0.8.0 BirdNET) will crash with a `FileNotFoundError` (HTTP 404).
 * **Hardware Wear:** Low.
 
 ## 4. Steps to Reproduce (If applicable)

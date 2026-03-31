@@ -1,6 +1,6 @@
 # User Stories — Web Interface
 
-> **Service:** Web-Interface · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.8.0)
+> **Service:** Web-Interface · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.9.0)
 >
 > **Prototype:** The [web-mock](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md) service (since v0.2.0) implements the complete UI shell with mock data and serves as a **living UX specification**. All page layouts, navigation patterns, and interaction flows are prototypically implemented there — they are more illustrative than prose descriptions.
 >
@@ -43,7 +43,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.8.0
+- **Milestone:** v0.9.0
 
 ### References
 
@@ -79,11 +79,11 @@
 
 ### Milestone
 
-- **Milestone:** v0.8.0
+- **Milestone:** v0.9.0
 
 ### References
 
-- [Web-Interface Service Docs §1.4: State Management & Data Flow](../services/web_interface.md#14-state-management--data-flow)
+- [Web-Interface Service Docs §1.4: State Management & Data Flow](../services/web_interface.md#14-state-management-data-flow)
 - [Web-Mock SSE Console](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/src/silvasonic/web_mock/__main__.py) — Prototype implementation
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
 - [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
@@ -109,11 +109,11 @@
 
 ### Milestone
 
-- **Milestone:** v0.8.0
+- **Milestone:** v0.9.0
 
 ### References
 
-- [Web-Interface Service Docs §3.1: Layout & Navigation](../services/web_interface.md#31-layout--navigation)
+- [Web-Interface Service Docs §3.1: Layout & Navigation](../services/web_interface.md#31-layout-navigation)
 - [Web-Mock Templates](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/src/silvasonic/web_mock/templates/base.html) — Sidebar prototype (currently shows all modules)
 - [Controller User Stories — US-C03: Control services via web interface](./controller.md#us-c03)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)

@@ -73,6 +73,6 @@
 | ------------------------------------------ | -------------- |
 | Tier 2 container management (Controller)   | v0.3.0         |
 | Audio recording (Recorder)                 | v0.4.0         |
-| Production Web-Interface (replaces Web-Mock) | v0.8.0         |
-| Dashboard live metrics display             | v0.8.0         |
+| Production Web-Interface (replaces Web-Mock) | v0.9.0         |
+| Dashboard live metrics display             | v0.9.0         |
 

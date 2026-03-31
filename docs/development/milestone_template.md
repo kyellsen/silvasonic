@@ -4,9 +4,9 @@
 >
 > **Status:** ⏳ Planned | 🔨 In Progress | ✅ Done
 >
-> **References:** [ADR-NNNN](../adr/NNNN-title.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
+> **References:** [ADR-NNNN](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/NNNN-title.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
-> **User Stories:** [US-XXX](../user_stories/service.md#us-xxx) (or `n/a`)
+> **User Stories:** [US-XXX](https://github.com/kyellsen/silvasonic/blob/main/docs/user_stories/service.md#us-xxx) (or `n/a`)
 
 ---
 

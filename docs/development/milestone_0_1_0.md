@@ -108,6 +108,6 @@
 | `SilvaService` base class                 | v0.2.0         |
 | Tier 2 container management               | v0.3.0         |
 | Audio recording                           | v0.4.0         |
-| Web-Interface (production)                | v0.8.0         |
+| Web-Interface (production)                | v0.9.0         |
 
 > **Note:** This milestone is purely specification and scaffolding — no runtime service functionality is implemented.

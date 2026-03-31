@@ -4,7 +4,7 @@
 
 ## 1. Context & Problem
 
-The Web-Interface (v0.8.0) requires a modern, IDE-style design system that performs well on constrained hardware (Raspberry Pi 5) without conflicting with the HTMX + Alpine.js architecture.
+The Web-Interface (v0.9.0) requires a modern, IDE-style design system that performs well on constrained hardware (Raspberry Pi 5) without conflicting with the HTMX + Alpine.js architecture.
 
 ## 2. Decision
 

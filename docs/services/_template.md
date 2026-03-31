@@ -77,6 +77,6 @@ What does this service explicitly **NOT** do?
 
 ## 9. References
 
-*   [ADR-XXXX](../adr/XXXX-title.md) — …
+*   [ADR-XXXX](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/XXXX-title.md) — …
 *   [Glossary](../glossary.md) — canonical definition
 *   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone

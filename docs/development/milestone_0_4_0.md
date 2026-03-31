@@ -87,7 +87,7 @@
 - [x] Update `ProfileMatcher` / Reconciler: Score 0 → auto-assign `generic_usb` profile
   - Device gets `enrollment_status=enrolled`, `profile_slug=generic_usb`
   - Recorder starts immediately with safe defaults
-  - User can later switch to a better profile via Web-Interface (v0.8.0+)
+  - User can later switch to a better profile via Web-Interface (v0.9.0+)
 - [x] Unit tests: Score-0 auto-fallback assigns `generic_usb`, verify Recorder starts
 - [x] Integration test: unknown USB device → `generic_usb` profile → Recorder spawns
 
@@ -154,7 +154,7 @@
 | Live Opus stream (Recorder → Icecast)       | v1.1.0         |
 | FLAC compression for upload                 | v0.6.0         |
 | Processor service (ingestion + cleanup)     | v0.5.0         |
-| Web-Interface profile editing               | v0.8.0         |
+| Web-Interface profile editing               | v0.9.0         |
 | I2S microphone support                      | post-v1.0.0    |
 
 > **Note:** The Controller's Log Streaming (US-C09) and Hardening (crash recovery, multi-instance tests) are in [Milestone v0.3.0 Phase 5–6](milestone_0_3_0.md).

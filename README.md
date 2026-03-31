@@ -79,7 +79,7 @@ silvasonic/
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
 | **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Partial  |
-| **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to v0.8.0 Web-Interface) | ✅ Running  |
+| **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to v0.9.0 Web-Interface) | ✅ Running  |
 | **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Partial  |
 
 > For the full target architecture (13 services across two tiers) see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For version milestones see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
@@ -175,4 +175,4 @@ Service-specific tests live inside `services/<svc>/tests/`. Cross-cutting tests 
 
 ## Licence
 
-See [LICENCE](LICENCE).
+Available under the [Apache 2.0 License](https://github.com/kyellsen/silvasonic/blob/main/LICENCE).

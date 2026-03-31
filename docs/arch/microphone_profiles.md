@@ -74,7 +74,7 @@ If multiple profiles match with the same score, the device remains `pending` (am
 
 > [!NOTE]
 > Starting with v0.4.0, a **`generic_usb`** seed profile (48 kHz, 1 ch, S16LE, no processing) ensures that
-> unknown microphones can record immediately with safe defaults. Users can switch to a better profile via the Web-Interface (v0.8.0+).
+> unknown microphones can record immediately with safe defaults. Users can switch to a better profile via the Web-Interface (v0.9.0+).
 
 ### Finding USB Vendor/Product IDs
 

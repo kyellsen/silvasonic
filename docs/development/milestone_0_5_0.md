@@ -257,7 +257,7 @@
   ```
 - [x] Verify Controller's `ConfigSeeder` correctly seeds `processor` key into `system_config` table on startup (`INSERT ... ON CONFLICT DO NOTHING`)
 - [x] Verify `ProcessorSettings` Pydantic schema defaults match YAML seed values (CI test from ADR-0023)
-- ~~Add `processor` entry to `system_services` table seed~~ → **Deferred to [v0.8.0](milestone_0_8_0.md)** (no consumer until Web-Interface)
+- ~~Add `processor` entry to `system_services` table seed~~ → **Deferred to [v0.9.0](milestone_0_9_0.md)** (no consumer until Web-Interface)
 - [x] Add Processor workspace directory (`processor/`) to `scripts/init.py` initialization
 ### Tests
 
@@ -283,7 +283,7 @@
   - `test_seed_inserts_system_config` — fresh DB → Controller seeds → `system_config` contains keys with correct JSONB
   - `test_seed_is_idempotent` — seeding twice does not overwrite
 - [x] `test_processor_lifecycle.py` — `TestProcessorLifecycle::test_processor_starts_with_db` — Processor reads seeded settings from DB
-  - ~~`test_processor_system_service_registered`~~ → **Deferred to [v0.8.0](milestone_0_8_0.md)**
+  - ~~`test_processor_system_service_registered`~~ → **Deferred to [v0.9.0](milestone_0_9_0.md)**
 
 ---
 
@@ -336,17 +336,17 @@
 
 | Item                                                 | Target Version |
 | ---------------------------------------------------- | -------------- |
-| BirdNET analysis worker                              | v0.9.0         |
+| BirdNET analysis worker                              | v0.8.0         |
 | BatDetect analysis worker                            | v1.3.0         |
 | Uploader service (FLAC compression, remote sync)     | v0.6.0         |
-| Web-Interface (Dashboard, settings UI)               | v0.8.0         |
+| Web-Interface (Dashboard, settings UI)               | v0.9.0         |
 | Redis `PUBLISH` optimization for instant worker wake | post-v1.0.0    |
 | TimescaleDB continuous aggregates                    | post-v1.0.0    |
 | Archive-before-delete safety                         | post-v1.0.0    |
 | Live Opus stream (Recorder → Icecast)                | v1.1.0         |
 
-> **Note:** The ROADMAP.md scope for v0.5.0 mentions "Local Inference (BirdNET & BatDetect models)" — BirdNET is now scheduled for **v0.9.0** (pre-MVP) and BatDetect for v1.3.0 (post-MVP). This milestone focuses on the critical Processor infrastructure that all workers depend on. The Processor's Indexer and Janitor are prerequisites for any analysis worker (ADR-0018).
+> **Note:** The ROADMAP.md scope for v0.5.0 mentions "Local Inference (BirdNET & BatDetect models)" — BirdNET is now scheduled for **v0.8.0** (pre-MVP) and BatDetect for v1.3.0 (post-MVP). This milestone focuses on the critical Processor infrastructure that all workers depend on. The Processor's Indexer and Janitor are prerequisites for any analysis worker (ADR-0018).
 >
-> **Note:** US-P03 (settings via Web-Interface) requires both the Processor (this milestone) and the Web-Interface (v0.8.0). This milestone implements the backend support (config seeding, read-on-startup). The UI will be added in v0.8.0.
+> **Note:** US-P03 (settings via Web-Interface) requires both the Processor (this milestone) and the Web-Interface (v0.9.0). This milestone implements the backend support (config seeding, read-on-startup). The UI will be added in v0.9.0.
 >
-> **Note:** US-P04 (pipeline status in dashboard) requires the Web-Interface (v0.8.0). This milestone ships the heartbeat payload with the required metrics. The dashboard visualization is deferred.
+> **Note:** US-P04 (pipeline status in dashboard) requires the Web-Interface (v0.9.0). This milestone ships the heartbeat payload with the required metrics. The dashboard visualization is deferred.

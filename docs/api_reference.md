@@ -1,6 +1,6 @@
 # API Reference
 
-> **Status:** Planned for v0.8.0
+> **Status:** Planned for v0.9.0
 
 ## Web-Interface Management API
 

@@ -4,7 +4,7 @@ Uses :class:`~silvasonic.core.service_context.ServiceContext` via FastAPI
 ``lifespan`` — the same infrastructure as SilvaService, but adapted for an
 HTTP server whose event loop is owned by Uvicorn.
 
-This is the production-ready pattern for the real Web-Interface (v0.8.0):
+This is the production-ready pattern for the real Web-Interface (v0.9.0):
 replace mock_data imports route-by-route with real async DB queries.
 """
 

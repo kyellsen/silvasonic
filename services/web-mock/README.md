@@ -8,7 +8,7 @@ Development UI scaffold for the Silvasonic Web Interface. Serves the **complete 
 
 - Iterate on UI/UX with realistic layout and interactions
 - Validate the full layout: header, sidebar, main, inspector, footer console
-- Serve as the **clonable base** for the real `web-interface` (v0.8.0)
+- Serve as the **clonable base** for the real `web-interface` (v0.9.0)
 
 When building the real web-interface, clone this service and replace `mock_data` imports route-by-route with real async DB queries. The `ServiceContext` lifespan pattern, templates, static assets, and routing transfer without modification.
 

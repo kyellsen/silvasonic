@@ -154,7 +154,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.2.0 (Data Collection) + v0.8.0 (Dashboard Display)
+- **Milestone:** v0.2.0 (Data Collection) + v0.9.0 (Dashboard Display)
 
 ### References
 
@@ -253,7 +253,7 @@
 
 ### Milestone
 
-- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.8.0 (Web Display)
+- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.9.0 (Web Display)
 
 ### References
 
@@ -277,8 +277,8 @@
 - [x] The recorder starts immediately with standard settings.
 
 #### Upgrade Path
-- [ ] ~~The user can assign a better profile or create a custom one via the web interface~~ (v0.8.0+).
-- [ ] ~~On profile change, the recorder is automatically restarted with the new configuration~~ (v0.8.0+).
+- [ ] ~~The user can assign a better profile or create a custom one via the web interface~~ (v0.9.0+).
+- [ ] ~~On profile change, the recorder is automatically restarted with the new configuration~~ (v0.9.0+).
 
 ### Non-Functional Requirements
 

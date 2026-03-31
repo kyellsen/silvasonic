@@ -233,7 +233,7 @@ def _stage_e2e_tests() -> None:
     """
     result = subprocess.run(cmd_e2e(), cwd=PROJECT_ROOT)
     if result.returncode == _PYTEST_NO_TESTS_COLLECTED:
-        print("  ⚠️  No E2E tests collected — skipping (expected until v0.8.0).")
+        print("  ⚠️  No E2E tests collected — skipping (expected until v0.9.0).")
         return
     if result.returncode != 0:
         sys.exit(result.returncode)

@@ -41,7 +41,7 @@ tests/                # Cross-cutting tests only
     integration/    # @pytest.mark.integration — multi-service
     system/         # @pytest.mark.system — full-stack lifecycle (Podman)
                     # @pytest.mark.system_hw — hardware system tests
-    e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.8.0+)
+    e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.9.0+)
 ```
 
 > [!IMPORTANT]
@@ -134,7 +134,7 @@ just check-all       # Full CI pipeline (12 stages):
 - Use Playwright for browser automation.
 - Test user-facing flows through the Web-Interface.
 - Screenshots on failure for debugging.
-- Planned for v0.8.0+ when the Web-Interface has sufficient coverage.
+- Planned for v0.9.0+ when the Web-Interface has sufficient coverage.
 
 ---
 

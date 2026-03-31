@@ -27,7 +27,7 @@
 
 ### Referenzen
 
-- [ADR-XXXX: Titel](../adr/XXXX-titel.md)
+- [ADR-XXXX: Titel](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/XXXX-titel.md)
 - [Service README §Abschnitt](https://github.com/kyellsen/silvasonic/blob/main/services/<service>/README.md)
 
 ---

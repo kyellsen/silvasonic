@@ -179,7 +179,7 @@
 ### Acceptance Criteria
 
 - [x] The segment duration is read from the microphone profile (default: 10 seconds).
-- [ ] ~~The segment duration can be changed in the web interface~~ (🔮 Future: v0.8.0+)
+- [ ] ~~The segment duration can be changed in the web interface~~ (🔮 Future: v0.9.0+)
 - [x] Changes only take effect upon the next start of the recording instance.
 
 ### Milestone

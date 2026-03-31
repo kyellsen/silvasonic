@@ -1,6 +1,6 @@
 # Web Interface
 
-> **Tier:** 1 (Infrastructure) · **Status:** Planned — v0.8.0 · **Port:** 8000
+> **Tier:** 1 (Infrastructure) · **Status:** Planned — v0.9.0 · **Port:** 8000
 > **Prototype:** The `web-mock` service (since v0.2.0, Port 8001) implements the full UI shell with mock data. See [web-mock README](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md).
 
 The Web-Interface is the local management console for the Silvasonic recording station. It provides a real-time system dashboard, device management, service configuration, and live audio monitoring — all from a browser, without SSH.
@@ -144,7 +144,7 @@ Updates require REC = IDLE.
 
 ---
 
-## 5. Migration Path: Web-Mock → Web-Interface (v0.8.0)
+## 5. Migration Path: Web-Mock → Web-Interface (v0.9.0)
 
 The `web-mock` service is the **clonable base** for this service. Migration steps:
 
@@ -165,7 +165,7 @@ The `web-mock` service is the **clonable base** for this service. Migration step
 - **No Orchestration:** Does not start or stop containers — that is the Controller's job.
 - **No Media Processing:** Does not record audio, run ML inference, or process signals.
 - **Internal Network Only:** Not a public API. Accessible locally or via Tailscale VPN.
-- **RBAC:** Planned for v1.9.0+ (multi-user). Not in scope for v0.8.0.
+- **RBAC:** Planned for v1.9.0+ (multi-user). Not in scope for v0.9.0.
 
 ---
 

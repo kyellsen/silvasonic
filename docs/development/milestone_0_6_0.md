@@ -582,16 +582,16 @@ The `silvasonic/` top-level prefix prevents collision with other data in the sam
 
 | Item | Target Version |
 |---|---|
-| Web-UI for storage remote configuration (US-U04) | v0.8.0 |
-| Upload progress in Dashboard (US-U05) | v0.8.0 |
-| Upload audit log in Web-UI (US-U06 UI portion) | v0.8.0 |
-| `system_services` row for Uploader (no consumer until Web-UI) | v0.8.0 |
+| Web-UI for storage remote configuration (US-U04) | v0.9.0 |
+| Upload progress in Dashboard (US-U05) | v0.9.0 |
+| Upload audit log in Web-UI (US-U06 UI portion) | v0.9.0 |
+| `system_services` row for Uploader (no consumer until Web-UI) | v0.9.0 |
 | Parallel uploads (multiple files concurrently per instance) | post-v1.0.0 |
 | Resume support (partial upload tracking) | post-v1.0.0 |
 | Encryption at rest for `storage_remotes.config` | post-v1.0.0 |
 
-> **Note:** US-U04 (Settings via Web-Oberfläche) and US-U05 (Dashboard Status) require the Web-Interface (v0.8.0). This milestone implements the **backend support** — `UploaderSettings` schema, heartbeat payload with upload metrics. Web-Mock routes (`/uploaders`, `/uploaders/{id}`) already exist with hardcoded data. The real UI will be added in v0.8.0.
+> **Note:** US-U04 (Settings via Web-Oberfläche) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the **backend support** — `UploaderSettings` schema, heartbeat payload with upload metrics. Web-Mock routes (`/uploaders`, `/uploaders/{id}`) already exist with hardcoded data. The real UI will be added in v0.9.0.
 >
-> **Note:** US-U06 (Lückenlose Nachverfolgung) is split: the audit **backend** (immutable `uploads` table, `log_upload_attempt()`) is implemented here. The Web-Interface for browsing the audit log is deferred to v0.8.0.
+> **Note:** US-U06 (Lückenlose Nachverfolgung) is split: the audit **backend** (immutable `uploads` table, `log_upload_attempt()`) is implemented here. The Web-Interface for browsing the audit log is deferred to v0.9.0.
 >
 > **Note:** The Uploader only uploads **Raw** recordings as FLAC (ADR-0011 §4: "The Uploader converts `raw` artifacts to FLAC"). Processed (48kHz) files can be regenerated from the lossless FLAC on the cloud side if needed.

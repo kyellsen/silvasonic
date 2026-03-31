@@ -91,7 +91,7 @@ A dedicated Monitor service was rejected as over-engineering for a single-node e
 *   **Positive:**
     *   Clear semantic split: DB = "what should be", Redis = "what is".
     *   **Unified pattern:** Every service uses the same `SilvaService` heartbeat — no special cases.
-    *   Web-Interface gets real-time status from day one (v0.8.0) via Read + Subscribe — no DB polling, no missed heartbeats.
+    *   Web-Interface gets real-time status from day one (v0.9.0) via Read + Subscribe — no DB polling, no missed heartbeats.
     *   No separate Monitor service — fewer containers, less complexity.
     *   `system_services` table schema unchanged — only its semantics are clarified.
     *   Minimal Redis footprint: one Pub/Sub channel + N keys with TTL. No Streams, no Consumer Groups.
