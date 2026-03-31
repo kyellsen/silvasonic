@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,26 @@ from silvasonic.recorder.watchdog import RecordingWatchdog
 from silvasonic.recorder.workspace import ensure_workspace
 
 
+def _ffmpeg_available() -> bool:
+    """Check if FFmpeg is available on the system."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+skip_no_ffmpeg = pytest.mark.skipif(
+    not _ffmpeg_available(),
+    reason="FFmpeg not installed — skip integration tests",
+)
+
+
+@skip_no_ffmpeg
 @pytest.mark.integration
 class TestWatchdogRecovery:
     """Verify watchdog restarts FFmpeg after a crash (real subprocess)."""

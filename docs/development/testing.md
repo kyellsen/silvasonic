@@ -14,7 +14,7 @@ Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests with
 | `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 7      |
 | `system`    | Full-stack lifecycle tests with real Podman           | Podman socket + built images | < 60s per test   | ✅ Stage 10     |
 | `system_hw` | Hardware-dependent system tests                      | Podman + real USB microphone | < 60s per test   | ❌ Never        |
-| `smoke`     | Health checks against running containers             | Full stack (`just start`)    | < 30s total      | ✅ Stage 11     |
+| `smoke`     | Health checks against built containers               | Built images (testcontainers)| < 30s total      | ✅ Stage 11     |
 | `e2e`       | Browser tests via Playwright                         | Full stack + Playwright      | < 60s per test   | ✅ Stage 12     |
 
 > [!IMPORTANT]
@@ -125,9 +125,11 @@ just check-all       # Full CI pipeline (12 stages):
 
 ### Smoke Tests
 
-- Require the full Compose stack to be running (`just start`).
+- Use `testcontainers` to start **built** container images in isolation (no `just start` needed).
+- Require images to be built first (`just build` or pipeline Stage 9).
 - Only test service health endpoints and basic connectivity (heartbeats in Redis).
 - Must be idempotent — running them multiple times produces the same result.
+- Do **NOT** test deep lifecycle behavior — that belongs in `system` tests.
 
 ### E2E Tests
 
