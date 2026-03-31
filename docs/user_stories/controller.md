@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-c01"></a>
 ## US-C01: Plug in microphone — immediately recognized 🎙️⚡
 
 > **As a user** I want to plug in a USB microphone and see a system reaction within a maximum of 1 second,
@@ -42,12 +43,13 @@
 
 ### References
 
-- [Controller README §Device State Evaluation](../../services/controller/README.md)
+- [Controller README §Device State Evaluation](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 - [ADR-0016: Hybrid YAML/DB Profiles](../adr/0016-hybrid-yaml-db-profiles.md)
 
 ---
 
+<a id="us-c02"></a>
 ## US-C02: Crashed services restart automatically 🛡️
 
 > **As a user** I want crashed recording services to automatically restart,
@@ -67,12 +69,13 @@
 
 ### References
 
-- [Controller README §Reconciliation Loop](../../services/controller/README.md)
-- [Controller README §Shutdown Semantics](../../services/controller/README.md)
+- [Controller README §Reconciliation Loop](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
+- [Controller README §Shutdown Semantics](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0013 §Restart Policy](../adr/0013-tier2-container-management.md)
 
 ---
 
+<a id="us-c03"></a>
 ## US-C03: Control services via web interface 🎛️
 
 > **As a user** I want to enable or disable services (e.g., BirdNET, Weather) via the web interface,
@@ -92,12 +95,13 @@
 
 ### References
 
-- [Controller README §Reconcile-Nudge Subscriber](../../services/controller/README.md)
+- [Controller README §Reconcile-Nudge Subscriber](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 - [Messaging Patterns §State Reconciliation](../arch/messaging_patterns.md)
 
 ---
 
+<a id="us-c04"></a>
 ## US-C04: Recording always takes priority ⚡
 
 > **As a user** I want to be certain that recording never aborts due to lack of memory or overloaded analysis/upload services,
@@ -129,13 +133,14 @@
 
 ### References
 
-- [Controller README §Resource Limits & QoS](../../services/controller/README.md)
+- [Controller README §Resource Limits & QoS](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0020: Resource Limits & QoS](../adr/0020-resource-limits-qos.md)
 - [ADR-0009: Zero-Trust Data Sharing](../adr/0009-zero-trust-data-sharing.md)
 - [Recorder User Stories — US-R02: Recording always continues](recorder.md)
 
 ---
 
+<a id="us-c05"></a>
 ## US-C05: System status in dashboard 📊
 
 > **As a user** I want to see the overall utilization of my station (CPU, RAM, storage) in the dashboard,
@@ -153,11 +158,12 @@
 
 ### References
 
-- [Controller README §Redis: Heartbeat + Status Aggregator](../../services/controller/README.md)
+- [Controller README §Redis: Heartbeat + Status Aggregator](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0019 §2.4: Heartbeat Payload Schema](../adr/0019-unified-service-infrastructure.md)
 
 ---
 
+<a id="us-c06"></a>
 ## US-C06: Manage microphone profiles 🔧
 
 > **As a user** I want predefined microphone profiles to be automatically available
@@ -177,12 +183,13 @@
 
 ### References
 
-- [Controller README §Profile Injection](../../services/controller/README.md)
+- [Controller README §Profile Injection](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0016: Hybrid YAML/DB Profile Management](../adr/0016-hybrid-yaml-db-profiles.md)
 - [Microphone Profiles](../arch/microphone_profiles.md)
 
 ---
 
+<a id="us-c07"></a>
 ## US-C07: Disable microphone immediately ⛔
 
 > **As a user** I want to be able to disable a microphone immediately (e.g., in case of malfunction),
@@ -201,10 +208,11 @@
 
 ### References
 
-- [Controller README §Enrollment State Machine](../../services/controller/README.md)
+- [Controller README §Enrollment State Machine](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 
 ---
 
+<a id="us-c08"></a>
 ## US-C08: Works immediately after installation 🏭
 
 > **As a user** I want all sensible default values to be loaded after a fresh install,
@@ -230,6 +238,7 @@
 
 ---
 
+<a id="us-c09"></a>
 ## US-C09: Live service logs in browser 📜
 
 > **As a user** I want to see the logs of all services live in the web interface,
@@ -253,6 +262,7 @@
 
 ---
 
+<a id="us-c10"></a>
 ## US-C10: Unknown microphone works immediately 🎤
 
 > **As a user** I want to plug in any USB microphone and record right away,

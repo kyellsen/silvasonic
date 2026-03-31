@@ -80,9 +80,9 @@
 
 ## 9. References
 
-*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — QoS priority for analysis services
 *   [Future Features & Ideas](../development/idea.md) — Sensor recommendations
 *   [Glossary: Weather Observation](../glossary.md)
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.2.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v1.2.0)

@@ -116,10 +116,10 @@ Runtime-tunable settings stored in the `system_config` table under key `uploader
 
 ## 9. References
 
-*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of `uploads` and `storage_remotes` tables
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of `uploads` and `storage_remotes` tables
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Raw → FLAC for cloud, Retention Policy
 *   [ADR-0013](../adr/0013-tier2-container-management.md) — Tier 2 lifecycle management
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (upload settings)
 *   [Glossary: Uploader, Store & Forward, Raw Artifact, Storage Remote](../glossary.md)
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.6.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v0.6.0)

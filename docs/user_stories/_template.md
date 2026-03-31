@@ -28,7 +28,7 @@
 ### Referenzen
 
 - [ADR-XXXX: Titel](../adr/XXXX-titel.md)
-- [Service README §Abschnitt](../../services/<service>/README.md)
+- [Service README §Abschnitt](https://github.com/kyellsen/silvasonic/blob/main/services/<service>/README.md)
 
 ---
 

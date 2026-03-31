@@ -75,4 +75,4 @@ The `oom_score_adj` parameter tells the Linux kernel which processes to kill fir
 ## 5. References
 
 *   [ADR-0013: Tier 2 Container Management](0013-tier2-container-management.md) — Container lifecycle, `Tier2ServiceSpec`
-*   [VISION.md §Design Principles](../../VISION.md) — Resource Isolation principle
+*   [VISION.md §Design Principles](https://github.com/kyellsen/silvasonic/blob/main/VISION.md) — Resource Isolation principle

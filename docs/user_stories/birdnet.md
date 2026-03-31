@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-b01"></a>
 ## US-B01: Automatically detect bird species 🐦
 
 > **As a researcher**
@@ -28,6 +29,7 @@
 
 ---
 
+<a id="us-b02"></a>
 ## US-B02: View detected species in the web interface 📋
 
 > **As a user**
@@ -51,6 +53,7 @@
 
 ---
 
+<a id="us-b03"></a>
 ## US-B03: Adapt detection to location 📍
 
 > **As a researcher**
@@ -76,6 +79,7 @@
 
 ---
 
+<a id="us-b04"></a>
 ## US-B04: Adjust detection accuracy 🎚️
 
 > **As a researcher**
@@ -105,6 +109,7 @@
 
 ---
 
+<a id="us-b05"></a>
 ## US-B05: Analysis status in dashboard 📊
 
 > **As a user**
@@ -128,6 +133,7 @@
 
 ---
 
+<a id="us-b06"></a>
 ## US-B06: Enable and disable BirdNET 🔌
 
 > **As a user**

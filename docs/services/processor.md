@@ -5,4 +5,4 @@
 Background workhorse for data ingestion, metadata indexing, and storage retention management. 
 Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
 
-→ Full documentation: [services/processor/README.md](../../services/processor/README.md)
+→ Full documentation: [services/processor/README.md](https://github.com/kyellsen/silvasonic/blob/main/services/processor/README.md)

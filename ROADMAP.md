@@ -33,19 +33,19 @@
 
 For concrete, phase-level implementation tasks see:
 
-- **[Milestone v0.1.0](docs/development/milestone_0_1_0.md)** — Phases & tasks for Requirements Engineering & Specification
-- **[Milestone v0.2.0](docs/development/milestone_0_2_0.md)** — Phases & tasks for Service Infrastructure
-- **[Milestone v0.3.0](docs/development/milestone_0_3_0.md)** — Phases & tasks for Tier 2 Container Management
-- **[Milestone v0.4.0](docs/development/milestone_0_4_0.md)** — Phases & tasks for Audio Recording (Dual Stream)
-- **[Milestone v0.5.0](docs/development/milestone_0_5_0.md)** — Phases & tasks for Analysis & Backend Orchestration
-- **[Milestone v0.6.0](docs/development/milestone_0_6_0.md)** — Phases & tasks for Uploader (FLAC Compression & Cloud Sync)
-- **[Milestone v0.8.0](docs/development/milestone_0_8_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
-- **[Milestone v1.0.0](docs/development/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
+- **[Milestone v0.1.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_1_0.md)** — Phases & tasks for Requirements Engineering & Specification
+- **[Milestone v0.2.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_2_0.md)** — Phases & tasks for Service Infrastructure
+- **[Milestone v0.3.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_3_0.md)** — Phases & tasks for Tier 2 Container Management
+- **[Milestone v0.4.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_4_0.md)** — Phases & tasks for Audio Recording (Dual Stream)
+- **[Milestone v0.5.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_5_0.md)** — Phases & tasks for Analysis & Backend Orchestration
+- **[Milestone v0.6.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_6_0.md)** — Phases & tasks for Uploader (FLAC Compression & Cloud Sync)
+- **[Milestone v0.8.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_8_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
+- **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 
 ---
 
 ## See Also
 
-- **[VISION.md](VISION.md)** — Core philosophy, architecture, design principles
-- **[README.md](README.md)** — Project overview, quick start
-- **[docs/index.md](docs/index.md)** — Full technical documentation
+- **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)** — Core philosophy, architecture, design principles
+- **[README.md](https://github.com/kyellsen/silvasonic/blob/main/README.md)** — Project overview, quick start
+- **[docs/index.md](https://github.com/kyellsen/silvasonic/blob/main/docs/index.md)** — Full technical documentation

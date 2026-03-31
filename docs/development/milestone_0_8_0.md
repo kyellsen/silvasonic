@@ -4,7 +4,7 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0003](../adr/0003-web-architecture.md), [ADR-0017](../adr/0017-service-state-management.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0021](../adr/0021-frontend-stack.md), [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md)
+> **References:** [ADR-0003](../adr/0003-web-architecture.md), [ADR-0017](../adr/0017-service-state-management.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0021](../adr/0021-frontend-stack.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
 > **User Stories:** [Web-Interface Stories](../user_stories/web_interface.md)
 

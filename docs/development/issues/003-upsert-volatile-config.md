@@ -53,6 +53,6 @@ if existing is not None:
 ```
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../AGENTS.md)
-* [VISION.md](../../VISION.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
 * [ADR-0013: Tier 2 Container Management](../../adr/0013-tier2-container-management.md)

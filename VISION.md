@@ -54,7 +54,7 @@
 
 ### Tier 2: Application (Managed by Controller)
 
-> **ALL TIER 2 CONTAINERS ARE IMMUTABLE!** The Processor (Tier 1) is also immutable — see [ADR-0019](docs/adr/0019-unified-service-infrastructure.md).
+> **ALL TIER 2 CONTAINERS ARE IMMUTABLE!** The Processor (Tier 1) is also immutable — see [ADR-0019](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0019-unified-service-infrastructure.md).
 
 | Service       | Role                                                                                                                                                                                                                                                    | Criticality      | Status        |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------- |
@@ -73,7 +73,7 @@
 3. **Reproducibility** — Fully containerized builds with pinned versions. A fresh deployment must produce identical behavior.
 4. **Transparency** — Structured logging (JSON), health metrics, and remote observability built in from day one.
 5. **Security by Default** — Container isolation, minimal attack surface.
-6. **Resource Isolation** — Every managed container runs with explicit memory and CPU limits (cgroups v2). The Recorder is protected from the OOM Killer via `oom_score_adj=-999`. Analysis workers are expendable; the recording stream is not. See [ADR-0020](docs/adr/0020-resource-limits-qos.md).
+6. **Resource Isolation** — Every managed container runs with explicit memory and CPU limits (cgroups v2). The Recorder is protected from the OOM Killer via `oom_score_adj=-999`. Analysis workers are expendable; the recording stream is not. See [ADR-0020](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0020-resource-limits-qos.md).
 
 ---
 
@@ -88,15 +88,15 @@
 
 ## Roadmap
 
-For the milestone roadmap see **[ROADMAP.md](ROADMAP.md)**.
+For the milestone roadmap see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
 
 ---
 
 ## See Also
 
-- **[README.md](README.md)** — Project overview, quick start, structure (human-facing)
-- **[ROADMAP.md](ROADMAP.md)** — Milestone roadmap (version targets & status)
-- **[AGENTS.md](AGENTS.md)** — Binding rules for AI coding assistants
-- **[docs/index.md](docs/index.md)** — Full technical documentation
+- **[README.md](https://github.com/kyellsen/silvasonic/blob/main/README.md)** — Project overview, quick start, structure (human-facing)
+- **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)** — Milestone roadmap (version targets & status)
+- **[AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)** — Binding rules for AI coding assistants
+- **[docs/index.md](https://github.com/kyellsen/silvasonic/blob/main/docs/index.md)** — Full technical documentation
 
 > **🤖 AI Agents:** This document is normative. When designing or implementing new services, you **MUST** consult the Services Architecture and Design Principles above. Do not build entire services autonomously — proceed step by step after human review.

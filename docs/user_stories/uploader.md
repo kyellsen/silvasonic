@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-u01"></a>
 ## US-U01: Automatically back up recordings to the cloud ☁️
 
 > **As a researcher**
@@ -29,6 +30,7 @@
 
 ---
 
+<a id="us-u02"></a>
 ## US-U02: Record indefinitely ♾️
 
 > **As a user**
@@ -54,6 +56,7 @@
 
 ---
 
+<a id="us-u03"></a>
 ## US-U03: Multiple storage targets simultaneously 🗄️
 
 > **As a researcher**
@@ -78,6 +81,7 @@
 
 ---
 
+<a id="us-u04"></a>
 ## US-U04: Adjust upload settings via web interface 🎛️
 
 > **As a user**
@@ -103,6 +107,7 @@
 
 ---
 
+<a id="us-u05"></a>
 ## US-U05: Upload progress and status in dashboard 📊
 
 > **As a user**
@@ -127,6 +132,7 @@
 
 ---
 
+<a id="us-u06"></a>
 ## US-U06: Seamless upload tracking 📋
 
 > **As a researcher**

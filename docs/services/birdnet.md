@@ -92,11 +92,11 @@ Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an *
 
 ## 9. References
 
-*   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql) — authoritative definition of the `detections` table schema.
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `detections` table schema.
 *   [ADR-0009](../adr/0009-zero-trust-data-sharing.md) — Consumer Principle (read-only mounts)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — Resource Limits & QoS
 *   [ADR-0023](../adr/0023-configuration-management.md) — Configuration Management (latitude, confidence threshold)
 *   [Glossary: BirdNET](../glossary.md) — canonical definition
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.9.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v0.9.0)

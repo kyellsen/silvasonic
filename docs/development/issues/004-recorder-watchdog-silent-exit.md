@@ -53,9 +53,9 @@ After the watchdog gives up, convert this state into an explicit service failure
 No database schema or config changes are required.
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../AGENTS.md)
-* [VISION.md](../../VISION.md)
-* [services/recorder/README.md](../../../../services/recorder/README.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
+* [services/recorder/README.md](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 * ADRs:
   * [ADR-0013: Tier 2 Container Management](../../adr/0013-tier2-container-management.md)
   * [ADR-0019: Unified Service Infrastructure](../../adr/0019-unified-service-infrastructure.md)

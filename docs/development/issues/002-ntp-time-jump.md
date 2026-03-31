@@ -39,5 +39,5 @@ Anstatt den Controller auf `time-sync.target` warten zu lassen (was den Offline-
 * **Python-SegmentPromoter:** Die tatsächliche und finale Vergabe der "Echtzeit"-Zeitstempel für Segmente findet erst durch den Promoter statt, wenn er die Dateien von `.buffer/` nach `data/` verschiebt. Er überwacht, wann die Zeit "sinnvoll" (NTP-synchronisiert) wird und weist erst dann korrekte Epochen zu (oder vermerkt "un-synced" in den Metadaten).
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../AGENTS.md)
-* [VISION.md](../../VISION.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)

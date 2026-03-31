@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-r01"></a>
 ## US-R01: Plug in microphone — recording starts 🎙️
 
 > **As a field researcher**
@@ -23,13 +24,14 @@
 
 ### References
 
-- [Controller README §Device State Evaluation](../../services/controller/README.md)
+- [Controller README §Device State Evaluation](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
 - [ADR-0016: Hybrid YAML/DB Profiles](../adr/0016-hybrid-yaml-db-profiles.md)
 - [Microphone Profiles](../arch/microphone_profiles.md)
 
 ---
 
+<a id="us-r02"></a>
 ## US-R02: Recording always continues 🛡️
 
 > **As a researcher**
@@ -63,11 +65,12 @@
 - [ADR-0020: Resource Limits & QoS](../adr/0020-resource-limits-qos.md)
 - [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
 - [ADR-0009: Zero-Trust Data Sharing](../adr/0009-zero-trust-data-sharing.md)
-- [Recorder README](../../services/recorder/README.md)
+- [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 - [Controller User Stories — US-C04: Recording always takes priority](./controller.md)
 
 ---
 
+<a id="us-r03"></a>
 ## US-R03: Original format and standard format simultaneously 🎧
 
 > **As a researcher**
@@ -88,10 +91,11 @@
 ### References
 
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
-- [Recorder README](../../services/recorder/README.md)
+- [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 
 ---
 
+<a id="us-r04"></a>
 ## US-R04: Listen live via browser 🔊
 
 > **As a user**
@@ -111,10 +115,11 @@
 ### References
 
 - [Icecast Service](../services/icecast.md)
-- [Recorder README](../../services/recorder/README.md)
+- [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 
 ---
 
+<a id="us-r05"></a>
 ## US-R05: Multiple microphones simultaneously 🎤🎤
 
 > **As a researcher**
@@ -136,10 +141,11 @@
 ### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
-- [Controller README §Container Labels](../../services/controller/README.md)
+- [Controller README §Container Labels](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
 
 ---
 
+<a id="us-r06"></a>
 ## US-R06: Automatic recovery on errors 🔄
 
 > **As a user**
@@ -159,10 +165,11 @@
 ### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
-- [Recorder README](../../services/recorder/README.md)
+- [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 
 ---
 
+<a id="us-r07"></a>
 ## US-R07: Adjust recording duration per segment ⏱️
 
 > **As a researcher**

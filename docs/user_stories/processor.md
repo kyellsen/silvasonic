@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-p01"></a>
 ## US-P01: Recordings appear automatically in the overview 📋
 
 > **As a field researcher**
@@ -31,10 +32,11 @@
 - [Processor Service Docs §Indexer](../services/processor.md)
 - [ADR-0018: Worker Pull Orchestration](../adr/0018-worker-pull-orchestration.md)
 - [Messaging Patterns §Critical Path](../arch/messaging_patterns.md)
-- [Recorder README §Buffer to Records](../../services/recorder/README.md)
+- [Recorder README §Buffer to Records](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 
 ---
 
+<a id="us-p02"></a>
 ## US-P02: Endless recording without storage worries 💾
 
 > **As a field researcher**
@@ -73,6 +75,7 @@
 
 ---
 
+<a id="us-p03"></a>
 ## US-P03: Adjust storage rules via web interface 🎛️
 
 > **As a user**
@@ -97,6 +100,7 @@
 
 ---
 
+<a id="us-p04"></a>
 ## US-P04: Data pipeline status in dashboard 📊
 
 > **As a user**

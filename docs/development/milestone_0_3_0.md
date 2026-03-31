@@ -4,7 +4,7 @@
 >
 > **Status:** ✅ Complete — All Phases (1–6) done
 >
-> **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](../../VISION.md), [Controller README](../../services/controller/README.md), [Recorder README](../../services/recorder/README.md)
+> **References:** [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0007 §6](../adr/0007-rootless-os-compliance.md), [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [Controller README](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md), [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 >
 > **User Stories:** [US-C01](../user_stories/controller.md#us-c01), [US-C02](../user_stories/controller.md#us-c02), [US-C03](../user_stories/controller.md#us-c03), [US-C04](../user_stories/controller.md#us-c04), [US-C06](../user_stories/controller.md#us-c06), [US-C07](../user_stories/controller.md#us-c07), [US-C08](../user_stories/controller.md#us-c08), [US-C09](../user_stories/controller.md#us-c09), [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R05](../user_stories/recorder.md#us-r05)
 

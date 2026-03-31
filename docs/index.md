@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-- [Project Readme](../README.md)
-- [Vision](../VISION.md)
-- [Milestone Roadmap](../ROADMAP.md)
-- [Agents](../AGENTS.md)
+- [Project Readme](README.md)
+- [Vision](VISION.md)
+- [Milestone Roadmap](ROADMAP.md)
+- [Agents](AGENTS.md)
 
 ## Architecture
 

@@ -9,24 +9,24 @@
 
 > **AUTHORITY:** This document is the **single source of truth** for all AI agents working on this repository. `CLAUDE.md`, `.gemini/`, `.cursorrules` etc. are supplementary redirects that point here — never the reverse.
 
-👤 **Human?** Read **[README.md](README.md)** for overview, **[VISION.md](VISION.md)** for vision/architecture, and **[ROADMAP.md](ROADMAP.md)** for the milestone roadmap.
+👤 **Human?** Read **[README.md](https://github.com/kyellsen/silvasonic/blob/main/README.md)** for overview, **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)** for vision/architecture, and **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)** for the milestone roadmap.
 
 ## 1. Core Directive: Data Capture Integrity
 Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
 *   **Primary Directive:** Silvasonic is a recording station, not just an analytics cluster. **Data Capture Integrity** is paramount.
 *   **CRITICAL RULE:** Any operation that risks the continuity of Sound Recording is **FORBIDDEN**.
-*   **Resource Limits & QoS:** You **MUST** specify memory, CPU limits, and `oom_score_adj` for every Tier 2 container. The Recorder is the most protected service, while analysis workers are expendable. See **[ADR-0020](docs/adr/0020-resource-limits-qos.md)**.
-*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically. See **[ADR-0004](docs/adr/0004-use-podman.md)** and **[ADR-0007](docs/adr/0007-rootless-os-compliance.md)**.
-*   **Services Architecture:** **Tier 1 (Infrastructure)** and **Tier 2 (Application)**. All Tier 2 containers are **IMMUTABLE**, configured dynamically by the Controller. The Recorder has **NO database access**. See **[ADR-0013](docs/adr/0013-tier2-container-management.md)** and **[VISION.md](VISION.md)**.
+*   **Resource Limits & QoS:** You **MUST** specify memory, CPU limits, and `oom_score_adj` for every Tier 2 container. The Recorder is the most protected service, while analysis workers are expendable. See **[ADR-0020](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0020-resource-limits-qos.md)**.
+*   **Container Runtime:** Containers run as root inside (no `USER` directive). Podman rootless maps container-root to the host user automatically. See **[ADR-0004](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0004-use-podman.md)** and **[ADR-0007](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0007-rootless-os-compliance.md)**.
+*   **Services Architecture:** **Tier 1 (Infrastructure)** and **Tier 2 (Application)**. All Tier 2 containers are **IMMUTABLE**, configured dynamically by the Controller. The Recorder has **NO database access**. See **[ADR-0013](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0013-tier2-container-management.md)** and **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**.
 
 ## 2. Language & Domain Policy
 *   **Repository Content:** **ENGLISH ONLY** (Code, Docs, Commits, Configs).
 *   **Chat Output:** **GERMAN ONLY** (Interaction with User).
 *   **Localization (i18n):** Backend delivers `JSONB` dictionaries (e.g. `{"en": "Blackbird", "de": "Amsel"}`). Frontend resolves at runtime. Hardcoding UI strings is **FORBIDDEN**.
-*   **Domain Language:** Strict adherence to **[Glossary](docs/glossary.md)**.
+*   **Domain Language:** Strict adherence to **[Glossary](https://github.com/kyellsen/silvasonic/blob/main/docs/glossary.md)**.
 
 ## 3. Naming Conventions
-Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
+Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0010-naming-conventions.md)**.
 *   **PyPI Package:** `silvasonic-<service>` · **Python Import:** `silvasonic.<service>`
 *   **Compose Service:** `<service>` · **Container Name:** `silvasonic-<service>`
 
@@ -82,7 +82,7 @@ Full details: **[ADR-0010](docs/adr/0010-naming-conventions.md)**.
 
 ## See Also
 
-- **[README.md](README.md)** — Project overview, quick start
-- **[VISION.md](VISION.md)** — Vision, architecture, design principles
-- **[ROADMAP.md](ROADMAP.md)** — Milestone roadmap
-- **[docs/index.md](docs/index.md)** — Full technical documentation
+- **[README.md](https://github.com/kyellsen/silvasonic/blob/main/README.md)** — Project overview, quick start
+- **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)** — Vision, architecture, design principles
+- **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)** — Milestone roadmap
+- **[docs/index.md](https://github.com/kyellsen/silvasonic/blob/main/docs/index.md)** — Full technical documentation

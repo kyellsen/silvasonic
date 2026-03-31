@@ -7,8 +7,8 @@
 The `microphone_profiles` table stores hardware-specific configuration for each supported microphone type. Profiles are referenced by the `devices` table and injected into Recorder containers at launch time (Profile Injection).
 
 For the database schema, see:
-- SQLAlchemy Model: [`profiles.py`](../../packages/core/src/silvasonic/core/database/models/profiles.py)
-- Device FK: [`system.py`](../../packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`
+- SQLAlchemy Model: [`profiles.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/profiles.py)
+- Device FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`
 
 ---
 
@@ -147,7 +147,7 @@ Silvasonic uses **1-second polling** (`/proc/asound/cards` + sysfs) to detect US
 
 ## Pydantic Schema
 
-The `MatchCriteria` model is defined in [`devices.py`](../../packages/core/src/silvasonic/core/schemas/devices.py):
+The `MatchCriteria` model is defined in [`devices.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/schemas/devices.py):
 
 ```python
 class MatchCriteria(BaseModel):
@@ -165,5 +165,5 @@ This is nested inside `AudioConfig.match` and stored as part of the profile's `c
 
 - [ADR-0016: Hybrid YAML/DB Profile Management](../adr/0016-hybrid-yaml-db-profiles.md) — Seed vs. runtime, bootstrapper
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md) — Dual Stream Architecture
-- [Controller README §Profile Matching](../../services/controller/README.md) — Matching algorithm, auto-enrollment
+- [Controller README §Profile Matching](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md) — Matching algorithm, auto-enrollment
 - [Glossary — Microphone Profile](../glossary.md) — Canonical definition

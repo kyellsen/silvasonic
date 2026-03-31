@@ -37,6 +37,6 @@ Detail the technical approach to fix the issue.
 * Does this require a new Architecture Decision Record (ADR)?
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../AGENTS.md)
-* [VISION.md](../../VISION.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
 * ADRs: ...

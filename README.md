@@ -14,7 +14,7 @@
 
 **AS-IS:** **Target Audience:** Researchers, conservationists, and bioacoustic enthusiasts requiring robust, unsupervised data collection.
 
-For the long-term vision and design philosophy see **[VISION.md](VISION.md)**. For the milestone roadmap see **[ROADMAP.md](ROADMAP.md)**.
+For the long-term vision and design philosophy see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For the milestone roadmap see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
 
 ---
 
@@ -82,7 +82,7 @@ silvasonic/
 | **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to v0.8.0 Web-Interface) | ✅ Running  |
 | **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Partial  |
 
-> For the full target architecture (13 services across two tiers) see **[VISION.md](VISION.md)**. For version milestones see **[ROADMAP.md](ROADMAP.md)**.
+> For the full target architecture (13 services across two tiers) see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For version milestones see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
 
 ---
 
@@ -154,15 +154,15 @@ Service-specific tests live inside `services/<svc>/tests/`. Cross-cutting tests 
 
 | Document                           | Audience    | Purpose                                                           |
 | ---------------------------------- | ----------- | ----------------------------------------------------------------- |
-| **[README.md](README.md)**         | 👤 Humans    | Project overview, quick start, structure                          |
-| **[VISION.md](VISION.md)**         | 👤 + 🤖       | Vision, services architecture, design philosophy                  |
-| **[ROADMAP.md](ROADMAP.md)**       | 👤 + 🤖       | Milestone roadmap (version targets & status)                      |
-| **[AGENTS.md](AGENTS.md)**         | 🤖 AI Agents | Binding rules, constraints & conventions for AI coding assistants |
-| **[docs/index.md](docs/index.md)** | 👤 + 🤖       | Full technical documentation (architecture, 24 ADRs, specs)       |
+| **[README.md](https://github.com/kyellsen/silvasonic/blob/main/README.md)**         | 👤 Humans    | Project overview, quick start, structure                          |
+| **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**         | 👤 + 🤖       | Vision, services architecture, design philosophy                  |
+| **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**       | 👤 + 🤖       | Milestone roadmap (version targets & status)                      |
+| **[AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)**         | 🤖 AI Agents | Binding rules, constraints & conventions for AI coding assistants |
+| **[docs/index.md](https://github.com/kyellsen/silvasonic/blob/main/docs/index.md)** | 👤 + 🤖       | Full technical documentation (architecture, 24 ADRs, specs)       |
 
 > **📚 Local Docs:** Run `just docs` to start the MkDocs live server at `http://localhost:8085`.
 
-> **🤖 AI Agents:** Your instructions are in **[AGENTS.md](AGENTS.md)**. Read it first before doing any work on this repository.
+> **🤖 AI Agents:** Your instructions are in **[AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)**. Read it first before doing any work on this repository.
 
 ---
 

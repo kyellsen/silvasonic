@@ -40,10 +40,10 @@ Previously, profiles were loaded directly from YAML files at startup. This made 
 
 ### 2.1. Implementation Status
 The database schema is implemented:
-*   SQLAlchemy model: [`profiles.py`](../../packages/core/src/silvasonic/core/database/models/profiles.py) — `microphone_profiles` table with `slug`, `name`, `description`, `match_pattern`, `config` (JSONB), `is_system` (Boolean).
-*   Device FK: [`system.py`](../../packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`.
+*   SQLAlchemy model: [`profiles.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/profiles.py) — `microphone_profiles` table with `slug`, `name`, `description`, `match_pattern`, `config` (JSONB), `is_system` (Boolean).
+*   Device FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`.
 
-The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`seeder.py`](../../services/controller/src/silvasonic/controller/seeder.py).
+The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`seeder.py`](https://github.com/kyellsen/silvasonic/blob/main/services/controller/src/silvasonic/controller/seeder.py).
 
 ## 3. Options Considered
 *   **YAML-Only (No Database):**

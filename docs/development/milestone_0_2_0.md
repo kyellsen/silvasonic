@@ -4,7 +4,7 @@
 >
 > **Status:** ✅ Done
 >
-> **References:** [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md), [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md)
+> **References:** [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
 > **User Stories:** [US-C05](../user_stories/controller.md#us-c05)
 

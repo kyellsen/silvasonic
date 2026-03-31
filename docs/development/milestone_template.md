@@ -4,7 +4,7 @@
 >
 > **Status:** ⏳ Planned | 🔨 In Progress | ✅ Done
 >
-> **References:** [ADR-NNNN](../adr/NNNN-title.md), [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md)
+> **References:** [ADR-NNNN](../adr/NNNN-title.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
 > **User Stories:** [US-XXX](../user_stories/service.md#us-xxx) (or `n/a`)
 

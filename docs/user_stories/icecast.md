@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-ic01"></a>
 ## US-IC01: Listen live via browser 🔊
 
 > **As a user**
@@ -30,6 +31,7 @@
 
 ---
 
+<a id="us-ic02"></a>
 ## US-IC02: Select microphone for listening 🎤
 
 > **As a user**
@@ -54,6 +56,7 @@
 
 ---
 
+<a id="us-ic03"></a>
 ## US-IC03: Share audio stream externally 🌍
 
 > **As a researcher**

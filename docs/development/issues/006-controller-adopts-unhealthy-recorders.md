@@ -65,10 +65,10 @@ Implement one or both of the following:
 No schema change is strictly required, but this may warrant an ADR or at least an architecture note because it changes the Controller’s reconciliation contract from “container exists” to “container is functionally healthy”.
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../../AGENTS.md)
-* [VISION.md](../../../VISION.md)
-* [services/controller/README.md](../../../services/controller/README.md)
-* [services/recorder/README.md](../../../services/recorder/README.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
+* [services/controller/README.md](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
+* [services/recorder/README.md](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 * [docs/user_stories/controller.md](../../user_stories/controller.md)
 * [docs/user_stories/recorder.md](../../user_stories/recorder.md)
 * ADRs:

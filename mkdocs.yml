@@ -9,10 +9,10 @@ theme:
 
 nav:
   - Home: index.md
-  - Project Readme: readme.md
-  - Agents: agents.md
-  - Vision: vision.md
-  - Roadmap: roadmap.md
+  - Project Readme: README.md
+  - Agents: AGENTS.md
+  - Vision: VISION.md
+  - Roadmap: ROADMAP.md
   - Architecture:
       - Overview: arch/README.md
       - Filesystem Governance: arch/filesystem_governance.md
@@ -70,6 +70,10 @@ nav:
       - "Milestone v0.2.0": development/milestone_0_2_0.md
       - "Milestone v0.3.0": development/milestone_0_3_0.md
       - "Milestone v0.4.0": development/milestone_0_4_0.md
+      - "Milestone v0.5.0": development/milestone_0_5_0.md
+      - "Milestone v0.6.0": development/milestone_0_6_0.md
+      - "Milestone v0.8.0": development/milestone_0_8_0.md
+      - "Milestone v1.0.0": development/milestone_1_0_0.md
       - Milestone Template: development/milestone_template.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
@@ -91,7 +95,8 @@ nav:
 
 plugins:
   - search
-  - include-markdown
+  - include-markdown:
+      rewrite_relative_urls: true
   - swagger-ui-tag
 
 markdown_extensions:

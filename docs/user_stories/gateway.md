@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-gw01"></a>
 ## US-GW01: Everything accessible via one address 🌐
 
 > **As a user**
@@ -30,6 +31,7 @@
 
 ---
 
+<a id="us-gw02"></a>
 ## US-GW02: Connection is automatically encrypted 🔒
 
 > **As a user**
@@ -58,6 +60,7 @@
 
 ---
 
+<a id="us-gw03"></a>
 ## US-GW03: Station is protected against unauthorized access 🛡️
 
 > **As a user**

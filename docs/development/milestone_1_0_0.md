@@ -4,7 +4,7 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md), [AGENTS.md](../../AGENTS.md)
+> **References:** [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
 >
 > **User Stories:** `n/a` (cross-cutting stabilization)
 

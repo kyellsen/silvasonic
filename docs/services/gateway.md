@@ -121,4 +121,4 @@
 *   [ADR-0003](../adr/0003-frontend-architecture.md) — Frontend Architecture
 *   [ADR-0006](../adr/0006-bind-mounts-over-volumes.md) — Bind Mounts vs. Named Volumes
 *   [Glossary: Gateway](../glossary.md) — canonical definition
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v0.7.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v0.7.0)

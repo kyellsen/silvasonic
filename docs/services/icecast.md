@@ -101,4 +101,4 @@
 
 *   [ADR-0011](../adr/0011-audio-recording-strategy.md) — Dual-Stream FFmpeg Pipeline with optional Live Monitoring (§5)
 *   [Glossary: Icecast, Live Stream, Mount Point, Opus](../glossary.md)
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.1.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v1.1.0)

@@ -57,7 +57,7 @@ dependencies = ["silvasonic-core"]
 dynamic = ["version"]
 
 [tool.hatch.version]
-path = "../../packages/core/src/silvasonic/core/__init__.py"
+path = "https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/silvasonic"]
@@ -320,7 +320,7 @@ just test-all      # All tests except hardware (Unit+Int+System+Smoke+E2E)
 | Container name    | `silvasonic-<name>`      | `silvasonic-analyzer`      |
 | Port env var      | `SILVASONIC_<NAME>_PORT` | `SILVASONIC_ANALYZER_PORT` |
 
-> See also [AGENTS.md §3](../../AGENTS.md) for the full naming policy.
+> See also [AGENTS.md §3](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md) for the full naming policy.
 
 
 ## 9. Checklist for a New Service

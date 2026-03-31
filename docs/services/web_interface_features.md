@@ -2,7 +2,7 @@
 
 > **Status:** TO-BE — Feature list of all planned user actions and views.
 >
-> **References:** [Web-Interface Service Spec](web_interface.md), [Web-Mock README](../../services/web-mock/README.md), [User Stories](../user_stories/web_interface.md)
+> **References:** [Web-Interface Service Spec](web_interface.md), [Web-Mock README](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md), [User Stories](../user_stories/web_interface.md)
 
 ---
 

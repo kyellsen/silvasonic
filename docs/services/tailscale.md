@@ -88,4 +88,4 @@
 *   [Port Allocation](../arch/port_allocation.md) — No dedicated ports (VPN overlay)
 *   [Hardware: Network Requirements](../hardware.md) — WireGuard/Tailscale network requirements
 *   [Glossary](../glossary.md) — Tier 1 definition
-*   [ROADMAP.md](../../ROADMAP.md) — milestone (v1.5.0)
+*   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v1.5.0)

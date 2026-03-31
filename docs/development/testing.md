@@ -282,11 +282,11 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ## 10. Parallel Workers & Configuration
 
-All `just test-*` commands delegate to [`scripts/test.py`](../../scripts/test.py) — the **single source of truth** for pytest invocations, worker counts, and coverage arguments.
+All `just test-*` commands delegate to [`scripts/test.py`](https://github.com/kyellsen/silvasonic/blob/main/scripts/test.py) — the **single source of truth** for pytest invocations, worker counts, and coverage arguments.
 
 ### Worker Defaults
 
-Worker counts and their environment variable overrides are defined in [`scripts/test.py`](../../scripts/test.py) — the single source of truth. Do **not** duplicate the defaults here. Refer to the constants at the top of that file (`UNIT_WORKERS`, `INTEGRATION_WORKERS`, `SYSTEM_WORKERS`) for current values.
+Worker counts and their environment variable overrides are defined in [`scripts/test.py`](https://github.com/kyellsen/silvasonic/blob/main/scripts/test.py) — the single source of truth. Do **not** duplicate the defaults here. Refer to the constants at the top of that file (`UNIT_WORKERS`, `INTEGRATION_WORKERS`, `SYSTEM_WORKERS`) for current values.
 
 Override via environment variables: `SILVASONIC_UNIT_WORKERS`, `SILVASONIC_INTEGRATION_WORKERS`, `SILVASONIC_SYSTEM_WORKERS`.
 
@@ -322,8 +322,8 @@ Affected `conftest.py` files:
 
 ## See Also
 
-- [`scripts/test.py`](../../scripts/test.py) — Single source of truth for test commands and worker counts
-- [AGENTS.md §6](../../AGENTS.md) — Testing rules (markers, directory structure)
-- [AGENTS.md §5](../../AGENTS.md) — Approved test libraries
+- [`scripts/test.py`](https://github.com/kyellsen/silvasonic/blob/main/scripts/test.py) — Single source of truth for test commands and worker counts
+- [AGENTS.md §6](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md) — Testing rules (markers, directory structure)
+- [AGENTS.md §5](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md) — Approved test libraries
 - [Release Checklist](release_checklist.md) — Quality gates per release type
 

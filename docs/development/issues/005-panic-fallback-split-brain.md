@@ -43,6 +43,6 @@ Even under Panic Fallback conditions, the system should delete both paired strea
 No database schema change is required. No ADR is required.
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../../AGENTS.md)
-* [VISION.md](../../../VISION.md)
-* [services/processor/README.md](../../../services/processor/README.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
+* [services/processor/README.md](https://github.com/kyellsen/silvasonic/blob/main/services/processor/README.md)

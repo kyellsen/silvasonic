@@ -45,5 +45,5 @@ A hysteresis or debouncing logic must be introduced before escalating a missing 
 * **Instant Reconnects:** If a missing device reappears before the threshold is met, its counter is simply zeroed out. A "Start" event (going `online`) should remain instant, with zero debounce, to prioritize recording initiation.
 
 ## 7. Relevant Documentation Links
-* [AGENTS.md](../../../AGENTS.md)
-* [VISION.md](../../../VISION.md)
+* [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
+* [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)

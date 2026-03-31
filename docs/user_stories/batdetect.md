@@ -4,6 +4,7 @@
 
 ---
 
+<a id="us-bd01"></a>
 ## US-BD01: Automatically detect bat species 🦇
 
 > **As a researcher**
@@ -30,6 +31,7 @@
 
 ---
 
+<a id="us-bd02"></a>
 ## US-BD02: Analyze only ultrasound microphones 🎤
 
 > **As a user**
@@ -54,6 +56,7 @@
 
 ---
 
+<a id="us-bd03"></a>
 ## US-BD03: Analyze only during bat-active hours ⏰
 
 > **As a researcher**
@@ -78,6 +81,7 @@
 
 ---
 
+<a id="us-bd04"></a>
 ## US-BD04: Adjust detection accuracy 🎚️
 
 > **As a researcher**
@@ -102,6 +106,7 @@
 
 ---
 
+<a id="us-bd05"></a>
 ## US-BD05: View detected bat species in the web interface 📋
 
 > **As a user**
@@ -130,6 +135,7 @@
 
 ---
 
+<a id="us-bd06"></a>
 ## US-BD06: Analysis status in dashboard 📊
 
 > **As a user**
@@ -154,6 +160,7 @@
 
 ---
 
+<a id="us-bd07"></a>
 ## US-BD07: Enable and disable BatDetect 🔌
 
 > **As a user**

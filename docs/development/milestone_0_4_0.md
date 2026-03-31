@@ -4,7 +4,7 @@
 >
 > **Status:** ✅ Done
 >
-> **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Recorder README](../../services/recorder/README.md)
+> **References:** [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0013](../adr/0013-tier2-container-management.md), [ADR-0016](../adr/0016-hybrid-yaml-db-profiles.md), [ADR-0020](../adr/0020-resource-limits-qos.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Recorder README](https://github.com/kyellsen/silvasonic/blob/main/services/recorder/README.md)
 >
 > **User Stories:** [US-R01](../user_stories/recorder.md#us-r01), [US-R02](../user_stories/recorder.md#us-r02), [US-R03](../user_stories/recorder.md#us-r03), [US-R06](../user_stories/recorder.md#us-r06), [US-R07](../user_stories/recorder.md#us-r07), [US-C10](../user_stories/controller.md#us-c10)
 

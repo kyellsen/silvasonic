@@ -4,7 +4,7 @@
 >
 > **Status:** ✅ Done
 >
-> **References:** [VISION.md](../../VISION.md), [ROADMAP.md](../../ROADMAP.md), [AGENTS.md](../../AGENTS.md), [docs/index.md](../index.md)
+> **References:** [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [docs/index.md](../index.md)
 >
 > **User Stories:** n/a (specification milestone — no runtime features)
 

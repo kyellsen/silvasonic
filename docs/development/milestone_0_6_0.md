@@ -8,7 +8,7 @@
 >
 > **User Stories:** [US-U01](../user_stories/uploader.md#us-u01), [US-U02](../user_stories/uploader.md#us-u02), [US-U03](../user_stories/uploader.md#us-u03), [US-U06](../user_stories/uploader.md#us-u06)
 >
-> **Project Rules:** [AGENTS.md](../../AGENTS.md), [VISION.md](../../VISION.md), [Glossary](../glossary.md)
+> **Project Rules:** [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [Glossary](../glossary.md)
 
 ---
 
