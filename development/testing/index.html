@@ -3616,8 +3616,8 @@
 </tr>
 <tr>
 <td><code>smoke</code></td>
-<td>Health checks against running containers</td>
-<td>Full stack (<code>just start</code>)</td>
+<td>Health checks against built containers</td>
+<td>Built images (testcontainers)</td>
 <td>&lt; 30s total</td>
 <td>✅ Stage 11</td>
 </tr>
@@ -3760,9 +3760,11 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 </ul>
 <h3 id="smoke-tests">Smoke Tests<a class="headerlink" href="#smoke-tests" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Require the full Compose stack to be running (<code>just start</code>).</li>
+<li>Use <code>testcontainers</code> to start <strong>built</strong> container images in isolation (no <code>just start</code> needed).</li>
+<li>Require images to be built first (<code>just build</code> or pipeline Stage 9).</li>
 <li>Only test service health endpoints and basic connectivity (heartbeats in Redis).</li>
 <li>Must be idempotent — running them multiple times produces the same result.</li>
+<li>Do <strong>NOT</strong> test deep lifecycle behavior — that belongs in <code>system</code> tests.</li>
 </ul>
 <h3 id="e2e-tests">E2E Tests<a class="headerlink" href="#e2e-tests" title="Permanent link">&para;</a></h3>
 <ul>
