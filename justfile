@@ -106,6 +106,10 @@ test:
 test-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py all
 
+# 📈 Kombinierte Test-Coverage (Unit + Int + System + Smoke + E2E)
+test-cov-all:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py cov-all
+
 # 🕸️  Führt End-to-End Playwright Tests aus
 test-e2e:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py e2e

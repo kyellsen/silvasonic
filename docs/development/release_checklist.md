@@ -14,10 +14,9 @@ differ accordingly.
 Adds new functionality, changes behavior, or introduces new services. **All** of
 the following are **mandatory** before tagging:
 
-- [ ] **100 % Unit Test Coverage** — `uv run pytest -m unit --cov` must report **100 %** statement coverage. Code that is inherently not unit-testable (DB connectivity, Redis loops, `asyncio.run()` entry points, etc.) **must** be marked with `# pragma: no cover` plus an inline justification referencing the integration test that covers the code (e.g. `# pragma: no cover — integration-tested (test_database.py)`). New `pragma` exclusions require review.
-- [ ] **Unit Tests** — Every new feature has dedicated unit tests (`@pytest.mark.unit`)
-- [ ] **Integration Tests** — Database interactions, service-to-service communication, and adjacent-service contracts are covered (`@pytest.mark.integration`)
-- [ ] **System Tests** — Full-stack lifecycle tests pass with real Podman (`@pytest.mark.system`)
+- [ ] **Changed-Path Test Audit** — Every new or modified code path has been explicitly reviewed and mapped to the appropriate verification tier (Unit for isolated logic, Integration for DB/Redis/service contracts, System for lifecycle/hardware). If no direct test is added, the reason must be stated explicitly.
+- [ ] **No New Test Anti-Patterns in Changed Scope** — Tests added or modified for this release have been reviewed against `testing.md`. Mock-heavy verification, call-chain mirroring, and coverage-driven bloat were not introduced in the changed scope. Existing legacy anti-patterns outside the release scope were documented but do not require unrelated refactoring before release.
+- [ ] **Critical Path Verification** — All new or changed state transitions, database queries, failure recovery paths, and hardware interactions are explicitly guarded by appropriate tests. Boilerplate or framework glue may remain indirectly tested only if it has no meaningful standalone contract and the relevant behavior is covered at a higher tier.
 - [ ] **Smoke Tests** — Every service included in the release has a passing smoke test (`@pytest.mark.smoke`)
 - [ ] **`just check-all` passes** — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly
 - [ ] **Hardware Tests** _(recommended)_ — If USB microphone hardware is available, run `just test-hw` (`@pytest.mark.system_hw`). These tests validate real device detection, profile matching, and container spawning with physical hardware. Not mandatory, but strongly recommended before any release that touches device detection or Recorder spawning.

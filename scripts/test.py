@@ -202,6 +202,22 @@ def cmd_all() -> list[str]:
     ]
 
 
+def cmd_cov_all() -> list[str]:
+    """Build the pytest command for combined coverage (unit+int+system+smoke+e2e)."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "unit or integration or system or smoke or e2e",
+        "--tb=short",
+        "-q",
+        "-rs",
+        *discover_cov_args(),
+        "--cov-report=term-missing",
+    ]
+
+
 # ── Public API for check.py / check_all.py ──────────────────────────────────
 
 
@@ -337,6 +353,11 @@ def run_all() -> int:
     return _pytest("All", cmd_all())
 
 
+def run_cov_all() -> int:
+    """Run combined coverage tests. Returns exit code."""
+    return _pytest("Cov-All", cmd_cov_all())
+
+
 # ── CLI entry point ───────────────────────────────────────────────────────────
 
 SUITES = {
@@ -349,6 +370,7 @@ SUITES = {
     "e2e": run_e2e,
     "test": run_test,
     "all": run_all,
+    "cov-all": run_cov_all,
 }
 
 

@@ -251,39 +251,62 @@ class TestContainerManager:
         client.containers.run.assert_not_called()
 
     def test_start_replaces_exited_container(self) -> None:
-        """start() removes an exited container and recreates it."""
-        exited = MagicMock()
-        exited.id = "dead123"
-        exited.name = "silvasonic-recorder-test"
-        exited.attrs = {"State": "exited"}
-        exited.labels = {}
+        """start() removes an exited container and recreates it using stateful Fake."""
+        from podman.errors import NotFound
 
-        new_container = MagicMock()
-        new_container.id = "new456"
-        new_container.name = "silvasonic-recorder-test"
-        new_container.attrs = {"State": "running"}
-        new_container.labels = {}
+        # A stateful mock to simulate Podman's state transitions correctly
+        class FakeContainers:
+            def __init__(self) -> None:
+                self.mock_container = MagicMock()
+                self.mock_container.id = "dead123"
+                self.mock_container.name = "silvasonic-recorder-test"
+                self.mock_container.status = "exited"
+                self.mock_container.attrs = {"State": "exited"}
+                self.removed = False
+                self.removed_force = False
+                self.run_count = 0
 
+                def _stop(*args: Any, **kwargs: Any) -> None:
+                    self.mock_container.status = "exited"
+                    self.mock_container.attrs["State"] = "exited"
+
+                def _remove(force: bool = False) -> None:
+                    self.removed = True
+                    self.removed_force = force
+
+                self.mock_container.stop.side_effect = _stop
+                self.mock_container.remove.side_effect = _remove
+
+            def get(self, name: str) -> Any:
+                if self.removed:
+                    raise NotFound(f"Container {name} not found")
+                return self.mock_container
+
+            def run(self, **kwargs: Any) -> Any:
+                self.run_count += 1
+                new_container = MagicMock()
+                new_container.id = "new456"
+                new_container.name = kwargs.get("name")
+                new_container.status = "running"
+                new_container.attrs = {"State": "running"}
+                new_container.labels = {}
+                return new_container
+
+        fake = FakeContainers()
         client = MagicMock()
         client.is_connected = True
-        # Call sequence for containers.get():
-        #   1. get() in start() → returns exited (status check)
-        #   2. stop() in stop_and_remove() → returns exited (sends SIGTERM)
-        #   3. remove() in stop_and_remove() → returns exited (force-remove)
-
-        client.containers.get.side_effect = [exited, exited, exited]
-        client.containers.run.return_value = new_container
+        client.containers = fake
 
         mgr = ContainerManager(client)
         result = mgr.start(_make_spec())
 
         assert result is not None
         assert result["status"] == "running"
-        # stop_and_remove must stop then remove the exited container
-        exited.stop.assert_called_once()
-        exited.remove.assert_called_once_with(force=True)
-        # A new container must have been created
-        client.containers.run.assert_called_once()
+        assert fake.removed is True
+        assert fake.removed_force is True
+        assert fake.run_count == 1
+        fake.mock_container.stop.assert_called_once()
+        fake.mock_container.remove.assert_called_once_with(force=True)
 
     def test_start_exception_returns_none(self) -> None:
         """start() returns None on unexpected exceptions."""
