@@ -19,6 +19,7 @@
 | v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ⏳ Planned     |
 | v0.8.0     | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | ⏳ Planned     |
 | v0.9.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | ⏳ Planned     |
+| v0.10.0    | Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: `kyellsen/silvasonic.de`)                                                                                                                                             | ⏳ Planned     |
 | v1.0.0     | MVP — Production-ready field deployment, stabilization (Podman Quadlets, Ansible)                                                                                                                                                                                         | ⏳ Planned     |
 | v1.0.0+    |                                                                                                                                                                                                                                                                           |               |
 | v1.1.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                                                                                                                                                                           | ⏳ Planned     |
@@ -41,6 +42,7 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.6.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_6_0.md)** — Phases & tasks for Uploader (FLAC Compression & Cloud Sync)
 - **[Milestone v0.8.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_8_0.md)** — BirdNET (On-device Avian Inference)
 - **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
+- **[Milestone v0.10.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_10_0.md)** — Marketing Landing Page (Astro) -> *`silvasonic.de` repo*
 - **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 
 ---

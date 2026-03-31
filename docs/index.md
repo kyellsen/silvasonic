@@ -44,6 +44,7 @@
 - [Milestone v0.6.0](development/milestone_0_6_0.md) — Uploader (FLAC Compression & Cloud Sync)
 - [Milestone v0.8.0](development/milestone_0_8_0.md) — BirdNET (On-device Avian Inference)
 - [Milestone v0.9.0](development/milestone_0_9_0.md) — Web-Interface & Field Deployment
+- [Milestone v0.10.0](development/milestone_0_10_0.md) — Marketing Landing Page (Astro)
 - [Milestone v1.0.0](development/milestone_1_0_0.md) — Production Release & ML Integration
 - [Milestone Template](development/milestone_template.md) — Template for new milestone documents
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services

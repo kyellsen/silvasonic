@@ -1,0 +1,94 @@
+name: Silvasonic CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Scale down parallel workers for 2-vCPU GitHub Runner
+  SILVASONIC_UNIT_WORKERS: "4"
+  SILVASONIC_INTEGRATION_WORKERS: "2"
+  SILVASONIC_SYSTEM_WORKERS: "2"
+
+jobs:
+  check-all:
+    name: Full Pipeline (check-all)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system tools
+        run: |
+          # just (command runner)
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
+            | sudo bash -s -- --to /usr/local/bin
+          # hadolint (Containerfile linter)
+          sudo curl -fsSL -o /usr/local/bin/hadolint \
+            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          sudo chmod +x /usr/local/bin/hadolint
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Configure Rootless Podman
+        run: |
+          # Ensure XDG_RUNTIME_DIR is set for rootless Podman
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> $GITHUB_ENV
+
+          # Enable lingering so user services survive without active login
+          loginctl enable-linger "$(whoami)" || true
+
+          # Start rootless Podman socket
+          systemctl --user start podman.socket
+
+          # Set DOCKER_HOST for testcontainers compatibility
+          echo "DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock" >> $GITHUB_ENV
+
+          # Verify Podman is reachable
+          podman info --format '{{.Host.RemoteSocket.Path}}'
+
+      - name: Create CI Environment
+        run: |
+          # Generate .env with CI-appropriate values (NOT the dev defaults).
+          # Lines must NOT have leading whitespace — dotenv and podman-compose
+          # would treat them as part of the key name.
+          UID_VAL=$(id -u)
+          cat > .env <<ENVEOF
+          SILVASONIC_DEVELOPMENT_MODE=False
+          SILVASONIC_REPO_PATH=${{ github.workspace }}
+          SILVASONIC_WORKSPACE_PATH=/tmp/silvasonic-workspace
+          SILVASONIC_PODMAN_SOCKET=/run/user/${UID_VAL}/podman/podman.sock
+          SILVASONIC_NETWORK=silvasonic-net
+          DOCKER_HOST=unix:///run/user/${UID_VAL}/podman/podman.sock
+          POSTGRES_USER=silvasonic
+          POSTGRES_PASSWORD=silvasonic
+          POSTGRES_DB=silvasonic
+          SILVASONIC_DB_PORT=5432
+          SILVASONIC_REDIS_PORT=6379
+          SILVASONIC_REDIS_URL=redis://localhost:6379/0
+          SILVASONIC_CONTROLLER_PORT=9100
+          SILVASONIC_PROCESSOR_PORT=9200
+          SILVASONIC_WEB_MOCK_PORT=8001
+          SILVASONIC_HW_PRIMARY_PROFILE=ultramic_384_evo
+          ENVEOF
+          # Strip leading whitespace from each line (YAML indentation artifact)
+          sed -i 's/^[[:space:]]*//' .env
+
+      - name: Initialize Project
+        run: just init
+
+      - name: Run Full Pipeline
+        run: just check-all
