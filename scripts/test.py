@@ -305,9 +305,42 @@ def _preflight_hw() -> None:
     icon = ok if image_ok else fail
     print(f"  {icon}  Recorder image ..... {image}")
 
+    # 4. Check for conflicting background services
+    conflict_ok = True
+    conflict_detail = "no background services"
+    try:
+        cs = subprocess.run(
+            [
+                "podman",
+                "ps",
+                "--filter",
+                "name=silvasonic-controller",
+                "--filter",
+                "name=silvasonic-recorder",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        running = [line.strip() for line in cs.stdout.strip().splitlines() if line.strip()]
+        if cs.returncode == 0 and running:
+            conflict_ok = False
+            conflict_detail = "conflict: " + ", ".join(running)
+            icon = fail
+        else:
+            icon = ok
+    except Exception:
+        icon = fail
+        conflict_ok = False
+        conflict_detail = "podman ps failed"
+
+    print(f"  {icon}  Background services  {conflict_detail}")
+
     print(f"  {thin}")
 
-    if usb_found and socket_ok and image_ok:
+    if usb_found and socket_ok and image_ok and conflict_ok:
         print(
             f"  {Colors.OKGREEN}{Colors.BOLD}"
             f"✅ All prerequisites met — running full test suite."
@@ -326,16 +359,23 @@ def _preflight_hw() -> None:
             )
         if not image_ok:
             hints.append("  → Build images: just build")
+        if not conflict_ok:
+            hints.append(
+                "  → Stop background services: just stop\n"
+                "  → ALSA hardware requires exclusive access to avoid 'Device or resource busy'."
+            )
 
         print(
             f"  {Colors.WARNING}{Colors.BOLD}"
-            f"⚠️  Some prerequisites missing — tests will be skipped."
+            f"⚠️  Prerequisites missing or blocked — cannot run hardware tests."
             f"{e}",
         )
         for hint in hints:
             print(hint)
 
     print(f"{h}{sep}{e}\n")
+    if not conflict_ok:
+        sys.exit(1)
 
 
 def run_system_hw() -> int:

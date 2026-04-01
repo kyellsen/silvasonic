@@ -26,10 +26,6 @@ from silvasonic.recorder.ffmpeg_pipeline import (
 )
 from silvasonic.recorder.workspace import ensure_workspace
 
-pytestmark = [
-    pytest.mark.integration,
-]
-
 
 def _ffmpeg_available() -> bool:
     """Check if FFmpeg is available on the system."""
@@ -48,6 +44,10 @@ skip_no_ffmpeg = pytest.mark.skipif(
     not _ffmpeg_available(),
     reason="FFmpeg not installed — skip integration tests",
 )
+
+pytestmark = [
+    pytest.mark.integration,
+]
 
 
 @skip_no_ffmpeg

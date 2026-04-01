@@ -2,10 +2,14 @@
 
 Provides a pre-configured ``RecorderService`` connected to a real Redis
 container for lifecycle testing.
+
+Also exports ``skip_no_ffmpeg`` — a shared ``skipif`` marker used by
+all integration tests that require a working FFmpeg binary.
 """
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -21,6 +25,31 @@ if TYPE_CHECKING:
     from silvasonic.recorder.__main__ import RecorderService
 
 
+# ---------------------------------------------------------------------------
+# Shared FFmpeg availability check (DRY — used by all integration tests)
+# ---------------------------------------------------------------------------
+def _ffmpeg_available() -> bool:
+    """Check if FFmpeg is available on the system."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+skip_no_ffmpeg = pytest.mark.skipif(
+    not _ffmpeg_available(),
+    reason="FFmpeg not installed — skip integration tests",
+)
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 @pytest.fixture
 async def recorder_service(
     redis_container: RedisContainer, request: pytest.FixtureRequest

@@ -608,15 +608,15 @@ class FFmpegPipeline:
                 # SIGINT → FFmpeg finalizes the current segment header
                 self._proc.send_signal(signal.SIGINT)
                 self._proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:  # pragma: no cover — integration-tested
-                log.warning("pipeline.ffmpeg_timeout, sending SIGTERM")  # pragma: no cover
-                self._proc.terminate()  # pragma: no cover
-                try:  # pragma: no cover
-                    self._proc.wait(timeout=3)  # pragma: no cover
-                except subprocess.TimeoutExpired:  # pragma: no cover — defensive
-                    log.error("pipeline.ffmpeg_kill")  # pragma: no cover
-                    self._proc.kill()  # pragma: no cover
-                    self._proc.wait()  # pragma: no cover
+            except subprocess.TimeoutExpired:
+                log.warning("pipeline.ffmpeg_timeout, sending SIGTERM")
+                self._proc.terminate()
+                try:
+                    self._proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    log.error("pipeline.ffmpeg_kill")
+                    self._proc.kill()
+                    self._proc.wait()
             except OSError:  # pragma: no cover — process already exited
                 pass
 

@@ -19,20 +19,29 @@ from __future__ import annotations
 
 import sys
 import time
+import typing
 from pathlib import Path
 
 import pytest
 import structlog
 from silvasonic.controller.device_repository import upsert_device
-from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner
+from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ._hw_helpers import find_by_config, get_usb_devices, has_usb_audio_device, mic_connected
 from .conftest import (
-    PRIMARY_MIC,
-    SECONDARY_MIC,
+    PRIMARY_MIC as _PRIMARY_MIC,
+)
+from .conftest import (
+    SECONDARY_MIC as _SECONDARY_MIC,
+)
+from .conftest import (
     HwMicConfig,
 )
+
+PRIMARY_MIC = typing.cast(HwMicConfig, _PRIMARY_MIC)
+SECONDARY_MIC = typing.cast(HwMicConfig, _SECONDARY_MIC)
 
 log = structlog.get_logger()
 
@@ -41,39 +50,9 @@ pytestmark = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Hardware detection helpers (shared with test_device_hotplug.py)
-# ---------------------------------------------------------------------------
-
-
-def _has_usb_audio_device() -> bool:
-    """Check if any USB-Audio device is present in /proc/asound/cards."""
-    try:
-        text = Path("/proc/asound/cards").read_text()
-        return "USB-Audio" in text
-    except (FileNotFoundError, PermissionError):
-        return False
-
-
-def _get_usb_devices() -> list[DeviceInfo]:
-    """Scan for real USB audio devices using the actual sysfs."""
-    scanner = DeviceScanner()
-    return scanner.scan_all()
-
-
-def _find_by_config(devices: list[DeviceInfo], mic: HwMicConfig) -> list[DeviceInfo]:
-    """Filter devices by USB VID/PID from a mic config."""
-    return [d for d in devices if d.usb_vendor_id == mic.vid and d.usb_product_id == mic.pid]
-
-
-def _mic_connected(mic: HwMicConfig) -> bool:
-    """Check if a specific mic (by VID/PID) is currently connected."""
-    return len(_find_by_config(_get_usb_devices(), mic)) > 0
-
-
-_USB_PRESENT = _has_usb_audio_device()
-_PRIMARY_CONNECTED = _USB_PRESENT and _mic_connected(PRIMARY_MIC)
-_SECONDARY_CONNECTED = _USB_PRESENT and SECONDARY_MIC is not None and _mic_connected(SECONDARY_MIC)
+_USB_PRESENT = has_usb_audio_device()
+_PRIMARY_CONNECTED = _USB_PRESENT and PRIMARY_MIC is not None and mic_connected(PRIMARY_MIC)
+_SECONDARY_CONNECTED = _USB_PRESENT and SECONDARY_MIC is not None and mic_connected(SECONDARY_MIC)
 _BOTH_CONNECTED = _PRIMARY_CONNECTED and _SECONDARY_CONNECTED
 
 
@@ -138,8 +117,8 @@ def _prompt_action(verb: str, mic_name: str) -> None:
 
 def _assert_detected(mic: HwMicConfig, *, expect_count: int = 1) -> list[DeviceInfo]:
     """Assert *mic* is currently detected and return matched devices."""
-    devices = _get_usb_devices()
-    found = _find_by_config(devices, mic)
+    devices = get_usb_devices()
+    found = find_by_config(devices, mic)
     assert len(found) == expect_count, (
         f"Expected exactly {expect_count} {mic.name} "
         f"(VID:{mic.vid} PID:{mic.pid}), "
@@ -151,8 +130,8 @@ def _assert_detected(mic: HwMicConfig, *, expect_count: int = 1) -> list[DeviceI
 
 def _assert_gone(mic: HwMicConfig) -> None:
     """Assert *mic* is NOT detected (after unplug)."""
-    devices = _get_usb_devices()
-    found = _find_by_config(devices, mic)
+    devices = get_usb_devices()
+    found = find_by_config(devices, mic)
     assert len(found) == 0, (
         f"{mic.name} still detected after unplug! Found: {[d.alsa_name for d in found]}"
     )
@@ -161,8 +140,8 @@ def _assert_gone(mic: HwMicConfig) -> None:
 
 def _assert_reappeared(mic: HwMicConfig) -> DeviceInfo:
     """Assert *mic* reappeared with a USB-based stable identity."""
-    devices = _get_usb_devices()
-    found = _find_by_config(devices, mic)
+    devices = get_usb_devices()
+    found = find_by_config(devices, mic)
     assert len(found) == 1, (
         f"{mic.name} not found after re-plug! All devices: {[d.alsa_name for d in devices]}"
     )
@@ -215,6 +194,7 @@ class TestDualMicDetection:
 
     def test_both_mics_detected_simultaneously(self) -> None:
         """Scanner finds both configured mics at the same time."""
+        assert PRIMARY_MIC is not None  # guarded by skipif
         assert SECONDARY_MIC is not None  # guarded by skipif
         log.info("test.section", title="Dual-Mic Detection")
         primary = _assert_detected(PRIMARY_MIC)
@@ -234,11 +214,12 @@ class TestDualMicDetection:
         seeded_db: async_sessionmaker[AsyncSession],
     ) -> None:
         """Each mic matches its own profile with score 100."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
 
-        devices = _get_usb_devices()
-        primary = _find_by_config(devices, PRIMARY_MIC)[0]
-        secondary = _find_by_config(devices, SECONDARY_MIC)[0]
+        devices = get_usb_devices()
+        primary = find_by_config(devices, PRIMARY_MIC)[0]
+        secondary = find_by_config(devices, SECONDARY_MIC)[0]
 
         matcher = ProfileMatcher()
         async with seeded_db() as session:
@@ -273,11 +254,12 @@ class TestDualMicDetection:
         session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
         """Both devices get unique stable_device_ids and distinct DB entries."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
 
-        devices = _get_usb_devices()
-        primary = _find_by_config(devices, PRIMARY_MIC)[0]
-        secondary = _find_by_config(devices, SECONDARY_MIC)[0]
+        devices = get_usb_devices()
+        primary = find_by_config(devices, PRIMARY_MIC)[0]
+        secondary = find_by_config(devices, SECONDARY_MIC)[0]
 
         # Stable IDs must be different
         assert primary.stable_device_id != secondary.stable_device_id, (
@@ -324,10 +306,14 @@ class TestPrimaryMicHotPlug:
     Requires ``-s`` flag (stdin capture disabled) for ``input()`` prompts.
     """
 
+    _id_before: str | None = None
+
     def test_primary_detected_before_unplug(self) -> None:
         """Primary mic must be present before hot-plug sequence."""
+        assert PRIMARY_MIC is not None
         log.info("test.section", title=f"Single-Mic Hot-Plug · {PRIMARY_MIC.name}")
         found = _assert_detected(PRIMARY_MIC)
+        TestPrimaryMicHotPlug._id_before = found[0].stable_device_id
         log.info(
             "test.device_present",
             mic=PRIMARY_MIC.name,
@@ -336,11 +322,20 @@ class TestPrimaryMicHotPlug:
 
     def test_primary_disappears_on_unplug(self) -> None:
         """After unplug, primary mic is gone from scan results."""
+        assert PRIMARY_MIC is not None
         _do_unplug(PRIMARY_MIC)
 
     def test_primary_reappears_on_replug(self) -> None:
-        """After re-plug, primary mic reappears with stable USB identity."""
-        _do_replug(PRIMARY_MIC)
+        """After re-plug, primary mic reappears with same stable USB identity."""
+        assert PRIMARY_MIC is not None
+        device = _do_replug(PRIMARY_MIC)
+        assert TestPrimaryMicHotPlug._id_before is not None, (
+            "BUG: test_primary_detected_before_unplug did not run first"
+        )
+        assert device.stable_device_id == TestPrimaryMicHotPlug._id_before, (
+            f"Stable ID changed after replug: "
+            f"{TestPrimaryMicHotPlug._id_before} → {device.stable_device_id}"
+        )
 
 
 @pytest.mark.skipif(
@@ -401,10 +396,21 @@ class TestDualMicHotPlug:
     Requires ``-s`` flag for ``input()`` prompts.
     """
 
+    _primary_id_before: str | None = None
+    _secondary_id_before: str | None = None
+
     def test_unplug_secondary_primary_survives(self) -> None:
         """Unplug secondary → primary still detected, secondary gone."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
         log.info("test.section", title="Dual-Mic Hot-Plug · Cross-Isolation")
+
+        # Capture stable IDs before any unplug
+        pre_primary = _assert_detected(PRIMARY_MIC)
+        pre_secondary = _assert_detected(SECONDARY_MIC)
+        TestDualMicHotPlug._primary_id_before = pre_primary[0].stable_device_id
+        TestDualMicHotPlug._secondary_id_before = pre_secondary[0].stable_device_id
+
         _prompt_action("UNPLUG", f"{SECONDARY_MIC.name}  ⚠ ONLY this one!")
         _settle_wait(_SETTLE_UNPLUG_S, "udev settle")
 
@@ -413,10 +419,18 @@ class TestDualMicHotPlug:
         log.info("test.isolation_ok", surviving=PRIMARY_MIC.name)
 
     def test_replug_secondary_both_detected(self) -> None:
-        """Re-plug secondary → both mics detected again."""
+        """Re-plug secondary → both mics detected again with same stable IDs."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
-        _do_replug(SECONDARY_MIC)
+        device = _do_replug(SECONDARY_MIC)
         _assert_detected(PRIMARY_MIC)
+
+        # F-4: Verify stable ID consistency after replug
+        assert TestDualMicHotPlug._secondary_id_before is not None
+        assert device.stable_device_id == TestDualMicHotPlug._secondary_id_before, (
+            f"Secondary stable ID changed after replug: "
+            f"{TestDualMicHotPlug._secondary_id_before} → {device.stable_device_id}"
+        )
         log.info(
             "test.both_present",
             primary=PRIMARY_MIC.name,
@@ -425,6 +439,7 @@ class TestDualMicHotPlug:
 
     def test_unplug_primary_secondary_survives(self) -> None:
         """Unplug primary → secondary still detected, primary gone."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
         _prompt_action("UNPLUG", f"{PRIMARY_MIC.name}  ⚠ ONLY this one!")
         _settle_wait(_SETTLE_UNPLUG_S, "udev settle")
@@ -434,7 +449,8 @@ class TestDualMicHotPlug:
         log.info("test.isolation_ok", surviving=SECONDARY_MIC.name)
 
     def test_replug_primary_both_detected(self) -> None:
-        """Re-plug primary → both mics detected with stable IDs."""
+        """Re-plug primary → both mics detected with same stable IDs."""
+        assert PRIMARY_MIC is not None
         assert SECONDARY_MIC is not None
         device = _do_replug(PRIMARY_MIC)
         sec_found = _assert_detected(SECONDARY_MIC)
@@ -445,6 +461,13 @@ class TestDualMicHotPlug:
             assert not dev.stable_device_id.startswith("alsa-card"), (
                 f"Stable ID should use USB identity: {dev.stable_device_id}"
             )
+
+        # F-4: Verify stable ID consistency after replug
+        assert TestDualMicHotPlug._primary_id_before is not None
+        assert device.stable_device_id == TestDualMicHotPlug._primary_id_before, (
+            f"Primary stable ID changed after replug: "
+            f"{TestDualMicHotPlug._primary_id_before} → {device.stable_device_id}"
+        )
 
         log.info(
             "test.hotplug_complete",

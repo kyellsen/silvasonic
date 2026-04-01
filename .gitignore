@@ -74,3 +74,4 @@ COMMANDS.md
 node_modules/
 **/static/css/output.css
 package-lock.json
+docs/development/refactoring_uploader_to_processor.md

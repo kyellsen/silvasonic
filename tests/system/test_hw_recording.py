@@ -43,6 +43,7 @@ from silvasonic.recorder.ffmpeg_pipeline import PROCESSED_SAMPLE_RATE, FFmpegCon
 from silvasonic.recorder.workspace import ensure_workspace
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ._hw_helpers import has_usb_audio_device
 from ._processor_helpers import (
     DATABASE_IMAGE,
     PROCESSOR_IMAGE,
@@ -58,10 +59,10 @@ from ._processor_helpers import (
 )
 from .conftest import (
     PODMAN_SOCKET,
-    PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
     TEST_RUN_ID,
+    require_primary_mic,
     require_recorder_image,
 )
 
@@ -72,21 +73,7 @@ pytestmark = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Hardware detection helpers
-# ---------------------------------------------------------------------------
-
-
-def _has_usb_audio_device() -> bool:
-    """Check if any USB-Audio device is present in /proc/asound/cards."""
-    try:
-        text = Path("/proc/asound/cards").read_text()
-        return "USB-Audio" in text
-    except (FileNotFoundError, PermissionError):
-        return False
-
-
-_USB_PRESENT = _has_usb_audio_device()
+_USB_PRESENT = has_usb_audio_device()
 
 
 # ---------------------------------------------------------------------------
@@ -239,8 +226,9 @@ class TestDeviceValidation:
 
     def test_ffmpeg_accepts_device(self, primary_device: DeviceInfo) -> None:
         """FFmpeg can open the ALSA device for a brief capture."""
+        mic = require_primary_mic()
         alsa_device = primary_device.alsa_device
-        sample_rate = PRIMARY_MIC.sample_rate
+        sample_rate = mic.sample_rate
 
         result = subprocess.run(
             [
@@ -331,7 +319,7 @@ class TestRealAudioCapture:
         pipeline = self._make_pipeline(
             workspace,
             primary_device.alsa_device,
-            PRIMARY_MIC.sample_rate,
+            require_primary_mic().sample_rate,
         )
 
         self._run_pipeline(pipeline, self._CAPTURE_S)
@@ -360,57 +348,25 @@ class TestRealAudioCapture:
         )
 
         # Validate raw WAV header
-        raw_result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "error",
-                "-show_entries",
-                "stream=sample_rate,channels,codec_name",
-                "-of",
-                "csv=p=0",
-                str(wav_files[0]),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        assert raw_result.returncode == 0, f"ffprobe failed: {raw_result.stderr}"
-        parts = raw_result.stdout.strip().split(",")
-        assert len(parts) >= 2, f"Unexpected ffprobe output: {raw_result.stdout}"
-
+        raw_sr, raw_ch, raw_codec = _ffprobe_wav(wav_files[0])
+        assert raw_ch >= 1
         log.info(
             "test.raw_wav_valid",
             file=wav_files[0].name,
-            metadata=raw_result.stdout.strip(),
+            sample_rate=raw_sr,
+            channels=raw_ch,
+            codec=raw_codec,
         )
 
         # Validate processed WAV header
-        proc_result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "error",
-                "-show_entries",
-                "stream=sample_rate",
-                "-of",
-                "csv=p=0",
-                str(proc_wavs[0]),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        assert proc_result.returncode == 0, f"ffprobe failed: {proc_result.stderr}"
-        proc_sr = proc_result.stdout.strip()
-        assert proc_sr == str(PROCESSED_SAMPLE_RATE), (
+        proc_sr, _proc_ch, _proc_codec = _ffprobe_wav(proc_wavs[0])
+        assert proc_sr == PROCESSED_SAMPLE_RATE, (
             f"Processed WAV SR {proc_sr} != {PROCESSED_SAMPLE_RATE}"
         )
-
         log.info(
             "test.processed_wav_valid",
             file=proc_wavs[0].name,
-            sample_rate=int(proc_sr),
+            sample_rate=proc_sr,
         )
 
 
@@ -463,7 +419,7 @@ class TestFullHardwareLifecycle:
         if match_result.score < 100:
             pytest.skip(
                 f"Primary mic ({primary_device.alsa_name}) did not match "
-                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score})"
+                f"profile '{require_primary_mic().slug}' (score={match_result.score})"
             )
 
         # Step 3: Upsert as enrolled
@@ -641,7 +597,7 @@ class TestFullPipelineE2E:
         if match_result.score < 100:
             pytest.skip(
                 f"Primary mic ({primary_device.alsa_name}) did not match "
-                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score})"
+                f"profile '{require_primary_mic().slug}' (score={match_result.score})"
             )
 
         # ── Step 2: Enroll device in DB ────────────────────────────
@@ -748,8 +704,8 @@ class TestFullPipelineE2E:
             # ── Step 6: Validate WAV headers (via ffprobe) ────────
             raw_sr, raw_ch, raw_codec = _ffprobe_wav(raw_wavs[0])
             assert raw_ch >= 1
-            assert raw_sr == PRIMARY_MIC.sample_rate, (
-                f"Raw WAV sample rate {raw_sr} != expected {PRIMARY_MIC.sample_rate}"
+            assert raw_sr == require_primary_mic().sample_rate, (
+                f"Raw WAV sample rate {raw_sr} != expected {require_primary_mic().sample_rate}"
             )
             log.info(
                 "test.raw_wav_valid",
@@ -889,7 +845,7 @@ class TestFullPipelineE2E:
         if match_result.score < 100:
             pytest.skip(
                 f"Primary mic ({primary_device.alsa_name}) did not match "
-                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score})"
+                f"profile '{require_primary_mic().slug}' (score={match_result.score})"
             )
 
         from silvasonic.controller.device_repository import upsert_device
@@ -1068,7 +1024,7 @@ class TestFullPipelineE2E:
                 "test.processor_pipeline_passed",
                 recordings_indexed=count,
                 wav_files=len(proc_wavs),
-                mic=PRIMARY_MIC.name,
+                mic=require_primary_mic().name,
             )
 
             # ── Teardown ──────────────────────────────────────────

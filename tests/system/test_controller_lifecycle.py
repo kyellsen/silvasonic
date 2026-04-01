@@ -50,6 +50,10 @@ from .conftest import (
     seed_test_profile,
 )
 
+if PRIMARY_MIC is None:
+    pytest.skip("PRIMARY_MIC is required for these mock tests", allow_module_level=True)
+assert PRIMARY_MIC is not None
+
 # system_network and run_id fixtures are auto-discovered from conftest.py
 # (re-exported from _processor_helpers.py)
 
@@ -57,24 +61,31 @@ pytestmark = [
     pytest.mark.system,
 ]
 
+# Provide safe module-level fallbacks if PRIMARY_MIC YAML is missing (so import succeeds)
+_MOCK_ALSA = PRIMARY_MIC.alsa_contains if PRIMARY_MIC else "Mock USB Audio"
+_MOCK_VID = PRIMARY_MIC.vid if PRIMARY_MIC else "1234"
+_MOCK_PID = PRIMARY_MIC.pid if PRIMARY_MIC else "5678"
+_MOCK_NAME = PRIMARY_MIC.name if PRIMARY_MIC else "Mock Mic"
+_MOCK_SLUG = PRIMARY_MIC.slug if PRIMARY_MIC else "mock_mic"
+
 # Mock ALSA cards: one onboard HDA-Intel, one USB-Audio (primary mic from config)
-MOCK_ALSA_ALIAS = PRIMARY_MIC.alsa_contains.replace(" ", "_")[:16]
-MOCK_ALSA_FULL_NAME = PRIMARY_MIC.alsa_contains
+MOCK_ALSA_ALIAS = _MOCK_ALSA.replace(" ", "_")[:16]
+MOCK_ALSA_FULL_NAME = _MOCK_ALSA
 MOCK_ASOUND_CARDS = (
     " 0 [PCH             ]: HDA-Intel - HDA Intel PCH\n"
     "                      HDA Intel PCH at 0xf7200000 irq 32\n"
     f" 2 [{MOCK_ALSA_ALIAS}]: USB-Audio - {MOCK_ALSA_FULL_NAME}\n"
-    f"                      {PRIMARY_MIC.name} at usb-0000:00:14-2\n"
+    f"                      {_MOCK_NAME} at usb-0000:00:14-2\n"
 )
 
 MOCK_USB_INFO = UsbInfo(
-    vendor_id=PRIMARY_MIC.vid,
-    product_id=PRIMARY_MIC.pid,
+    vendor_id=_MOCK_VID,
+    product_id=_MOCK_PID,
     serial="SYSTEM-TEST-001",
     bus_path="1-2",
 )
 
-MOCK_STABLE_ID = f"{PRIMARY_MIC.vid}-{PRIMARY_MIC.pid}-SYSTEM-TEST-001"
+MOCK_STABLE_ID = f"{_MOCK_VID}-{_MOCK_PID}-SYSTEM-TEST-001"
 
 
 # ---------------------------------------------------------------------------
@@ -113,13 +124,13 @@ class TestSeedingAndDevicePipeline:
         from silvasonic.core.database.models.profiles import MicrophoneProfile
 
         async with session_factory() as session:
-            profile = await session.get(MicrophoneProfile, PRIMARY_MIC.slug)
-            assert profile is not None, f"profile '{PRIMARY_MIC.slug}' must be seeded"
-            assert profile.name == PRIMARY_MIC.name
+            profile = await session.get(MicrophoneProfile, _MOCK_SLUG)
+            assert profile is not None, f"profile '{_MOCK_SLUG}' must be seeded"
+            assert profile.name == _MOCK_NAME
             profile_config = profile.config or {}
             assert isinstance(profile_config, dict)
             match_cfg = profile_config.get("audio", {}).get("match", {})
-            assert match_cfg.get("usb_vendor_id") == PRIMARY_MIC.vid
+            assert match_cfg.get("usb_vendor_id") == _MOCK_VID
 
     async def test_device_scan_and_profile_match(
         self,
@@ -150,7 +161,7 @@ class TestSeedingAndDevicePipeline:
         assert len(devices) == 1
         info = devices[0]
         assert info.stable_device_id == MOCK_STABLE_ID
-        assert PRIMARY_MIC.alsa_contains.lower() in info.alsa_name.lower()
+        assert _MOCK_ALSA.lower() in info.alsa_name.lower()
 
         # Match → auto-enroll
         matcher = ProfileMatcher()
@@ -158,7 +169,7 @@ class TestSeedingAndDevicePipeline:
             match_result = await matcher.match(info, session)
         assert match_result.score == 100
         assert match_result.auto_enroll is True
-        assert match_result.profile_slug == PRIMARY_MIC.slug
+        assert match_result.profile_slug == _MOCK_SLUG
 
         # Upsert
         async with session_factory() as session:

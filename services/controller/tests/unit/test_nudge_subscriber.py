@@ -12,6 +12,13 @@ from silvasonic.core.constants import RECONNECT_DELAY_S
 class TestNudgeSubscriberMessageHandling:
     """Tests for individual message processing via _handle_message."""
 
+    def test_init(self) -> None:
+        """NudgeSubscriber initializes with reconciler and redis_url."""
+        reconciler = MagicMock()
+        sub = NudgeSubscriber(reconciler, redis_url="redis://test:6379/0")
+        assert sub._redis_url == "redis://test:6379/0"
+        assert sub._reconciler is reconciler
+
     def test_ignores_non_message_types(self) -> None:
         """Messages that are not type 'message' are ignored."""
         reconciler = MagicMock()
@@ -45,6 +52,14 @@ class TestNudgeSubscriberMessageHandling:
 
         sub._handle_message({"type": "message", "data": "reconcile"})
         stats.record_nudge.assert_called_once()
+        reconciler.trigger.assert_called_once()
+
+    def test_handle_string_data(self) -> None:
+        """_handle_message() handles string data (not bytes)."""
+        reconciler = MagicMock()
+        sub = NudgeSubscriber(reconciler)
+
+        sub._handle_message({"type": "message", "data": "reconcile"})
         reconciler.trigger.assert_called_once()
 
 

@@ -91,7 +91,7 @@ def require_recorder_image() -> None:
         pytest.skip("Recorder image not built (run 'just build' first)")
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def hw_redis() -> Iterator[tuple[str, int, str]]:
     """Ephemeral Redis on an isolated network for hardware E2E tests.
 
@@ -314,8 +314,30 @@ def load_hw_mic_config(profile_slug: str) -> HwMicConfig:
 _PRIMARY_SLUG = os.environ.get("SILVASONIC_HW_PRIMARY_PROFILE", "ultramic_384_evo")
 _SECONDARY_SLUG = os.environ.get("SILVASONIC_HW_SECONDARY_PROFILE", "")
 
-PRIMARY_MIC: HwMicConfig = load_hw_mic_config(_PRIMARY_SLUG)
-SECONDARY_MIC: HwMicConfig | None = load_hw_mic_config(_SECONDARY_SLUG) if _SECONDARY_SLUG else None
+
+def _load_mic_safe(slug: str) -> HwMicConfig | None:
+    """Load mic config, returning None if the profile YAML is missing.
+
+    This prevents a missing profile YAML from crashing all system tests
+    (not just system_hw) since conftest.py is imported by the entire
+    tests/system/ directory.
+    """
+    try:
+        return load_hw_mic_config(slug)
+    except FileNotFoundError:
+        log.warning("hw_mic_config_not_found", slug=slug)
+        return None
+
+
+PRIMARY_MIC: HwMicConfig | None = _load_mic_safe(_PRIMARY_SLUG)
+SECONDARY_MIC: HwMicConfig | None = _load_mic_safe(_SECONDARY_SLUG) if _SECONDARY_SLUG else None
+
+
+def require_primary_mic() -> HwMicConfig:
+    """Return the primary mic config or skip the test if unavailable."""
+    if PRIMARY_MIC is None:
+        pytest.skip(f"Primary mic profile '{_PRIMARY_SLUG}' YAML not found")
+    return PRIMARY_MIC
 
 
 # ---------------------------------------------------------------------------
@@ -405,9 +427,10 @@ def seed_primary_profile(tmp_path: Path) -> Path:
 
     Returns the profiles directory path.
     """
+    mic = require_primary_mic()
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir(exist_ok=True)
-    _write_profile_yml(profiles_dir, PRIMARY_MIC)
+    _write_profile_yml(profiles_dir, mic)
     return profiles_dir
 
 
@@ -520,13 +543,12 @@ def primary_device(usb_devices: list[Any]) -> Any:
     """
     from silvasonic.controller.device_scanner import DeviceInfo
 
+    mic = require_primary_mic()
     found: list[DeviceInfo] = [
-        d
-        for d in usb_devices
-        if d.usb_vendor_id == PRIMARY_MIC.vid and d.usb_product_id == PRIMARY_MIC.pid
+        d for d in usb_devices if d.usb_vendor_id == mic.vid and d.usb_product_id == mic.pid
     ]
     if not found:
-        pytest.skip(f"Primary mic {PRIMARY_MIC.name} not connected")
+        pytest.skip(f"Primary mic {mic.name} not connected")
     return found[0]
 
 

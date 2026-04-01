@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from silvasonic.controller.container_spec import Tier2ServiceSpec
-from silvasonic.controller.nudge_subscriber import NudgeSubscriber
 from silvasonic.controller.reconciler import (
     DeviceStateEvaluator,
     ReconciliationLoop,
@@ -162,30 +161,6 @@ class TestReconciliationLoop:
         assert not loop._trigger_event.is_set()
         loop.trigger()
         assert loop._trigger_event.is_set()
-
-    async def test_reconcile_once(self) -> None:
-        """_reconcile_once() calls evaluate and reconcile."""
-        mgr = MagicMock()
-        mgr.list_managed.return_value = []
-        mgr.sync_state = MagicMock()
-
-        reconciler = ReconciliationLoop(mgr, interval=1.0)
-
-        with (
-            patch.object(
-                reconciler._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[],
-            ),
-            patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-        ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-            await reconciler._reconcile_once()
 
     async def test_reconcile_once_calls_evaluate_and_reconcile(self) -> None:
         """_reconcile_once() queries DB, lists containers, and reconciles."""
@@ -679,85 +654,6 @@ class TestReconciliationLoop:
 
 
 # ===================================================================
-# NudgeSubscriber
-# ===================================================================
-
-
-@pytest.mark.unit
-class TestNudgeSubscriber:
-    """Tests for the NudgeSubscriber class."""
-
-    def test_init(self) -> None:
-        """NudgeSubscriber initializes with reconciler and redis_url."""
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler, redis_url="redis://test:6379/0")
-        assert sub._redis_url == "redis://test:6379/0"
-        assert sub._reconciler is reconciler
-
-    def test_handle_reconcile_triggers(self) -> None:
-        """_handle_message() triggers reconciliation on 'reconcile' payload."""
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-
-        sub._handle_message({"type": "message", "data": b"reconcile"})
-        reconciler.trigger.assert_called_once()
-
-    def test_handle_subscribe_ignored(self) -> None:
-        """_handle_message() ignores non-message types (e.g. 'subscribe')."""
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-
-        sub._handle_message({"type": "subscribe", "data": b"silvasonic:nudge"})
-        reconciler.trigger.assert_not_called()
-
-    def test_handle_unknown_payload_ignored(self) -> None:
-        """_handle_message() ignores unknown message payloads."""
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-
-        sub._handle_message({"type": "message", "data": b"restart"})
-        reconciler.trigger.assert_not_called()
-
-    def test_handle_string_data(self) -> None:
-        """_handle_message() handles string data (not bytes)."""
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-
-        sub._handle_message({"type": "message", "data": "reconcile"})
-        reconciler.trigger.assert_called_once()
-
-    async def test_run_reconnects_on_error(self) -> None:
-        """run() reconnects automatically after Redis disconnection."""
-        import asyncio
-
-        import redis.asyncio as aioredis
-
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler, redis_url="redis://fake:6379/0")
-
-        call_count = 0
-
-        def fake_from_url(url: str, **kwargs: Any) -> Any:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                raise asyncio.CancelledError
-            raise ConnectionError("Redis unavailable")
-
-        with (
-            patch.object(aioredis, "from_url", side_effect=fake_from_url),
-            patch(
-                "silvasonic.controller.nudge_subscriber.asyncio.sleep",
-                new_callable=AsyncMock,
-            ),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await sub.run()
-
-        assert call_count >= 2
-
-
-# ===================================================================
 # ReconciliationLoop + ControllerStats Integration
 # ===================================================================
 
@@ -966,51 +862,3 @@ class TestReconciliationLoopStats:
         # Both a stop and a start should be tracked due to the drift restart
         assert stats._total_containers_stopped == 1
         assert stats._total_containers_started == 1
-
-
-# ===================================================================
-# NudgeSubscriber + ControllerStats Integration
-# ===================================================================
-
-
-@pytest.mark.unit
-class TestNudgeSubscriberStats:
-    """Tests for stats tracking in NudgeSubscriber."""
-
-    def test_set_stats_wires_instance(self) -> None:
-        """set_stats() stores the ControllerStats reference."""
-        from silvasonic.controller.controller_stats import ControllerStats
-
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
-        sub.set_stats(stats)
-
-        assert sub._stats is stats
-
-    def test_reconcile_nudge_records_stats(self) -> None:
-        """Reconcile nudge increments nudge counter in stats."""
-        from silvasonic.controller.controller_stats import ControllerStats
-
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
-        sub.set_stats(stats)
-
-        sub._handle_message({"type": "message", "data": b"reconcile"})
-        sub._handle_message({"type": "message", "data": b"reconcile"})
-
-        assert stats._total_nudges == 2
-
-    def test_non_reconcile_nudge_no_stats(self) -> None:
-        """Non-reconcile messages do not increment nudge counter."""
-        from silvasonic.controller.controller_stats import ControllerStats
-
-        reconciler = MagicMock()
-        sub = NudgeSubscriber(reconciler)
-        stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=300.0)
-        sub.set_stats(stats)
-
-        sub._handle_message({"type": "message", "data": b"restart"})
-
-        assert stats._total_nudges == 0

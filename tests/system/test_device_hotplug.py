@@ -32,19 +32,19 @@ from silvasonic.controller.container_spec import (
     Tier2ServiceSpec,
 )
 from silvasonic.controller.device_repository import upsert_device
-from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ._hw_helpers import find_by_config, get_usb_devices, has_usb_audio_device, mic_connected
 from .conftest import (
     PODMAN_SOCKET,
     PRIMARY_MIC,
     RECORDER_IMAGE,
     SOCKET_AVAILABLE,
     TEST_RUN_ID,
-    HwMicConfig,
+    require_primary_mic,
     require_recorder_image,
 )
 
@@ -53,38 +53,8 @@ pytestmark = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Hardware detection helpers
-# ---------------------------------------------------------------------------
-
-
-def _has_usb_audio_device() -> bool:
-    """Check if any USB-Audio device is present in /proc/asound/cards."""
-    try:
-        text = Path("/proc/asound/cards").read_text()
-        return "USB-Audio" in text
-    except (FileNotFoundError, PermissionError):
-        return False
-
-
-def _get_usb_devices() -> list[DeviceInfo]:
-    """Scan for real USB audio devices using the actual sysfs."""
-    scanner = DeviceScanner()
-    return scanner.scan_all()
-
-
-def _find_by_config(devices: list[DeviceInfo], mic: HwMicConfig) -> list[DeviceInfo]:
-    """Filter devices by USB VID/PID from a mic config."""
-    return [d for d in devices if d.usb_vendor_id == mic.vid and d.usb_product_id == mic.pid]
-
-
-def _mic_connected(mic: HwMicConfig) -> bool:
-    """Check if a specific mic (by VID/PID) is currently connected."""
-    return len(_find_by_config(_get_usb_devices(), mic)) > 0
-
-
-_USB_PRESENT = _has_usb_audio_device()
-_PRIMARY_CONNECTED = _USB_PRESENT and _mic_connected(PRIMARY_MIC)
+_USB_PRESENT = has_usb_audio_device()
+_PRIMARY_CONNECTED = _USB_PRESENT and PRIMARY_MIC is not None and mic_connected(PRIMARY_MIC)
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +68,7 @@ class TestRealDeviceDetection:
 
     def test_scanner_finds_usb_device(self) -> None:
         """DeviceScanner.scan_all() detects at least one USB-Audio device."""
-        devices = _get_usb_devices()
+        devices = get_usb_devices()
         assert len(devices) >= 1, "Expected at least 1 USB-Audio device in /proc/asound/cards"
 
         device = devices[0]
@@ -110,7 +80,7 @@ class TestRealDeviceDetection:
 
     def test_usb_info_populated_from_sysfs(self) -> None:
         """DeviceScanner populates USB vendor/product info from sysfs."""
-        devices = _get_usb_devices()
+        devices = get_usb_devices()
         assert len(devices) >= 1
 
         device = devices[0]
@@ -120,7 +90,7 @@ class TestRealDeviceDetection:
 
     def test_stable_device_id_uses_usb_identity(self) -> None:
         """Stable device ID is based on USB identity, not ALSA card index."""
-        devices = _get_usb_devices()
+        devices = get_usb_devices()
         assert len(devices) >= 1
 
         device = devices[0]
@@ -147,7 +117,7 @@ class TestRealProfileMatching:
         seeded_db: async_sessionmaker[AsyncSession],
     ) -> None:
         """Real USB device → ProfileMatcher finds a match in DB."""
-        devices = _get_usb_devices()
+        devices = get_usb_devices()
         assert len(devices) >= 1
 
         matcher = ProfileMatcher()
@@ -165,7 +135,7 @@ class TestRealProfileMatching:
         session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
         """Real USB device can be upserted into the devices table."""
-        devices = _get_usb_devices()
+        devices = get_usb_devices()
         assert len(devices) >= 1
 
         device_info = devices[0]
@@ -203,8 +173,10 @@ class TestHardwareSpawnCycle:
         session_factory = seeded_db
 
         # Scan real hardware — find the primary mic
-        devices = _get_usb_devices()
-        primary_devices = _find_by_config(devices, PRIMARY_MIC)
+        mic = require_primary_mic()
+        assert mic is not None
+        devices = get_usb_devices()
+        primary_devices = find_by_config(devices, mic)
         assert len(primary_devices) >= 1
         device_info = primary_devices[0]
 
@@ -214,9 +186,11 @@ class TestHardwareSpawnCycle:
             match_result = await matcher.match(device_info, session)
 
         if match_result.score < 100:
+            slug = mic.slug
             pytest.skip(
                 f"Primary mic ({device_info.alsa_name}) did not match "
-                f"profile '{PRIMARY_MIC.slug}' (score={match_result.score}). "
+                f"profile '{slug}' "
+                f"(score={match_result.score}). "
                 f"Check profile YAML match criteria."
             )
 

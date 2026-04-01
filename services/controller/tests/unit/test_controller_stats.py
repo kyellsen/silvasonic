@@ -284,4 +284,8 @@ class TestControllerStatsThreadSafety:
             for t in threads:
                 t.join(timeout=5)
 
-        assert len(errors) == 0
+        assert len(errors) == 0, f"Exceptions occurred during concurrent execution: {errors}"
+        # Assert the total counters track updates safely
+        assert stats._total_reconcile_cycles == 100
+        assert stats._total_containers_started == 100
+        assert stats._total_nudges == 100

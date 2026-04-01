@@ -6,13 +6,14 @@ FFmpeg subprocess — no real audio hardware or FFmpeg binary needed.
 
 from __future__ import annotations
 
+import signal
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from silvasonic.recorder.ffmpeg_pipeline import (
     _ALSA_FORMAT_MAP,
-    _FFMPEG_CODEC_MAP,
     PROCESSED_SAMPLE_RATE,
     FFmpegConfig,
     FFmpegPipeline,
@@ -80,11 +81,6 @@ class TestFFmpegConfig:
         for fmt, expected in _ALSA_FORMAT_MAP.items():
             cfg = FFmpegConfig(format=fmt)
             assert cfg.alsa_format == expected
-
-    def test_codec_map_complete(self) -> None:
-        """Every supported format has an FFmpeg codec mapping."""
-        for fmt in ("S16LE", "S24LE", "S32LE"):
-            assert fmt in _FFMPEG_CODEC_MAP
 
     def test_volume_filter_zero_gain(self) -> None:
         """Zero gain returns None (no filter needed)."""
@@ -429,6 +425,59 @@ class TestSegmentPromoter:
         promoter.join(timeout=2)
         assert not promoter.is_alive()
 
+    def test_promotes_invalid_filename_as_is(self, tmp_path: Path) -> None:
+        """Files with unparseable names are promoted without renaming."""
+        buffer_dir = tmp_path / ".buffer" / "raw"
+        data_dir = tmp_path / "data" / "raw"
+        buffer_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True)
+
+        # Invalid name: no underscore separator → ValueError in split/int()
+        invalid = buffer_dir / "000_noseparator.wav"
+        valid_active = buffer_dir / "1a2b3c4d_00000001.wav"
+        invalid.write_text("orphan data")
+        valid_active.write_text("active")
+
+        promoter = SegmentPromoter(buffer_dir, data_dir, stream_name="raw")
+        promoter._poll_and_promote()
+
+        # Invalid file promoted as-is (no renaming)
+        assert (data_dir / "000_noseparator.wav").exists()
+        assert not invalid.exists()
+        assert valid_active.exists(), "Active file must stay in buffer"
+        assert promoter.segments_promoted == 1
+
+    def test_promotion_calls_stats_record(self, tmp_path: Path) -> None:
+        """SegmentPromoter calls stats.record_promotion on successful promote."""
+        buffer_dir = tmp_path / ".buffer" / "raw"
+        data_dir = tmp_path / "data" / "raw"
+        buffer_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True)
+
+        seg1 = buffer_dir / "1a2b3c4d_00000000.wav"
+        seg2 = buffer_dir / "1a2b3c4d_00000001.wav"
+        seg1.write_text("complete segment data")
+        seg2.write_text("active")
+
+        mock_stats = MagicMock()
+        mock_registry = MagicMock()
+        mock_registry.get_timestamp.return_value = "2026-03-30T10-30-00Z"
+
+        promoter = SegmentPromoter(
+            buffer_dir,
+            data_dir,
+            stream_name="raw",
+            registry=mock_registry,
+            stats=mock_stats,
+        )
+        promoter._poll_and_promote()
+
+        mock_stats.record_promotion.assert_called_once()
+        call_args = mock_stats.record_promotion.call_args
+        assert call_args[0][0] == "raw"  # stream name
+        assert "1a2b3c4d_00000000.wav" in call_args[0][1]  # filename
+        assert call_args[0][2] > 0  # file_size_bytes > 0
+
 
 # ===================================================================
 # FFmpegPipeline
@@ -705,3 +754,55 @@ class TestFFmpegPipeline:
         mock_proc2.poll.return_value = 0
         mock_proc2.returncode = 0
         pipeline.stop()
+
+    @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")
+    def test_stop_sigterm_fallback(self, mock_promoter: MagicMock, tmp_path: Path) -> None:
+        """stop() escalates to SIGTERM when SIGINT wait times out."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig(raw_enabled=False, processed_enabled=False)
+
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None  # Process running
+        mock_proc.stderr = iter([])
+        # SIGINT → wait() times out, then SIGTERM → wait() succeeds
+        mock_proc.wait.side_effect = [
+            subprocess.TimeoutExpired("ffmpeg", 5),  # After SIGINT
+            None,  # After SIGTERM
+        ]
+        mock_proc.returncode = -15
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
+            pipeline = FFmpegPipeline(config, ws, mock_source=True)
+            pipeline.start()
+            pipeline.stop()
+
+        mock_proc.send_signal.assert_called_once_with(signal.SIGINT)
+        mock_proc.terminate.assert_called_once()
+
+    @patch("silvasonic.recorder.ffmpeg_pipeline.SegmentPromoter")
+    def test_stop_sigkill_fallback(self, mock_promoter: MagicMock, tmp_path: Path) -> None:
+        """stop() escalates to SIGKILL when both SIGINT and SIGTERM time out."""
+        ws = self._make_workspace(tmp_path)
+        config = FFmpegConfig(raw_enabled=False, processed_enabled=False)
+
+        mock_proc = MagicMock()
+        mock_proc.pid = 1
+        mock_proc.poll.return_value = None
+        mock_proc.stderr = iter([])
+        # SIGINT times out, SIGTERM times out, SIGKILL succeeds
+        mock_proc.wait.side_effect = [
+            subprocess.TimeoutExpired("ffmpeg", 5),  # After SIGINT
+            subprocess.TimeoutExpired("ffmpeg", 3),  # After SIGTERM
+            None,  # After SIGKILL
+        ]
+        mock_proc.returncode = -9
+
+        with patch("silvasonic.recorder.ffmpeg_pipeline.subprocess.Popen", return_value=mock_proc):
+            pipeline = FFmpegPipeline(config, ws, mock_source=True)
+            pipeline.start()
+            pipeline.stop()
+
+        mock_proc.send_signal.assert_called_once_with(signal.SIGINT)
+        mock_proc.terminate.assert_called_once()
+        mock_proc.kill.assert_called_once()

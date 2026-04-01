@@ -54,27 +54,6 @@ def bare_service() -> "RecorderService":
 
 
 # ---------------------------------------------------------------------------
-# Package import
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestRecorderPackage:
-    """Basic package-level tests."""
-
-    def test_package_importable(self) -> None:
-        """Recorder package is importable."""
-        import silvasonic.recorder
-
-        assert silvasonic.recorder is not None
-
-    def test_package_exports_version(self) -> None:
-        """Package re-exports __version__ from core."""
-        from silvasonic.recorder import __version__
-
-        assert isinstance(__version__, str)
-        assert len(__version__) > 0
-
-
-# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
@@ -351,38 +330,6 @@ class TestRecorderServiceRun:
             pytest.raises(RuntimeError, match="Initial pipeline start failed"),
         ):
             await bare_service.run()
-
-    async def test_run_handles_cancellation(
-        self, bare_service: "RecorderService", tmp_path: MagicMock
-    ) -> None:
-        """run() catches CancelledError and stops the pipeline cleanly."""
-        bare_service._shutdown_event = asyncio.Event()
-        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
-
-        mock_pipeline = MagicMock()
-        mock_pipeline.is_active = True
-        mock_pipeline.segments_promoted = 0
-        mock_pipeline.stderr_errors = []
-
-        mock_watchdog = MagicMock()
-        mock_watchdog.watch = AsyncMock()
-
-        with (
-            patch("silvasonic.recorder.__main__.FFmpegPipeline", return_value=mock_pipeline),
-            patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
-            patch("silvasonic.recorder.__main__.ensure_workspace"),
-        ):
-
-            async def fake_watch(event: asyncio.Event) -> None:
-                await asyncio.sleep(0.1)
-                event.set()
-
-            mock_watchdog.watch.side_effect = fake_watch
-
-            await bare_service.run()
-
-        # Pipeline should have been stopped
-        mock_pipeline.stop.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
