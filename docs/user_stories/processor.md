@@ -45,9 +45,9 @@
 
 | Level | Threshold | What gets deleted | Notice |
 |---|---|---|---|
-| **Cleanup** | > 70% | Recordings that are uploaded (to **all** active targets) AND completely analyzed | `INFO` |
-| **Precaution** | > 80% | Recordings that are uploaded (to **all** active targets, independent of analysis status) | `WARNING` |
-| **Emergency** | > 90% | **Oldest** recordings independent of status (even if not uploaded!) | `CRITICAL` |
+| **Housekeeping** | > 70% | Recordings that are uploaded AND completely analyzed | `INFO` |
+| **Defensive** | > 80% | Recordings that are uploaded (independent of analysis status) | `WARNING` |
+| **Panic** | > 90% | **Oldest** recordings independent of status (even if not uploaded!) | `CRITICAL` |
 
 - [x] Deleted files disappear from the hard drive, but remain in the inventory (database) as an entry — the recording history is not lost.
 - [x] In emergency mode, cleanup also works during a database outage (fallback to file age).

@@ -45,7 +45,7 @@ colors via `@theme { --color-mod-<name>: ... }`.
 | **Dashboard** | `bg-mod-dashboard` | Emerald      |
 | **Recorder**  | `bg-mod-recorder`  | Scarlet      |
 | **Processor** | `bg-mod-processor` | Chartreuse   |
-| **Uploader**  | `bg-mod-uploader`  | Magenta      |
+| **Cloud Sync**  | `bg-mod-cloud-sync`  | Magenta      |
 | **Livesound** | `bg-mod-livesound` | Teal         |
 | **Birds**     | `bg-mod-birds`     | Gold         |
 | **Bats**      | `bg-mod-bats`      | Violet       |

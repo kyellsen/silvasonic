@@ -106,7 +106,7 @@
   --color-mod-livesound-strong: oklch(61% 0.16 200);  /* teal        */
   --color-mod-weather-strong:   oklch(65% 0.15 245);  /* cornflower  */
   --color-mod-bats-strong:      oklch(60% 0.18 290);  /* violet      */
-  --color-mod-upload-strong:    oklch(65% 0.20 335);  /* magenta     */
+  --color-mod-cloud-sync-strong: oklch(65% 0.20 335);  /* magenta     */
   --color-mod-settings-strong:  oklch(55% 0.02 250);  /* slate       */
 
   /* ── Light variants ── */
@@ -117,7 +117,7 @@
   --color-mod-livesound: oklch(76% 0.08 200);  /* teal-light        */
   --color-mod-weather:   oklch(80% 0.10 245);  /* cornflower-light  */
   --color-mod-bats:      oklch(75% 0.13 290);  /* violet-light      */
-  --color-mod-upload:    oklch(80% 0.15 335);  /* magenta-light     */
+  --color-mod-cloud-sync:    oklch(80% 0.15 335);  /* magenta-light     */
   --color-mod-settings:  oklch(70% 0.01 250);  /* slate-light       */
 }
 
@@ -309,7 +309,7 @@ body {
 .gradient-dashboard  { --mod-accent: var(--color-mod-dashboard-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 6%) 0%, transparent 55%); }
 .gradient-recorders  { --mod-accent: var(--color-mod-recorder-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 6%) 0%, transparent 55%); }
 .gradient-processor  { --mod-accent: var(--color-mod-processor-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 6%) 0%, transparent 55%); }
-.gradient-upload     { --mod-accent: var(--color-mod-upload-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 6%) 0%, transparent 55%); }
+.gradient-cloud-sync { --mod-accent: var(--color-mod-cloud-sync-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 6%) 0%, transparent 55%); }
 .gradient-livesound  { --mod-accent: var(--color-mod-livesound-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 6%) 0%, transparent 55%); }
 .gradient-birds      { --mod-accent: var(--color-mod-birds-strong);      background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 6%) 0%, transparent 55%); }
 .gradient-bats       { --mod-accent: var(--color-mod-bats-strong);       background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 6%) 0%, transparent 55%); }
@@ -321,7 +321,7 @@ body {
 [data-theme="silvadark"] .gradient-dashboard  { background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 4%) 0%, transparent 55%); }
 [data-theme="silvadark"] .gradient-recorders  { background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 4%) 0%, transparent 55%); }
 [data-theme="silvadark"] .gradient-processor  { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 4%) 0%, transparent 55%); }
-[data-theme="silvadark"] .gradient-upload     { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-cloud-sync { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 4%) 0%, transparent 55%); }
 [data-theme="silvadark"] .gradient-livesound  { background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 4%) 0%, transparent 55%); }
 [data-theme="silvadark"] .gradient-birds      { background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 4%) 0%, transparent 55%); }
 [data-theme="silvadark"] .gradient-bats       { background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 4%) 0%, transparent 55%); }

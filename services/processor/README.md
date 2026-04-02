@@ -148,5 +148,3 @@ Runtime settings are stored in `system_config` (key: `processor`) and seeded fro
 *   [ADR-0011](../../docs/adr/0011-audio-recording-strategy.md) — Audio Recording Strategy
 *   [ADR-0018](../../docs/adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [Milestone v0.5.0](../../docs/development/milestone_0_5_0.md) — Implementation plan
-## 9. References
-

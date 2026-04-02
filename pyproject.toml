@@ -20,7 +20,6 @@ exclude = [
     "packages/tests",
     "services/gateway",
 
-    "services/uploader", # Archived: integrated into processor (v0.6.0)
     "services/web-interface",
     "services/icecast",
     "services/batdetect",

@@ -9,6 +9,8 @@ Order: cross-cutting (system, auth) first, then by roadmap milestone
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -41,7 +43,16 @@ class ProcessorSettings(BaseModel):
 
 
 class CloudSyncSettings(BaseModel):
-    """Cloud Sync settings (key: ``cloud_sync``, v0.6.0)."""
+    """Cloud Sync settings (key: ``cloud_sync``, v0.6.0).
+
+    The ``remote_config`` dict is validated at runtime against the
+    type-specific Pydantic schemas in ``silvasonic.core.schemas.cloud_sync``
+    (e.g. ``WebDAVConfig``, ``S3Config``) via ``validate_rclone_config()``.
+
+    Remote credentials are **not** seeded via ``defaults.yml`` — they must
+    be configured via Web-UI (v0.9.0) or direct DB insert.  The worker
+    stays inactive (``enabled=false``) until a valid remote is configured.
+    """
 
     enabled: bool = False
     poll_interval: int = 30
@@ -49,7 +60,17 @@ class CloudSyncSettings(BaseModel):
     schedule_start_hour: int | None = None
     schedule_end_hour: int | None = None
 
-    # --- Future implementation details (v0.6.0) ---
+    # --- Remote target (single-target KISS, v0.6.0) ---
+    remote_type: str | None = None
+    """Rclone backend type: ``"webdav"``, ``"s3"``, ``"sftp"``, ``"drive"``."""
+
+    remote_name: str = "silvasonic-remote"
+    """Rclone remote name used in the generated ``rclone.conf``."""
+
+    remote_config: dict[str, Any] = {}
+    """Type-specific config passed to the rclone backend (url, user, pass, etc.)."""
+
+    # --- Future implementation details (post-v1.0.0) ---
     # batch_burst_limit: int = 50
 
 

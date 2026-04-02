@@ -14,7 +14,7 @@
 
 The Cloud-Sync-Worker is an **internal async worker within the Processor** (Tier 1), following the same pattern as the Indexer and Janitor. It is **NOT** a standalone Tier 2 container — there is no Controller management, no multi-instance orchestration, and no separate health port.
 
-This is a KISS simplification of the [original multi-target Uploader architecture](#).
+This is a KISS simplification of the original multi-target Uploader architecture (archived, see ADR-0009 NOTE).
 
 ### Key Design Decisions
 
@@ -22,7 +22,7 @@ This is a KISS simplification of the [original multi-target Uploader architectur
 |----------|----------|-----------|
 | Where does upload run? | **Inside Processor** as async worker | Same pattern as Indexer/Janitor; no Controller complexity |
 | How many targets? | **Single target** configured via `system_config` key `"cloud_sync"` | KISS: Multi-target adds orchestration complexity with no MVP value |
-| Config source? | **`CloudSyncSettings`** in `system_config` JSONB | No `storage_remotes` table needed; same Pydantic schema pattern as other settings |
+| Config source? | **`CloudSyncSettings`** in `system_config` JSONB | No `storage_remotes` table needed; same Pydantic schema pattern as other settings. Remote target via `remote_type` + `remote_config` dict |
 | Upload tracking? | **`recordings.uploaded` boolean** | Simple Janitor signal; one target = one boolean |
 | Audit log? | **`uploads` table** (immutable, no `remote_slug` FK) | Keep audit trail for debugging; simplified without multi-target references |
 | FLAC encoding? | **`ffmpeg`** subprocess (ADR-0024) | Same tool as Recorder; lossless, ~50% size reduction |
@@ -52,7 +52,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 **User Stories:** US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)
 
-**Dependency:** Preparatory refactoring (v0.5.x) must be complete — `storage_remotes` table removed, `CloudSyncSettings.enabled` defaults to `false`.
+**Dependency:** Preparatory refactoring (v0.5.x) must be complete — `storage_remotes` table removed, `CloudSyncSettings.enabled` defaults to `false`, `remote_type` / `remote_config` fields present in schema.
 
 ### Modules
 
@@ -89,6 +89,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 - [ ] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
   - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
+  - Early exit: if `CloudSyncSettings.remote_type is None` → log warning and skip (no target configured)
   - Poll loop: `find_pending()` → encode → upload → audit → repeat
   - Sequential per file (parallel deferred to post-v1.0.0)
   - Inline schedule check (opt-in): `_is_within_window(start_hour, end_hour) -> bool` (KISS — 4-line function). Default: both `null` → 24/7 continuous upload
@@ -113,8 +114,9 @@ The `path_builder` module is the **only component** that knows about the remote 
   - Convention: `silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
   - Station name slugified via `python-slugify`
 - [ ] Implement `rclone_client.py`:
-  - `RcloneClient(remote_config: dict)`:
-    - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `CloudSyncSettings` config
+  - `RcloneClient(cloud_sync_settings: CloudSyncSettings)`:
+    - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `CloudSyncSettings.remote_type` + `remote_config`
+    - Validate `remote_config` via `schemas.cloud_sync.validate_rclone_config(remote_type, remote_config)` on init
     - For WebDAV/Nextcloud: set `vendor = nextcloud`
     - `upload_file(local, remote_path, bandwidth_limit) -> RcloneResult`
     - `RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)`

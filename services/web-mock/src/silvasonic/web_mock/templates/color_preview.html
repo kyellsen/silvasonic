@@ -24,7 +24,7 @@
             /* cornflower  */
             --mod-bats: oklch(60% 0.18 290);
             /* violet      */
-            --mod-upload: oklch(65% 0.20 335);
+            --mod-cloud-sync: oklch(65% 0.20 335);
             /* magenta     */
 
             /* ── 1 achromatic module ── */
@@ -39,7 +39,7 @@
             --mod-livesound-light: oklch(76% 0.08 200);
             --mod-weather-light: oklch(80% 0.10 245);
             --mod-bats-light: oklch(75% 0.13 290);
-            --mod-upload-light: oklch(80% 0.15 335);
+            --mod-cloud-sync-light: oklch(80% 0.15 335);
             --mod-settings-light: oklch(70% 0.01 250);
 
             --bg: oklch(18% 0.015 160);
@@ -623,8 +623,8 @@
                 <td>—</td>
             </tr>
             <tr>
-                <td><span class="dot-inline" style="background:var(--mod-upload);"></span>Uploader</td>
-                <td style="color:var(--mod-upload);font-weight:600;">Magenta/Hot Pink</td>
+                <td><span class="dot-inline" style="background:var(--mod-cloud-sync);"></span>Cloud Sync</td>
+                <td style="color:var(--mod-cloud-sync);font-weight:600;">Magenta/Hot Pink</td>
                 <td style="font-family:monospace;">335°</td>
                 <td>🔄 Grau→335°</td>
             </tr>
@@ -683,9 +683,9 @@
                 <div class="swatch-hue">290° Violet</div>
             </div>
             <div class="color-swatch">
-                <div class="swatch-circle" style="background:var(--mod-upload);border-color:var(--mod-upload);">
+                <div class="swatch-circle" style="background:var(--mod-cloud-sync);border-color:var(--mod-cloud-sync);">
                 </div>
-                <div class="swatch-label" style="color:var(--mod-upload);">Uploader</div>
+                <div class="swatch-label" style="color:var(--mod-cloud-sync);">Cloud Sync</div>
                 <div class="swatch-hue">335° Magenta</div>
             </div>
             <div style="border-left:2px dashed var(--border);padding-left:1rem;">
@@ -718,7 +718,7 @@
                     <div class="nav-dot" style="background:var(--mod-processor);"></div>Processor
                 </div>
                 <div class="nav-item">
-                    <div class="nav-dot" style="background:var(--mod-upload);"></div>Uploaders
+                    <div class="nav-dot" style="background:var(--mod-cloud-sync);"></div>Cloud Sync
                 </div>
                 <div class="nav-group-label">Modules</div>
                 <div class="nav-item">
@@ -776,19 +776,19 @@
                             <div class="card-subtitle" style="margin-top:0.25rem;">Level: 72%</div>
                         </div>
                     </div>
-                    <!-- Uploader (jetzt Magenta!) -->
-                    <div class="card card-accent" style="border-top-color:var(--mod-upload);">
+                    <!-- Cloud Sync (jetzt Magenta!) -->
+                    <div class="card card-accent" style="border-top-color:var(--mod-cloud-sync);">
                         <div class="card-body">
                             <div class="breadcrumb"><span>System</span><span class="sep">›</span><span
-                                    style="color:var(--mod-upload);font-weight:600;">Uploaders</span></div>
+                                    style="color:var(--mod-cloud-sync);font-weight:600;">Cloud Sync</span></div>
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <div class="card-title">S3 Primary</div>
                                 <div class="badge"
-                                    style="background:oklch(from var(--mod-upload) l c h / 0.15);color:var(--mod-upload);">
+                                    style="background:oklch(from var(--mod-cloud-sync) l c h / 0.15);color:var(--mod-cloud-sync);">
                                     Idle</div>
                             </div>
-                            <div class="card-stat" style="color:var(--mod-upload);font-size:1.25rem;">1.2 GB</div>
-                            <div class="card-subtitle">uploaded today</div>
+                            <div class="card-stat" style="color:var(--mod-cloud-sync);font-size:1.25rem;">1.2 GB</div>
+                            <div class="card-subtitle">synced today</div>
                         </div>
                     </div>
                     <!-- Weather -->

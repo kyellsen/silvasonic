@@ -50,6 +50,9 @@ processor:
   indexer_poll_interval: 2.0
 
 # --- Cloud Sync (key: "cloud_sync", v0.6.0) ---
+# IMPORTANT: Remote target credentials (url, user, pass) are NOT seeded here.
+# They must be configured via Web-UI (v0.9.0) or direct DB insert.
+# The worker stays inactive (enabled: false) until remote_type is set.
 cloud_sync:
   # Enable/disable cloud upload entirely
   enabled: false
@@ -62,6 +65,12 @@ cloud_sync:
   # Example: start=22, end=6 → upload only between 22:00 and 06:00.
   schedule_start_hour: null
   schedule_end_hour: null
+  # Rclone backend type: "webdav", "s3", "sftp", "drive" (null = not configured)
+  remote_type: null
+  # Rclone remote name used in generated rclone.conf
+  remote_name: "silvasonic-remote"
+  # Type-specific config dict (url, user, pass, etc.) — empty until configured
+  remote_config: {}
 
 # --- BirdNET Inference (key: "birdnet", v0.7.0) ---
 birdnet:

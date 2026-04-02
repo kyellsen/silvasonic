@@ -640,7 +640,7 @@ SETTINGS: dict[str, Any] = {
 }
 
 # ---------------------------------------------------------------------------
-# Upload Audit Log (for uploader detail page)
+# Upload Audit Log (for cloud sync detail page)
 # ---------------------------------------------------------------------------
 
 UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [

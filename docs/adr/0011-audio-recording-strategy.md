@@ -85,7 +85,7 @@ Deletions are limited to `janitor_batch_size` (default: **50**) files per cleanu
 
 ### Upload-Fallback (Pre-v0.6.0)
 
-When upload is not enabled (`UploaderSettings.enabled = false` in `system_config`), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
+When upload is not enabled (`CloudSyncSettings.enabled = false` in `system_config`), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.cloud_sync_fallback_active`.
 If upload *is* enabled, the `uploaded` condition is strictly interpreted as meaning the file has been successfully uploaded to the configured remote target.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
