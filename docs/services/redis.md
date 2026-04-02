@@ -2,6 +2,11 @@
 
 > **Status:** Implemented · **Tier:** 1 · **Instances:** Single
 
+> [!WARNING]
+> **Docs-as-Code Trap:**
+> This is a temporary **Planning Document**. When the service is implemented, do **NOT** copy this file into the source code as its `README.md`!
+> Instead, strictly follow the rules in `docs/STRUCTURE.md` for Service READMEs (no paraphrased endpoints, no DB tables). Once implemented, this file must be replaced by an abstract link-stub.
+
 **AS-IS:** In-memory data store serving as the real-time status bus for the Silvasonic ecosystem. Provides two mechanisms: key-value snapshots with TTL (current state) and Pub/Sub channels (live updates, nudge signals, log streaming).
 
 ---

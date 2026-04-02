@@ -1,6 +1,6 @@
 # User Stories — BatDetect Service
 
-> **Service:** BatDetect · **Tier:** 2 (Immutable) · **Status:** Planned (since v1.3.0)
+> **Service:** BatDetect · **Tier:** 2 (Immutable)
 
 ---
 
@@ -18,10 +18,6 @@
 - [ ] The analysis uses the original recording (full hardware quality), not the downsampled standard version.
 - [ ] Already analyzed recordings are not processed again.
 - [ ] The model is trained or fine-tuned on **Central European bat species** (DACH region).
-
-### Milestone
-
-- **Milestone:** v1.3.0
 
 ### References
 
@@ -45,10 +41,6 @@
 - [ ] The filter is based on the sample rate of the recorded file — no manual assignment necessary.
 - [ ] In the dashboard, it is visible which microphones are qualified for bat analysis.
 
-### Milestone
-
-- **Milestone:** v1.3.0
-
 ### References
 
 - [BatDetect Service Docs §Inputs](../services/batdetect.md)
@@ -69,10 +61,6 @@
 - [ ] Recordings outside the time window are skipped during analysis.
 - [ ] The time window can be disabled so that all recordings are analyzed (e.g., for special studies).
 - [ ] Changes to the time window are automatically applied (service restart).
-
-### Milestone
-
-- **Milestone:** v1.3.0
 
 ### References
 
@@ -95,10 +83,6 @@
 - [ ] Changes are automatically applied — the service restarts if necessary.
 - [ ] The current threshold is visible in the dashboard.
 
-### Milestone
-
-- **Milestone:** v1.3.0
-
 ### References
 
 - [BatDetect Service Docs §Dynamic Configuration](../services/batdetect.md)
@@ -119,10 +103,6 @@
 - [ ] Each species has a detail page with description, image, and temporal activity history.
 - [ ] The list can be sorted by frequency, date, or confidence.
 - [ ] Bat detections are clearly separated from bird detections (separate area in the web interface).
-
-### Milestone
-
-- **Milestone:** v1.3.0
 
 ### References
 
@@ -149,10 +129,6 @@
 - [ ] BatDetect reports its status periodically to the web interface.
 - [ ] Resource consumption (RAM, CPU) is visible in the dashboard — to help decide whether BatDetect should remain activated.
 
-### Milestone
-
-- **Milestone:** v1.3.0
-
 ### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
@@ -174,10 +150,6 @@
 - [ ] When disabled, the service is cleanly terminated — no ongoing analysis is aborted.
 - [ ] Upon reactivation, BatDetect autonomously processes the accumulated backlog.
 - [ ] The current state (active/disabled) is visible in the dashboard.
-
-### Milestone
-
-- **Milestone:** v1.3.0
 
 ### References
 

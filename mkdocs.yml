@@ -14,7 +14,6 @@ validation:
 
 nav:
   - Home: index.md
-  - Project Readme: project_readme.md
   - Agents: AGENTS.md
   - Vision: VISION.md
   - Roadmap: ROADMAP.md
@@ -33,8 +32,8 @@ nav:
       - Processor Service: services/processor.md
       - Gateway Service: services/gateway.md
       - Web-Interface Service: services/web_interface.md
-      - "UI/UX Design System": services/web_interface/02_ui_ux_design_system.md
-      - "Web-Interface Feature Specs": services/web_interface_features.md
+      - "UI/UX Design System": arch/frontend_design_system.md
+      - "Web-Interface Feature Specs": arch/frontend_features.md
       - Icecast Service: services/icecast.md
       - BirdNET Service: services/birdnet.md
       - Weather Service: services/weather.md
@@ -69,23 +68,20 @@ nav:
       - "ADR-0023: Configuration Management": adr/0023-configuration-management.md
       - "ADR-0024: FFmpeg Audio Engine": adr/0024-ffmpeg-audio-engine.md
   - Development:
-      - Overview: development/README.md
-      - "Milestone v0.1.0": development/milestone_0_1_0.md
-      - "Milestone v0.2.0": development/milestone_0_2_0.md
-      - "Milestone v0.3.0": development/milestone_0_3_0.md
-      - "Milestone v0.4.0": development/milestone_0_4_0.md
-      - "Milestone v0.5.0": development/milestone_0_5_0.md
-      - "Milestone v0.6.0": development/milestone_0_6_0.md
-      - "Milestone v0.8.0": development/milestone_0_8_0.md
-      - "Milestone v0.9.0": development/milestone_0_9_0.md
-      - "Milestone v0.10.0": development/milestone_0_10_0.md
-      - "Milestone v1.0.0": development/milestone_1_0_0.md
-      - Milestone Template: development/milestone_template.md
+      - "Milestone v0.1.0": development/milestones/milestone_0_1_0.md
+      - "Milestone v0.2.0": development/milestones/milestone_0_2_0.md
+      - "Milestone v0.3.0": development/milestones/milestone_0_3_0.md
+      - "Milestone v0.4.0": development/milestones/milestone_0_4_0.md
+      - "Milestone v0.5.0": development/milestones/milestone_0_5_0.md
+      - "Milestone v0.6.0": development/milestones/milestone_0_6_0.md
+      - "Milestone v0.8.0": development/milestones/milestone_0_8_0.md
+      - "Milestone v0.9.0": development/milestones/milestone_0_9_0.md
+      - "Milestone v0.10.0": development/milestones/milestone_0_10_0.md
+      - "Milestone v1.0.0": development/milestones/milestone_1_0_0.md
+      - Milestone Template: development/milestones/_template.md
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
       - Release Checklist: development/release_checklist.md
-      - "Refactoring Plan (Uploader)": development/refactoring_uploader_to_processor.md
-      - "Future Features & Ideas": development/idea.md
   - User Stories:
       - Controller: user_stories/controller.md
       - Recorder: user_stories/recorder.md
@@ -97,7 +93,6 @@ nav:
       - Cloud Sync: user_stories/cloud_sync.md
       - Web-Interface: user_stories/web_interface.md
   - Hardware: hardware.md
-  - API Reference: api_reference.md
   - Glossary: glossary.md
 
 plugins:

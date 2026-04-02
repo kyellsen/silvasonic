@@ -2,6 +2,11 @@
 
 > **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single
 
+> [!WARNING]
+> **Docs-as-Code Trap:**
+> This is a temporary **Planning Document**. When the service is implemented, do **NOT** copy this file into the source code as its `README.md`!
+> Instead, strictly follow the rules in `docs/STRUCTURE.md` for Service READMEs (no paraphrased endpoints, no DB tables). Once implemented, this file must be replaced by an abstract link-stub.
+
 **TO-BE:** Lightweight streaming server that receives live Opus audio from Recorder instances and serves it to the Web-Interface and external clients via HTTP. Enables real-time soundscape monitoring without accessing stored recordings.
 
 ---

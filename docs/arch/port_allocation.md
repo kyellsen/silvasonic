@@ -10,18 +10,18 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 | Service                | Internal Port | Host Port (Dev) | `.env` Variable                 | Status             |
 | ---------------------- | ------------- | --------------- | ------------------------------- | ------------------ |
 | **TimescaleDB**        | 5432          | 5432            | `SILVASONIC_DB_PORT`            | ✅ Implemented      |
-| **Redis**              | 6379          | 6379            | `SILVASONIC_REDIS_PORT`         | ✅ Implemented v0.2 |
+| **Redis**              | 6379          | 6379            | `SILVASONIC_REDIS_PORT`         | ✅ Implemented |
 | **Controller**         | 9100          | 9100            | `SILVASONIC_CONTROLLER_PORT`    | ✅ Implemented      |
-| **Web-Mock** (Dev UI)  | 8001          | 8001            | `SILVASONIC_WEB_MOCK_PORT`      | ✅ Implemented v0.2 |
-| **Web-Interface**      | 8000          | 8000            | `SILVASONIC_WEBUI_PORT`         | 📋 Planned v0.8     |
-| **Processor**          | 9200          | 9200            | `SILVASONIC_PROCESSOR_PORT`     | ✅ Implemented v0.5  |
+| **Web-Mock** (Dev UI)  | 8001          | 8001            | `SILVASONIC_WEB_MOCK_PORT`      | ✅ Implemented |
+| **Web-Interface**      | 8000          | 8000            | `SILVASONIC_WEBUI_PORT`         | 📋 Planned     |
+| **Processor**          | 9200          | 9200            | `SILVASONIC_PROCESSOR_PORT`     | ✅ Implemented  |
 | **Recorder** (Health)  | 9500          | —               | — (internal only)               | ✅ Scaffold         |
-| **BirdNET** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned v1.1     |
-| **BatDetect** (Health) | 9500          | —               | — (internal only)               | 📋 Planned v1.3     |
-| **Weather** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned v1.2     |
-| Gateway (Caddy) HTTP   | 80            | 80              | `SILVASONIC_GATEWAY_HTTP_PORT`  | 📋 Planned v0.7     |
-| Gateway (Caddy) HTTPS  | 443           | 443             | `SILVASONIC_GATEWAY_HTTPS_PORT` | 📋 Planned v0.7     |
-| **Icecast**            | 8080          | 8080            | `SILVASONIC_ICECAST_PORT`       | 📋 Planned v0.9     |
+| **BirdNET** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned     |
+| **BatDetect** (Health) | 9500          | —               | — (internal only)               | 📋 Planned     |
+| **Weather** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned     |
+| Gateway (Caddy) HTTP   | 80            | 80              | `SILVASONIC_GATEWAY_HTTP_PORT`  | 📋 Planned     |
+| Gateway (Caddy) HTTPS  | 443           | 443             | `SILVASONIC_GATEWAY_HTTPS_PORT` | 📋 Planned     |
+| **Icecast**            | 8080          | 8080            | `SILVASONIC_ICECAST_PORT`       | 📋 Planned     |
 
 > **Note:** Tailscale creates a VPN overlay — no dedicated ports needed.
 

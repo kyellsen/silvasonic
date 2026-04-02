@@ -4,7 +4,7 @@
 >
 > **Status:** ✅ Done
 >
-> **References:** [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [docs/index.md](../index.md)
+> **References:** [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [docs/index.md](../../index.md)
 >
 > **User Stories:** n/a (specification milestone — no runtime features)
 
@@ -49,7 +49,7 @@
   - Live log streaming (0022)
   - Configuration management (0023)
 
-> **Note:** ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the [ADR index](../adr/README.md) for the complete list.
+> **Note:** ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the [ADR index](../../adr/README.md) for the complete list.
 
 ---
 

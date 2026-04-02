@@ -1,6 +1,6 @@
 # User Stories — Controller Service
 
-> **Service:** Controller · **Tier:** 1 (Infrastructure) · **Status:** Implemented (since v0.3.0)
+> **Service:** Controller · **Tier:** 1 (Infrastructure)
 
 ---
 
@@ -37,10 +37,6 @@
 - Detection must work on **all common Linux distributions** and in rootless Podman containers.
 - Polling runs as part of the reconciliation loop and must not block other Controller functions.
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [Controller README §Device State Evaluation](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
@@ -63,10 +59,6 @@
 - [x] On Controller crash, recording instances continue running undisturbed.
 - [x] **Priority: Data capture > clean shutdown.**
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [Controller README §Reconciliation Loop](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
@@ -88,10 +80,6 @@
 - [x] Services are started or stopped based on the `enabled` flag.
 - [x] On configuration change: stop service and restart with new settings.
 - [x] If a signal is lost (e.g., Controller restart), the reconciliation timer catches the change as a fallback.
-
-### Milestone
-
-- **Milestone:** v0.3.0
 
 ### References
 
@@ -127,10 +115,6 @@
 
 - **Priority: Data capture > Analysis > Upload > Web Access** — this order determines which services are terminated first during resource scarcity.
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [Controller README §Resource Limits & QoS](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
@@ -151,10 +135,6 @@
 - [x] The Controller collects system-wide metrics (CPU, RAM, storage).
 - [ ] Metrics are periodically transmitted to the web interface.
 - [ ] The web interface displays both individual service and overall system metrics.
-
-### Milestone
-
-- **Milestone:** v0.2.0 (Data Collection) + v0.9.0 (Dashboard Display)
 
 ### References
 
@@ -177,10 +157,6 @@
 - [x] User profiles are therefore never overwritten.
 - [x] Profile data is validated against the `MicrophoneProfile` Pydantic schema before being saved.
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [Controller README §Profile Injection](https://github.com/kyellsen/silvasonic/blob/main/services/controller/README.md)
@@ -201,10 +177,6 @@
 - [x] The halt occurs independently of the assignment status.
 - [x] Change signal ensures immediate reaction; the reconciliation timer acts as a fallback.
 - [x] Recording is cleanly terminated (no hard kill).
-
-### Milestone
-
-- **Milestone:** v0.3.0
 
 ### References
 
@@ -228,10 +200,6 @@
 
 > **Note:** The default password must be changed in production via the web interface.
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
@@ -250,10 +218,6 @@
 - [ ] Logs are forwarded in real-time to the web interface.
 - [x] With no active viewers, logs are simply discarded (no resource consumption).
 - [ ] The web interface displays logs with auto-scroll.
-
-### Milestone
-
-- **Milestone:** v0.3.0 (Controller Log Forwarder) + v0.9.0 (Web Display)
 
 ### References
 
@@ -285,12 +249,8 @@
 - The Generic profile must work with **every** USB audio device (conservative settings).
 - **Priority: Start recording > optimal quality** — better to record at 48 kHz than not at all.
 
-### Milestone
-
-- **Milestone:** v0.4.0
-
 ### References
 
 - [ADR-0016: Hybrid YAML/DB Profile Management](../adr/0016-hybrid-yaml-db-profiles.md)
 - [Microphone Profiles §Matching Algorithm](../arch/microphone_profiles.md)
-- [Milestone v0.4.0](../development/milestone_0_4_0.md)
+- [Milestone v0.4.0](../development/milestones/milestone_0_4_0.md)

@@ -1,9 +1,12 @@
-# [BUG] `upsert_device()` fails to update volatile hardware config 
+# [BUG] 003: `upsert_device()` fails to update volatile hardware config 
 
-**Status:** `closed`
-**Priority:** 10/10 (Crash loop and total loss of recording after simple unplug/replug. Höchste Prio, sofort fixen.)
-**Labels:** `bug`
-**Service(s) Affected:** `controller`
+> **Status:** `closed`
+>
+> **Priority:** 10/10 (Crash loop and total loss of recording after simple unplug/replug. Höchste Prio, sofort fixen.)
+>
+> **Labels:** `bug`
+>
+> **Service(s) Affected:** `controller`
 
 ---
 

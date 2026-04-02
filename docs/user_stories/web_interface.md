@@ -1,6 +1,6 @@
 # User Stories — Web Interface
 
-> **Service:** Web-Interface · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.9.0)
+> **Service:** Web-Interface · **Tier:** 1 (Infrastructure)
 >
 > **Prototype:** The [web-mock](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md) service (since v0.2.0) implements the complete UI shell with mock data and serves as a **living UX specification**. All page layouts, navigation patterns, and interaction flows are prototypically implemented there — they are more illustrative than prose descriptions.
 >
@@ -41,10 +41,6 @@
 - Logging in must have **no impact** on running recordings — the web interface is purely an observation and control tool.
 - Exception: Health endpoint (`/healthy`) remains accessible **without** authentication.
 
-### Milestone
-
-- **Milestone:** v0.9.0
-
 ### References
 
 - [Web-Interface Service Docs §Settings → User](../services/web_interface.md#47-settings-tabs)
@@ -77,10 +73,6 @@
 - [ ] The Web-Mock prototype ([SSE Console](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md)) is replaced by real Redis `SUBSCRIBE silvasonic:logs` ([ADR-0022](../adr/0022-live-log-streaming.md)).
 - [ ] Log messages are filterable by service, with auto-scroll and pause functionality.
 
-### Milestone
-
-- **Milestone:** v0.9.0
-
 ### References
 
 - [Web-Interface Service Docs §1.4: State Management & Data Flow](../services/web_interface.md#14-state-management-data-flow)
@@ -106,10 +98,6 @@
 - [ ] If a module is enabled/disabled, the sidebar updates **without a page reload** (HTMX swap or SSE push).
 - [ ] Accessing the URL of a disabled module (e.g., `/birds` when BirdNET is disabled) shows a friendly notice page — no 404.
 - [ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Cloud Sync) are visible.
-
-### Milestone
-
-- **Milestone:** v0.9.0
 
 ### References
 

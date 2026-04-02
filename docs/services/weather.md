@@ -2,6 +2,11 @@
 
 > **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Single
 
+> [!WARNING]
+> **Docs-as-Code Trap:**
+> This is a temporary **Planning Document**. When the service is implemented, do **NOT** copy this file into the source code as its `README.md`!
+> Instead, strictly follow the rules in `docs/STRUCTURE.md` for Service READMEs (no paraphrased endpoints, no DB tables). Once implemented, this file must be replaced by an abstract link-stub.
+
 **TO-BE:** Environmental data service that downloads weather observations from external APIs and local sensors, stores them in the database, and enables correlation of acoustic activity with environmental conditions.
 
 ---
@@ -21,7 +26,7 @@
 ### Inputs
 
 *   **External APIs:** Periodic polling of weather data providers (e.g., OpenMeteo, DWD Open Data) for the station's geographic coordinates.
-*   **Local Sensors (Future):** Reads from BME680 (temperature, humidity, pressure, VOC) or SPS30 (particulate matter) via I²C/SPI if hardware is connected (see [Future Ideas](../development/idea.md)).
+*   **Local Sensors (Future):** Reads from BME680 (temperature, humidity, pressure, VOC) or SPS30 (particulate matter) via I²C/SPI if hardware is connected (see [Future Ideas](#)).
 
 ### Processing
 
@@ -67,7 +72,7 @@
 ## 7. Open Questions & Future Ideas
 
 *   Multiple weather providers for fallback / cross-validation.
-*   Local sensor support: BME680 for hyperlocal microclimate data (see [Future Ideas](../development/idea.md)).
+*   Local sensor support: BME680 for hyperlocal microclimate data (see [Future Ideas](#)).
 *   Lightning detection: AS3935 sensor for storm proximity correlation.
 *   Astronomy data: Moon phase and sun position from Suncalc for nocturnal activity analysis.
 
@@ -83,6 +88,6 @@
 *   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — QoS priority for analysis services
-*   [Future Features & Ideas](../development/idea.md) — Sensor recommendations
+*   [Future Features & Ideas](#) — Sensor recommendations
 *   [Glossary: Weather Observation](../glossary.md)
 *   [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — milestone (v1.2.0)

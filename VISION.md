@@ -8,7 +8,7 @@
 
 **TO-BE:** Silvasonic is a **recording station first**. Every design decision is subordinate to one principle:
 
-> **Data Capture Integrity is paramount.**  
+> **Data Capture Integrity is paramount.** 
 > Any operation that risks the continuity of sound recording is forbidden.
 
 **TO-BE:** The system is designed to run autonomously for **years** without human intervention, buffering data locally on high-speed NVMe storage and synchronizing with central servers (e.g., Nextcloud) via a **Store & Forward** architecture.
@@ -39,30 +39,30 @@
 
 ### Tier 1: Infrastructure (Dev: Podman Compose · Prod: Quadlets)
 
-| Service           | Role                                                                                                                                                       | Criticality             | Status       |
+| Service      | Role                                                                            | Criticality       | Status    |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------ |
-| **database**      | Central state management (TimescaleDB / PostgreSQL)                                                                                                        | Critical                | ✅ AS-IS      |
-| **redis**         | Status bus (Pub/Sub heartbeats, Key-Value status cache) and Reconcile-Nudge for immediate Controller wake-up (ADR-0017, ADR-0019)                          | Life Support            | ✅ AS-IS      |
-| **controller**    | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical                | ✅ AS-IS      |
-| **web-interface** | Local management console. In production: full management console. Dev predecessor: `web-mock` (v0.2.0)                                                    | Life Support / Optional | ✅ AS-IS ¹    |
-| **gateway**       | Caddy Reverse Proxy handling HTTPS and authentication                                                                                                      | Critical                | ⏳ TO-BE v0.7 |
-| **processor**     | Data Ingestion, Indexing, Janitor, and Cloud-Sync-Worker (v0.6.0). Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival | Critical                | ✅ AS-IS      |
-| **icecast**       | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                                     | Life Support / Optional | ⏳ TO-BE v1.1 |
-| **tailscale**     | Provides secure, zero-config remote access and VPN mesh networking                                                                                         | Life Support / Optional | ⏳ TO-BE v1.5 |
+| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                    | Critical        | ✅ AS-IS   |
+| **redis**     | Status bus (Pub/Sub heartbeats, Key-Value status cache) and Reconcile-Nudge for immediate Controller wake-up (ADR-0017, ADR-0019)             | Life Support      | ✅ AS-IS   |
+| **controller**  | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical        | ✅ AS-IS   |
+| **web-interface** | Local management console. In production: full management console. Dev predecessor: `web-mock` (v0.2.0)                          | Life Support / Optional | ✅ AS-IS ¹  |
+| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                   | Critical        | ⏳ Planned |
+| **processor**   | Data Ingestion, Indexing, Janitor, and Cloud-Sync-Worker . Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival | Critical        | ✅ AS-IS   |
+| **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                   | Life Support / Optional | ⏳ Planned |
+| **tailscale**   | Provides secure, zero-config remote access and VPN mesh networking                                             | Life Support / Optional | ⏳ Planned |
 
-> ¹ Currently implemented as `web-mock` — a lightweight dev UI shell with mock data. Will be replaced by the full `web-interface` at v0.9.0.
+> ¹ Currently implemented as `web-mock` — a lightweight dev UI shell with mock data. Will be replaced by the full `web-interface` in a future release.
 
 ### Tier 2: Application (Managed by Controller)
 
 > **ALL TIER 2 CONTAINERS ARE IMMUTABLE!** The Processor (Tier 1) is also immutable — see [ADR-0019](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0019-unified-service-infrastructure.md).
 
-| Service       | Role                                                                                                                                                                                                                                                    | Criticality      | Status        |
+| Service    | Role                                                                                                                          | Criticality   | Status    |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------- |
-| **recorder**  | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Captures audio via FFmpeg subprocess (ADR-0024), writes dual-stream output (Raw Native & Processed 48kHz) to NVMe. 🔮 Will send a live Opus stream to Icecast (v1.1.0) | Critical         | ✅ AS-IS       |
+| **recorder** | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Captures audio via FFmpeg subprocess (ADR-0024), writes dual-stream output (Raw Native & Processed 48kHz) to NVMe. 🔮 Will send a live Opus stream to Icecast | Critical     | ✅ AS-IS    |
 
-| **birdnet**   | On-device inference for avian species classification                                                                                                                                                                                                     | Core Feature     | ⏳ TO-BE v0.8  |
-| **batdetect** | On-device inference for bat species classification                                                                                                                                                                                                       | Optional Feature | ⏳ TO-BE v1.3  |
-| **weather**   | Correlates acoustic data with environmental measurements                                                                                                                                                                                                 | Optional Feature | ⏳ TO-BE v1.2  |
+| **birdnet**  | On-device inference for avian species classification                                                                                                   | Core Feature   | ⏳ Planned |
+| **batdetect** | On-device inference for bat species classification                                                                                                    | Optional Feature | ⏳ Planned |
+| **weather**  | Correlates acoustic data with environmental measurements                                                                                                 | Optional Feature | ⏳ Planned |
 
 ---
 
@@ -89,6 +89,40 @@
 ## Roadmap
 
 For the milestone roadmap see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
+
+## Beyond v1.0: Ecosystem Sentinel (Ideas)
+
+Below is a compact overview of recommended hardware sensors to enhance the ecosystem monitoring capabilities in the distant future. These are unstructured ideas and not yet scheduled.
+
+### 1. Light
+- **Sensor**: BH1750 or TSL2591
+- **Measurement**: Light intensity in Lux (from starlight to direct sunlight).
+- **Purpose**: Precise determination of twilight (Dawn Chorus) and monitoring of light pollution levels.
+
+### 2. Climate & Air Quality
+- **Sensor**: BME680
+- **Measurement**: Temperature, Humidity, Air Pressure, Gas Resistance (VOCs).
+- **Purpose**: Collection of basic weather data and detection of poor air quality (e.g., smoke, exhaust fumes).
+
+### 3. Particulate Matter
+- **Sensor**: Sensirion SPS30
+- **Measurement**: Particle sizes PM1.0, PM2.5, PM10.
+- **Purpose**: Correlating biological activity levels with anthropogenic pollution load (traffic, industry).
+
+### 4. Soil Conditions
+- **Sensor**: Capacitive Soil Moisture v1.2
+- **Measurement**: Soil moisture content.
+- **Purpose**: Predicting food availability for ground-dwelling species (worms, insects, amphibians).
+
+### 5. Storm & Lightning
+- **Sensor**: AS3935 (Franklin Lightning Sensor)
+- **Measurement**: Electromagnetic discharges (lightning) up to 40km distance.
+- **Purpose**: Analyzing animal behavior changes prior to storms (reacting to pressure drops or silence).
+
+### 6. Astronomy (Virtual Sensor)
+- **Sensor**: Suncalc / Mooncalc API (Software-based)
+- **Measurement**: Moon phases, sun position.
+- **Purpose**: Studying behavioral changes relative to lunar cycles (e.g., bat activity at full moon vs. new moon).
 
 ---
 

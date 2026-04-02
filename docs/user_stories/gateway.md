@@ -1,6 +1,6 @@
 # User Stories — Gateway Service
 
-> **Service:** Gateway · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v0.7.0)
+> **Service:** Gateway · **Tier:** 1 (Infrastructure)
 
 ---
 
@@ -17,10 +17,6 @@
 - [ ] The user doesn't need to know port numbers — routing to internal services happens automatically.
 - [ ] Static content (CSS, images, fonts) is delivered compressed so the page loads quickly even on slow connections.
 - [ ] If the gateway fails, recording and all other services continue undisturbed.
-
-### Milestone
-
-- **Milestone:** v0.7.0
 
 ### References
 
@@ -49,10 +45,6 @@
 
 - Certificate management must run fully automatically — no manual renewal needed.
 
-### Milestone
-
-- **Milestone:** v0.7.0
-
 ### References
 
 - [Gateway Service Docs §TLS Termination](../services/gateway.md)
@@ -73,10 +65,6 @@
 - [ ] Access protection applies uniformly to all services behind the gateway.
 - [ ] When connected via Tailscale, authentication can optionally be handled via VPN identity.
 - [ ] A default password is set during initial installation; the user is prompted to change it.
-
-### Milestone
-
-- **Milestone:** v0.7.0
 
 ### References
 

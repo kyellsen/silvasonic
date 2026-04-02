@@ -11,17 +11,32 @@ Immutable Container pattern (ADR-0019): reads config from `system_config` on sta
 
 ## 1. The Problem / The Gap
 
+## 2. User Benefit
+
+## 3. Core Responsibilities
+
+## 4. Operational Constraints & Rules
+
+## 5. Configuration & Environment
+
+## 6. Technology Stack
+
+## 7. Out of Scope
+
+## 8. Implementation Details (Domain Specific)
+### 1. The Problem / The Gap
+
 *   **Metadata Gap:** The Recorder writes WAV files to NVMe but has no database access (ADR-0013). Something must scan those files, extract metadata, and register them in the `recordings` table so analysis workers can find them.
 *   **Storage Exhaustion:** A continuously recording device will eventually fill its NVMe. Without proactive cleanup, the Recorder halts — violating Data Capture Integrity.
 *   **Centralized Authority:** File deletion must be the exclusive responsibility of a single, auditable service to prevent race conditions and accidental data loss.
 
-## 2. User Benefit
+### 2. User Benefit
 
 *   **Automatic Indexing:** Recordings appear in the database (and thus the Web-Interface) within seconds of being written to disk.
 *   **Self-Sustaining Device:** The Janitor ensures the device can record indefinitely by cleaning up old data based on configurable thresholds.
 *   **Data Safety:** Graduated retention thresholds (Housekeeping → Defensive → Panic) minimize data loss while guaranteeing the Recorder never stops.
 
-## 3. Features & Core Responsibilities
+### 3. Features & Core Responsibilities
 
 ### Indexer (`indexer.py`)
 
@@ -56,7 +71,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 *   Reports indexer and janitor metrics in heartbeat payload.
 *   Compose integration as Tier 1 service (depends on DB + Redis + Controller).
 
-## 4. Operational Constraints & Rules
+### 4. Operational Constraints & Rules
 
 | Aspect           | Value / Rule                                                             |
 | ---------------- | ------------------------------------------------------------------------ |
@@ -74,7 +89,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 > [!WARNING]
 > The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect) mount it `:ro,z` per the Consumer Principle (ADR-0009).
 
-## 5. Configuration
+### 5. Configuration
 
 ### Static Environment Variables
 
@@ -102,7 +117,7 @@ Runtime settings are stored in `system_config` (key: `processor`) and seeded fro
 
 *Changes via Web-UI require a container restart to take effect (ADR-0019).*
 
-## 6. Technology Stack & Modules
+### 6. Technology Stack & Modules
 
 *   **Modules:**
     - `__main__.py` (82 lines) — Service entry point, lifecycle, config.
@@ -112,24 +127,26 @@ Runtime settings are stored in `system_config` (key: `processor`) and seeded fro
     - `settings.py` (8 lines) — Environment variable bindings.
 *   **Libraries:** `sqlalchemy`, `asyncpg`, `soundfile`, `structlog`
 
-## 7. Tests
+### 7. Tests
 
 *   **Unit:** 100% coverage on indexer, reconciliation, settings; 89% on janitor.
 *   **Integration:** Testcontainer-based tests for indexer, janitor, reconciliation, lifecycle.
 *   **System:** Full Podman lifecycle tests including resilience scenarios.
 *   **Smoke:** Health endpoint and heartbeat validation.
 
-## 8. Out of Scope
+### 8. Out of Scope
 
 *   **Does NOT** record audio (Recorder's job).
 *   **Does NOT** analyze audio content (BirdNET / BatDetect's job).
 *   **Does NOT** upload files to the cloud (Processor Cloud-Sync-Worker does this internally).
 *   **Does NOT** assign work to analysis workers (Workers self-serve via DB polling).
 
-## 9. References
+### 9. References
 
 *   [Database Schema (DDL)](../../services/database/init/01-init-schema.sql)
 *   [ADR-0009](../../docs/adr/0009-zero-trust-data-sharing.md) — Zero-Trust Data Sharing
 *   [ADR-0011](../../docs/adr/0011-audio-recording-strategy.md) — Audio Recording Strategy
 *   [ADR-0018](../../docs/adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [Milestone v0.5.0](../../docs/development/milestone_0_5_0.md) — Implementation plan
+## 9. References
+

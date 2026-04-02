@@ -7,31 +7,13 @@
 
 ---
 
-## Implementation Status
-
-| Feature                                | Status        | Milestone | User Story |
-| -------------------------------------- | ------------- | --------- | ---------- |
-| Health Server (`:9500/healthy`)        | ✅ Implemented | v0.2.0    | —          |
-| Signal Handling (Graceful Shutdown)    | ✅ Implemented | v0.2.0    | US-R02     |
-| Recording Health Monitor (Placeholder) | ✅ Implemented | v0.2.0    | —          |
-| Plug & Play Detection                  | ✅ Implemented | v0.3.0    | US-R01     |
-| Multi-Microphone Instances             | ✅ Implemented | v0.3.0    | US-R05     |
-| Audio Capture (FFmpeg Engine)          | ✅ Implemented | v0.4.0    | US-R01     |
-| Dual Stream (Raw + Processed)          | ✅ Implemented | v0.4.0    | US-R03     |
-| Segment Duration via Profile           | ✅ Implemented | v0.4.0    | US-R07     |
-| Watchdog & Auto-Recovery               | ✅ Implemented | v0.4.0    | US-R06     |
-| OOM Protection (`oom_score_adj=-999`)  | ✅ Implemented | v0.4.0    | US-R02     |
-| Live-Stream (Opus → Icecast)           | 🔮 Future      | v1.1.0    | US-R04     |
-
----
-
-## The Problem / The Gap
+## 1. The Problem / The Gap
 
 *   **Hardware Abstraction:** Different microphones (USB, I2S) have different sample rates, bit depths, and quirks. A unified capture layer is needed that works with any ALSA-compatible device.
 *   **Reliability:** Recording processes can hang, drift, or crash. A robust watchdog must ensure continuous capture and graceful recovery.
 *   **Multi-Purpose Audio:** The system needs high-resolution raw data for science, normalized data for ML inference, and low-latency compressed data for live listening — simultaneously from a single microphone input.
 
-## User Benefit
+## 2. User Benefit
 
 *   **Plug & Play:** Works with any ALSA-compatible USB microphone. Configuration is injected by the Controller via Microphone Profiles — no manual setup needed. (US-R01)
 *   **Uninterrupted Recording:** The recording continues under all circumstances — memory pressure, network failure, or service restarts. Data capture always has priority. (US-R02)
@@ -43,18 +25,7 @@
 
 ---
 
-## Immutability Rules
-
-The Recorder is an **immutable Tier 2** service. This means:
-
-- **No database access.** The Recorder has no connection to TimescaleDB or any other database. This is strictly forbidden (ADR-0013).
-- **Profile Injection.** All configuration is provided via environment variables set by the Controller at container creation time.
-- **No self-modification.** The Recorder does not change its own state or configuration at runtime.
-- **Stateless container.** The only persistent artifact is the audio data written to the bind-mounted workspace volume.
-
----
-
-## Core Responsibilities
+## 3. Core Responsibilities
 
 ### Inputs
 
@@ -80,7 +51,74 @@ The Recorder is an **immutable Tier 2** service. This means:
 
 ---
 
-## Workspace & Path Structure
+## 4. Operational Constraints & Rules
+
+| Aspect           | Value / Rule                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| **Immutable**    | Yes — config at startup via env vars, restart to reconfigure (ADR-0019)                  |
+| **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
+| **Concurrency**  | Multi-process — audio capture is isolated in an FFmpeg subprocess, Python wrapper handles orchestration |
+| **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
+| **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
+| **Resources**    | Medium — continuous I/O to NVMe, FFmpeg resampling CPU usage scales with sample rate     |
+| **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
+| **Retry Limit**  | Max 5 restart retries before giving up — prevents infinite restart loops                 |
+
+---
+
+## 5. Configuration & Environment
+
+| Variable / Mount                    | Description                                        | Default / Example                                                      |
+| ----------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
+| `SILVASONIC_RECORDER_DEVICE`        | ALSA device identifier                             | `hw:1,0`                                                               |
+| `SILVASONIC_RECORDER_PROFILE_SLUG`  | Microphone Profile slug                            | `ultramic_384_evo`                                                     |
+| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile config (JSONB, serialized by Controller) | `{"audio":{"sample_rate":384000,...}}`                              |
+| `SILVASONIC_ICECAST_URL`            | Target for Opus Stream                             | `icecast://user:pass@host:port/mount`                                  |
+| `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
+| Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |
+
+> [!NOTE]
+> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The `SILVASONIC_RECORDER_CONFIG_JSON` variable contains the full JSONB config block from the `microphone_profiles` table, serialized by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
+
+---
+
+## 6. Technology Stack
+
+*   **Audio Engine:** `ffmpeg` (subprocess management and capture)
+*   **System Dependencies:** `ffmpeg`, `alsa-utils`
+*   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
+*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
+
+---
+
+## 7. Out of Scope
+
+*   **Does NOT** compress files to FLAC (Processor Cloud-Sync-Worker's job).
+*   **Does NOT** support I2S microphones for v1.0.0 (USB/ALSA only).
+*   **Does NOT** analyze audio (BirdNET / BatDetect / Processor's job).
+*   **Does NOT** upload files to the cloud (Processor Cloud-Sync-Worker's job).
+*   **Does NOT** provide a UI (Web-Interface's job).
+*   **Does NOT** store metadata in the database (no DB access — ADR-0013).
+*   **Does NOT** manage its own container lifecycle (Controller's job).
+*   **Does NOT** serve the Icecast endpoint (Icecast's job — Recorder only pushes to it).
+*   **Does NOT** activate/deactivate individual microphones (Controller's job).
+
+---
+
+## 8. Implementation Details (Domain Specific)
+### Immutability Rules
+
+The Recorder is an **immutable Tier 2** service. This means:
+
+- **No database access.** The Recorder has no connection to TimescaleDB or any other database. This is strictly forbidden (ADR-0013).
+- **Profile Injection.** All configuration is provided via environment variables set by the Controller at container creation time.
+- **No self-modification.** The Recorder does not change its own state or configuration at runtime.
+- **Stateless container.** The only persistent artifact is the audio data written to the bind-mounted workspace volume.
+
+---
+
+### Workspace & Path Structure
 
 Each Recorder instance gets its own **isolated** workspace directory. The Controller mounts **only** the instance-specific subdirectory into the container — the Recorder never sees the parent `recorder/` directory (ADR-0009, US-R02).
 
@@ -114,7 +152,7 @@ workspace/recorder/
 
 ---
 
-## Reliability & Recovery
+### Reliability & Recovery
 
 The Recorder implements multiple layers of protection to ensure Data Capture Integrity (ADR-0011):
 
@@ -145,7 +183,7 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 
 ---
 
-## Multi-Instance Operation
+### Multi-Instance Operation
 
 *   One Recorder container per USB microphone.
 *   Each instance has its own isolated workspace (`recorder/{name}/`).
@@ -154,82 +192,7 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 
 ---
 
-## Health Endpoint
-
-The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (internal). This is used by the Compose healthcheck and the Controller to monitor Recorder status.
-
----
-
-## Lifecycle
-
-- **Not auto-started.** The Recorder uses the `managed` Compose profile and does not start with `just start`.
-- **Started by Controller.** The Controller spawns Recorder instances as needed, injecting the appropriate profile (device, sample rate, channel config, segment duration).
-- **Graceful shutdown.** The Recorder handles `SIGTERM` and `SIGINT` for clean shutdown.
-
----
-
-## Configuration & Environment
-
-| Variable / Mount                    | Description                                        | Default / Example                                                      |
-| ----------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
-| `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
-| `SILVASONIC_RECORDER_DEVICE`        | ALSA device identifier                             | `hw:1,0`                                                               |
-| `SILVASONIC_RECORDER_PROFILE_SLUG`  | Microphone Profile slug                            | `ultramic_384_evo`                                                     |
-| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile config (JSONB, serialized by Controller) | `{"audio":{"sample_rate":384000,...}}`                              |
-| `SILVASONIC_ICECAST_URL`            | Target for Opus Stream                             | `icecast://user:pass@host:port/mount`                                  |
-| `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
-| Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |
-
-> [!NOTE]
-> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The `SILVASONIC_RECORDER_CONFIG_JSON` variable contains the full JSONB config block from the `microphone_profiles` table, serialized by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
-
----
-
-## Operational Constraints & Rules
-
-| Aspect           | Value / Rule                                                                             |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| **Immutable**    | Yes — config at startup via env vars, restart to reconfigure (ADR-0019)                  |
-| **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
-| **Concurrency**  | Multi-process — audio capture is isolated in an FFmpeg subprocess, Python wrapper handles orchestration |
-| **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
-| **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
-| **Resources**    | Medium — continuous I/O to NVMe, FFmpeg resampling CPU usage scales with sample rate     |
-| **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
-| **Retry Limit**  | Max 5 restart retries before giving up — prevents infinite restart loops                 |
-
----
-
-## Technology Stack
-
-*   **Audio Engine:** `ffmpeg` (subprocess management and capture)
-*   **System Dependencies:** `ffmpeg`, `alsa-utils`
-*   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
-*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
-
----
-
-## Out of Scope
-
-*   **Does NOT** compress files to FLAC (Processor Cloud-Sync-Worker's job).
-*   **Does NOT** support I2S microphones for v1.0.0 (USB/ALSA only).
-*   **Does NOT** analyze audio (BirdNET / BatDetect / Processor's job).
-*   **Does NOT** upload files to the cloud (Processor Cloud-Sync-Worker's job).
-*   **Does NOT** provide a UI (Web-Interface's job).
-*   **Does NOT** store metadata in the database (no DB access — ADR-0013).
-*   **Does NOT** manage its own container lifecycle (Controller's job).
-*   **Does NOT** serve the Icecast endpoint (Icecast's job — Recorder only pushes to it).
-*   **Does NOT** activate/deactivate individual microphones (Controller's job).
-
----
-
-## Open Questions & Future Ideas
-
-*   Automatic gain control based on ambient noise levels
-
----
-
-## References
+## 9. References
 
 - [ADR-0009: Zero-Trust Data Sharing](../../docs/adr/0009-zero-trust-data-sharing.md) — Consumer Principle
 - [ADR-0011: Audio Recording Strategy](../../docs/adr/0011-audio-recording-strategy.md) — Dual/Triple Stream

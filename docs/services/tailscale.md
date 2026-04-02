@@ -2,6 +2,11 @@
 
 > **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** None (VPN overlay)
 
+> [!WARNING]
+> **Docs-as-Code Trap:**
+> This is a temporary **Planning Document**. When the service is implemented, do **NOT** copy this file into the source code as its `README.md`!
+> Instead, strictly follow the rules in `docs/STRUCTURE.md` for Service READMEs (no paraphrased endpoints, no DB tables). Once implemented, this file must be replaced by an abstract link-stub.
+
 **TO-BE:** Secure, zero-config remote access via WireGuard-based VPN mesh networking. Enables SSH, Web-Interface, and fleet management access to field-deployed devices behind CGNAT or mobile networks.
 
 ---

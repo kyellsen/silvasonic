@@ -1,9 +1,12 @@
-# Recorder watchdog gives up without causing a container-level failure
+# [BUG] 004: Recorder watchdog gives up without causing a container-level failure
 
-**Status:** `open`
-**Priority:** 10
-**Labels:** `bug`, `architecture`
-**Service(s) Affected:** `recorder`
+> **Status:** `open`
+>
+> **Priority:** 10
+>
+> **Labels:** `bug`, `architecture`
+>
+> **Service(s) Affected:** `recorder`
 
 ---
 

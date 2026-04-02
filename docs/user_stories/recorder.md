@@ -1,6 +1,6 @@
 # User Stories — Recorder Service
 
-> **Service:** Recorder · **Tier:** 2 (Immutable) · **Status:** Implemented (since v0.4.0)
+> **Service:** Recorder · **Tier:** 2 (Immutable)
 
 ---
 
@@ -17,10 +17,6 @@
 - [x] Matching microphone profile (sample rate, channels, gain) is automatically assigned — if needed, the user can adjust in the web interface.
 - [x] A dedicated recording instance is started with the correct profile settings.
 - [x] No manual configuration required — neither config files nor environment variables.
-
-### Milestone
-
-- **Milestone:** v0.3.0 (Detection & Start) + v0.4.0 (Recording)
 
 ### References
 
@@ -56,10 +52,6 @@
 
 - **Priority: Data capture > everything else** — in doubt, analysis, upload or web access will be terminated, never the recording.
 
-### Milestone
-
-- **Milestone:** v0.3.0 (Robustness) + v0.4.0 (Watchdog & Auto-Recovery)
-
 ### References
 
 - [ADR-0020: Resource Limits & QoS](../adr/0020-resource-limits-qos.md)
@@ -84,10 +76,6 @@
 - [x] Both streams are written simultaneously without mutual interference.
 - [x] Incomplete segments remain in `.buffer/` — only fully written files appear in `data/`.
 
-### Milestone
-
-- **Milestone:** v0.4.0
-
 ### References
 
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
@@ -107,10 +95,6 @@
 - [ ] A third audio stream is sent in low bitrate (Opus, 64 kbps) to the streaming server.
 - [ ] A failure of the streaming server has no impact on file recording (Original + Standard).
 - [ ] In the web interface, the desired microphone can be selected for listening.
-
-### Milestone
-
-- **Milestone:** v1.1.0
 
 ### References
 
@@ -134,10 +118,6 @@
 > [!NOTE]
 > Individual activation/deactivation of microphones is a **Controller feature** (via database / web interface) and is documented there.
 
-### Milestone
-
-- **Milestone:** v0.3.0
-
 ### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
@@ -158,10 +138,6 @@
 - [x] Multiple safeguard levels: internal watchdog → container restart → controller check (reconciliation interval).
 - [x] Failed starts are limited (max. 5 retries) to avoid infinite loops.
 
-### Milestone
-
-- **Milestone:** v0.4.0
-
 ### References
 
 - [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
@@ -179,12 +155,8 @@
 ### Acceptance Criteria
 
 - [x] The segment duration is read from the microphone profile (default: 10 seconds).
-- [ ] ~~The segment duration can be changed in the web interface~~ (🔮 Future: v0.9.0+)
+- [ ] ~~The segment duration can be changed in the web interface~~ (🔮 Future)
 - [x] Changes only take effect upon the next start of the recording instance.
-
-### Milestone
-
-- **Milestone:** v0.4.0
 
 ### References
 

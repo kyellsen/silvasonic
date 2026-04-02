@@ -1,9 +1,13 @@
-# [Issue Title]
+# [TYPE] XXX: [Issue Title]
+*(Types: [BUG] | [FEATURE] | [TASK] | [REFACTOR] | [SPIKE])*
 
-**Status:** `open` | `in-progress` | `resolved`
-**Priority:** [1-10] (10 = highest, must fix for MVP)
-**Labels:** `bug` | `enhancement` | `tech-debt` | `architecture`
-**Service(s) Affected:** `controller` | `recorder` | `processor` | `...`
+> **Status:** `open` | `in-progress` | `resolved`
+>
+> **Priority:** [1-10] (10 = highest, must fix for MVP)
+>
+> **Labels:** `bug` | `enhancement` | `tech-debt` | `architecture`
+>
+> **Service(s) Affected:** `controller` | `recorder` | `processor` | `...`
 
 ---
 

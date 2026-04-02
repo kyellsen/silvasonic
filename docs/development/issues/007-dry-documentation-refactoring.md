@@ -1,9 +1,12 @@
-# DRY Documentation Refactoring — Reduce Status Duplication
+# [REFACTOR] 007: DRY Documentation Refactoring — Reduce Status Duplication
 
-**Status:** `open`
-**Priority:** 3 (low — quality-of-life improvement, not blocking any milestone)
-**Labels:** `tech-debt`, `architecture`
-**Service(s) Affected:** `docs` (cross-cutting, all services)
+> **Status:** `open`
+>
+> **Priority:** 3 (low — quality-of-life improvement, not blocking any milestone)
+>
+> **Labels:** `tech-debt`, `architecture`
+>
+> **Service(s) Affected:** `docs` (cross-cutting, all services)
 
 ---
 

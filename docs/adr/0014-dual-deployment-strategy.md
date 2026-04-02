@@ -2,7 +2,7 @@
 
 > **Status:** Accepted (Implementation planned for v1.0.0) • **Date:** 2026-02-17
 
-## 1. Context
+## 1. Context & Problem
 
 Silvasonic is designed to run autonomously for years on unattended edge devices (Raspberry Pi 5). The current development workflow uses `podman-compose` with `compose.yml` for Tier 1 service orchestration. While this works well for local development (`just start/stop/build`), `podman-compose` is a Python-based translation layer over Podman CLI commands — it is **not** a production-grade process manager.
 

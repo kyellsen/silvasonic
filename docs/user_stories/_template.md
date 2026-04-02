@@ -1,6 +1,6 @@
 # User Stories — <Service Name>
 
-> **Service:** <Service Name> · **Tier:** <1 | 2> · **Status:** <Planned | Partial | Done> (since v<X.X.X>)
+> **Service:** <Service Name> · **Tier:** <1 | 2>
 
 ---
 
@@ -20,10 +20,6 @@
 <!-- Optional — nur einfügen, wenn relevant (z.B. Performance, Plattform, Fehlertoleranz). -->
 
 - …
-
-### Milestone
-
-- **Milestone:** v<X.X.X>
 
 ### Referenzen
 

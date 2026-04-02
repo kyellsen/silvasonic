@@ -4,9 +4,9 @@
 >
 > **Status:** ✅ Done
 >
-> **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0025](../adr/0025-recordings-standard-table.md), [Processor Service Spec](../services/processor.md), [Service Blueprint](service_blueprint.md)
+> **References:** [ADR-0009](../../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../../adr/0011-audio-recording-strategy.md), [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [ADR-0019](../../adr/0019-unified-service-infrastructure.md), [ADR-0023](../../adr/0023-configuration-management.md), [ADR-0025](../../adr/0025-recordings-standard-table.md), [Processor Service Spec](../../services/processor.md), [Service Blueprint](../service_blueprint.md)
 >
-> **User Stories:** [US-P01](../user_stories/processor.md#us-p01), [US-P02](../user_stories/processor.md#us-p02), [US-P03](../user_stories/processor.md#us-p03), [US-P04](../user_stories/processor.md#us-p04)
+> **User Stories:** [US-P01](../../user_stories/processor.md#us-p01), [US-P02](../../user_stories/processor.md#us-p02), [US-P03](../../user_stories/processor.md#us-p03), [US-P04](../../user_stories/processor.md#us-p04)
 
 ---
 
@@ -72,7 +72,7 @@
 
 **User Stories:** —
 
-> **Decision (ADR-0025):** `recordings` remains a **standard PostgreSQL table** (no Hypertable). FK constraints from `detections` and `uploads` are preserved. Data volume (~2M rows/year) does not require partitioning. See [ADR-0025](../adr/0025-recordings-standard-table.md).
+> **Decision (ADR-0025):** `recordings` remains a **standard PostgreSQL table** (no Hypertable). FK constraints from `detections` and `uploads` are preserved. Data volume (~2M rows/year) does not require partitioning. See [ADR-0025](../../adr/0025-recordings-standard-table.md).
 
 ### Tasks
 

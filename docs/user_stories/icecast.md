@@ -1,6 +1,6 @@
 # User Stories — Icecast Service
 
-> **Service:** Icecast · **Tier:** 1 (Infrastructure) · **Status:** Planned (since v1.1.0)
+> **Service:** Icecast · **Tier:** 1 (Infrastructure)
 
 ---
 
@@ -17,10 +17,6 @@
 - [ ] Playback starts within a few seconds — no minutes of buffering.
 - [ ] The stream only consumes resources when someone is actually listening.
 - [ ] The stream is usable even over a mobile connection (e.g. Tailscale).
-
-### Milestone
-
-- **Milestone:** v1.1.0
 
 ### References
 
@@ -44,10 +40,6 @@
 - [ ] You can switch between microphones by clicking — without having to reload the page.
 - [ ] If a microphone is disconnected, it disappears from the selection; if reconnected, it appears automatically.
 
-### Milestone
-
-- **Milestone:** v1.1.0
-
 ### References
 
 - [Icecast Service Docs §Mount Point Management](../services/icecast.md)
@@ -69,10 +61,6 @@
 - [ ] The URL can be opened in any common audio player (VLC, browser).
 - [ ] External access can be disabled or password-protected if necessary.
 - [ ] The number of simultaneous listeners is limited so as to not overload the station.
-
-### Milestone
-
-- **Milestone:** v1.1.0
 
 ### References
 

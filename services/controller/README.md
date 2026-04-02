@@ -8,13 +8,13 @@
 
 ---
 
-## The Problem / The Gap
+## 1. The Problem / The Gap
 
 *   **Dynamic Hardware:** A static `compose.yml` cannot handle USB microphones being plugged/unplugged. Each physical microphone must be bound to a dedicated Recorder instance with the appropriate Microphone Profile.
 *   **Self-Healing:** If a Recorder crashes, something must detect it and restart it intelligently — verifying the microphone is still present and the device is still enrolled before restarting.
 *   **Orchestration:** Users need to toggle services (e.g., "Enable BirdNET", "Disable Weather") via the Web-Interface without SSH access. The Controller bridges this gap via the State Reconciliation Pattern.
 
-## User Benefit
+## 2. User Benefit
 
 *   **Plug-and-Play:** Automatically detects connected microphones within **≤ 1 second** (via polling in the reconciliation loop) and spins up the appropriate Recorder containers with the correct configuration (Profile Injection).
 *   **Resilience:** Automatically repairs broken services via the reconciliation loop. A disconnected microphone is detected within 1 second and its Recorder is stopped cleanly after a short grace period (debouncing) to survive USB flapping.
@@ -22,7 +22,76 @@
 
 ---
 
-## Responsibility Split
+## 3. Core Responsibilities
+### Inputs
+*   **Hardware:** USB Audio devices (detected via `sysfs`).
+*   **Desired State:** `devices` and `microphone_profiles` from DB (via HTTP nudges).
+### Processing
+*   **Reconciliation:** Compare actual running containers against DB desired state and auto-repair/restart as needed.
+*   **Profile Injection:** Pass DB profiles as EnvVars to Recorders.
+### Outputs
+*   **Containers:** Spawns and kills `silvasonic-recorder` instances via Podman API.
+*   **Logs:** Forwards Tier 2 logs to Redis (`silvasonic:logs`).
+## 4. Operational Constraints & Rules
+
+| Aspect           | Value / Rule                                                   |
+| ---------------- | -------------------------------------------------------------- |
+| **Immutable**    | Yes (State authority is DB + Podman)                           |
+| **DB Access**    | Yes (Reads devices/profiles/config)                            |
+| **Concurrency**  | Single Control Loop (Event Loop + Polling)                     |
+| **State**        | Stateless                                                      |
+| **Privileges**   | Privileged (Rootless Podman Socket Group)                      |
+| **Resources**    | Low (API commands and sysfs reads)                             |
+| **QoS Priority** | `oom_score_adj=0` (Tier 1 Default)                             |
+
+## 5. Configuration & Environment
+
+| Environment Variable                         | Description                                            | Default / Example                  |
+| ------------------------------------------ | ------------------------------------------------------ | ---------------------------------- |
+| `SILVASONIC_CONTROLLER_PORT`               | Health endpoint port                                   | `9100`                             |
+| `SILVASONIC_REDIS_URL`                     | Redis connection URL                                   | `redis://localhost:6379/0`         |
+| `SILVASONIC_HEARTBEAT_INTERVAL_S`          | Interval for Redis heartbeat                           | `10.0`                             |
+| `SILVASONIC_RECONCILE_INTERVAL_S`          | Interval for container state evaluation                | `1.0`                              |
+| `SILVASONIC_DEVICE_OFFLINE_GRACE_PERIOD_S` | Delay before stopping containers on USB drop           | `3.0`                              |
+| `SILVASONIC_CONTROLLER_LOG_STARTUP_S`      | Duration of verbose startup logging                    | `300.0`                            |
+| `SILVASONIC_CONTROLLER_LOG_SUMMARY_INTERVAL_S` | Interval for steady-state log summaries         | `300.0`                            |
+| `SILVASONIC_CONTROLLER_MONITOR_POLL_INTERVAL_S`| Interval for DB/Podman health checks             | `10.0`                             |
+| `SILVASONIC_LOG_FORWARDER_POLL_INTERVAL_S` | Interval for Podman-to-Redis log streaming             | `1.0`                              |
+
+### Required Container Mounts & Access
+
+| Mount / Access               | Purpose                                   | Target Path / Group                                               |
+| ---------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| Podman socket                | Orchestrate Tier 2 containers             | `/var/run/container.sock` (with `podman` group)                   |
+| Controller workspace         | Read system config                        | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
+| Recorder workspace           | Read/provision recorder details           | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
+
+---
+
+## 6. Technology Stack
+
+*   **Container Management:** `podman-py` (Podman REST API client)
+*   **Hardware Detection:** Direct `sysfs` reads via `pathlib` (USB metadata extraction — zero external dependencies)
+*   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
+*   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
+*   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
+*   **Core:** `silvasonic.core.service.SilvaService` (base class for Health check and Redis Publisher)
+*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
+
+---
+
+## 7. Out of Scope
+
+*   **Does NOT** process audio data (Recorder + Processor's job).
+*   **Does NOT** serve the User Interface (Web-Interface's job).
+*   **Does NOT** store business data persistently (Database's job).
+*   **Does NOT** perform heavy inference (BirdNET / BatDetect's job).
+*   **Does NOT** expose an HTTP API beyond `/healthy` — CRUD operations are handled by the Web-Interface (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)). Control actions are routed declaratively via DB + Redis nudge (see §Reconcile-Nudge Subscriber above).
+
+---
+
+## 8. Implementation Details (Domain Specific)
+### Responsibility Split
 
 | Concept                   | DB Table              | Role                                                                                                       |
 | ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -33,7 +102,7 @@ The Controller reads both tables and decides which Recorders to start.
 
 ---
 
-## Startup & Seeding
+### Startup & Seeding
 
 > **Status:** ✅ Implemented · **User Stories:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-), [US-C08](../../docs/user_stories/controller.md#us-c08-funktioniert-sofort-nach-installation-)
 
@@ -67,7 +136,7 @@ If the database is wiped, the next Controller startup restores all defaults auto
 
 ---
 
-## Device State Evaluation
+### Device State Evaluation
 
 > **Status:** ✅ Implemented
 
@@ -101,7 +170,7 @@ If any condition is not met, the Controller will not start (or will stop) the Re
 
 ---
 
-## USB Detection
+### USB Detection
 
 > **Status:** ✅ Implemented
 
@@ -144,7 +213,7 @@ Devices **without** a USB parent (e.g., the Raspberry Pi's built-in `bcm2835` au
 
 ---
 
-## Device Identity & Stable Naming
+### Device Identity & Stable Naming
 
 > **Status:** ✅ Implemented · **User Story:** [US-C01](../../docs/user_stories/controller.md#us-c01-mikrofon-einstecken--sofort-erkannt-️)
 
@@ -169,7 +238,7 @@ This ensures that **re-plugging a microphone re-activates the same Recorder** wi
 
 ---
 
-## Profile Matching & Auto-Enrollment
+### Profile Matching & Auto-Enrollment
 
 > **Status:** ✅ Implemented
 
@@ -202,7 +271,7 @@ When `auto_enrollment` is `false`, all new devices remain `pending` regardless o
 
 See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full profile specification.
 
-## Reconciliation Loop
+### Reconciliation Loop
 
 > **Status:** ✅ Implemented
 
@@ -226,7 +295,7 @@ On startup, the Controller queries all containers with `io.silvasonic.owner=cont
 
 ---
 
-## Profile Injection & Management
+### Profile Injection & Management
 
 > **Status:** ✅ Implemented · **User Story:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-)
 
@@ -243,7 +312,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 ---
 
-## Shutdown Semantics
+### Shutdown Semantics
 
 > **Status:** ✅ Implemented
 
@@ -257,7 +326,7 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 ---
 
-## Reconcile-Nudge Subscriber
+### Reconcile-Nudge Subscriber
 
 > **Status:** ✅ Implemented
 
@@ -278,7 +347,7 @@ See [ADR-0017](../../docs/adr/0017-service-state-management.md) and [Messaging P
 
 ---
 
-## Redis: Heartbeat & Host Metrics
+### Redis: Heartbeat & Host Metrics
 
 > **Status:** ✅ Implemented · **User Story:** [US-C05](../../docs/user_stories/controller.md#us-c05-systemstatus-im-dashboard-)
 
@@ -296,7 +365,7 @@ This enables the Web-Interface dashboard to display system-wide resource gauges 
 
 ---
 
-## Live Log Streaming
+### Live Log Streaming
 
 > **Status:** ✅ Implemented · **User Story:** [US-C09](../../docs/user_stories/controller.md#us-c09-dienst-logs-live-im-browser-)
 
@@ -313,7 +382,7 @@ Service → stdout (structlog JSON) → Controller (podman logs --follow) → PU
 
 ---
 
-## Resource Limits & QoS Enforcement
+### Resource Limits & QoS Enforcement
 
 > **Status:** ✅ Implemented
 
@@ -347,71 +416,7 @@ Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of
 
 ---
 
-## Implementation Status
-
-| Feature                              | Status                                                      |
-| ------------------------------------ | ----------------------------------------------------------- |
-| Health monitoring                    | ✅ Implemented                                               |
-| Redis heartbeat + host metrics       | ✅ Implemented                                               |
-| Podman socket connection             | ✅ Implemented                                               |
-| Container lifecycle mgmt             | ✅ Implemented                                               |
-| Reconciliation loop                  | ✅ Implemented                                               |
-| Config seeder + profile bootstrapper | ✅ Implemented (ADR-0016/0023)                               |
-| Reconcile-nudge subscriber           | ✅ Implemented                                               |
-| Resource limits & QoS enforcement    | ✅ Implemented (ADR-0020)                                    |
-| USB detection (polling, 1s)          | ✅ Implemented                                               |
-| Profile matching + auto-enroll       | ✅ Implemented                                               |
-| Log forwarding (Podman→Redis)        | ✅ Implemented (ADR-0022)                                    |
-
----
-
-## Technology Stack
-
-*   **Container Management:** `podman-py` (Podman REST API client)
-*   **Hardware Detection:** Direct `sysfs` reads via `pathlib` (USB metadata extraction — zero external dependencies)
-*   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
-*   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
-*   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
-*   **Core:** `silvasonic.core.service.SilvaService` (base class for Health check and Redis Publisher)
-*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
-
----
-
-## Out of Scope
-
-*   **Does NOT** process audio data (Recorder + Processor's job).
-*   **Does NOT** serve the User Interface (Web-Interface's job).
-*   **Does NOT** store business data persistently (Database's job).
-*   **Does NOT** perform heavy inference (BirdNET / BatDetect's job).
-*   **Does NOT** expose an HTTP API beyond `/healthy` — CRUD operations are handled by the Web-Interface (FastAPI + Swagger, see [ADR-0003](../../docs/adr/0003-frontend-architecture.md)). Control actions are routed declaratively via DB + Redis nudge (see §Reconcile-Nudge Subscriber above).
-
----
-
-## Configuration
-
-| Environment Variable                         | Description                                            | Default / Example                  |
-| ------------------------------------------ | ------------------------------------------------------ | ---------------------------------- |
-| `SILVASONIC_CONTROLLER_PORT`               | Health endpoint port                                   | `9100`                             |
-| `SILVASONIC_REDIS_URL`                     | Redis connection URL                                   | `redis://localhost:6379/0`         |
-| `SILVASONIC_HEARTBEAT_INTERVAL_S`          | Interval for Redis heartbeat                           | `10.0`                             |
-| `SILVASONIC_RECONCILE_INTERVAL_S`          | Interval for container state evaluation                | `1.0`                              |
-| `SILVASONIC_DEVICE_OFFLINE_GRACE_PERIOD_S` | Delay before stopping containers on USB drop           | `3.0`                              |
-| `SILVASONIC_CONTROLLER_LOG_STARTUP_S`      | Duration of verbose startup logging                    | `300.0`                            |
-| `SILVASONIC_CONTROLLER_LOG_SUMMARY_INTERVAL_S` | Interval for steady-state log summaries         | `300.0`                            |
-| `SILVASONIC_CONTROLLER_MONITOR_POLL_INTERVAL_S`| Interval for DB/Podman health checks             | `10.0`                             |
-| `SILVASONIC_LOG_FORWARDER_POLL_INTERVAL_S` | Interval for Podman-to-Redis log streaming             | `1.0`                              |
-
-### Required Container Mounts & Access
-
-| Mount / Access               | Purpose                                   | Target Path / Group                                               |
-| ---------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
-| Podman socket                | Orchestrate Tier 2 containers             | `/var/run/container.sock` (with `podman` group)                   |
-| Controller workspace         | Read system config                        | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
-| Recorder workspace           | Read/provision recorder details           | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
-
----
-
-## References
+## 9. References
 
 - [ADR-0013: Tier 2 Container Management](../../docs/adr/0013-tier2-container-management.md)
 - [ADR-0016: Hybrid YAML/DB Profile Management](../../docs/adr/0016-hybrid-yaml-db-profiles.md)

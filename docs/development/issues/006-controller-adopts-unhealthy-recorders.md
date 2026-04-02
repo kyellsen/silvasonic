@@ -1,9 +1,12 @@
-# Controller adopts unhealthy Recorder containers and never self-heals them
+# [BUG] 006: Controller adopts unhealthy Recorder containers and never self-heals them
 
-**Status:** `open`
-**Priority:** 8
-**Labels:** `bug` | `architecture`
-**Service(s) Affected:** `controller` | `recorder`
+> **Status:** `open`
+>
+> **Priority:** 8
+>
+> **Labels:** `bug` | `architecture`
+>
+> **Service(s) Affected:** `controller` | `recorder`
 
 ---
 

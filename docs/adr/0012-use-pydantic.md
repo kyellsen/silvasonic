@@ -19,11 +19,14 @@ We need a standard way to define data schemas, validate incoming data, and seria
 *   **Ecosystem Standard:** It is widely adopted in the Python ecosystem (e.g., FastAPI, SQLModel) and integrates well with modern tooling.
 *   **Developer Experience:** Great editor support (mypy/pyright integration) and helpful error messages.
 
-## 3. Implementation Rules
+## 5. Implementation Rules
 1.  **Data Models:** All internal data structures passed between modules or services MUST be defined as `pydantic.BaseModel` (or `pydantic.dataclasses`).
 2.  **API Schemas:** All HTTP API request and response bodies MUST be Pydantic models.
 3.  **Strict Mode:** Where possible, use `strict=True` or `ConfigDict(strict=True)` to prevent silent type coercion implementation details unless necessary.
 4.  **Configuration:** Use `pydantic-settings` for managing application configuration via environment variables.
+
+## 3. Options Considered
+*   **None explicitly documented:** Direct adoption chosen as it is the absolute ecosystem standard for FastAPI/Modern Python.
 
 ## 4. Consequences
 *   **Positive:**

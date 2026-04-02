@@ -35,6 +35,10 @@ The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-f
 
 ### 1.4 State Management & Data Flow
 
+**Management API (REST & Swagger):**
+- The FastAPI application automatically generates an interactive Swagger/OpenAPI documentation (accessible via `/docs`).
+- It acts as the exclusive management API for administrators (Device/Profile CRUD, configuration).
+
 **Read+Subscribe Pattern (Observability):**
 - Status: reads `silvasonic:status:*` keys for initial state, subscribes to `silvasonic:status` channel via SSE for live updates.
 - Logs: subscribes to `silvasonic:logs` channel via SSE to stream container logs into the footer console ([ADR-0022](../adr/0022-live-log-streaming.md)).

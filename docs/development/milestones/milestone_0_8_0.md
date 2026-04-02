@@ -4,9 +4,9 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0018](../adr/0018-worker-pull-orchestration.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
+> **References:** [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
-> **User Stories:** [BirdNET Stories](../user_stories/birdnet.md)
+> **User Stories:** [BirdNET Stories](../../user_stories/birdnet.md)
 
 ---
 
@@ -39,3 +39,11 @@ The BirdNET service is an immutable Tier 2 container responsible for performing 
 - [ ] Database integration for reading segments and writing detections
 
 *(Further phases and tasks will be detailed as development begins)*
+
+---
+
+## Out of Scope (Deferred)
+
+| Item                   | Target Version |
+| ---------------------- | -------------- |
+| None                  | n/a            |

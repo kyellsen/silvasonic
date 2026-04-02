@@ -19,7 +19,7 @@ We selected a lightweight, CSS-first stack:
 | **Data Visualization**  | Apache ECharts | 5.x     |
 | **Audio Visualization** | Wavesurfer.js  | 7.x     |
 
-> **Note:** Full implementation details, aesthetics, and configurations are maintained centrally in **[02. UI, UX & Design System](../services/web_interface/02_ui_ux_design_system.md)**.
+> **Note:** Full implementation details, aesthetics, and configurations are maintained centrally in **[02. UI, UX & Design System](../arch/frontend_design_system.md)**.
 
 ## 3. Options Considered & Reasoning (Summary)
 
@@ -35,5 +35,5 @@ We selected a lightweight, CSS-first stack:
 
 ## See Also
 
-*   [Web-Interface Design System](../services/web_interface/02_ui_ux_design_system.md)
+*   [Web-Interface Design System](../arch/frontend_design_system.md)
 *   [ADR-0003: Frontend Architecture](0003-frontend-architecture.md)

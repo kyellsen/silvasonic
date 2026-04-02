@@ -4,11 +4,9 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Refactoring Plan](refactoring_uploader_to_processor.md), [Processor Service](../services/processor.md), [Testing Guidelines](testing.md)
+> **References:** [ADR-0009](../../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../../adr/0011-audio-recording-strategy.md), [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [ADR-0019](../../adr/0019-unified-service-infrastructure.md), [ADR-0023](../../adr/0023-configuration-management.md), [ADR-0024](../../adr/0024-ffmpeg-audio-engine.md), [Refactoring Plan](#), [Processor Service](../../services/processor.md), [Testing Guidelines](../testing.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [Glossary](../../glossary.md)
 >
-> **User Stories:** [US-U01](../user_stories/cloud_sync.md#us-u01), [US-U02](../user_stories/cloud_sync.md#us-u02), [US-U04](../user_stories/cloud_sync.md#us-u04), [US-U06](../user_stories/cloud_sync.md#us-u06)
->
-> **Project Rules:** [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [Glossary](../glossary.md)
+> **User Stories:** [US-U01](../../user_stories/cloud_sync.md#us-u01), [US-U02](../../user_stories/cloud_sync.md#us-u02), [US-U04](../../user_stories/cloud_sync.md#us-u04), [US-U06](../../user_stories/cloud_sync.md#us-u06)
 
 ---
 
@@ -16,15 +14,15 @@
 
 The Cloud-Sync-Worker is an **internal async worker within the Processor** (Tier 1), following the same pattern as the Indexer and Janitor. It is **NOT** a standalone Tier 2 container — there is no Controller management, no multi-instance orchestration, and no separate health port.
 
-This is a KISS simplification of the [original multi-target Uploader architecture](refactoring_uploader_to_processor.md).
+This is a KISS simplification of the [original multi-target Uploader architecture](#).
 
 ### Key Design Decisions
 
 | Question | Decision | Rationale |
 |----------|----------|-----------|
 | Where does upload run? | **Inside Processor** as async worker | Same pattern as Indexer/Janitor; no Controller complexity |
-| How many targets? | **Single target** configured via `system_config` key `"uploader"` | KISS: Multi-target adds orchestration complexity with no MVP value |
-| Config source? | **`UploaderSettings`** in `system_config` JSONB | No `storage_remotes` table needed; same Pydantic schema pattern as other settings |
+| How many targets? | **Single target** configured via `system_config` key `"cloud_sync"` | KISS: Multi-target adds orchestration complexity with no MVP value |
+| Config source? | **`CloudSyncSettings`** in `system_config` JSONB | No `storage_remotes` table needed; same Pydantic schema pattern as other settings |
 | Upload tracking? | **`recordings.uploaded` boolean** | Simple Janitor signal; one target = one boolean |
 | Audit log? | **`uploads` table** (immutable, no `remote_slug` FK) | Keep audit trail for debugging; simplified without multi-target references |
 | FLAC encoding? | **`ffmpeg`** subprocess (ADR-0024) | Same tool as Recorder; lossless, ~50% size reduction |
@@ -54,7 +52,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 **User Stories:** US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)
 
-**Dependency:** Preparatory refactoring (v0.5.x) must be complete — `storage_remotes` table removed, `UploaderSettings.enabled` defaults to `false`.
+**Dependency:** Preparatory refactoring (v0.5.x) must be complete — `storage_remotes` table removed, `CloudSyncSettings.enabled` defaults to `false`.
 
 ### Modules
 
@@ -80,7 +78,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 | RecordingStats — Two-Phase Logging pattern | `services/recorder/src/silvasonic/recorder/recording_stats.py` |
 | Recording DB model | `packages/core/src/silvasonic/core/database/models/recordings.py` |
 | Upload DB model | `packages/core/src/silvasonic/core/database/models/system.py` |
-| UploaderSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
+| CloudSyncSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
 | FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-engine.md` |
 | Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
 
@@ -90,13 +88,13 @@ The `path_builder` module is the **only component** that knows about the remote 
 - [ ] Add `"python-slugify>=8.0.0"` to `services/processor/pyproject.toml` dependencies, run `uv lock`
 - [ ] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
-  - Early exit: if `UploaderSettings.enabled == false` → log and skip (global pause)
+  - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
   - Poll loop: `find_pending()` → encode → upload → audit → repeat
   - Sequential per file (parallel deferred to post-v1.0.0)
   - Inline schedule check (opt-in): `_is_within_window(start_hour, end_hour) -> bool` (KISS — 4-line function). Default: both `null` → 24/7 continuous upload
   - Break on connection error: abort remaining batch, wait for next cycle
   - Missing file handling: if WAV file not on disk (Janitor deleted it) → log, skip to next
-  - Respect `UploaderSettings.poll_interval` between cycles
+  - Respect `CloudSyncSettings.poll_interval` between cycles
   - Health: `self.health.update_status("upload_worker", True/False, details)`
   - Heartbeat extra meta: `pending_count`, `uploaded_count`, `failed_count`, `last_upload_at`
 - [ ] Implement `work_poller.py`:
@@ -116,11 +114,11 @@ The `path_builder` module is the **only component** that knows about the remote 
   - Station name slugified via `python-slugify`
 - [ ] Implement `rclone_client.py`:
   - `RcloneClient(remote_config: dict)`:
-    - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `UploaderSettings` config
+    - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `CloudSyncSettings` config
     - For WebDAV/Nextcloud: set `vendor = nextcloud`
     - `upload_file(local, remote_path, bandwidth_limit) -> RcloneResult`
     - `RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)`
-    - Bandwidth limiting via `--bwlimit` from `UploaderSettings.bandwidth_limit`
+    - Bandwidth limiting via `--bwlimit` from `CloudSyncSettings.bandwidth_limit`
     - Checksum verification via `--checksum` flag
 - [ ] Implement `audit_logger.py`:
   - `log_upload_attempt(session, recording_id, filename, size, success, error)`:
@@ -233,7 +231,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 ### Tasks
 
 - [ ] Verify upload worker starts alongside Indexer and Janitor in Processor container
-- [ ] Verify `UploaderSettings.enabled=false` → upload worker inactive (no rclone calls)
+- [ ] Verify `CloudSyncSettings.enabled=false` → upload worker inactive (no rclone calls)
 - [ ] Verify Janitor respects `uploaded` flag for retention decisions
 - [ ] Update Processor `README.md` with Cloud-Sync-Worker section
 
@@ -298,7 +296,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 | Multi-target upload | post-v1.0.0 |
 | Encryption at rest for credentials in `system_config` | post-v1.0.0 |
 
-> **Note:** US-U04 (Settings via Web UI) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the **backend support** — `UploaderSettings` schema, heartbeat payload with upload metrics. Web-Mock routes (`/upload`) already exist with mock data.
+> **Note:** US-U04 (Settings via Web UI) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the **backend support** — `CloudSyncSettings` schema, heartbeat payload with upload metrics. Web-Mock routes (`/upload`) already exist with mock data.
 >
 > **Note:** US-U06 (Seamless tracking) is split: the audit **backend** (immutable `uploads` table) is implemented here. The Web-Interface for browsing the audit log is deferred to v0.9.0.
 >

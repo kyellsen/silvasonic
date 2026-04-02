@@ -18,10 +18,6 @@
 - [ ] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (`uploaded=true`).
 - [ ] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store & Forward).
 
-### Milestone
-
-- **Milestone:** v0.6.0
-
 ### References
 
 - [Processor Service Docs](../services/processor.md)
@@ -43,10 +39,6 @@
 - [ ] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).
 - [ ] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.
 - [ ] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.
-
-### Milestone
-
-- **Milestone:** v0.6.0
 
 ### References
 
@@ -71,10 +63,6 @@
 - [ ] A storage target can be configured via the web interface.
 - [ ] Changes are automatically applied — the upload service restarts if necessary.
 
-### Milestone
-
-- **Milestone:** v0.6.0 (Backend: UploaderSettings Schema, Schedule, Bandwidth Limit) + v0.9.0 (Frontend: Web Interface)
-
 ### References
 
 - [Processor Service Docs](../services/processor.md)
@@ -97,10 +85,6 @@
 - [ ] Status can be viewed for the configured remote target.
 - [ ] The upload service reports its status periodically to the web interface.
 
-### Milestone
-
-- **Milestone:** v0.6.0 (Backend: Heartbeat Payload) + v0.9.0 (Frontend: Dashboard)
-
 ### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
@@ -121,10 +105,6 @@
 - [ ] The upload log is viewable via the web interface.
 - [ ] Failed uploads are automatically retried.
 - [ ] Persistently failed uploads are shown as a warning in the dashboard (→ US-U05).
-
-### Milestone
-
-- **Milestone:** v0.6.0
 
 ### References
 

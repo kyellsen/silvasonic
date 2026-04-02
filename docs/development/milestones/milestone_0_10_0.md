@@ -58,3 +58,11 @@ By isolating the landing page repository, we prevent heavy marketing assets (ima
 - [ ] Configure repository Settings -> Pages to build from GitHub Actions
 - [ ] Map the apex domain `silvasonic.de` locally via All-Inkl DNS (A-Records pointing to GitHub IPs + CNAME for `www.silvasonic.de`)
 - [ ] Verify SSL cert generation via Let's Encrypt in GitHub settings
+
+---
+
+## Out of Scope (Deferred)
+
+| Item                   | Target Version |
+| ---------------------- | -------------- |
+| None                  | n/a            |

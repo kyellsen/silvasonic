@@ -1,9 +1,12 @@
-# Panic-mode filesystem fallback leaves raw/processed pairs inconsistent (Split-Brain)
+# [BUG] 005: Panic-mode filesystem fallback leaves raw/processed pairs inconsistent (Split-Brain)
 
-**Status:** `open`
-**Priority:** 5
-**Labels:** `bug` | `architecture`
-**Service(s) Affected:** `processor`
+> **Status:** `open`
+>
+> **Priority:** 5
+>
+> **Labels:** `bug` | `architecture`
+>
+> **Service(s) Affected:** `processor`
 
 ---
 

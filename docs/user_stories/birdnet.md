@@ -1,6 +1,6 @@
 # User Stories — BirdNET Service
 
-> **Service:** BirdNET · **Tier:** 2 (Immutable) · **Status:** Planned (since v0.8.0)
+> **Service:** BirdNET · **Tier:** 2 (Immutable)
 
 ---
 
@@ -17,10 +17,6 @@
 - [ ] For each detected bird call, the species, the time in the audio, and a confidence value are stored.
 - [ ] The analysis runs in the background and processes the backlog autonomously.
 - [ ] Already analyzed recordings are not processed again.
-
-### Milestone
-
-- **Milestone:** v0.8.0
 
 ### References
 
@@ -43,10 +39,6 @@
 - [ ] The list can be sorted by frequency, date, or confidence.
 - [ ] Only detections above the configured confidence threshold are displayed.
 
-### Milestone
-
-- **Milestone:** v0.8.0
-
 ### References
 
 - [BirdNET Service Docs §Outputs](../services/birdnet.md)
@@ -66,10 +58,6 @@
 - [ ] BirdNET uses the coordinates to restrict the species model to the region.
 - [ ] Changes to the coordinates are applied automatically (service is restarted if necessary).
 - [ ] The default location is sensibly prefilled.
-
-### Milestone
-
-- **Milestone:** v0.8.0
 
 ### References
 
@@ -92,10 +80,6 @@
 - [ ] Detections below the threshold are not displayed in the species list.
 - [ ] Changes are automatically applied — the service restarts if necessary.
 - [ ] The current threshold is visible in the dashboard.
-
-### Milestone
-
-- **Milestone:** v0.8.0
 
 ### References
 
@@ -122,10 +106,6 @@
 - [ ] In case of problems (e.g., BirdNET stopped or lagging), a warning is displayed.
 - [ ] BirdNET reports its status periodically to the web interface.
 
-### Milestone
-
-- **Milestone:** v0.8.0
-
 ### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
@@ -146,10 +126,6 @@
 - [ ] When disabled, the service is cleanly terminated — no ongoing analysis is aborted.
 - [ ] Upon reactivation, BirdNET autonomously processes the accumulated backlog.
 - [ ] The current state (active/disabled) is visible in the dashboard.
-
-### Milestone
-
-- **Milestone:** v0.8.0
 
 ### References
 

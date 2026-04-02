@@ -78,6 +78,10 @@ Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs
 *   **Prefix Rule:** Every project variable **MUST** use `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`).
 *   **Exceptions:** Third-party standards keep their names: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DOCKER_HOST`.
 
+## 8. Data Contracts (Spec-Driven Development)
+*   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/` or `config_schemas.py`.
+*   **No Duplication:** **Never** hardcode or duplicate these payloads inside individual Tier 2 services. Before writing code that exchanges data between services, check the core schemas first.
+
 ---
 
 ## See Also

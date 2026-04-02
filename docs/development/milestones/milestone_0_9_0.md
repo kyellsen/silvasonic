@@ -4,9 +4,9 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0003](../adr/0003-frontend-architecture.md), [ADR-0017](../adr/0017-service-state-management.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0021](../adr/0021-frontend-design-system.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
+> **References:** [ADR-0003](../../adr/0003-frontend-architecture.md), [ADR-0017](../../adr/0017-service-state-management.md), [ADR-0019](../../adr/0019-unified-service-infrastructure.md), [ADR-0021](../../adr/0021-frontend-design-system.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
-> **User Stories:** [Web-Interface Stories](../user_stories/web_interface.md)
+> **User Stories:** [Web-Interface Stories](../../user_stories/web_interface.md)
 
 ---
 
@@ -53,7 +53,7 @@ ECharts, and WaveSurfer.js (ADR-0003, ADR-0021).
 > consumer: it reads `system_services.enabled` to show toggle switches, and
 > writes `enabled=false` + publishes a nudge to disable services (ADR-0017).
 >
-> See: [ADR-0017](../adr/0017-service-state-management.md) §2 "Desired State → Database"
+> See: [ADR-0017](../../adr/0017-service-state-management.md) §2 "Desired State → Database"
 
 #### Tasks
 

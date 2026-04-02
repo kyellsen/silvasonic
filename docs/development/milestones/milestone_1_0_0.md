@@ -173,7 +173,7 @@ See the detailed plan archived from the v0.5.0 discussion:
 
 ---
 
-## Out of Scope (Post-MVP)
+## Out of Scope (Deferred)
 
 | Item                                   | Target Version |
 | -------------------------------------- | -------------- |

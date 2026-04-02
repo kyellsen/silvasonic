@@ -3,7 +3,7 @@
 > **Status:** Active · **Last Updated:** 2026-03-10 · **Palette:** Oktett v3
 
 This document defines the Silvasonic UI design system and usage guidelines.
-It is referenced by [ADR-0021](../../adr/0021-frontend-design-system.md).
+It is referenced by [ADR-0021](../adr/0021-frontend-design-system.md).
 
 ## Technology Stack
 

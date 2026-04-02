@@ -1,5 +1,7 @@
 # Commit Message Guidelines
 
+> **Status:** Normative (Mandatory) · **Scope:** All Contributors & AI Agents
+
 This document outlines the standard for creating Git commit messages in the Silvasonic repository. Our approach leans heavily on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) to automate versioning and provide a highly readable `git log`.
 
 ## Core AI Directive

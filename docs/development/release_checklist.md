@@ -1,8 +1,8 @@
 # Release Checklist
 
-Step-by-step guide for tagging a new Silvasonic release.
+> **Status:** Normative (Mandatory) · **Scope:** Release Tagging & Quality Gates
 
----
+Step-by-step guide for tagging a new Silvasonic release.
 
 ## 0. Release Type & Quality Gates
 
@@ -46,6 +46,10 @@ Silvasonic has **one** central version file. All sub-packages (Controller, Recor
 | `README.md` Line 5                              | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
 | `ROADMAP.md` Milestone table                    | **YES**                          | Set version status to `✅ Current`, mark previous as `✅ Done` |
 | Sub-package `pyproject.toml`                    | **NO**                           | Version is derived dynamically from `silvasonic-core`        |
+| `uv.lock`                                       | **YES — Indirectly**             | Run `uv lock` to sync the lockfile after `pyproject.toml` bump  |
+
+> [!IMPORTANT]
+> After bumping the versions in `pyproject.toml` and `__init__.py`, you **MUST** run `uv lock` to update the lockfile. Otherwise, the `uv lock --check` step will fail.
 
 ---
 

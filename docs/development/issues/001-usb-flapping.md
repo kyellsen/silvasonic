@@ -1,9 +1,12 @@
-# Issue 001: USB Flapping & Container Thrashing
+# [BUG] 001: USB Flapping & Container Thrashing
 
-**Status:** `closed`
-**Priority:** 9/10 (Critical for core stability & data integrity. Immer lieber früher als später, ASAP fixen.)
-**Labels:** `bug`, `architecture`, `robustness`
-**Service(s) Affected:** `controller`
+> **Status:** `closed`
+>
+> **Priority:** 9/10 (Critical for core stability & data integrity. Immer lieber früher als später, ASAP fixen.)
+>
+> **Labels:** `bug`, `architecture`, `robustness`
+>
+> **Service(s) Affected:** `controller`
 
 ---
 

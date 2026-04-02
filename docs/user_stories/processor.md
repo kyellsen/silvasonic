@@ -1,6 +1,6 @@
 # User Stories — Processor Service
 
-> **Service:** Processor · **Tier:** 1 (Infrastructure, Immutable) · **Status:** Implemented (v0.5.0)
+> **Service:** Processor · **Tier:** 1 (Infrastructure, Immutable)
 
 ---
 
@@ -22,10 +22,6 @@
 
 - Scanning works **without Redis** — recording and indexing are in no case dependent on Redis (Critical Path).
 - A Processor failure does **not** block the analysis of already captured recordings — analysis workers continue to operate independently.
-
-### Milestone
-
-- **Milestone:** v0.5.0
 
 ### References
 
@@ -63,10 +59,6 @@
 - **Priority: Continue recording > Data archiving** — better to delete old data than to stop the current recording.
 - Cleanup is the core reason why the Processor is classified as a critical infrastructure service.
 
-### Milestone
-
-- **Milestone:** v0.5.0
-
 ### References
 
 - [Processor Service Docs §Janitor](../services/processor.md)
@@ -88,10 +80,6 @@
 - [x] (via Web-Mock) After a change, the service is automatically restarted and applies the new values.
 - [x] Sensible default values are pre-assigned out-of-the-box (thresholds and intervals see [Processor Service §5](../services/processor.md)).
 
-### Milestone
-
-- **Milestone:** v0.5.0 (Backend: Config Seeding) + v0.9.0 (Frontend: Web-Interface)
-
 ### References
 
 - [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
@@ -112,10 +100,6 @@
 - [x] (via Web-Mock) The web interface displays the current data pipeline status (e.g., last capture, open backlog, storage utilization, current cleanup level).
 - [x] (via Web-Mock) The status updates in real-time as long as the station is reachable.
 - [x] If the status transmission fails, the data pipeline still continues without disruption.
-
-### Milestone
-
-- **Milestone:** v0.5.0 (Backend: Heartbeat Payload) + v0.9.0 (Frontend: Dashboard)
 
 ### References
 

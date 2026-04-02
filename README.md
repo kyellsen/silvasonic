@@ -62,6 +62,7 @@ silvasonic/
 ├── services/            # Container service definitions & Containerfiles
 │   ├── database/        # TimescaleDB / PostgreSQL
 │   ├── controller/      # Hardware/Container manager
+│   ├── processor/       # Data ingestion, indexing & retention (Janitor)
 │   ├── recorder/        # Audio capture (FFmpeg, Dual Stream)
 │   └── web-mock/        # Dev UI shell (FastAPI + Jinja2 + HTMX)
 ├── scripts/             # Build & lifecycle scripts (Python)
@@ -79,7 +80,8 @@ silvasonic/
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
 | **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Partial  |
-| **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to v0.9.0 Web-Interface) | ✅ Running  |
+| **processor**  | 1    | Data ingestion, metadata indexing, and retention management (Janitor)                    | ✅ Running  |
+| **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to Web-Interface) | ✅ Running  |
 | **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Partial  |
 
 > For the full target architecture (13 services across two tiers) see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For version milestones see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
@@ -90,46 +92,21 @@ silvasonic/
 
 All commands are run via **[just](https://github.com/casey/just)**. Use `just --list` for a full overview.
 
-### Container Lifecycle
-
-| Command         | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `just init`     | Initialize project (uv sync, hooks, workspace)   |
-| `just build`    | Build all container images                        |
-| `just start`    | Start all services                                |
-| `just stop`     | Stop all services                                 |
-| `just restart`  | Stop + start                                      |
-| `just logs`     | Show aggregated service logs                      |
-| `just status`   | Show service status                               |
-| `just reset`    | Factory reset (clean → init → build → start)     |
-
-### Code Quality & Testing
+Here are the most common daily commands:
 
 | Command           | Description                                                    |
 | ----------------- | -------------------------------------------------------------- |
-| `just fix`        | Auto-fix (Ruff format + lint fixes)                            |
-| `just lint`       | Ruff lint (read-only)                                          |
-| `just check`      | Quick quality gate: Lock → Ruff → Mypy → Unit tests           |
-| `just check-all`  | Full CI pipeline: Lint → Type → Unit → Int → Build → System → Smoke → E2E |
-| `just test`       | Dev tests (Unit + Integration)                                 |
-| `just test-unit`  | Unit tests only                                                |
-| `just test-int`   | Integration tests (Testcontainers)                             |
-| `just test-system`| System lifecycle tests (Podman + built images)                 |
-| `just test-smoke` | Smoke tests                                                    |
-| `just test-hw`    | Hardware tests (real USB microphone required)                  |
-| `just test-e2e`   | End-to-end Playwright tests                                    |
-| `just test-all`   | All tests except hardware                                      |
+| `just init`       | Initialize project (uv sync, pre-commit hooks, workspace)      |
+| `just build`      | Build all container images                                     |
+| `just start`      | Start all services                                             |
+| `just stop`       | Stop all services                                              |
+| `just logs`       | Show aggregated service logs                                   |
+| `just status`     | Show service status                                            |
+| `just check-all`  | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
+| `just docs`       | Start MkDocs live server (`localhost:8085`)                    |
+| `just nuke`       | Full reset (delete containers, volumes, `.venv`, and images)   |
 
-### Maintenance & Docs
-
-| Command        | Description                                    |
-| -------------- | ---------------------------------------------- |
-| `just clear`   | Clean root directory + caches                  |
-| `just clean`   | clear + delete container volumes               |
-| `just nuke`    | clean + delete .venv + images (full reset)     |
-| `just prune`   | Remove dangling container images               |
-| `just docs`    | Start MkDocs live server (localhost:8085)       |
-| `just docs-build` | Build static documentation site             |
+> **🧪 Testing:** For the full list of specific test commands (e.g., `just test-unit`, `just test-e2e`), see the **[Testing](#testing)** section below.
 
 ---
 

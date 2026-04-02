@@ -1,9 +1,12 @@
-# NTP Time Jump Paradox during Recorder Initialization
+# [BUG] 002: NTP Time Jump Paradox during Recorder Initialization
 
-**Status:** `closed`
-**Priority:** 8/10 (Korrumpierte Time-Series und Crashes beim Cold Boot in the field. Unbedingt in MVP v1.0.0 oder früher fixen.)
-**Labels:** `bug` | `architecture`
-**Service(s) Affected:** `controller` | `recorder`
+> **Status:** `closed`
+>
+> **Priority:** 8/10 (Korrumpierte Time-Series und Crashes beim Cold Boot in the field. Unbedingt in MVP v1.0.0 oder früher fixen.)
+>
+> **Labels:** `bug` | `architecture`
+>
+> **Service(s) Affected:** `controller` | `recorder`
 
 ---
 

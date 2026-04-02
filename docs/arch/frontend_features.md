@@ -2,102 +2,102 @@
 
 > **Status:** TO-BE — Feature list of all planned user actions and views.
 >
-> **References:** [Web-Interface Service Spec](web_interface.md), [Web-Mock README](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md), [User Stories](../user_stories/web_interface.md)
+> **References:** [Web-Interface Service Spec](../services/web_interface.md), [Web-Mock README](https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md), [User Stories](../user_stories/../services/web_interface.md)
 
 ---
 
 ## Shell (Global UI — all pages)
 
 ### Header
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Sidebar Toggle | Collapse/expand sidebar | ✅ v0.2.0 |
-| Logo → Dashboard | Clicking logo navigates to dashboard | ✅ v0.2.0 |
-| Notification Dropdown 🔔 | Dropdown with active alerts (level: error/warn/info, timestamp) | v0.9.0 |
-| REC Indicator | Pulsing display: `REC N` — number of active recorders | ✅ v0.2.0 |
-| Upload Indicator | Cloud icon with upload sync status | ✅ v0.2.0 |
-| Dark/Light Mode Toggle 🌗 | Toggle between `silvadark` / `silvalight` theme (localStorage) | ✅ v0.2.0 |
-| Inspector Toggle | Collapse/expand right panel | ✅ v0.2.0 |
-| User Menu (Avatar) | Dropdown: "Signed in as...", User Settings, **Sign Out** | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Sidebar Toggle | Collapse/expand sidebar |
+| Logo → Dashboard | Clicking logo navigates to dashboard |
+| Notification Dropdown 🔔 | Dropdown with active alerts (level: error/warn/info, timestamp) |
+| REC Indicator | Pulsing display: `REC N` — number of active recorders |
+| Upload Indicator | Cloud icon with upload sync status |
+| Dark/Light Mode Toggle 🌗 | Toggle between `silvadark` / `silvalight` theme (localStorage) |
+| Inspector Toggle | Collapse/expand right panel |
+| User Menu (Avatar) | Dropdown: "Signed in as...", User Settings, **Sign Out** |
 
 ### Sidebar Navigation
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| System Group | Dashboard, Recorders, Processor, Cloud Sync — always visible | ✅ v0.2.0 |
-| Module Group | Livesound, Birds, Bats, Weather — **only if enabled** (DB-driven) | v0.9.0 |
-| Settings / About | Pinned to the bottom of the sidebar | ✅ v0.2.0 |
+| Feature | Description |
+| --------- | ------------- |
+| System Group | Dashboard, Recorders, Processor, Cloud Sync — always visible |
+| Module Group | Livesound, Birds, Bats, Weather — **only if enabled** (DB-driven) |
+| Settings / About | Pinned to the bottom of the sidebar |
 
 ### Footer Status Strip
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Console Toggle | Expandable panel for live log stream | ✅ v0.2.0 |
-| System Metrics | Storage %, CPU %, RAM %, Temperature °C, Uptime in h — color-coded | v0.9.0 |
-| Device Name + Version | Station ID and software version | ✅ v0.2.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Console Toggle | Expandable panel for live log stream |
+| System Metrics | Storage %, CPU %, RAM %, Temperature °C, Uptime in h — color-coded |
+| Device Name + Version | Station ID and software version |
 
 ### Console Panel (Log Stream)
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Service Filter Dropdown | Filter log stream by service (Controller, Recorder, ...) | ✅ v0.2.0 |
-| SSE Live Stream | Real-time log output via Server-Sent Events | v0.9.0 |
-| Auto-Scroll | Automatically scroll to the latest entry | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Service Filter Dropdown | Filter log stream by service (Controller, Recorder, ...) |
+| SSE Live Stream | Real-time log output via Server-Sent Events |
+| Auto-Scroll | Automatically scroll to the latest entry |
 
 ### Inspector Panel (right) — Context-Aware
 
 The Inspector **always shows context-dependent details** about the currently selected object of the active page. On page change, the content automatically updates to the default context of that page.
 
-| Page | Default (no object selected) | On object selection | Milestone |
-|------|------------------------------|---------------------------|-----------|
-| **Dashboard** | Service Status List: all services with status (running/down), current task info | — (no selectable objects) | v0.9.0 |
-| **Recorders** | Quick preview: active/inactive recorders, total recording time | **Recorder Card →** Profile details, ALSA device, workspace, segment duration, gain, enrollment status, watchdog restarts | v0.9.0 |
-| **Recorders** | *(Selection)* | **Audio Preview →** Wavesurfer.js waveform + spectrogram of the last recording | v0.9.0+ |
-| **Processor** | Indexer summary: files today, total stock, last cleanup | **File Row →** File details: path, duration, sample rate, channels, size, upload/analysis status | v0.9.0 |
-| **Cloud Sync** | Queue total, throughput, last upload | **Sync Detail →** Target details: URL, auth, queue, latest errors, retries | v0.9.0 |
-| **Birds** | Species summary: total species, detections today | **Species Card →** Species profile: image, name (en + sci), taxonomy, frequency, confidence | v0.9.0 |
-| **Birds** | *(Analyzer Tab)* | **Detection Row →** Wavesurfer.js spectrogram + annotation region, confidence value, recording link | v0.9.0 |
-| **Bats** | Species summary (analog to Birds) | **Species Card →** Species profile + ultrasound spectrogram | v1.3.0 |
-| **Bats** | *(Analyzer Tab)* | **Detection Row →** Spectrogram overlay (analog to Birds) | v1.3.0 |
-| **Weather** | Current metrics compact | **Chart Data Point →** Detailed values at timestamp + correlated species detections | v1.2.0 |
-| **Livesound** | Stream status: listeners, bitrate, latency | **Recorder Selection →** Live waveform, peak value, stream URL (copyable) | v1.1.0 |
-| **Settings / About** | — (Inspector empty or hidden) | — | — |
+| Page | Default (no object selected) | On object selection |
+| ------ | ------------------------------ | --------------------------- |
+| **Dashboard** | Service Status List: all services with status (running/down), current task info | — (no selectable objects) |
+| **Recorders** | Quick preview: active/inactive recorders, total recording time | **Recorder Card →** Profile details, ALSA device, workspace, segment duration, gain, enrollment status, watchdog restarts |
+| **Recorders** | *(Selection)* | **Audio Preview →** Wavesurfer.js waveform + spectrogram of the last recording |
+| **Processor** | Indexer summary: files today, total stock, last cleanup | **File Row →** File details: path, duration, sample rate, channels, size, upload/analysis status |
+| **Cloud Sync** | Queue total, throughput, last upload | **Sync Detail →** Target details: URL, auth, queue, latest errors, retries |
+| **Birds** | Species summary: total species, detections today | **Species Card →** Species profile: image, name (en + sci), taxonomy, frequency, confidence |
+| **Birds** | *(Analyzer Tab)* | **Detection Row →** Wavesurfer.js spectrogram + annotation region, confidence value, recording link |
+| **Bats** | Species summary (analog to Birds) | **Species Card →** Species profile + ultrasound spectrogram |
+| **Bats** | *(Analyzer Tab)* | **Detection Row →** Spectrogram overlay (analog to Birds) |
+| **Weather** | Current metrics compact | **Chart Data Point →** Detailed values at timestamp + correlated species detections |
+| **Livesound** | Stream status: listeners, bitrate, latency | **Recorder Selection →** Live waveform, peak value, stream URL (copyable) |
+| **Settings / About** | — (Inspector empty or hidden) | — |
 
 ---
 
 ## 📊 Dashboard (`/`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Orchestration Card | Recorder/Pending counters, Health badge, Cloud Sync status | v0.9.0 |
-| Data Pipeline Card | Index age, Backlog counter, Janitor status | v0.9.0 |
-| SSD Storage Card | Radial Progress: used/total GB, percentage | v0.9.0 |
-| CPU Card | Avg Load %, Core bar chart (hover: single value), temperature | v0.9.0 |
-| RAM Card | Radial Progress: used/total MB | v0.9.0 |
-| Uptime Card | Hours since reboot, system healthy badge | v0.9.0 |
-| Active Alerts | List of all open warnings (error/warn/info + timestamp) | v0.9.0 |
-| Upload Throughput Chart | ECharts Time-Series: upload rate over time | v0.9.0+ |
+| Feature | Description |
+| --------- | ------------- |
+| Orchestration Card | Recorder/Pending counters, Health badge, Cloud Sync status |
+| Data Pipeline Card | Index age, Backlog counter, Janitor status |
+| SSD Storage Card | Radial Progress: used/total GB, percentage |
+| CPU Card | Avg Load %, Core bar chart (hover: single value), temperature |
+| RAM Card | Radial Progress: used/total MB |
+| Uptime Card | Hours since reboot, system healthy badge |
+| Active Alerts | List of all open warnings (error/warn/info + timestamp) |
+| Upload Throughput Chart | ECharts Time-Series: upload rate over time |
 
 ---
 
 ## 🎙️ Recorders (`/recorders`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Bento-Grid (max 5) | Recorder Cards: live level bar, sample rate, channels, segment, gain, status badge | v0.9.0 |
-| Enrollment Status Badge | Color-coded badge per recorder: `enrolled` (green) / `generic` (yellow) / `pending` (orange) | v0.9.0 |
-| Recorder Detail (`/recorders/{id}`) | Detail view: profile name, ALSA device, workspace path, all parameters | v0.9.0 |
-| Watchdog Health Card | Progress bar: pipeline restarts (e.g. 2/5), color-coded (green/yellow/red) | v0.9.0 |
-| Start/Stop Recorder ⛔ | Enable/disable microphone → writes `enabled` flag to DB → Nudge | v0.9.0 |
-| Change Profile 🟨 | Assign different microphone profile → recorder is restarted | v0.9.0+ |
-| Inspector: Audio Preview | Wavesurfer.js: Live waveform / spectrogram of selected recorder | v0.9.0+ |
+| Feature | Description |
+| --------- | ------------- |
+| Bento-Grid (max 5) | Recorder Cards: live level bar, sample rate, channels, segment, gain, status badge |
+| Enrollment Status Badge | Color-coded badge per recorder: `enrolled` (green) / `generic` (yellow) / `pending` (orange) |
+| Recorder Detail (`/recorders/{id}`) | Detail view: profile name, ALSA device, workspace path, all parameters |
+| Watchdog Health Card | Progress bar: pipeline restarts (e.g. 2/5), color-coded (green/yellow/red) |
+| Start/Stop Recorder ⛔ | Enable/disable microphone → writes `enabled` flag to DB → Nudge |
+| Change Profile 🟨 | Assign different microphone profile → recorder is restarted |
+| Inspector: Audio Preview | Wavesurfer.js: Live waveform / spectrogram of selected recorder |
 
 ---
 
 ## ⚙️ Processor (`/processor`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Indexer File Table | Table of recently indexed files (name, duration, sample rate, size, status) | v0.9.0 |
-| Retention Event Log | Chronological list of deletion actions (filename, reason, level, timestamp) | v0.9.0 |
-| Storage Gauge | Current storage utilization + cleanup level (Normal/Precautionary/Emergency) | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Indexer File Table | Table of recently indexed files (name, duration, sample rate, size, status) |
+| Retention Event Log | Chronological list of deletion actions (filename, reason, level, timestamp) |
+| Storage Gauge | Current storage utilization + cleanup level (Normal/Precautionary/Emergency) |
 
 > Configuration of Retention Policy → **Settings → Storage & Retention**
 
@@ -105,11 +105,11 @@ The Inspector **always shows context-dependent details** about the currently sel
 
 ## ☁️ Cloud Sync (`/cloud-sync`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Single-Target View | Upload queue size, throughput, last sync, status, configured remote target | v0.9.0 |
-| Upload History (Audit-Log) | Table of upload attempts: file, status (✓/✗/⏳), size, duration, error text | v0.9.0 |
-| Enable/Disable Upload | Global toggle for Cloud Sync | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Single-Target View | Upload queue size, throughput, last sync, status, configured remote target |
+| Upload History (Audit-Log) | Table of upload attempts: file, status (✓/✗/⏳), size, duration, error text |
+| Enable/Disable Upload | Global toggle for Cloud Sync |
 
 > Configuration of Remote Target → **Settings → Remotes**
 
@@ -117,127 +117,127 @@ The Inspector **always shows context-dependent details** about the currently sel
 
 ## 🐦 Birds (`/birds`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Tab: Discovery | Pokédex-style species cards: species image, name (English + scientific), detection counter, confidence | v0.9.0 |
-| Tab: Analyzer | Data table with filters (date, species, confidence). Row click → Inspector with Wavesurfer annotation | v0.9.0 |
-| Tab: Statistics | ECharts: activity heatmap, Top-10, species diversity over time | v0.9.0 |
-| Bird Detail (`/birds/{id}`) | Species detail page: Wikipedia info, image, description, timeline of all detections | v0.9.0 |
-| Confidence Threshold | Filter: show only detections above configured threshold | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Tab: Discovery | Pokédex-style species cards: species image, name (English + scientific), detection counter, confidence |
+| Tab: Analyzer | Data table with filters (date, species, confidence). Row click → Inspector with Wavesurfer annotation |
+| Tab: Statistics | ECharts: activity heatmap, Top-10, species diversity over time |
+| Bird Detail (`/birds/{id}`) | Species detail page: Wikipedia info, image, description, timeline of all detections |
+| Confidence Threshold | Filter: show only detections above configured threshold |
 
 ---
 
 ## 🦇 Bats (`/bats`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Tab: Discovery | Pokédex-style species cards (identical structure to Birds, custom color scheme) | v1.3.0 |
-| Tab: Analyzer | Data table with filters, Inspector integration with spectrogram overlay | v1.3.0 |
-| Tab: Statistics | ECharts: night activity curve, Top-10, species diversity | v1.3.0 |
-| Bat Detail (`/bats/{id}`) | Species detail page with Wikipedia info, image, detection timeline | v1.3.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Tab: Discovery | Pokédex-style species cards (identical structure to Birds, custom color scheme) |
+| Tab: Analyzer | Data table with filters, Inspector integration with spectrogram overlay |
+| Tab: Statistics | ECharts: night activity curve, Top-10, species diversity |
+| Bat Detail (`/bats/{id}`) | Species detail page with Wikipedia info, image, detection timeline |
 
 ---
 
 ## ☀️ Weather (`/weather`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Tab: Overview | Compact view of all current metrics (temp, precipitation, humidity, pressure, wind) | v1.2.0 |
-| Tab: Current | Detailed individual values with trend indicators | v1.2.0 |
-| Tab: Statistics | ECharts Time-Series per metric (24h/7d/30d selector) | v1.2.0 |
-| Tab: Correlation | Dual-Y-Axis Chart: species detections overlaid with weather data | v1.2.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Tab: Overview | Compact view of all current metrics (temp, precipitation, humidity, pressure, wind) |
+| Tab: Current | Detailed individual values with trend indicators |
+| Tab: Statistics | ECharts Time-Series per metric (24h/7d/30d selector) |
+| Tab: Correlation | Dual-Y-Axis Chart: species detections overlaid with weather data |
 
 ---
 
 ## 🔊 Livesound (`/livesound`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Recorder Selection | Dropdown/Cards: select active microphones for live monitoring | v1.1.0 |
-| Audio Player | Browser-based Opus stream player (Play/Stop/Volume) | v1.1.0 |
-| Waveform Visualization | Wavesurfer.js Live waveform of the active stream | v1.1.0 |
-| Share Stream URL | Stable URL per microphone stream for VLC/external players | v1.1.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Recorder Selection | Dropdown/Cards: select active microphones for live monitoring |
+| Audio Player | Browser-based Opus stream player (Play/Stop/Volume) |
+| Waveform Visualization | Wavesurfer.js Live waveform of the active stream |
+| Share Stream URL | Stable URL per microphone stream for VLC/external players |
 
 ---
 
 ## ⚙️ Settings (`/settings`)
 
 ### Tab: General
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Station Name | Editable device name (network identity, upload label) | ✅ v0.2.0 |
-| Language | Language selection: en / de | v0.9.0 |
-| Timezone | Timezone of the station | v0.9.0 |
-| Latitude / Longitude | GPS coordinates (for BirdNET regional filter) | v0.9.0 |
-| Poweroff on Low Battery | Toggle: automatic shutdown on low battery | v0.9.0+ |
-| **Save Changes** Button | Saves General Settings to DB | ✅ v0.2.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Station Name | Editable device name (network identity, upload label) |
+| Language | Language selection: en / de |
+| Timezone | Timezone of the station |
+| Latitude / Longitude | GPS coordinates (for BirdNET regional filter) |
+| Poweroff on Low Battery | Toggle: automatic shutdown on low battery |
+| **Save Changes** Button | Saves General Settings to DB |
 
 ### Tab: Modules
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Module Toggles | Enable/disable Livesound, BirdNET, BatDetect, Weather individually | v0.9.0 |
-| BirdNET Min. Confidence | Range slider (0.1–1.0): detection threshold for bird species (Default: empty = standard) | v0.9.0 |
-| BirdNET Analysis Window | Start/End time picker: limit analysis time window (Default: empty = 24/7) | v0.9.0 |
-| BatDetect Min. Confidence | Range slider (0.1–1.0): detection threshold for bat species (Default: empty = standard) | v0.9.0 |
-| BatDetect Analysis Window | Start/End time picker: limit analysis to active hours (Default: empty = 24/7) | v0.9.0 |
-| **Apply & Reload System** Button 🟨 | Applies module changes — system reload required | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Module Toggles | Enable/disable Livesound, BirdNET, BatDetect, Weather individually |
+| BirdNET Min. Confidence | Range slider (0.1–1.0): detection threshold for bird species (Default: empty = standard) |
+| BirdNET Analysis Window | Start/End time picker: limit analysis time window (Default: empty = 24/7) |
+| BatDetect Min. Confidence | Range slider (0.1–1.0): detection threshold for bat species (Default: empty = standard) |
+| BatDetect Analysis Window | Start/End time picker: limit analysis to active hours (Default: empty = 24/7) |
+| **Apply & Reload System** Button 🟨 | Applies module changes — system reload required |
 
 ### Tab: Storage & Retention
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Max File Age (Days) | Maximum age of recording files before deletion | v0.9.0 |
-| Min Free Space Buffer (GB) | Emergency cleanup triggered below this threshold | v0.9.0 |
-| Delete after Upload | Toggle: immediately delete local copy after successful upload | v0.9.0 |
-| **Save Policy** Button | Saves Retention configuration | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Max File Age (Days) | Maximum age of recording files before deletion |
+| Min Free Space Buffer (GB) | Emergency cleanup triggered below this threshold |
+| Delete after Upload | Toggle: immediately delete local copy after successful upload |
+| **Save Policy** Button | Saves Retention configuration |
 
 ### Tab: Remotes
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Remote Target Selection | Dropdown: switch between configured targets | v0.9.0 |
-| Server URL | Edit target URL | v0.9.0 |
-| Username / Password | Edit credentials | v0.9.0 |
-| Target Path / Bucket | Edit target path | v0.9.0 |
-| Bandwidth Limit (KB/s) | Limit upload bandwidth (empty = Unlimited) | v0.9.0 |
-| Upload Window | Start/End time for uploads (empty = 24/7) | v0.9.0 |
-| **Test Connection** Button ✅ | Test connection to remote target (Safe Action) | v0.9.0 |
-| **Save Target** Button | Save Remote configuration | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Remote Target Selection | Dropdown: switch between configured targets |
+| Server URL | Edit target URL |
+| Username / Password | Edit credentials |
+| Target Path / Bucket | Edit target path |
+| Bandwidth Limit (KB/s) | Limit upload bandwidth (empty = Unlimited) |
+| Upload Window | Start/End time for uploads (empty = 24/7) |
+| **Test Connection** Button ✅ | Test connection to remote target (Safe Action) |
+| **Save Target** Button | Save Remote configuration |
 
 ### Tab: Network
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| WLAN Hotspot Toggle | Turn on/off, status display (SSID, Password, Channel, IP) | v0.9.0+ |
-| WLAN Edit Configuration | Edit hotspot settings | v0.9.0+ |
-| Tailscale VPN Toggle | Turn on/off, status (Tailnet IP, Hostname, HTTPS Proxy, Auth Status) | v1.5.0 |
-| Tailscale View Logs | Display Tailscale log output | v1.5.0 |
-| Tailscale Edit Settings | Edit VPN configuration | v1.5.0 |
+| Feature | Description |
+| --------- | ------------- |
+| WLAN Hotspot Toggle | Turn on/off, status display (SSID, Password, Channel, IP) |
+| WLAN Edit Configuration | Edit hotspot settings |
+| Tailscale VPN Toggle | Turn on/off, status (Tailnet IP, Hostname, HTTPS Proxy, Auth Status) |
+| Tailscale View Logs | Display Tailscale log output |
+| Tailscale Edit Settings | Edit VPN configuration |
 
 ### Tab: User
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Username (readonly) | Display admin username (not changeable) | v0.9.0 |
-| Change Password | Current + new + confirm password | v0.9.0 |
-| **Update Security Credentials** Button | Change password (bcrypt hash) | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Username (readonly) | Display admin username (not changeable) |
+| Change Password | Current + new + confirm password |
+| **Update Security Credentials** Button | Change password (bcrypt hash) |
 
 ---
 
 ## ℹ️ About (`/about`)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Version Info | Software version, build info | ✅ v0.2.0 |
-| Project Links | GitHub, Docs, License | ✅ v0.2.0 |
-| Hardware Info | Raspberry Pi model, NVMe, Audio interface | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Version Info | Software version, build info |
+| Project Links | GitHub, Docs, License |
+| Hardware Info | Raspberry Pi model, NVMe, Audio interface |
 
 ---
 
 ## 🔐 Auth (Cross-Cutting)
 
-| Feature | Description | Milestone |
-|---------|-------------|-----------|
-| Login Page | Username + Password form | v0.9.0 |
-| Session Management | Server-side sessions, 24h timeout | v0.9.0 |
-| Brute-Force Protection | Max 5 failed attempts → 30s lockout | v0.9.0 |
-| Sign Out | End session, redirect → Login | v0.9.0 |
+| Feature | Description |
+| --------- | ------------- |
+| Login Page | Username + Password form |
+| Session Management | Server-side sessions, 24h timeout |
+| Brute-Force Protection | Max 5 failed attempts → 30s lockout |
+| Sign Out | End session, redirect → Login |
 
 ---
 

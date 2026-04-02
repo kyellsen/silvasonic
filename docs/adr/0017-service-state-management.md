@@ -30,7 +30,7 @@ This is written by admins or the Web-Interface and read by the Controller to det
 For multi-instance Tier 2 services, the Controller derives desired state from domain tables:
 *   **Recorder:** `devices` + `microphone_profiles` (one Recorder per enrolled device)
 
-> **Note:** Upload desired state is managed via `system_config` key `"uploader"` (`UploaderSettings.enabled`), not via a separate domain table. See [Refactoring Plan](../development/refactoring_uploader_to_processor.md).
+> **Note:** Upload desired state is managed via `system_config` key `"uploader"` (`UploaderSettings.enabled`), not via a separate domain table. See [Refactoring Plan](#).
 
 ### Actual State → Redis (v0.2.0)
 
