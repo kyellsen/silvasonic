@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.5.2 — Core Infrastructure Upgrade ✅
+> **Status:** v0.5.3 — Cloud Sync Preparatory Refactoring ✅
 
 ---
 

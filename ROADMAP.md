@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.5.2 — Core Infrastructure Upgrade ✅
+> **Status:** v0.5.3 — Cloud Sync Preparatory Refactoring ✅
 
 ---
 
@@ -14,7 +14,8 @@
 | **v0.4.0** | Robust Audio Engine — FFmpeg Dual Stream (Raw `data/raw` + Processed `data/processed` 48kHz S16LE), Segment Promotion, Graceful Shutdown, Watchdog & Auto-Recovery                                                                                                            | ✅ Done        |
 | **v0.5.0** | Analysis & Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding                                                                                                                                   | ✅ Done        |
 | **v0.5.1** | Architecture & Stability Fixes — Core Data Integrity, USB Debouncing, Workspace mapping                                                                                                                                                                                   | ✅ Done        |
-| **v0.5.2** | Core Infrastructure Upgrade — Python 3.13 adoption and runtime typing simplification                                                                                                                                                                                  | ✅ Current     |
+| **v0.5.2** | Core Infrastructure Upgrade — Python 3.13 adoption and runtime typing simplification                                                                                                                                                                                  | ✅ Done        |
+| **v0.5.3** | Cloud Sync Preparatory Refactoring — Uploader wipe, storage_remotes DB drop, Test Suite Fixes                                                                                                                                                                           | ✅ Current     |
 | v0.6.0     | Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)                                                                                                        | ⏳ Planned     |
 | v0.7.0     | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ⏳ Planned     |
 | v0.8.0     | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | ⏳ Planned     |
