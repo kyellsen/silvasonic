@@ -19,7 +19,7 @@
 
 - [Controller](services/controller.md) · [Database](services/database.md) · [Recorder](services/recorder.md)
 - [Redis](services/redis.md) · [Web-Mock](services/web_mock.md) · [Processor](services/processor.md) · [Gateway](services/gateway.md)
-- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md) · [Uploader (Archived)](services/uploader.md)
+- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md)
   - [UI/UX Design System](services/web_interface/02_ui_ux_design_system.md)
   - [Web-Interface Feature Specs](services/web_interface_features.md)
 - [BirdNET](services/birdnet.md) · [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
@@ -57,7 +57,7 @@
 - [Controller](user_stories/controller.md) · [Recorder](user_stories/recorder.md)
 - [BirdNET](user_stories/birdnet.md) · [BatDetect](user_stories/batdetect.md)
 - [Processor](user_stories/processor.md) · [Gateway](user_stories/gateway.md)
-- [Icecast](user_stories/icecast.md) · [Uploader (Archived)](user_stories/uploader.md)
+- [Icecast](user_stories/icecast.md) · [Cloud Sync](user_stories/cloud_sync.md)
 - [Web-Interface](user_stories/web_interface.md)
 
 ## Hardware

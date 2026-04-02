@@ -211,10 +211,10 @@ The Recorder exposes a health endpoint at `GET /healthy` on port `9500` (interna
 
 ## Out of Scope
 
-*   **Does NOT** compress files to FLAC (Uploader's job).
+*   **Does NOT** compress files to FLAC (Processor Cloud-Sync-Worker's job).
 *   **Does NOT** support I2S microphones for v1.0.0 (USB/ALSA only).
 *   **Does NOT** analyze audio (BirdNET / BatDetect / Processor's job).
-*   **Does NOT** upload files to the cloud (Uploader's job).
+*   **Does NOT** upload files to the cloud (Processor Cloud-Sync-Worker's job).
 *   **Does NOT** provide a UI (Web-Interface's job).
 *   **Does NOT** store metadata in the database (no DB access — ADR-0013).
 *   **Does NOT** manage its own container lifecycle (Controller's job).

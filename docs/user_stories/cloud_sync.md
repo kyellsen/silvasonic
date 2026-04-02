@@ -1,9 +1,6 @@
-# User Stories — Upload / Cloud Sync (Archived)
+# User Stories — Cloud Sync (Processor)
 
-> **Service:** ~~Uploader~~ → Processor Cloud-Sync-Worker · ~~**Tier:** 2~~ → Tier 1 (Processor) · **Status:** Archived — migrated to Processor (v0.6.0)
->
-> [!WARNING]
-> **Archived:** The standalone Uploader service has been replaced by an internal Cloud-Sync-Worker within the Processor. User stories below are retained for traceability but reflect the original multi-target architecture. The KISS refactoring simplifies to a single-target model. See [Refactoring Plan](../development/refactoring_uploader_to_processor.md).
+> **Service:** Processor (Cloud-Sync-Worker) · **Tier:** 1
 
 ---
 
@@ -27,7 +24,7 @@
 
 ### References
 
-- [Uploader Service Docs](../services/uploader.md)
+- [Processor Service Docs](../services/processor.md)
 - [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
 - [ADR-0009: Zero-Trust Data Sharing](../adr/0009-zero-trust-data-sharing.md)
 
@@ -53,22 +50,12 @@
 
 ### References
 
-- [Uploader Service Docs §Outputs](../services/uploader.md)
 - [Processor User Stories — US-P02: Endless recording without storage worries](./processor.md)
 - [ADR-0011 §Retention Policy](../adr/0011-audio-recording-strategy.md)
 
 ---
 
-<a id="us-u03"></a>
-## ~~US-U03: Multiple storage targets simultaneously 🗄️~~ (Archived)
 
-> **Archived:** The KISS refactoring replaces the multi-target Uploader with a single-target Cloud-Sync-Worker within the Processor. This user story is no longer applicable.
-
-### References
-
-- [Refactoring Plan](../development/refactoring_uploader_to_processor.md)
-
----
 
 <a id="us-u04"></a>
 ## US-U04: Adjust upload settings via web interface 🎛️
@@ -81,7 +68,7 @@
 
 - [ ] Bandwidth limit is adjustable (e.g., "max 1 MB/s") to avoid overloading the internet connection.
 - [ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day.
-- [ ] New storage targets can be added, edited, and removed via the web interface.
+- [ ] A storage target can be configured via the web interface.
 - [ ] Changes are automatically applied — the upload service restarts if necessary.
 
 ### Milestone
@@ -90,7 +77,7 @@
 
 ### References
 
-- [Uploader Service Docs §Dynamic Configuration](../services/uploader.md)
+- [Processor Service Docs](../services/processor.md)
 - [ADR-0023: Configuration Management](../adr/0023-configuration-management.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
 
@@ -107,7 +94,7 @@
 
 - [ ] The dashboard shows: number of pending uploads, current upload speed, and last successful upload time.
 - [ ] A warning is shown for failed uploads (e.g., "Connection to Nextcloud failed for 2 hours").
-- [ ] Status can be viewed individually per storage target.
+- [ ] Status can be viewed for the configured remote target.
 - [ ] The upload service reports its status periodically to the web interface.
 
 ### Milestone
@@ -117,7 +104,7 @@
 ### References
 
 - [ADR-0019: Unified Service Infrastructure §Heartbeat](../adr/0019-unified-service-infrastructure.md)
-- [Uploader Service Docs](../services/uploader.md)
+- [Processor Service Docs](../services/processor.md)
 
 ---
 
@@ -141,7 +128,7 @@
 
 ### References
 
-- [Uploader Service Docs §Audit Logging](../services/uploader.md)
+- [Processor Service Docs](../services/processor.md)
 
 ---
 

@@ -22,7 +22,7 @@
 
 ### Inputs
 
-*   **SQL Queries:** INSERT / SELECT / UPDATE from all services with DB access (Controller, Processor, BirdNET, BatDetect, Weather, Uploader, Web-Interface). **Not** from the Recorder (ADR-0013).
+*   **SQL Queries:** INSERT / SELECT / UPDATE from all services with DB access (Controller, Processor, BirdNET, BatDetect, Weather, Web-Interface). **Not** from the Recorder (ADR-0013).
 
 ### Processing
 
@@ -111,7 +111,7 @@
 
 *   TimescaleDB continuous aggregates for pre-computed hourly/daily detection summaries
 *   Compression policies for old hypertable chunks (detections, weather)
-*   **Backup Strategy:** For our NVMe-based deployments, logical backups (pg_dump) on millions of rows will be too slow and resource-heavy. We need to implement physical backups (WAL archiving / pg_basebackup) stored locally on the NVMe and opportunistically synced off-device via the Uploader.
+*   **Backup Strategy:** For our NVMe-based deployments, logical backups (pg_dump) on millions of rows will be too slow and resource-heavy. We need to implement physical backups (WAL archiving / pg_basebackup) stored locally on the NVMe and opportunistically synced off-device via the Cloud-Sync-Worker.
 *   Alternatives considered and rejected: InfluxDB (not relational, harder to join with metadata), SQLite (concurrency issues with multiple writers)
 
 ## Out of Scope
@@ -120,7 +120,7 @@
 *   **Does NOT** expose ports to the internet — internal `silvasonic-net` only (Gateway handles external access).
 *   **Does NOT** contain application logic — it is a passive data store.
 *   **Does NOT** authenticate end-users — Gateway and Web-Interface handle authentication.
-*   **Does NOT** compress audio files (Uploader's job).
+*   **Does NOT** compress audio files (Processor Cloud-Sync-Worker's job).
 
 ---
 

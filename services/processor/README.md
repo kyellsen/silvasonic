@@ -46,7 +46,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 
 *   **Soft Delete:** Files explicitly removed, DB row preserved `local_deleted=TRUE`.
 *   **Batch Size:** Deletions limited to `janitor_batch_size` (default: 50) per cycle.
-*   **Uploader-Fallback:** Skips `uploaded` condition if no Uploader is configured.
+*   **Cloud-Sync-Fallback:** Skips `uploaded` condition if no remote target is configured.
 *   **Panic Fallback:** Uses filesystem `mtime` for blind cleanup when DB is offline.
 
 ### Service Lifecycle (`__main__.py`)
@@ -72,7 +72,7 @@ The **only** service authorized to delete files from the Recorder workspace (ADR
 > The Processor is **Tier 1 (Infrastructure)** because the Janitor is critical for system survival — without it, the NVMe fills up and the Recorder halts. Despite being Tier 1, it follows the **Immutable Container** pattern like Tier 2 services (ADR-0019).
 
 > [!WARNING]
-> The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect, Uploader) mount it `:ro,z` per the Consumer Principle (ADR-0009).
+> The Processor is the **only** service that mounts the Recorder workspace as `:rw` (for Janitor file deletion). All other consumers (BirdNET, BatDetect) mount it `:ro,z` per the Consumer Principle (ADR-0009).
 
 ## 5. Configuration
 
@@ -123,7 +123,7 @@ Runtime settings are stored in `system_config` (key: `processor`) and seeded fro
 
 *   **Does NOT** record audio (Recorder's job).
 *   **Does NOT** analyze audio content (BirdNET / BatDetect's job).
-*   **Does NOT** upload files to the cloud (Uploader's job).
+*   **Does NOT** upload files to the cloud (Processor Cloud-Sync-Worker does this internally).
 *   **Does NOT** assign work to analysis workers (Workers self-serve via DB polling).
 
 ## 9. References
