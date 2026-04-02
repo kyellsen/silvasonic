@@ -23,6 +23,7 @@ _CLEANUP_TABLES = (
     "recordings",
     "devices",
     "microphone_profiles",
+    "system_config",
 )
 
 

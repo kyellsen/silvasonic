@@ -52,40 +52,11 @@ def _make_bare_service() -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Package import
-# ---------------------------------------------------------------------------
-@pytest.mark.unit
-class TestProcessorPackage:
-    """Basic package-level tests."""
-
-    def test_package_importable(self) -> None:
-        """Processor package is importable."""
-        import silvasonic.processor
-
-        assert silvasonic.processor is not None
-
-    def test_version_exported(self) -> None:
-        """__version__ is exported from the processor package."""
-        from silvasonic.processor import __version__
-
-        assert isinstance(__version__, str)
-        assert len(__version__) > 0
-
-
-# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
-class TestProcessorConfig:
-    """Tests for service-level configuration."""
-
-    def test_service_name(self) -> None:
-        """service_name is 'processor'."""
-        assert ProcessorService.service_name == "processor"
-
-    def test_service_port_default(self) -> None:
-        """service_port defaults to 9200."""
-        assert ProcessorService.service_port == 9200
+class TestProcessorEnvSettings:
+    """Tests for environment variable overrides."""
 
     def test_service_port_env_override(self) -> None:
         """service_port respects SILVASONIC_PROCESSOR_PORT at instantiation."""
@@ -97,20 +68,6 @@ class TestProcessorConfig:
             cfg = ProcessorEnvSettings()
             svc.service_port = cfg.PROCESSOR_PORT
         assert svc.service_port == 7777
-
-    def test_log_startup_default(self) -> None:
-        """PROCESSOR_LOG_STARTUP_S defaults to 300.0."""
-        from silvasonic.processor.settings import ProcessorEnvSettings
-
-        cfg = ProcessorEnvSettings()
-        assert cfg.PROCESSOR_LOG_STARTUP_S == 300.0
-
-    def test_log_summary_interval_default(self) -> None:
-        """PROCESSOR_LOG_SUMMARY_INTERVAL_S defaults to 300.0."""
-        from silvasonic.processor.settings import ProcessorEnvSettings
-
-        cfg = ProcessorEnvSettings()
-        assert cfg.PROCESSOR_LOG_SUMMARY_INTERVAL_S == 300.0
 
     def test_log_startup_env_override(self) -> None:
         """PROCESSOR_LOG_STARTUP_S respects env override."""

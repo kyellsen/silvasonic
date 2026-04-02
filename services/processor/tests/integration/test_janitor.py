@@ -1,4 +1,4 @@
-"""Integration tests for Janitor — end-to-end with real PostgreSQL.
+"""Integration tests for the Janitor module.
 
 Uses the shared ``postgres_container`` Testcontainer fixture (conftest.py)
 to verify the full Janitor cycle against a real database:
@@ -28,6 +28,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
 pytestmark = [pytest.mark.integration]
+
+# NOTE(testing.md §5.3 exception): get_disk_usage patches host-level I/O
+# (shutil.disk_usage) which cannot be controlled in CI containers.
+# This is NOT a database mock and therefore not forbidden by the
+# integration test rules.  See: docs/development/testing.md §5.1.
 
 
 def _build_async_url(container: PostgresContainer) -> str:
@@ -129,22 +134,13 @@ async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
         await session.commit()
 
 
-async def _cleanup(factory: async_sessionmaker[Any]) -> None:
-    """Clean up test data."""
-    async with factory() as session:
-        await session.execute(text("DELETE FROM recordings"))
-        await session.execute(text("DELETE FROM devices"))
-        await session.execute(text("DELETE FROM system_config WHERE key = 'cloud_sync'"))
-        await session.commit()
-
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 
 class TestJanitorIntegration:
-    """E2E Janitor tests with real PostgreSQL (shared postgres_container)."""
+    """Janitor integration tests with real PostgreSQL (shared postgres_container)."""
 
     @pytest.fixture(autouse=True)
     def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
@@ -221,7 +217,6 @@ class TestJanitorIntegration:
             )
             assert row_kept.scalar() is False
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_housekeeping_cloud_sync_fallback(
@@ -269,7 +264,6 @@ class TestJanitorIntegration:
             )
             assert row.scalar() is True
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_defensive_deletes_uploaded_only(
@@ -314,7 +308,6 @@ class TestJanitorIntegration:
             )
             assert row.scalar() is True
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_defensive_cloud_sync_fallback(
@@ -360,7 +353,6 @@ class TestJanitorIntegration:
             )
             assert row.scalar() is True
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_panic_deletes_oldest(
@@ -422,7 +414,6 @@ class TestJanitorIntegration:
             )
             assert row_new.scalar() is False
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_batch_size_limits_deletions(
@@ -476,7 +467,6 @@ class TestJanitorIntegration:
             )
             assert remaining_count.scalar() == 3
 
-        await _cleanup(factory)
         await engine.dispose()
 
     async def test_panic_filesystem_fallback(self, tmp_path: Path) -> None:
@@ -528,5 +518,4 @@ class TestJanitorIntegration:
         assert result.mode == RetentionMode.PANIC
         assert result.files_deleted == 0
 
-        await _cleanup(factory)
         await engine.dispose()

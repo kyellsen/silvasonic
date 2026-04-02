@@ -1,6 +1,6 @@
 """Integration tests for the Indexer module.
 
-Tests WAV indexing end-to-end against a real PostgreSQL database
+Tests WAV indexing against a real PostgreSQL database
 (Testcontainer). Creates synthetic WAV files, runs the Indexer, and
 verifies ``recordings`` rows in the database.
 """
@@ -76,7 +76,7 @@ async def _seed_device(
 
 @pytest.mark.integration
 class TestIndexerIntegration:
-    """Verify Indexer end-to-end with real PostgreSQL."""
+    """Verify Indexer integration with real PostgreSQL."""
 
     @pytest.fixture(autouse=True)
     def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
@@ -115,10 +115,6 @@ class TestIndexerIntegration:
             count = rows.scalar()
             assert count == 2
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()
 
     async def test_idempotent_reindex(
@@ -150,10 +146,6 @@ class TestIndexerIntegration:
             rows = await session.execute(text("SELECT COUNT(*) FROM recordings"))
             assert rows.scalar() == 1
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()
 
     async def test_multiple_sensors_indexed(
@@ -184,10 +176,6 @@ class TestIndexerIntegration:
             sensors = [r[0] for r in rows.fetchall()]
             assert sensors == ["mic-01", "mic-02"]
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices"))
         await engine.dispose()
 
     async def test_unregistered_device_skipped_not_errored(
@@ -264,10 +252,6 @@ class TestIndexerIntegration:
             sensor_id = sensor_row.scalar()
             assert sensor_id == "good-mic", f"Expected 'good-mic', got '{sensor_id}'"
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'good-mic'"))
         await engine.dispose()
 
     async def test_errored_files_prevents_reprocessing(
@@ -307,8 +291,4 @@ class TestIndexerIntegration:
         assert r2.skipped == 1, f"Expected 1 skipped, got {r2.skipped}"
         assert r2.errors == 0, f"Expected 0 errors, got {r2.errors}"
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()

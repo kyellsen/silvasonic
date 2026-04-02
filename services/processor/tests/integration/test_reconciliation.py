@@ -1,6 +1,6 @@
 """Integration tests for the Reconciliation Audit module.
 
-Tests the startup audit end-to-end against a real PostgreSQL database
+Tests the startup audit against a real PostgreSQL database
 (Testcontainer). Seeds recordings, manipulates the filesystem, and
 verifies the audit correctly marks orphaned rows.
 """
@@ -93,10 +93,6 @@ class TestReconciliationIntegration:
             result = await session.execute(text("SELECT local_deleted FROM recordings LIMIT 1"))
             assert result.scalar() is True
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()
 
     async def test_valid_rows_preserved(
@@ -144,8 +140,4 @@ class TestReconciliationIntegration:
             result = await session.execute(text("SELECT local_deleted FROM recordings LIMIT 1"))
             assert result.scalar() is False
 
-        # Cleanup
-        async with engine.begin() as conn:
-            await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'mic-01'"))
         await engine.dispose()

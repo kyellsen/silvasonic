@@ -163,7 +163,7 @@ asyncio_default_fixture_loop_scope = "function"
 # testpaths searches these directories recursively for test_*.py
 testpaths = ["tests", "services", "packages"]
 python_files = ["test_*.py"]
-addopts = "-v --durations=10"
+addopts = "-v --durations=10 --import-mode=importlib"
 env_files = [".env"] # Tells pytest-dotenv where the single source of truth is
 markers = [
     "unit: fast, isolated tests without external dependencies.",
