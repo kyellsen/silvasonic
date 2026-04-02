@@ -4,7 +4,7 @@ Uses the shared ``postgres_container`` Testcontainer fixture (conftest.py)
 to verify the full Janitor cycle against a real database:
 - Correct SQL query execution per retention mode
 - Soft-delete pattern (physical file removal + DB flag update)
-- Uploader-Fallback: no ``storage_remotes`` → skip ``uploaded`` condition
+- Uploader-Fallback: cloud sync disabled → skip ``uploaded`` condition
 - Batch-size enforcement against real DB
 - Mode-specific file preservation guarantees
 """
@@ -46,27 +46,6 @@ def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000
         wf.setsampwidth(2)
         wf.setframerate(sample_rate)
         wf.writeframes(b"\x00\x00" * n_frames)
-
-
-async def _ensure_storage_remotes_table(factory: async_sessionmaker[Any]) -> None:
-    """Create storage_remotes table if not exists (matches 01-init-schema.sql)."""
-    async with factory() as session:
-        await session.execute(
-            text("""
-                CREATE TABLE IF NOT EXISTS storage_remotes (
-                    slug TEXT PRIMARY KEY,
-                    type TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    config JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    target_path TEXT,
-                    encryption_test TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            """)
-        )
-        await session.commit()
 
 
 async def _seed_device(factory: async_sessionmaker[Any], name: str) -> None:
@@ -124,23 +103,29 @@ async def _seed_recording(
         return int(row[0])
 
 
-async def _add_storage_remote(factory: async_sessionmaker[Any]) -> None:
-    """Seed an active storage_remote (simulates Uploader configured)."""
+async def _enable_upload_config(factory: async_sessionmaker[Any]) -> None:
+    """Simulate Cloud Sync enabled in system_config."""
     async with factory() as session:
         await session.execute(
             text("""
-                INSERT INTO storage_remotes (slug, type, name, config, is_active)
-                VALUES ('test-remote', 'webdav', 'Test Remote', '{}', true)
-                ON CONFLICT (slug) DO NOTHING
+                INSERT INTO system_config (key, value)
+                VALUES ('uploader', '{"enabled": true}'::jsonb)
+                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": true}'::jsonb
             """)
         )
         await session.commit()
 
 
-async def _clear_storage_remotes(factory: async_sessionmaker[Any]) -> None:
-    """Remove all storage_remotes to simulate pre-Uploader state."""
+async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
+    """Simulate Cloud Sync disabled in system_config."""
     async with factory() as session:
-        await session.execute(text("DELETE FROM storage_remotes"))
+        await session.execute(
+            text("""
+                INSERT INTO system_config (key, value)
+                VALUES ('uploader', '{"enabled": false}'::jsonb)
+                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": false}'::jsonb
+            """)
+        )
         await session.commit()
 
 
@@ -149,7 +134,7 @@ async def _cleanup(factory: async_sessionmaker[Any]) -> None:
     async with factory() as session:
         await session.execute(text("DELETE FROM recordings"))
         await session.execute(text("DELETE FROM devices"))
-        await session.execute(text("DELETE FROM storage_remotes"))
+        await session.execute(text("DELETE FROM system_config WHERE key = 'uploader'"))
         await session.commit()
 
 
@@ -180,9 +165,8 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
         await _seed_device(factory, "hk-mic")
-        await _add_storage_remote(factory)
+        await _enable_upload_config(factory)
 
         # File 1: uploaded + fully analyzed → should be deleted
         del_proc = tmp_path / "hk-mic" / "data" / "processed" / "uploaded.wav"
@@ -248,8 +232,7 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
-        await _clear_storage_remotes(factory)
+        await _disable_upload_config(factory)
         await _seed_device(factory, "fb-mic")
 
         # File: not uploaded, but fully analyzed → should be deleted in fallback
@@ -297,9 +280,8 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
         await _seed_device(factory, "def-mic")
-        await _add_storage_remote(factory)
+        await _enable_upload_config(factory)
 
         proc = tmp_path / "def-mic" / "data" / "processed" / "uploaded_no_analysis.wav"
         raw = tmp_path / "def-mic" / "data" / "raw" / "uploaded_no_analysis.wav"
@@ -343,8 +325,7 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
-        await _clear_storage_remotes(factory)
+        await _disable_upload_config(factory)
         await _seed_device(factory, "dfb-mic")
 
         proc = tmp_path / "dfb-mic" / "data" / "processed" / "not_uploaded.wav"
@@ -390,7 +371,6 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
         await _seed_device(factory, "panic-mic")
 
         old_proc = tmp_path / "panic-mic" / "data" / "processed" / "old.wav"
@@ -453,7 +433,6 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
         await _seed_device(factory, "batch-mic")
 
         for i in range(5):
@@ -527,7 +506,6 @@ class TestJanitorIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _ensure_storage_remotes_table(factory)
         await _seed_device(factory, "skip-mic")
 
         await _seed_recording(

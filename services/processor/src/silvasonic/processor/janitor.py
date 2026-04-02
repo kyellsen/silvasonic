@@ -10,10 +10,10 @@ Three escalating modes:
 - **Defensive** (>80%): Delete uploaded recordings (analysis state ignored).
 - **Panic** (>90%): Delete oldest files regardless of any status.
 
-**Uploader-Fallback:** When no Uploader is configured (no ``storage_remotes``
-rows in DB), the ``uploaded`` condition is skipped in Housekeeping and
+**Uploader-Fallback:** When ``UploaderSettings.enabled`` is ``false``
+(no upload target configured), the ``uploaded`` condition is skipped in Housekeeping and
 Defensive modes.  This prevents the Janitor from remaining idle until Panic
-threshold is reached when the Uploader service has not been deployed yet.
+threshold is reached when the Cloud Sync feature is disabled.
 The fallback is clearly logged at WARNING level.
 
 **Batch size:** Deletions are limited to ``janitor_batch_size`` per cycle
@@ -90,16 +90,18 @@ def evaluate_mode(disk_pct: float, settings: ProcessorSettings) -> RetentionMode
 
 
 async def has_uploader_configured(session: AsyncSession) -> bool:
-    """Check whether any storage remotes are configured in the database.
+    """Check whether cloud sync is enabled in the system configuration.
 
-    Returns ``False`` when the Uploader service has not been deployed
-    (no ``storage_remotes`` rows), which triggers the Uploader-Fallback
-    in Housekeeping and Defensive modes.
+    Returns ``False`` when ``UploaderSettings.enabled`` is ``false``,
+    which triggers the Uploader-Fallback in Housekeeping and Defensive modes.
     """
     result = await session.execute(
-        text("SELECT 1 FROM storage_remotes WHERE is_active = true LIMIT 1")
+        text("SELECT value->>'enabled' FROM system_config WHERE key = 'uploader'")
     )
-    return result.fetchone() is not None
+    row = result.fetchone()
+    if row is not None and row[0] is not None:
+        return bool(str(row[0]).lower() == "true")
+    return False
 
 
 async def find_deletable(
@@ -311,9 +313,9 @@ async def run_cleanup(
         log.warning(
             "janitor.uploader_fallback_active",
             mode=mode.value,
-            reason="no_storage_remotes_configured",
+            reason="upload_disabled",
             detail=(
-                "No Uploader configured — skipping 'uploaded' condition. "
+                "Cloud sync not enabled — skipping 'uploaded' condition. "
                 "Files will be deleted based on analysis state only "
                 "(Housekeeping) or age only (Defensive)."
             ),

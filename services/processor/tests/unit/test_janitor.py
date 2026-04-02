@@ -100,8 +100,8 @@ class TestGetDiskUsage:
 class TestHasUploaderConfigured:
     """Tests for has_uploader_configured()."""
 
-    async def test_no_storage_remotes_returns_false(self) -> None:
-        """No active storage_remotes → returns False."""
+    async def test_config_missing_returns_false(self) -> None:
+        """Row missing or enabled missing → returns False."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchone.return_value = None
@@ -109,11 +109,20 @@ class TestHasUploaderConfigured:
 
         assert await has_uploader_configured(mock_session) is False
 
-    async def test_with_storage_remotes_returns_true(self) -> None:
-        """Active storage_remotes exist → returns True."""
+    async def test_config_disabled_returns_false(self) -> None:
+        """Enabled is false → returns False."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.fetchone.return_value = (1,)
+        mock_result.fetchone.return_value = ("false",)
+        mock_session.execute.return_value = mock_result
+
+        assert await has_uploader_configured(mock_session) is False
+
+    async def test_config_enabled_returns_true(self) -> None:
+        """Enabled is true → returns True."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = ("true",)
         mock_session.execute.return_value = mock_result
 
         assert await has_uploader_configured(mock_session) is True
