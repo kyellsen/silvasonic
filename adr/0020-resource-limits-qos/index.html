@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2492,6 +2464,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2770,14 +2770,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3077,12 +3077,6 @@
 <td>Similar ML inference workload</td>
 </tr>
 <tr>
-<td><strong>Uploader</strong></td>
-<td><code>256m</code></td>
-<td><code>0.5</code></td>
-<td>FLAC compression + network I/O, low compute</td>
-</tr>
-<tr>
 <td><strong>Weather</strong></td>
 <td><code>128m</code></td>
 <td><code>0.25</code></td>
@@ -3148,12 +3142,6 @@ These are <strong>default values</strong> embedded in the <code>Tier2ServiceSpec
 <td><code>0</code></td>
 <td>Tier 1 infrastructure</td>
 <td>Managed by Compose/Quadlets, default kernel behavior.</td>
-</tr>
-<tr>
-<td><strong>Low Priority</strong></td>
-<td><code>250</code></td>
-<td>Uploader</td>
-<td>Important but can recover — retry after restart.</td>
 </tr>
 <tr>
 <td><strong>Expendable</strong></td>

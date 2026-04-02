@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2360,6 +2332,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -3337,14 +3337,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
+      <a href="../cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -4289,7 +4289,7 @@
 <ul>
 <li>[x] Recording instances are maximally protected (lowest OOM score) — they are the last to be terminated by the system.</li>
 <li>[x] Analysis services (BirdNET, BatDetect) are marked as "expendable" and are terminated <strong>first</strong> during bottlenecks.</li>
-<li>[x] Upload and infrastructure services (Uploader, Gateway) also receive lower priority than recording.</li>
+<li>[x] Upload and infrastructure services (Processor Cloud-Sync-Worker, Gateway) also receive lower priority than recording.</li>
 </ul>
 <h4 id="file-isolation-zero-trust">File Isolation (Zero-Trust)<a class="headerlink" href="#file-isolation-zero-trust" title="Permanent link">&para;</a></h4>
 <ul>

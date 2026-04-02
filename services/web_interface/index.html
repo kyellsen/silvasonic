@@ -772,34 +772,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../gateway/" class="md-nav__link">
         
   
@@ -1066,10 +1038,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#44-uploaders-bento-grid-max-3" class="md-nav__link">
+  <a href="#44-cloud-sync-single-target" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.4 Uploaders (Bento-Grid, max 3)
+        4.4 Cloud Sync (Single-Target)
       
     </span>
   </a>
@@ -2691,6 +2663,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2969,14 +2969,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3311,10 +3311,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#44-uploaders-bento-grid-max-3" class="md-nav__link">
+  <a href="#44-cloud-sync-single-target" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.4 Uploaders (Bento-Grid, max 3)
+        4.4 Cloud Sync (Single-Target)
       
     </span>
   </a>
@@ -3539,7 +3539,7 @@
 <hr />
 <h2 id="3-ux-concept">3. UX Concept<a class="headerlink" href="#3-ux-concept" title="Permanent link">&para;</a></h2>
 <h3 id="31-layout-navigation">3.1 Layout &amp; Navigation<a class="headerlink" href="#31-layout-navigation" title="Permanent link">&para;</a></h3>
-<p>Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. Sidebar has two groups: <strong>System</strong> (Dashboard, Recorders, Processor, Uploaders) and <strong>Modules</strong> (Livesound, Birds, Bats, Weather). Settings + About pinned to bottom.</p>
+<p>Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. Sidebar has two groups: <strong>System</strong> (Dashboard, Recorders, Processor, Cloud Sync) and <strong>Modules</strong> (Livesound, Birds, Bats, Weather). Settings + About pinned to bottom.</p>
 <blockquote>
 <p>[!IMPORTANT]
 <strong>Conditional Module Rendering:</strong> Module sidebar entries are only visible when the corresponding module is enabled in Settings → Modules. This is DB-driven and not yet implemented in the web-mock (which shows all modules always).</p>
@@ -3557,7 +3557,7 @@
 <tr>
 <td>Hardware/Service instances (hard-limited)</td>
 <td><strong>Bento-Grid → Inspector</strong></td>
-<td>Recorders (max 5), Uploaders (max 3)</td>
+<td>Recorders (max 5)</td>
 </tr>
 <tr>
 <td>Worker results / data analyses</td>
@@ -3609,8 +3609,8 @@
 <p>Grid of Recorder Cards: live level bar, sample rate, channels, segment, gain, status. Detail view via click. Inspector shows Wavesurfer.js audio preview (TO-BE).</p>
 <h3 id="43-processor">4.3 Processor<a class="headerlink" href="#43-processor" title="Permanent link">&para;</a></h3>
 <p>Single page (no tabs): Indexer file table + Retention event log. Storage &amp; Retention configuration is managed in <strong>Settings → Storage &amp; Retention</strong>.</p>
-<h3 id="44-uploaders-bento-grid-max-3">4.4 Uploaders (Bento-Grid, max 3)<a class="headerlink" href="#44-uploaders-bento-grid-max-3" title="Permanent link">&para;</a></h3>
-<p>Grid of Uploader Cards: queue size, throughput, last sync, status. Detail view with target type and auth.</p>
+<h3 id="44-cloud-sync-single-target">4.4 Cloud Sync (Single-Target)<a class="headerlink" href="#44-cloud-sync-single-target" title="Permanent link">&para;</a></h3>
+<p>Single-page view: upload queue size, throughput, last sync, status, configured remote target. Replaces the former multi-target "Uploaders" Bento-Grid (KISS refactoring, v0.6.0).</p>
 <h3 id="45-birds-bats-tabs">4.5 Birds / Bats (Tabs)<a class="headerlink" href="#45-birds-bats-tabs" title="Permanent link">&para;</a></h3>
 <p><code>[ Discovery ] [ Analyzer ] [ Statistics ]</code></p>
 <p>Discovery: Pokédex-style species cards. Analyzer: data table with filters, row click → Inspector (Wavesurfer.js spectrogram + annotation regions, TO-BE). Statistics: ECharts dashboards (TO-BE).</p>
@@ -3621,7 +3621,7 @@
 <p><code>[ General ] [ Modules ] [ Storage &amp; Retention ] [ Remotes ] [ Network ] [ User ]</code></p>
 <ul>
 <li><strong>Modules:</strong> Toggle per module with system reload. Module state drives sidebar visibility.</li>
-<li><strong>Remotes:</strong> Per-target configuration (Nextcloud, S3). Test Connection + Save.</li>
+<li><strong>Remotes:</strong> Single-target upload configuration (Nextcloud, S3). Test Connection + Save.</li>
 <li><strong>Network:</strong> WLAN Hotspot + Tailscale VPN status and config.</li>
 <li><strong>User:</strong> Password management for local admin.</li>
 </ul>

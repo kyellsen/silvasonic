@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2453,6 +2425,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2731,14 +2731,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2964,7 +2964,7 @@
 </blockquote>
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) and <code>uploader</code> (v0.6.0) are implemented. References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.
+<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) is implemented. The <code>uploader</code> has been archived as a standalone service (v0.6.0 = Processor Cloud-Sync-Worker). References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.
 In a microservice architecture sharing a file system, there is a risk of a "Spaghetti" data layout where multiple services read/write to common directories. This leads to race conditions, accidental data deletion ("Noisy Neighbor"), and unclear ownership responsibilities. We need a layout that enforces ownership and structure.</p>
 </blockquote>
 <h2 id="2-decision">2. Decision<a class="headerlink" href="#2-decision" title="Permanent link">&para;</a></h2>

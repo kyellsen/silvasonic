@@ -952,34 +952,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2542,6 +2514,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2820,14 +2820,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3252,9 +3252,9 @@ The interactive path is <strong>best-effort</strong>. If Redis is unavailable, t
 <td><code>silvasonic:status:ultramic-01</code></td>
 </tr>
 <tr>
-<td>Uploader (multi-instance)</td>
-<td><code>= storage_remotes.slug</code></td>
-<td><code>silvasonic:status:nextcloud-main</code></td>
+<td>~~Uploader~~ (archived)</td>
+<td>—</td>
+<td>Upload is now handled by the Processor's Cloud-Sync-Worker (v0.6.0)</td>
 </tr>
 <tr>
 <td>Tier 2 Singletons</td>

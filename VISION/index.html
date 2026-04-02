@@ -972,34 +972,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../services/gateway/" class="md-nav__link">
         
   
@@ -2562,6 +2534,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../development/idea/" class="md-nav__link">
         
   
@@ -2840,14 +2840,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/uploader/" class="md-nav__link">
+      <a href="../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3248,7 +3248,7 @@ Any operation that risks the continuity of sound recording is forbidden.</p>
 </tr>
 <tr>
 <td><strong>processor</strong></td>
-<td>Data Ingestion, Indexing, and Janitor. Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival</td>
+<td>Data Ingestion, Indexing, Janitor, and Cloud-Sync-Worker (v0.6.0). Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival</td>
 <td>Critical</td>
 <td>✅ AS-IS</td>
 </tr>
@@ -3289,32 +3289,11 @@ Any operation that risks the continuity of sound recording is forbidden.</p>
 <td>Critical</td>
 <td>✅ AS-IS</td>
 </tr>
-<tr>
-<td><strong>uploader</strong></td>
-<td>Handles data exfiltration. Compresses raw data (Native FLAC) and syncs to remote storage</td>
-<td>Critical</td>
-<td>⏳ TO-BE v0.6</td>
-</tr>
-<tr>
-<td><strong>birdnet</strong></td>
-<td>On-device inference for avian species classification</td>
-<td>Core Feature</td>
-<td>⏳ TO-BE v0.8</td>
-</tr>
-<tr>
-<td><strong>batdetect</strong></td>
-<td>On-device inference for bat species classification</td>
-<td>Optional Feature</td>
-<td>⏳ TO-BE v1.3</td>
-</tr>
-<tr>
-<td><strong>weather</strong></td>
-<td>Correlates acoustic data with environmental measurements</td>
-<td>Optional Feature</td>
-<td>⏳ TO-BE v1.2</td>
-</tr>
 </tbody>
 </table>
+<p>| <strong>birdnet</strong>   | On-device inference for avian species classification                                                                                                                                                                                                     | Core Feature     | ⏳ TO-BE v0.8  |
+| <strong>batdetect</strong> | On-device inference for bat species classification                                                                                                                                                                                                       | Optional Feature | ⏳ TO-BE v1.3  |
+| <strong>weather</strong>   | Correlates acoustic data with environmental measurements                                                                                                                                                                                                 | Optional Feature | ⏳ TO-BE v1.2  |</p>
 <hr />
 <h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <ol>

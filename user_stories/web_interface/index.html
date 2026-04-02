@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://docs.silvasonic.de/user_stories/web_interface/">
       
       
-        <link rel="prev" href="../uploader/">
+        <link rel="prev" href="../cloud_sync/">
       
       
         <link rel="next" href="../../hardware/">
@@ -750,34 +750,6 @@
     
   
     Processor Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
   
 
     
@@ -2360,6 +2332,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2640,14 +2640,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
+      <a href="../cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3354,7 +3354,7 @@
 <p><strong>Prototype:</strong> The <a href="https://github.com/kyellsen/silvasonic/blob/main/services/web-mock/README.md">web-mock</a> service (since v0.2.0) implements the complete UI shell with mock data and serves as a <strong>living UX specification</strong>. All page layouts, navigation patterns, and interaction flows are prototypically implemented there — they are more illustrative than prose descriptions.</p>
 <p><strong>UX Concept:</strong> <a href="../../services/web_interface/">docs/services/web_interface.md</a> — Layout, Routing Rulebook, Action Risk Classification, Page Blueprints, Migration Path.</p>
 <p>[!NOTE]
-<strong>Intentionally few stories:</strong> Page-specific UX requirements (dashboard widgets, recorder cards, species lists, etc.) are specified by the Web-Mock prototype and the <a href="../../services/web_interface/#4-page-blueprints">Page Blueprints</a>. Functional requirements for data display are in the respective service user stories (e.g., <a href="../controller/#us-c05">US-C05</a>, <a href="../processor/#us-p04">US-P04</a>, <a href="../uploader/#us-u05">US-U05</a>, <a href="../birdnet/#us-b02">US-B02</a>). This document describes only <strong>cross-cutting UI behavior</strong> that is not apparent from the prototype or the service stories.</p>
+<strong>Intentionally few stories:</strong> Page-specific UX requirements (dashboard widgets, recorder cards, species lists, etc.) are specified by the Web-Mock prototype and the <a href="../../services/web_interface/#4-page-blueprints">Page Blueprints</a>. Functional requirements for data display are in the respective service user stories (e.g., <a href="../controller/#us-c05">US-C05</a>, <a href="../processor/#us-p04">US-P04</a>, <a href="../birdnet/#us-b02">US-B02</a>). This document describes only <strong>cross-cutting UI behavior</strong> that is not apparent from the prototype or the service stories.</p>
 </blockquote>
 <hr />
 <p><a id="us-wi01"></a></p>
@@ -3453,7 +3453,7 @@
 <li>[ ] Activation status is read from the database (<code>system_services</code> table, <code>enabled</code> flag).</li>
 <li>[ ] If a module is enabled/disabled, the sidebar updates <strong>without a page reload</strong> (HTMX swap or SSE push).</li>
 <li>[ ] Accessing the URL of a disabled module (e.g., <code>/birds</code> when BirdNET is disabled) shows a friendly notice page — no 404.</li>
-<li>[ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Uploaders) are visible.</li>
+<li>[ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Cloud Sync) are visible.</li>
 </ul>
 <h3 id="milestone_2">Milestone<a class="headerlink" href="#milestone_2" title="Permanent link">&para;</a></h3>
 <ul>

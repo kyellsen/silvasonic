@@ -863,34 +863,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2453,6 +2425,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2731,14 +2731,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3040,13 +3040,6 @@
 <td>📋 Planned v1.3</td>
 </tr>
 <tr>
-<td><strong>Uploader</strong> (Health)</td>
-<td>9500</td>
-<td>—</td>
-<td>— (internal only)</td>
-<td>📋 Planned v0.6</td>
-</tr>
-<tr>
 <td><strong>Weather</strong> (Health)</td>
 <td>9500</td>
 <td>—</td>
@@ -3091,7 +3084,7 @@
 <h2 id="health-port-convention">Health Port Convention<a class="headerlink" href="#health-port-convention" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Services <strong>with an API</strong> (Controller, Web-Interface): Health is a route on the API port (<code>/healthy</code> on <code>9100</code>)</li>
-<li>Services <strong>without an API</strong> (Recorder, BirdNET, BatDetect, Uploader, Weather): Use <code>silvasonic.core.health</code> on default port <code>9500</code></li>
+<li>Services <strong>without an API</strong> (Recorder, BirdNET, BatDetect, Weather): Use <code>silvasonic.core.health</code> on default port <code>9500</code></li>
 <li>Compose health checks run <strong>inside</strong> the container — no host port needed</li>
 <li>Multiple recorder instances can all use <code>9500</code> internally (container isolation)</li>
 </ul>

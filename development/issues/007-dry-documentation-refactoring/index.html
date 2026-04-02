@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/services/uploader/">
+        <link rel="canonical" href="https://docs.silvasonic.de/development/issues/007-dry-documentation-refactoring/">
       
       
-        <link rel="prev" href="../processor/">
-      
-      
-        <link rel="next" href="../gateway/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>Uploader Service - Silvasonic</title>
+        <title>DRY Documentation Refactoring — Reduce Status Duplication - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#uploader" class="md-skip">
+        <a href="#dry-documentation-refactoring-reduce-status-duplication" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Uploader Service
+              DRY Documentation Refactoring — Reduce Status Duplication
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -253,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../project_readme/" class="md-nav__link">
+      <a href="../../../project_readme/" class="md-nav__link">
         
   
   
@@ -280,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../AGENTS/" class="md-nav__link">
+      <a href="../../../AGENTS/" class="md-nav__link">
         
   
   
@@ -307,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../VISION/" class="md-nav__link">
+      <a href="../../../VISION/" class="md-nav__link">
         
   
   
@@ -334,7 +330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ROADMAP/" class="md-nav__link">
+      <a href="../../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -408,7 +404,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
+      <a href="../../../arch/" class="md-nav__link">
         
   
   
@@ -436,7 +432,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/filesystem_governance/" class="md-nav__link">
+      <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -464,7 +460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/messaging_patterns/" class="md-nav__link">
+      <a href="../../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -492,7 +488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/port_allocation/" class="md-nav__link">
+      <a href="../../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -520,7 +516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/microphone_profiles/" class="md-nav__link">
+      <a href="../../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -552,20 +548,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -586,7 +580,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -604,7 +598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../controller/" class="md-nav__link">
+      <a href="../../../services/controller/" class="md-nav__link">
         
   
   
@@ -632,7 +626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../database/" class="md-nav__link">
+      <a href="../../../services/database/" class="md-nav__link">
         
   
   
@@ -660,7 +654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../recorder/" class="md-nav__link">
+      <a href="../../../services/recorder/" class="md-nav__link">
         
   
   
@@ -688,7 +682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../redis/" class="md-nav__link">
+      <a href="../../../services/redis/" class="md-nav__link">
         
   
   
@@ -716,7 +710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web_mock/" class="md-nav__link">
+      <a href="../../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -744,7 +738,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../processor/" class="md-nav__link">
+      <a href="../../../services/processor/" class="md-nav__link">
         
   
   
@@ -769,251 +763,10 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-the-problem-the-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. The Problem / The Gap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-user-benefit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. User Benefit
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-core-responsibilities" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Core Responsibilities
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Core Responsibilities">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#inputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Inputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#processing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Processing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Outputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-operational-constraints-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Operational Constraints &amp; Rules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-configuration-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Configuration &amp; Environment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Configuration &amp; Environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#static-configuration-environment-variables-mounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Static Configuration (Environment Variables &amp; Mounts)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dynamic-configuration-database" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dynamic Configuration (Database)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-technology-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Technology Stack
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-open-questions-future-ideas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Open Questions &amp; Future Ideas
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-out-of-scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Out of Scope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. References
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../gateway/" class="md-nav__link">
+      <a href="../../../services/gateway/" class="md-nav__link">
         
   
   
@@ -1041,7 +794,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web_interface/" class="md-nav__link">
+      <a href="../../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -1069,7 +822,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web_interface/02_ui_ux_design_system/" class="md-nav__link">
+      <a href="../../../services/web_interface/02_ui_ux_design_system/" class="md-nav__link">
         
   
   
@@ -1097,7 +850,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web_interface_features/" class="md-nav__link">
+      <a href="../../../services/web_interface_features/" class="md-nav__link">
         
   
   
@@ -1125,7 +878,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../icecast/" class="md-nav__link">
+      <a href="../../../services/icecast/" class="md-nav__link">
         
   
   
@@ -1153,7 +906,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../birdnet/" class="md-nav__link">
+      <a href="../../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -1181,7 +934,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../weather/" class="md-nav__link">
+      <a href="../../../services/weather/" class="md-nav__link">
         
   
   
@@ -1209,7 +962,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../batdetect/" class="md-nav__link">
+      <a href="../../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -1237,7 +990,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tailscale/" class="md-nav__link">
+      <a href="../../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1319,7 +1072,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/" class="md-nav__link">
+      <a href="../../../deployment/" class="md-nav__link">
         
   
   
@@ -1401,7 +1154,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
+      <a href="../../../adr/" class="md-nav__link">
         
   
   
@@ -1429,7 +1182,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0001-use-uv/" class="md-nav__link">
+      <a href="../../../adr/0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1457,7 +1210,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../../../adr/0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1485,7 +1238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0003-frontend-architecture/" class="md-nav__link">
+      <a href="../../../adr/0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1513,7 +1266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0004-use-podman/" class="md-nav__link">
+      <a href="../../../adr/0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1541,7 +1294,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../../../adr/0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1569,7 +1322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../../../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1597,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../../../adr/0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1625,7 +1378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../../../adr/0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1653,7 +1406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../../../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1681,7 +1434,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0010-naming-conventions/" class="md-nav__link">
+      <a href="../../../adr/0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1709,7 +1462,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../../../adr/0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1737,7 +1490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0012-use-pydantic/" class="md-nav__link">
+      <a href="../../../adr/0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1765,7 +1518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0013-tier2-container-management/" class="md-nav__link">
+      <a href="../../../adr/0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1793,7 +1546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../../../adr/0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1821,7 +1574,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../../../adr/0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1849,7 +1602,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../../../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1877,7 +1630,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0017-service-state-management/" class="md-nav__link">
+      <a href="../../../adr/0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1905,7 +1658,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../../../adr/0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1933,7 +1686,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../../../adr/0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1961,7 +1714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../../../adr/0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1989,7 +1742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0021-frontend-design-system/" class="md-nav__link">
+      <a href="../../../adr/0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -2017,7 +1770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0022-live-log-streaming/" class="md-nav__link">
+      <a href="../../../adr/0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -2045,7 +1798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0023-configuration-management/" class="md-nav__link">
+      <a href="../../../adr/0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -2073,7 +1826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../../../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -2155,7 +1908,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   
@@ -2183,7 +1936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -2211,7 +1964,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -2239,7 +1992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -2267,7 +2020,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2295,7 +2048,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2323,7 +2076,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2351,7 +2104,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2379,7 +2132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2407,7 +2160,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2435,7 +2188,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2463,7 +2216,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/milestone_template/" class="md-nav__link">
+      <a href="../../milestone_template/" class="md-nav__link">
         
   
   
@@ -2491,7 +2244,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/service_blueprint/" class="md-nav__link">
+      <a href="../../service_blueprint/" class="md-nav__link">
         
   
   
@@ -2519,7 +2272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/testing/" class="md-nav__link">
+      <a href="../../testing/" class="md-nav__link">
         
   
   
@@ -2547,7 +2300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/release_checklist/" class="md-nav__link">
+      <a href="../../release_checklist/" class="md-nav__link">
         
   
   
@@ -2575,7 +2328,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/idea/" class="md-nav__link">
+      <a href="../../refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../idea/" class="md-nav__link">
         
   
   
@@ -2657,7 +2438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/controller/" class="md-nav__link">
+      <a href="../../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2685,7 +2466,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/recorder/" class="md-nav__link">
+      <a href="../../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2713,7 +2494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2741,7 +2522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2769,7 +2550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/processor/" class="md-nav__link">
+      <a href="../../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2797,7 +2578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/gateway/" class="md-nav__link">
+      <a href="../../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2825,7 +2606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/icecast/" class="md-nav__link">
+      <a href="../../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2853,14 +2634,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2881,7 +2662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2916,7 +2697,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hardware/" class="md-nav__link">
+      <a href="../../../hardware/" class="md-nav__link">
         
   
   
@@ -2943,7 +2724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api_reference/" class="md-nav__link">
+      <a href="../../../api_reference/" class="md-nav__link">
         
   
   
@@ -2970,7 +2751,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
+      <a href="../../../glossary/" class="md-nav__link">
         
   
   
@@ -3017,10 +2798,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-problem-the-gap" class="md-nav__link">
+  <a href="#1-description" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The Problem / The Gap
+        1. Description
       
     </span>
   </a>
@@ -3028,10 +2809,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-user-benefit" class="md-nav__link">
+  <a href="#2-context-root-cause-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. User Benefit
+        2. Context &amp; Root Cause Analysis
       
     </span>
   </a>
@@ -3039,22 +2820,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-core-responsibilities" class="md-nav__link">
+  <a href="#3-impact-consequences" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Core Responsibilities
+        3. Impact / Consequences
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="3. Core Responsibilities">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-steps-to-reproduce-if-applicable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Steps to Reproduce (If applicable)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-expected-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Expected Behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-proposed-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Proposed Solution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Proposed Solution">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#inputs" class="md-nav__link">
+  <a href="#phase-1-agentsmd-rule-amendment-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Inputs
+        Phase 1: AGENTS.md Rule Amendment (Prerequisites)
       
     </span>
   </a>
@@ -3062,10 +2876,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#processing" class="md-nav__link">
+  <a href="#phase-2-simplify-status-in-peripheral-documents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Processing
+        Phase 2: Simplify Status in Peripheral Documents
       
     </span>
   </a>
@@ -3073,10 +2887,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#outputs" class="md-nav__link">
+  <a href="#phase-3-evaluate-not-in-initial-scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Outputs
+        Phase 3: Evaluate (NOT in initial scope)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimated-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimated Scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing
       
     </span>
   </a>
@@ -3089,93 +2925,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-operational-constraints-rules" class="md-nav__link">
+  <a href="#7-relevant-documentation-links" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Operational Constraints &amp; Rules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-configuration-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Configuration &amp; Environment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Configuration &amp; Environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#static-configuration-environment-variables-mounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Static Configuration (Environment Variables &amp; Mounts)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dynamic-configuration-database" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dynamic Configuration (Database)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-technology-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Technology Stack
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-open-questions-future-ideas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Open Questions &amp; Future Ideas
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-out-of-scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Out of Scope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. References
+        7. Relevant Documentation Links
       
     </span>
   </a>
@@ -3202,213 +2955,150 @@
   
 
 
-<h1 id="uploader">Uploader<a class="headerlink" href="#uploader" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Status:</strong> planned - Not implemented · <strong>Tier:</strong> 2 · <strong>Instances:</strong> Multi-instance: one per remote storage target</p>
-<p>[!WARNING]
-<strong>Drift Warning:</strong> This is a highly detailed TO-BE specification. Implementation details like <code>uploader</code> service internals and the exact database orchestration are highly susceptible to drift once development begins.</p>
-</blockquote>
-<p><strong>TO-BE:</strong> Data exfiltration service responsible for compressing Raw recordings to FLAC and synchronizing them to remote storage providers. Ensures the field device never depends on network connectivity — recordings are safely stored locally first (Store &amp; Forward).</p>
+<h1 id="dry-documentation-refactoring-reduce-status-duplication">DRY Documentation Refactoring — Reduce Status Duplication<a class="headerlink" href="#dry-documentation-refactoring-reduce-status-duplication" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> <code>open</code>
+<strong>Priority:</strong> 3 (low — quality-of-life improvement, not blocking any milestone)
+<strong>Labels:</strong> <code>tech-debt</code>, <code>architecture</code>
+<strong>Service(s) Affected:</strong> <code>docs</code> (cross-cutting, all services)</p>
 <hr />
-<h2 id="1-the-problem-the-gap">1. The Problem / The Gap<a class="headerlink" href="#1-the-problem-the-gap" title="Permanent link">&para;</a></h2>
+<h2 id="1-description">1. Description<a class="headerlink" href="#1-description" title="Permanent link">&para;</a></h2>
+<p>Service implementation status is currently tracked redundantly across 5+ files. Changing a service's status (e.g., from "Planned" to "Implemented") requires synchronized edits in:</p>
 <ul>
-<li><strong>No Off-Device Backup:</strong> Without an Uploader, all recordings exist only on the local NVMe. Hardware failure, theft, or SD card corruption means permanent data loss.</li>
-<li><strong>Storage Limits:</strong> Even with the Janitor managing retention, local NVMe capacity is finite. Exfiltrating data to the cloud frees local space for continued recording.</li>
+<li><code>VISION.md</code> (Tier 1/2 tables: <code>✅ AS-IS</code> / <code>⏳ TO-BE</code>)</li>
+<li><code>README.md</code> (Current Services table)</li>
+<li><code>services/&lt;svc&gt;/README.md</code> (Status header + Implementation Status table)</li>
+<li><code>docs/services/&lt;svc&gt;.md</code> (Status line)</li>
+<li><code>docs/arch/port_allocation.md</code> (Status column)</li>
 </ul>
-<h2 id="2-user-benefit">2. User Benefit<a class="headerlink" href="#2-user-benefit" title="Permanent link">&para;</a></h2>
+<p>This creates a maintenance burden and introduces drift risk when advancing milestones.</p>
+<h2 id="2-context-root-cause-analysis">2. Context &amp; Root Cause Analysis<a class="headerlink" href="#2-context-root-cause-analysis" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Data Safety:</strong> Recordings are automatically archived to remote storage (Nextcloud, S3, SFTP).</li>
-<li><strong>Indefinite Recording:</strong> Once a recording has been successfully uploaded to all currently active remotes, the Janitor may treat the local copy as deletable under the normal retention rules.</li>
-<li><strong>Multi-Target:</strong> Different storage providers for different purposes (e.g., Nextcloud for sharing, S3 for long-term archive).</li>
+<li><strong>Component:</strong> Documentation architecture (AGENTS.md §4)</li>
+<li><strong>Mechanism:</strong> AGENTS.md §4 mandates <code>AS-IS</code> / <code>TO-BE</code> labels on every section and <code>Status:</code> lines on every service doc. While this ensures clarity per-document, it implicitly requires multi-file edits for every status change.</li>
 </ul>
-<h2 id="3-core-responsibilities">3. Core Responsibilities<a class="headerlink" href="#3-core-responsibilities" title="Permanent link">&para;</a></h2>
-<h3 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Database (Polling):</strong> Reads <code>recordings</code> table to find files not yet present in the <code>uploads</code> table for this specific remote target (per-remote audit log).</li>
-<li><strong>Filesystem (Read-Only):</strong> Resolves local source files by joining the mounted recorder workspace root with the relative path stored in <code>recordings.file_raw</code>. <code>sensor_id</code> is used for identity and remote path building, not for reconstructing local filesystem paths.</li>
-<li><strong>Database (Config):</strong> Reads <code>storage_remotes</code> table for connection parameters (endpoint, credentials, path).</li>
-</ul>
-<h3 id="processing">Processing<a class="headerlink" href="#processing" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>FLAC Compression:</strong> Converts Raw WAV to FLAC for bandwidth-efficient upload (lossless, ~50% size reduction).</li>
-<li><strong>Upload:</strong> Transfers FLAC files to the configured remote storage provider.</li>
-<li><strong>Audit Logging:</strong> Records upload attempts in the <code>uploads</code> table (immutable audit log).</li>
-</ul>
-<h3 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>FLAC Files</strong> uploaded to remote storage.</li>
-<li><strong>Database Rows:</strong> INSERTs into <code>uploads</code> table (success/failure, file size, errors).</li>
-<li><strong>Database Updates:</strong> Sets <code>uploaded=true</code> and <code>uploaded_at</code> on the <code>recordings</code> row ONLY after a confirmed upload to <strong>ALL currently active remotes</strong>. <code>uploaded_at</code> records the timestamp at which the recording first reached the “all currently active remotes uploaded successfully” state. Inactive remotes are ignored. This serves as the Janitor deletion signal.</li>
-</ul>
+<p>The current Uploader→Processor refactoring (v0.5.x) highlighted this: archiving a single service required edits to 40+ documentation files across 4 atomic commits — a significant portion of which were pure status-label updates.</p>
 <blockquote>
-<p>[!CAUTION]
-<strong>Contract Test Required:</strong> The <code>uploaded=true</code> logic is extremely load-bearing because the Processor Janitor relies on it to safely delete files. Once implemented, this MUST be backed by a strong integration/contract test verifying that a file is never marked as uploaded if even one active remote target failed.</p>
+<p><strong>Root Cause:</strong> No single designated "status registry" exists. Each document independently tracks its own status, violating the DRY principle.</p>
 </blockquote>
+<h2 id="3-impact-consequences">3. Impact / Consequences<a class="headerlink" href="#3-impact-consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Redis Heartbeats:</strong> Via <code>SilvaService</code> base class (ADR-0019).</li>
+<li><strong>Data Capture Integrity:</strong> None — documentation-only changes.</li>
+<li><strong>System Stability:</strong> None.</li>
+<li><strong>Developer Productivity:</strong> Moderate negative impact. Every milestone completion requires a documentation sweep across 5+ files. AI agents frequently miss status updates in peripheral documents. Future refactorings (BirdNET v0.8, Gateway v0.7) will face the same multi-file update burden.</li>
 </ul>
-<h2 id="4-operational-constraints-rules">4. Operational Constraints &amp; Rules<a class="headerlink" href="#4-operational-constraints-rules" title="Permanent link">&para;</a></h2>
+<h2 id="4-steps-to-reproduce-if-applicable">4. Steps to Reproduce (If applicable)<a class="headerlink" href="#4-steps-to-reproduce-if-applicable" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Complete a milestone (e.g., v0.5.0 Processor).</li>
+<li>Attempt to update all status references.</li>
+<li>Observe that <code>VISION.md</code>, <code>README.md</code>, <code>services/processor/README.md</code>, <code>docs/services/processor.md</code>, and <code>docs/arch/port_allocation.md</code> all need synchronized edits.</li>
+<li>Verify with <code>grep -rn "Planned\|TO-BE\|AS-IS\|implemented\|partial" --include="*.md"</code> — dozens of scattered status markers.</li>
+</ol>
+<h2 id="5-expected-behavior">5. Expected Behavior<a class="headerlink" href="#5-expected-behavior" title="Permanent link">&para;</a></h2>
+<p>A status change (e.g., "BirdNET: planned → implemented") should require editing <strong>at most 2 files</strong>:</p>
+<ol>
+<li><code>ROADMAP.md</code> (milestone tracking — already the SoT for release timing)</li>
+<li>The service's own README (<code>services/&lt;svc&gt;/README.md</code> Status header)</li>
+</ol>
+<p>All other documents should derive status from — or simply link to — these two sources.</p>
+<h2 id="6-proposed-solution">6. Proposed Solution<a class="headerlink" href="#6-proposed-solution" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-agentsmd-rule-amendment-prerequisites">Phase 1: AGENTS.md Rule Amendment (Prerequisites)<a class="headerlink" href="#phase-1-agentsmd-rule-amendment-prerequisites" title="Permanent link">&para;</a></h3>
+<p>Create a new ADR (e.g., ADR-0027) documenting the decision to centralize status tracking. Then update AGENTS.md §4:</p>
+<p><strong>Current rule:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Every doc must label sections AS-IS or TO-BE.
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Service docs need a Status: line (implemented | partial | planned).
+</code></pre></div></p>
+<p><strong>Proposed rule:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Service READMEs (services/&lt;svc&gt;/README.md) MUST have a Status: header line.
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ROADMAP.md is the SoT for milestone completion status.
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Other docs MAY include status references but MUST link to the SoT rather than
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>maintaining independent status tracking.
+</code></pre></div></p>
+<h3 id="phase-2-simplify-status-in-peripheral-documents">Phase 2: Simplify Status in Peripheral Documents<a class="headerlink" href="#phase-2-simplify-status-in-peripheral-documents" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Aspect</th>
-<th>Value / Rule</th>
+<th>Document</th>
+<th>Current</th>
+<th>Proposed</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Immutable</strong></td>
-<td>Yes — config at startup, restart to reconfigure (ADR-0019)</td>
+<td><code>VISION.md</code> Tier tables</td>
+<td><code>Status</code> column with per-row badges</td>
+<td>Keep column but simplify to <code>✅</code> / <code>⏳</code> without version numbers. Add footer: "See ROADMAP.md for version details."</td>
 </tr>
 <tr>
-<td><strong>DB Access</strong></td>
-<td>Yes — reads <code>recordings</code>, <code>storage_remotes</code>; writes <code>uploads</code></td>
+<td><code>README.md</code> Current Services</td>
+<td><code>Status</code> column</td>
+<td>Keep as-is — already clean (only shows implemented services)</td>
 </tr>
 <tr>
-<td><strong>Concurrency</strong></td>
-<td>Async event loop, sequential uploads per instance</td>
+<td><code>docs/services/&lt;svc&gt;.md</code></td>
+<td>Full <code>Status:</code> line</td>
+<td>Keep — these are link-stubs anyway, one line is fine</td>
 </tr>
 <tr>
-<td><strong>State</strong></td>
-<td>Stateless (runtime) — upload progress not persisted</td>
+<td><code>docs/arch/port_allocation.md</code></td>
+<td><code>Status</code> column per port</td>
+<td>Replace version numbers with <code>✅</code> / <code>📋</code> only</td>
 </tr>
 <tr>
-<td><strong>Privileges</strong></td>
-<td>Rootless (ADR-0007)</td>
-</tr>
-<tr>
-<td><strong>Resources</strong></td>
-<td>Medium — FLAC encoding is CPU-intensive for large files</td>
-</tr>
-<tr>
-<td><strong>QoS Priority</strong></td>
-<td><code>oom_score_adj=250</code> — Low Priority, below recording priority (ADR-0020)</td>
+<td><code>services/&lt;svc&gt;/README.md</code> Implementation Status tables</td>
+<td>Feature-by-feature status</td>
+<td>Keep — these are the SoT for per-feature granularity</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>[!NOTE]
-Each Uploader instance is managed by the Controller as a Tier 2 container. The Controller creates one Uploader per active <code>storage_remotes</code> entry. If the number of active remotes exceeds <code>max_uploaders</code> (configured in <code>system_config</code>), the Controller schedules instances deterministically ordered by <code>created_at ASC, slug ASC</code>.</p>
-</blockquote>
-<h2 id="5-configuration-environment">5. Configuration &amp; Environment<a class="headerlink" href="#5-configuration-environment" title="Permanent link">&para;</a></h2>
-<h3 id="static-configuration-environment-variables-mounts">Static Configuration (Environment Variables &amp; Mounts)<a class="headerlink" href="#static-configuration-environment-variables-mounts" title="Permanent link">&para;</a></h3>
+<h3 id="phase-3-evaluate-not-in-initial-scope">Phase 3: Evaluate (NOT in initial scope)<a class="headerlink" href="#phase-3-evaluate-not-in-initial-scope" title="Permanent link">&para;</a></h3>
+<p>The following changes were proposed by an external review but are <strong>explicitly deferred</strong> after critical analysis:</p>
 <table>
 <thead>
 <tr>
-<th>Variable / Mount</th>
-<th>Description</th>
-<th>Default / Example</th>
+<th>Proposed Change</th>
+<th>Decision</th>
+<th>Rationale</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Health port</td>
-<td>Internal health endpoint</td>
-<td><code>9500</code></td>
+<td>Remove technical details from Glossary</td>
+<td>❌ Rejected</td>
+<td>Glossary serves as AI-agent context; tech details are intentional</td>
 </tr>
 <tr>
-<td><code>SILVASONIC_STORAGE_REMOTE_SLUG</code></td>
-<td>Identifier for the storage target (DB lookup key)</td>
-<td><code>nextcloud-main</code></td>
+<td>Remove Milestone tags from User Stories</td>
+<td>❌ Rejected</td>
+<td>Traceability loss (US → Release mapping)</td>
 </tr>
 <tr>
-<td><code>SILVASONIC_REDIS_URL</code></td>
-<td>Redis connection URL</td>
-<td><code>redis://redis:6379/0</code></td>
+<td>Move technical Acceptance Criteria from US to Service README</td>
+<td>❌ Rejected</td>
+<td>Breaks US → Test specification link</td>
 </tr>
 <tr>
-<td><code>SILVASONIC_INSTANCE_ID</code></td>
-<td>Instance identifier for heartbeats</td>
-<td><code>nextcloud-main</code></td>
-</tr>
-<tr>
-<td><code>POSTGRES_HOST</code>, <code>POSTGRES_PORT</code>, etc.</td>
-<td>DB connection (reads <code>storage_remotes</code>, <code>recordings</code>, <code>system_config</code>)</td>
-<td>(from Controller injection)</td>
-</tr>
-<tr>
-<td>Recorder workspace <code>:ro</code></td>
-<td>Recorder workspace (read-only, Consumer Principle, ADR-0009)</td>
-<td>(bind mount)</td>
+<td>Make VISION.md "immutable" (no status)</td>
+<td>❌ Rejected</td>
+<td>VISION.md is a living architecture doc, status provides orientation</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>[!NOTE]
-Remote type, endpoint, and credentials are stored in the <code>storage_remotes.config</code> JSONB column and read from the database on startup — not via environment variables. The Uploader generates a temporary <code>rclone.conf</code> at runtime from this data (see Milestone v0.6.0 Phase 4).</p>
-</blockquote>
-<h3 id="dynamic-configuration-database">Dynamic Configuration (Database)<a class="headerlink" href="#dynamic-configuration-database" title="Permanent link">&para;</a></h3>
-<p>Runtime-tunable settings stored in the <code>system_config</code> table under key <code>uploader</code>. As an <strong>Immutable Container</strong> (ADR-0019), the Uploader reads these settings <em>once</em> on startup.</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Description</th>
-<th>Default / Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>enabled</code></td>
-<td>Global toggle for upload activity</td>
-<td><code>true</code></td>
-</tr>
-<tr>
-<td><code>poll_interval</code></td>
-<td>Seconds between checking DB for work</td>
-<td><code>30</code></td>
-</tr>
-<tr>
-<td><code>bandwidth_limit</code></td>
-<td>Rclone <code>--bwlimit</code> parameter String</td>
-<td><code>"1M"</code></td>
-</tr>
-<tr>
-<td><code>schedule_start_hour</code></td>
-<td>Opt-in: hour to start daily upload window</td>
-<td><code>null</code> (24/7)</td>
-</tr>
-<tr>
-<td><code>schedule_end_hour</code></td>
-<td>Opt-in: hour to end daily upload window</td>
-<td><code>null</code> (24/7)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Update Mechanism (State Reconciliation):</strong>
-1. User changes settings in Web UI.
-2. Frontend updates <code>system_config</code> in DB and publishes a <code>silvasonic:nudge</code> event to the Controller (per ADR-0017).
-3. The Controller restarts the Uploader container(s).
-4. The Uploader reads the new <code>UploaderSettings</code> from the database upon startup.</p>
-<h2 id="6-technology-stack">6. Technology Stack<a class="headerlink" href="#6-technology-stack" title="Permanent link">&para;</a></h2>
+<h3 id="estimated-scope">Estimated Scope<a class="headerlink" href="#estimated-scope" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Base Image:</strong> <code>python:3.13-slim-bookworm</code> (with rclone installed)</li>
-<li><strong>FLAC Encoding:</strong> <code>ffmpeg</code> (via Python <code>subprocess</code>). Highly optimized, stable for large files, and streams data without blowing up container memory.</li>
-<li><strong>Upload Protocols:</strong> <code>rclone</code> (system binary via Python wrapper). Serves as a universal backend for WebDAV, S3, SFTP, and dozens of other protocols without needing protocol-specific Python libraries.</li>
-<li><strong>Database:</strong> <code>sqlalchemy</code> (2.0+ async), <code>asyncpg</code></li>
+<li><strong>ADR-0027:</strong> ~1 file (new)</li>
+<li><strong>AGENTS.md:</strong> ~5 lines changed</li>
+<li><strong>VISION.md:</strong> ~10 lines (simplify version numbers in Status column)</li>
+<li><strong>port_allocation.md:</strong> ~10 lines (simplify version numbers)</li>
+<li><strong>Total:</strong> ~4 files, ~30 lines — small, focused change</li>
 </ul>
-<h2 id="7-open-questions-future-ideas">7. Open Questions &amp; Future Ideas<a class="headerlink" href="#7-open-questions-future-ideas" title="Permanent link">&para;</a></h2>
+<h3 id="timing">Timing<a class="headerlink" href="#timing" title="Permanent link">&para;</a></h3>
+<p>Execute <strong>after</strong> the Uploader→Processor refactoring is fully complete (Phase 1 + Phase 2), ideally as part of a v0.6.0-dev documentation cleanup sprint.</p>
+<h2 id="7-relevant-documentation-links">7. Relevant Documentation Links<a class="headerlink" href="#7-relevant-documentation-links" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Parallel uploads: Multiple files concurrently for faster throughput.</li>
-<li>Resume support: Track partial uploads to avoid re-uploading on interruption.</li>
-<li>Bandwidth throttling: Avoid saturating the network link during peak hours.</li>
-</ul>
-<h2 id="8-out-of-scope">8. Out of Scope<a class="headerlink" href="#8-out-of-scope" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Does NOT</strong> record audio (Recorder's job).</li>
-<li><strong>Does NOT</strong> delete local files (Janitor's job in Processor).</li>
-<li><strong>Does NOT</strong> analyze audio (BirdNET / BatDetect's job).</li>
-<li><strong>Does NOT</strong> manage its own lifecycle (Controller starts/stops Uploader instances).</li>
-</ul>
-<h2 id="9-references">9. References<a class="headerlink" href="#9-references" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql">Database Schema (DDL)</a> — authoritative definition of <code>uploads</code> and <code>storage_remotes</code> tables</li>
-<li><a href="../../adr/0011-audio-recording-strategy/">ADR-0011</a> — Raw → FLAC for cloud, Retention Policy</li>
-<li><a href="../../adr/0013-tier2-container-management/">ADR-0013</a> — Tier 2 lifecycle management</li>
-<li><a href="../../adr/0019-unified-service-infrastructure/">ADR-0019</a> — Immutable Container, SilvaService</li>
-<li><a href="../../adr/0023-configuration-management/">ADR-0023</a> — Configuration Management (upload settings)</li>
-<li><a href="../../glossary/">Glossary: Uploader, Store &amp; Forward, Raw Artifact, Storage Remote</a></li>
-<li><a href="https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md">ROADMAP.md</a> — milestone (v0.6.0)</li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md">AGENTS.md §4</a> — Current documentation rules</li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a> — Tier tables with status</li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md">ROADMAP.md</a> — Milestone SoT</li>
+<li><a href="/home/kyellsen/.gemini/antigravity/brain/00d4dca7-6463-4a14-9230-38fafc2cd1e2/dry_review.md">DRY Review Analysis</a> — Full critical review of the original proposal</li>
 </ul>
 
 
@@ -3459,10 +3149,10 @@ Remote type, endpoint, and credentials are stored in the <code>storage_remotes.c
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

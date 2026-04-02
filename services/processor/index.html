@@ -18,7 +18,7 @@
         <link rel="prev" href="../web_mock/">
       
       
-        <link rel="next" href="../uploader/">
+        <link rel="next" href="../gateway/">
       
       
         
@@ -770,34 +770,6 @@
 
       </a>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2372,6 +2344,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2650,14 +2650,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2830,7 +2830,8 @@
 <p><strong>Status:</strong> implemented (v0.5.0) · <strong>Tier:</strong> 1 · <strong>Instances:</strong> Single · <strong>Port:</strong> 9200</p>
 </blockquote>
 <p>Background workhorse for data ingestion, metadata indexing, and storage retention management. 
-Contains the Janitor — the only component authorized to delete files from the Recorder workspace.</p>
+Contains the Janitor — the only component authorized to delete files from the Recorder workspace.
+Cloud-Sync-Worker (v0.6.0) handles FLAC compression and upload to a single configured remote target.</p>
 <p>→ Full documentation: <a href="https://github.com/kyellsen/silvasonic/blob/main/services/processor/README.md">services/processor/README.md</a></p>
 
 

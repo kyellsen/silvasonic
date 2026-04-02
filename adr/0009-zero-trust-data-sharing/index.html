@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2470,6 +2442,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2748,14 +2748,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2995,7 +2995,7 @@
 <h1 id="adr-0009-zero-trust-data-sharing-policy">ADR-0009: Zero-Trust Data Sharing Policy<a class="headerlink" href="#adr-0009-zero-trust-data-sharing-policy" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-01-31</p>
-<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) and <code>uploader</code> (v0.6.0) are implemented. References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.</p>
+<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) is implemented. The <code>uploader</code> has been archived as a standalone service (v0.6.0 = Processor Cloud-Sync-Worker). References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.</p>
 </blockquote>
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
 <p>In an audio pipeline, "downstream" services (like Analyzers or Uploaders) need to access data produced by "upstream" services (Recorder). If downstream services are granted write access, a bug or misconfiguration in an experimental analyzer could involve deleting or corrupting the original master recordings. We need to protect the "Source of Truth".</p>

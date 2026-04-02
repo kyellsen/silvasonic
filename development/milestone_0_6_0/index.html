@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#milestone-v060-uploader-flac-compression-cloud-sync" class="md-skip">
+        <a href="#milestone-v060-processor-cloud-sync-upload-worker" class="md-skip">
           Skip to content
         </a>
       
@@ -750,34 +750,6 @@
     
   
     Processor Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
   
 
     
@@ -2182,21 +2154,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#recorder-vs-uploader" class="md-nav__link">
+  <a href="#key-design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recorder vs. Uploader
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#controller-what-changes-vs-what-stays" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Controller — What Changes vs. What Stays
+        Key Design Decisions
       
     </span>
   </a>
@@ -2220,16 +2181,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-uploader-service-skeleton" class="md-nav__link">
+  <a href="#phase-1-upload-worker-module-scaffold" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1: Uploader Service Skeleton
+        Phase 1: Upload Worker Module Scaffold
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 1: Uploader Service Skeleton">
+    <nav class="md-nav" aria-label="Phase 1: Upload Worker Module Scaffold">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#source-references" class="md-nav__link">
@@ -2266,10 +2238,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_uploaderpy-pytestmarkunit" class="md-nav__link">
+  <a href="#unit-tests-servicesprocessortestsunittest_upload_workerpy-pytestmarkunit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/uploader/tests/unit/test_uploader.py) — @pytest.mark.unit
+        Unit Tests (services/processor/tests/unit/test_upload_worker.py) — @pytest.mark.unit
       
     </span>
   </a>
@@ -2277,10 +2249,87 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_uploader_lifecyclepy-pytestmarkintegration" class="md-nav__link">
+  <a href="#unit-tests-servicesprocessortestsunittest_work_pollerpy-pytestmarkunit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Integration Tests (services/uploader/tests/integration/test_uploader_lifecycle.py) — @pytest.mark.integration
+        Unit Tests (services/processor/tests/unit/test_work_poller.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_flac_encoderpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_flac_encoder.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_path_builderpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_path_builder.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_rclone_clientpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_rclone_client.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_audit_loggerpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_audit_logger.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_upload_statspy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_upload_stats.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-tests-servicesprocessortestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration Tests (services/processor/tests/integration/test_upload_pipeline_e2e.py) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-tests-servicesprocessortestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration Tests (services/processor/tests/integration/test_flac_encoder_e2e.py) — @pytest.mark.integration
       
     </span>
   </a>
@@ -2298,27 +2347,16 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-2-controller-integration" class="md-nav__link">
+  <a href="#phase-2-system-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 2: Controller Integration
+        Phase 2: System Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 2: Controller Integration">
+    <nav class="md-nav" aria-label="Phase 2: System Tests">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#source-references_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#tasks_1" class="md-nav__link">
@@ -2344,10 +2382,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicescontrollertestsunittest_container_specpy-pytestmarkunit" class="md-nav__link">
+  <a href="#system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/controller/tests/unit/test_container_spec.py) — @pytest.mark.unit
+        System Tests (tests/system/test_processor_lifecycle.py) — @pytest.mark.system
       
     </span>
   </a>
@@ -2355,21 +2393,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicescontrollertestsunittest_reconcilerpy-pytestmarkunit" class="md-nav__link">
+  <a href="#system-tests-testssystemtest_processor_resiliencepy-pytestmarksystem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/controller/tests/unit/test_reconciler.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicescontrollertestsintegrationtest_uploader_reconciliationpy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/controller/tests/integration/test_uploader_reconciliation.py) — @pytest.mark.integration
+        System Tests (tests/system/test_processor_resilience.py) — @pytest.mark.system
       
     </span>
   </a>
@@ -2387,310 +2414,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-upload-pipeline" class="md-nav__link">
+  <a href="#phase-3-documentation-release" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3: Upload Pipeline
+        Phase 3: Documentation &amp; Release
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 3: Upload Pipeline">
+    <nav class="md-nav" aria-label="Phase 3: Documentation &amp; Release">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Modules
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#source-references_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#tasks_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Acceptance Criteria">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_work_pollerpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_work_poller.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_flac_encoderpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_flac_encoder.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_path_builderpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_path_builder.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_rclone_clientpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_rclone_client.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_audit_loggerpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_audit_logger.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_upload_statspy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_upload_stats.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_uploaderpy-schedule-tests-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_uploader.py — schedule tests) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_flac_encoder_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_work_poller_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_work_poller_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_audit_logger_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_audit_logger_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_upload_pipeline_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-4-system-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 4: System Tests
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Phase 4: System Tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#source-references_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tasks_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Acceptance Criteria">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#system-tests-testssystemtest_uploader_lifecyclepy-pytestmarksystem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System Tests (tests/system/test_uploader_lifecycle.py) — @pytest.mark.system
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#system-tests-testssystemtest_uploader_resiliencepy-pytestmarksystem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System Tests (tests/system/test_uploader_resilience.py) — @pytest.mark.system
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#smoke-tests-testssmoketest_healthpy-pytestmarksmoke" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Smoke Tests (tests/smoke/test_health.py) — @pytest.mark.smoke
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-5-documentation-release" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 5: Documentation &amp; Release
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Phase 5: Documentation &amp; Release">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tasks_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
       
     </span>
   </a>
@@ -2933,6 +2672,34 @@
     
   
     Release Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
   
 
     
@@ -3231,14 +2998,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3407,21 +3174,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#recorder-vs-uploader" class="md-nav__link">
+  <a href="#key-design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recorder vs. Uploader
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#controller-what-changes-vs-what-stays" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Controller — What Changes vs. What Stays
+        Key Design Decisions
       
     </span>
   </a>
@@ -3445,16 +3201,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-uploader-service-skeleton" class="md-nav__link">
+  <a href="#phase-1-upload-worker-module-scaffold" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1: Uploader Service Skeleton
+        Phase 1: Upload Worker Module Scaffold
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 1: Uploader Service Skeleton">
+    <nav class="md-nav" aria-label="Phase 1: Upload Worker Module Scaffold">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#source-references" class="md-nav__link">
@@ -3491,10 +3258,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_uploaderpy-pytestmarkunit" class="md-nav__link">
+  <a href="#unit-tests-servicesprocessortestsunittest_upload_workerpy-pytestmarkunit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/uploader/tests/unit/test_uploader.py) — @pytest.mark.unit
+        Unit Tests (services/processor/tests/unit/test_upload_worker.py) — @pytest.mark.unit
       
     </span>
   </a>
@@ -3502,10 +3269,87 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_uploader_lifecyclepy-pytestmarkintegration" class="md-nav__link">
+  <a href="#unit-tests-servicesprocessortestsunittest_work_pollerpy-pytestmarkunit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Integration Tests (services/uploader/tests/integration/test_uploader_lifecycle.py) — @pytest.mark.integration
+        Unit Tests (services/processor/tests/unit/test_work_poller.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_flac_encoderpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_flac_encoder.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_path_builderpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_path_builder.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_rclone_clientpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_rclone_client.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_audit_loggerpy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_audit_logger.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests-servicesprocessortestsunittest_upload_statspy-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit Tests (services/processor/tests/unit/test_upload_stats.py) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-tests-servicesprocessortestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration Tests (services/processor/tests/integration/test_upload_pipeline_e2e.py) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-tests-servicesprocessortestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration Tests (services/processor/tests/integration/test_flac_encoder_e2e.py) — @pytest.mark.integration
       
     </span>
   </a>
@@ -3523,27 +3367,16 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-2-controller-integration" class="md-nav__link">
+  <a href="#phase-2-system-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 2: Controller Integration
+        Phase 2: System Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 2: Controller Integration">
+    <nav class="md-nav" aria-label="Phase 2: System Tests">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#source-references_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#tasks_1" class="md-nav__link">
@@ -3569,10 +3402,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicescontrollertestsunittest_container_specpy-pytestmarkunit" class="md-nav__link">
+  <a href="#system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/controller/tests/unit/test_container_spec.py) — @pytest.mark.unit
+        System Tests (tests/system/test_processor_lifecycle.py) — @pytest.mark.system
       
     </span>
   </a>
@@ -3580,21 +3413,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#unit-tests-servicescontrollertestsunittest_reconcilerpy-pytestmarkunit" class="md-nav__link">
+  <a href="#system-tests-testssystemtest_processor_resiliencepy-pytestmarksystem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Tests (services/controller/tests/unit/test_reconciler.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicescontrollertestsintegrationtest_uploader_reconciliationpy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/controller/tests/integration/test_uploader_reconciliation.py) — @pytest.mark.integration
+        System Tests (tests/system/test_processor_resilience.py) — @pytest.mark.system
       
     </span>
   </a>
@@ -3612,310 +3434,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-upload-pipeline" class="md-nav__link">
+  <a href="#phase-3-documentation-release" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3: Upload Pipeline
+        Phase 3: Documentation &amp; Release
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 3: Upload Pipeline">
+    <nav class="md-nav" aria-label="Phase 3: Documentation &amp; Release">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Modules
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#source-references_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#tasks_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Acceptance Criteria">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_work_pollerpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_work_poller.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_flac_encoderpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_flac_encoder.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_path_builderpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_path_builder.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_rclone_clientpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_rclone_client.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_audit_loggerpy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_audit_logger.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_upload_statspy-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_upload_stats.py) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unit-tests-servicesuploadertestsunittest_uploaderpy-schedule-tests-pytestmarkunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Tests (services/uploader/tests/unit/test_uploader.py — schedule tests) — @pytest.mark.unit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_flac_encoder_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_work_poller_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_work_poller_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_audit_logger_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_audit_logger_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-tests-servicesuploadertestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Tests (services/uploader/tests/integration/test_upload_pipeline_e2e.py) — @pytest.mark.integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-4-system-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 4: System Tests
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Phase 4: System Tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#source-references_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source References
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tasks_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Acceptance Criteria">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#system-tests-testssystemtest_uploader_lifecyclepy-pytestmarksystem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System Tests (tests/system/test_uploader_lifecycle.py) — @pytest.mark.system
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#system-tests-testssystemtest_uploader_resiliencepy-pytestmarksystem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System Tests (tests/system/test_uploader_resilience.py) — @pytest.mark.system
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#smoke-tests-testssmoketest_healthpy-pytestmarksmoke" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Smoke Tests (tests/smoke/test_health.py) — @pytest.mark.smoke
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-5-documentation-release" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 5: Documentation &amp; Release
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Phase 5: Documentation &amp; Release">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tasks_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tasks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#acceptance-criteria_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acceptance Criteria
       
     </span>
   </a>
@@ -3958,120 +3492,135 @@
   
 
 
-<h1 id="milestone-v060-uploader-flac-compression-cloud-sync">Milestone v0.6.0 — Uploader (FLAC Compression &amp; Cloud Sync)<a class="headerlink" href="#milestone-v060-uploader-flac-compression-cloud-sync" title="Permanent link">&para;</a></h1>
+<h1 id="milestone-v060-processor-cloud-sync-upload-worker">Milestone v0.6.0 — Processor Cloud Sync (Upload Worker)<a class="headerlink" href="#milestone-v060-processor-cloud-sync-upload-worker" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Target:</strong> v0.6.0 — Uploader Service: FLAC compression, Rclone-based multi-target upload, Controller-managed Tier 2 container lifecycle, Audit logging, Janitor integration</p>
+<p><strong>Target:</strong> v0.6.0 — Single-target cloud sync as internal Processor worker: FLAC compression, Rclone-based upload, Janitor integration, Audit logging</p>
 <p><strong>Status:</strong> ⏳ Planned</p>
-<p><strong>References:</strong> <a href="../../adr/0004-use-podman/">ADR-0004</a>, <a href="../../adr/0007-rootless-os-compliance/">ADR-0007</a>, <a href="../../adr/0009-zero-trust-data-sharing/">ADR-0009</a>, <a href="../../adr/0010-naming-conventions/">ADR-0010</a>, <a href="../../adr/0011-audio-recording-strategy/">ADR-0011</a>, <a href="../../adr/0013-tier2-container-management/">ADR-0013</a>, <a href="../../adr/0018-worker-pull-orchestration/">ADR-0018</a>, <a href="../../adr/0019-unified-service-infrastructure/">ADR-0019</a>, <a href="../../adr/0020-resource-limits-qos/">ADR-0020</a>, <a href="../../adr/0023-configuration-management/">ADR-0023</a>, <a href="../../adr/0024-ffmpeg-audio-engine/">ADR-0024</a>, <a href="../../services/uploader/">Uploader Service Spec</a>, <a href="../service_blueprint/">Service Blueprint</a>, <a href="../testing/">Testing Guidelines</a></p>
-<p><strong>User Stories:</strong> <a href="../../user_stories/uploader/#us-u01">US-U01</a>, <a href="../../user_stories/uploader/#us-u02">US-U02</a>, <a href="../../user_stories/uploader/#us-u03">US-U03</a>, <a href="../../user_stories/uploader/#us-u06">US-U06</a></p>
+<p><strong>References:</strong> <a href="../../adr/0009-zero-trust-data-sharing/">ADR-0009</a>, <a href="../../adr/0011-audio-recording-strategy/">ADR-0011</a>, <a href="../../adr/0018-worker-pull-orchestration/">ADR-0018</a>, <a href="../../adr/0019-unified-service-infrastructure/">ADR-0019</a>, <a href="../../adr/0023-configuration-management/">ADR-0023</a>, <a href="../../adr/0024-ffmpeg-audio-engine/">ADR-0024</a>, <a href="refactoring_uploader_to_processor.md">Refactoring Plan</a>, <a href="../../services/processor/">Processor Service</a>, <a href="../testing/">Testing Guidelines</a></p>
+<p><strong>User Stories:</strong> <a href="../../user_stories/cloud_sync/#us-u01">US-U01</a>, <a href="../../user_stories/cloud_sync/#us-u02">US-U02</a>, <a href="../../user_stories/cloud_sync/#us-u04">US-U04</a>, <a href="../../user_stories/cloud_sync/#us-u06">US-U06</a></p>
 <p><strong>Project Rules:</strong> <a href="https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md">AGENTS.md</a>, <a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a>, <a href="../../glossary/">Glossary</a></p>
 </blockquote>
 <hr />
 <h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
-<p>The Uploader is an <strong>immutable Tier 2</strong> service managed by the Controller via <code>podman-py</code> (ADR-0013). The Controller creates <strong>one Uploader container per active <code>storage_remotes</code> row</strong> — the same pattern as one Recorder per Device.</p>
-<h3 id="recorder-vs-uploader">Recorder vs. Uploader<a class="headerlink" href="#recorder-vs-uploader" title="Permanent link">&para;</a></h3>
+<p>The Cloud-Sync-Worker is an <strong>internal async worker within the Processor</strong> (Tier 1), following the same pattern as the Indexer and Janitor. It is <strong>NOT</strong> a standalone Tier 2 container — there is no Controller management, no multi-instance orchestration, and no separate health port.</p>
+<p>This is a KISS simplification of the <a href="refactoring_uploader_to_processor.md">original multi-target Uploader architecture</a>.</p>
+<h3 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Aspect</th>
-<th>Recorder</th>
-<th>Uploader</th>
+<th>Question</th>
+<th>Decision</th>
+<th>Rationale</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Config Source</strong></td>
-<td>Profile Injection (env var <code>CONFIG_JSON</code>)</td>
-<td>DB direct read (<code>storage_remotes</code>, <code>system_config</code>)</td>
+<td>Where does upload run?</td>
+<td><strong>Inside Processor</strong> as async worker</td>
+<td>Same pattern as Indexer/Janitor; no Controller complexity</td>
 </tr>
 <tr>
-<td><strong>DB Access</strong></td>
-<td>❌ None</td>
-<td>✅ read <code>recordings</code>, <code>storage_remotes</code>, <code>system_config</code>; write <code>uploads</code>, <code>recordings.uploaded</code></td>
+<td>How many targets?</td>
+<td><strong>Single target</strong> configured via <code>system_config</code> key <code>"uploader"</code></td>
+<td>KISS: Multi-target adds orchestration complexity with no MVP value</td>
 </tr>
 <tr>
-<td><strong>Identity Source</strong></td>
-<td><code>devices</code> table → <code>Device</code> model</td>
-<td><code>storage_remotes</code> table → <code>StorageRemote</code> model</td>
+<td>Config source?</td>
+<td><strong><code>UploaderSettings</code></strong> in <code>system_config</code> JSONB</td>
+<td>No <code>storage_remotes</code> table needed; same Pydantic schema pattern as other settings</td>
 </tr>
 <tr>
-<td><strong>Container Name</strong></td>
-<td><code>silvasonic-recorder-{slug}-{suffix}</code></td>
-<td><code>silvasonic-uploader-{remote_slug}</code></td>
+<td>Upload tracking?</td>
+<td><strong><code>recordings.uploaded</code> boolean</strong></td>
+<td>Simple Janitor signal; one target = one boolean</td>
 </tr>
 <tr>
-<td><strong>Label <code>device_id</code></strong></td>
-<td>Hardware device name</td>
-<td>Remote storage slug</td>
+<td>Audit log?</td>
+<td><strong><code>uploads</code> table</strong> (immutable, no <code>remote_slug</code> FK)</td>
+<td>Keep audit trail for debugging; simplified without multi-target references</td>
 </tr>
 <tr>
-<td><strong>Workspace Mount</strong></td>
-<td>RW (Producer, ADR-0009)</td>
-<td>RO (Consumer Principle, ADR-0009)</td>
+<td>FLAC encoding?</td>
+<td><strong><code>ffmpeg</code></strong> subprocess (ADR-0024)</td>
+<td>Same tool as Recorder; lossless, ~50% size reduction</td>
 </tr>
 <tr>
-<td><strong>Privileged/Audio</strong></td>
-<td>Yes + <code>/dev/snd</code> + audio group</td>
-<td>No</td>
+<td>Upload backend?</td>
+<td><strong><code>rclone</code></strong> subprocess</td>
+<td>Universal protocol support (WebDAV/Nextcloud, S3, SFTP) without Python library dependencies</td>
 </tr>
 <tr>
-<td><strong>Health Port</strong></td>
-<td>9500 (unified Tier 2)</td>
-<td>9500 (unified Tier 2)</td>
+<td>Default state?</td>
+<td><strong><code>enabled: false</code></strong></td>
+<td>Prevents Janitor deadlock when no rclone target is configured</td>
 </tr>
 <tr>
-<td><strong>OOM Score</strong></td>
-<td>-999 (Protected)</td>
-<td>250 (Low Priority, ADR-0020)</td>
-</tr>
-<tr>
-<td><strong>Resources</strong></td>
-<td>512m / 1.0 CPU</td>
-<td>256m / 0.5 CPU</td>
-</tr>
-<tr>
-<td><strong>System Deps</strong></td>
-<td>ffmpeg</td>
-<td>ffmpeg + rclone</td>
+<td>Credentials?</td>
+<td><strong>Plaintext in <code>system_config</code> JSONB</strong></td>
+<td>Acceptable for local network MVP; encryption deferred to post-v1.0.0</td>
 </tr>
 </tbody>
 </table>
-<h3 id="controller-what-changes-vs-what-stays">Controller — What Changes vs. What Stays<a class="headerlink" href="#controller-what-changes-vs-what-stays" title="Permanent link">&para;</a></h3>
-<p><strong>No changes needed (already generic):</strong></p>
-<ul>
-<li><code>ContainerManager</code> — accepts any <code>Tier2ServiceSpec</code></li>
-<li><code>ContainerManager.sync_state()</code> — compares desired vs actual, service-agnostic</li>
-<li><code>ReconciliationLoop.run()</code> — calls <code>evaluate()</code> → <code>sync_state()</code></li>
-<li><code>ControllerStats</code> — records starts/stops by name, no service-type knowledge</li>
-<li><code>LogForwarder</code> — attaches to all <code>io.silvasonic.owner=controller</code> containers</li>
-<li><code>NudgeSubscriber</code> — triggers reconciliation via same nudge channel</li>
-<li><code>_stop_all_tier2()</code> — stops all <code>list_managed()</code> on shutdown</li>
-</ul>
-<p><strong>Minimal extensions (Phase 2):</strong></p>
-<ul>
-<li><code>container_spec.py</code> — new factory <code>build_uploader_spec()</code> + <code>UploaderEnvConfig</code></li>
-<li><code>reconciler.py</code> — <code>DeviceStateEvaluator.evaluate()</code> returns Recorder <strong>+</strong> Uploader specs</li>
-</ul>
 <h3 id="remote-path-convention">Remote Path Convention<a class="headerlink" href="#remote-path-convention" title="Permanent link">&para;</a></h3>
-<p>The Uploader constructs the remote path from DB fields — no changes to the local Recorder layout.</p>
-<p><strong>Local (resolved via DB, Janitor cleans up):</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Local paths are resolved by joining the mounted recorder workspace root with recordings.file_raw (stored as relative path in the database).
-</code></pre></div></p>
-<p><strong>Remote (date-based archive, permanent):</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>silvasonic/{station_name}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac
-</code></pre></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac
+</code></pre></div>
 <p><strong>Example:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Local:   /workspace/recorder/ultramic-01/data/raw/raw_20260329_143000.wav
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Remote:  silvasonic/Silvasonic-Dev/ultramic-01/2026-03-29/raw_20260329_143000.flac
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Local:   /workspace/recorder/ultramic-01/data/raw/raw_20260329_143000.wav
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Remote:  silvasonic/silvasonic-dev/ultramic-01/2026-03-29/raw_20260329_143000.flac
 </code></pre></div></p>
-<p>The <code>path_builder</code> module (Phase 3) is the <strong>only component</strong> that knows about the date-based directory convention.
-It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</code> for the microphone, and <code>system_config.station_name</code> for the station prefix.</p>
-<p>The <code>silvasonic/</code> top-level prefix prevents collision with other data in the same cloud storage account — critical when multiple stations upload to the same Nextcloud.</p>
+<p>The <code>path_builder</code> module is the <strong>only component</strong> that knows about the remote directory convention.</p>
 <hr />
-<h2 id="phase-1-uploader-service-skeleton">Phase 1: Uploader Service Skeleton<a class="headerlink" href="#phase-1-uploader-service-skeleton" title="Permanent link">&para;</a></h2>
-<p><strong>Goal:</strong> Create the Uploader service following the Service Blueprint. The service starts, exposes <code>/healthy</code>, publishes heartbeats, and shuts down cleanly. No upload logic yet — <code>run()</code> contains a placeholder loop.</p>
-<p><strong>User Stories:</strong> —</p>
-<p><strong>Dependency:</strong> None — first phase.</p>
+<h2 id="phase-1-upload-worker-module-scaffold">Phase 1: Upload Worker Module Scaffold<a class="headerlink" href="#phase-1-upload-worker-module-scaffold" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Create the Cloud-Sync-Worker modules within the Processor service. The worker polls for pending recordings, compresses WAV→FLAC, uploads via rclone, logs the attempt, and updates the database.</p>
+<p><strong>User Stories:</strong> US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)</p>
+<p><strong>Dependency:</strong> Preparatory refactoring (v0.5.x) must be complete — <code>storage_remotes</code> table removed, <code>UploaderSettings.enabled</code> defaults to <code>false</code>.</p>
+<h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>File</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Upload Worker</strong></td>
+<td><code>upload_worker.py</code></td>
+<td>Main async loop: poll → encode → upload → audit → stats</td>
+</tr>
+<tr>
+<td><strong>Work Poller</strong></td>
+<td><code>work_poller.py</code></td>
+<td>Find recordings with <code>uploaded=false</code> and <code>local_deleted=false</code></td>
+</tr>
+<tr>
+<td><strong>FLAC Encoder</strong></td>
+<td><code>flac_encoder.py</code></td>
+<td>WAV→FLAC via ffmpeg subprocess</td>
+</tr>
+<tr>
+<td><strong>Path Builder</strong></td>
+<td><code>path_builder.py</code></td>
+<td>Build remote path from DB fields</td>
+</tr>
+<tr>
+<td><strong>Rclone Client</strong></td>
+<td><code>rclone_client.py</code></td>
+<td>Upload files via rclone subprocess</td>
+</tr>
+<tr>
+<td><strong>Audit Logger</strong></td>
+<td><code>audit_logger.py</code></td>
+<td>Immutable <code>uploads</code> table + set <code>recordings.uploaded=true</code></td>
+</tr>
+<tr>
+<td><strong>Upload Stats</strong></td>
+<td><code>upload_stats.py</code></td>
+<td>Two-Phase Logging: startup detail → periodic summary</td>
+</tr>
+</tbody>
+</table>
 <h3 id="source-references">Source References<a class="headerlink" href="#source-references" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p><strong>Read these files before starting Phase 1:</strong></p>
@@ -4085,423 +3634,28 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </thead>
 <tbody>
 <tr>
-<td>Service base class (inherit from this)</td>
-<td><code>packages/core/src/silvasonic/core/service.py</code></td>
+<td>Processor service entry point</td>
+<td><code>services/processor/src/silvasonic/processor/__main__.py</code></td>
 </tr>
 <tr>
-<td>Service context (Redis, Health, Heartbeat)</td>
-<td><code>packages/core/src/silvasonic/core/service_context.py</code></td>
+<td>Indexer — internal worker pattern to copy</td>
+<td><code>services/processor/src/silvasonic/processor/indexer.py</code></td>
 </tr>
 <tr>
-<td>Recorder <code>__main__.py</code> — pattern to copy</td>
-<td><code>services/recorder/src/silvasonic/recorder/__main__.py</code></td>
+<td>Janitor — internal worker pattern reference</td>
+<td><code>services/processor/src/silvasonic/processor/janitor.py</code></td>
 </tr>
 <tr>
-<td>Recorder <code>settings.py</code> — pattern to copy</td>
-<td><code>services/recorder/src/silvasonic/recorder/settings.py</code></td>
-</tr>
-<tr>
-<td>UploaderSettings schema</td>
-<td><code>packages/core/src/silvasonic/core/config_schemas.py</code></td>
-</tr>
-<tr>
-<td>Processor <code>pyproject.toml</code> — packaging pattern</td>
-<td><code>services/processor/pyproject.toml</code></td>
-</tr>
-<tr>
-<td>Processor <code>Containerfile</code> — container pattern</td>
-<td><code>services/processor/Containerfile</code></td>
-</tr>
-<tr>
-<td>Service Blueprint — scaffold rules</td>
-<td><code>docs/development/service_blueprint.md</code></td>
-</tr>
-<tr>
-<td>Naming conventions (ADR-0010)</td>
-<td><code>docs/adr/0010-naming-conventions.md</code></td>
-</tr>
-<tr>
-<td>Podman rootless (ADR-0004, ADR-0007)</td>
-<td><code>docs/adr/0004-use-podman.md</code>, <code>docs/adr/0007-rootless-os-compliance.md</code></td>
-</tr>
-<tr>
-<td>Test guidelines (markers, structure)</td>
-<td><code>docs/development/testing.md</code></td>
-</tr>
-<tr>
-<td>Root test config</td>
-<td><code>pyproject.toml</code> (pytest section), <code>conftest.py</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[ ] <strong>Prerequisite: Move <code>Upload</code> model</strong> from <code>packages/core/src/silvasonic/core/database/models/system.py</code> to <code>packages/core/src/silvasonic/core/database/models/uploader.py</code>:</li>
-<li>Move <code>class Upload(Base)</code> out of <code>system.py</code> into <code>uploader.py</code> (alongside <code>StorageRemote</code>)</li>
-<li>Update all imports across the codebase (<code>system.py</code> → <code>uploader.py</code>)</li>
-<li>Verify <code>just check</code> passes after the move</li>
-<li>[ ] <strong>Prerequisite: Add <code>batch_size</code> to <code>UploaderSettings</code></strong> in <code>packages/core/src/silvasonic/core/config_schemas.py</code>:</li>
-<li>Add field: <code>batch_size: int = 50</code> to <code>UploaderSettings</code></li>
-<li>Add <code>batch_size: 50</code> to <code>services/controller/config/defaults.yml</code> under <code>uploader:</code> section</li>
-<li>[ ] Scaffold <code>services/uploader/</code> following the Service Blueprint (§1):</li>
-<li><code>Containerfile</code>, <code>pyproject.toml</code>, <code>README.md</code></li>
-<li><code>src/silvasonic/uploader/__init__.py</code>, <code>__main__.py</code>, <code>settings.py</code>, <code>py.typed</code></li>
-<li><code>tests/unit/</code>, <code>tests/integration/</code></li>
-<li>[ ] Implement <code>UploaderService(SilvaService)</code> in <code>__main__.py</code>:</li>
-<li><code>service_name = "uploader"</code>, <code>service_port = 9500</code> (unified Tier 2 health port)</li>
-<li>Override <code>run()</code> with placeholder polling loop (Phase 3 fills this in)</li>
-<li>Override <code>load_config()</code>: read <code>UploaderSettings</code> from <code>system_config</code> table on startup (Immutable Container pattern, ADR-0019)</li>
-<li>Read assigned <code>StorageRemote</code> config from DB by <code>SILVASONIC_STORAGE_REMOTE_SLUG</code> env var</li>
-<li>[ ] Implement <code>settings.py</code> — <code>UploaderServiceSettings(BaseSettings)</code>:</li>
-<li><code>SILVASONIC_REDIS_URL</code>, <code>SILVASONIC_INSTANCE_ID</code>, <code>SILVASONIC_STORAGE_REMOTE_SLUG</code></li>
-<li>[ ] Register in workspace:</li>
-<li>Root <code>pyproject.toml</code>: add <code>silvasonic-uploader</code> to <code>[project] dependencies</code> and <code>[tool.uv.sources]</code></li>
-<li>[ ] Add <code>Containerfile</code> following the Service Blueprint (§5):</li>
-<li>Base: <code>python:3.13-slim-bookworm</code></li>
-<li>System deps: <code>curl</code>, <code>ffmpeg</code> (FLAC encoding), <code>rclone</code> (upload backend)</li>
-<li>Port: <code>EXPOSE 9500</code> — <strong>NOT</strong> 9200 like Processor. Uploader uses the unified Tier 2 health port (same as Recorder)</li>
-<li>[ ] <strong>NO</strong> runtime <code>compose.yml</code> entry — Uploader is Tier 2, managed by Controller (ADR-0013, Service Blueprint §6)</li>
-<li>[ ] Add Uploader build-template to <code>compose.yml</code> under <code>profiles: [managed]</code> (build-only, NOT for runtime — same pattern as Recorder entry at line 110-137 in <code>compose.yml</code>):</li>
-<li>This enables <code>scripts/build.py</code> to build the image via <code>compose --profile managed build</code></li>
-<li>Add <code>"uploader"</code> to <code>MANAGED_SERVICES</code> list in <code>scripts/build.py</code> (alongside <code>"recorder"</code>)</li>
-<li>[ ] <strong>NO</strong> <code>workspace_dirs.txt</code> entry — Uploader has no persistent workspace (reads Recorder workspace as <code>:ro</code>, temporary FLAC files use in-container <code>/tmp</code>)</li>
-</ul>
-<h3 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Phase is complete when <code>just check</code> passes and all tests below are green.</p>
-</blockquote>
-<h4 id="unit-tests-servicesuploadertestsunittest_uploaderpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_uploader.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_uploaderpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_package_import</code></td>
-<td><code>import silvasonic.uploader</code> succeeds</td>
-</tr>
-<tr>
-<td><code>test_service_name_and_port</code></td>
-<td><code>service_name == "uploader"</code>, <code>service_port == 9500</code></td>
-</tr>
-<tr>
-<td><code>test_lifecycle_start_shutdown</code></td>
-<td><code>UploaderService</code> starts, SIGTERM triggers clean exit (mocked DB/Redis)</td>
-</tr>
-<tr>
-<td><code>test_settings_loaded_from_db</code></td>
-<td><code>UploaderSettings</code> correctly deserialized from mock <code>system_config</code> row</td>
-</tr>
-<tr>
-<td><code>test_settings_defaults</code></td>
-<td><code>UploaderSettings()</code> defaults match <code>config/defaults.yml</code> values</td>
-</tr>
-<tr>
-<td><code>test_storage_remote_loaded</code></td>
-<td><code>StorageRemote</code> read from mock DB by slug env var</td>
-</tr>
-<tr>
-<td><code>test_main_guard</code></td>
-<td><code>__main__</code> guard calls <code>UploaderService().start()</code> (runpy)</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicesuploadertestsintegrationtest_uploader_lifecyclepy-pytestmarkintegration">Integration Tests (<code>services/uploader/tests/integration/test_uploader_lifecycle.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesuploadertestsintegrationtest_uploader_lifecyclepy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_uploader_starts_with_db</code></td>
-<td>Uploader starts with Testcontainer DB, <code>/healthy</code> returns <code>200</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_heartbeat_published</code></td>
-<td>Heartbeat published to Redis within 15s</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="phase-2-controller-integration">Phase 2: Controller Integration<a class="headerlink" href="#phase-2-controller-integration" title="Permanent link">&para;</a></h2>
-<p><strong>Goal:</strong> Extend the Controller to manage Uploader containers as Tier 2 instances. One Uploader per active <code>storage_remotes</code> row. No Uploader business logic — only container lifecycle management.</p>
-<p><strong>User Stories:</strong> US-U03 (Mehrere Speicherziele gleichzeitig)</p>
-<p><strong>Dependency:</strong> Phase 1 (Uploader image must exist for container specs).</p>
-<h3 id="source-references_1">Source References<a class="headerlink" href="#source-references_1" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>Read these files before starting Phase 2:</strong></p>
-</blockquote>
-<table>
-<thead>
-<tr>
-<th>Purpose</th>
-<th>File</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Container spec factory (extend this)</td>
-<td><code>services/controller/src/silvasonic/controller/container_spec.py</code></td>
-</tr>
-<tr>
-<td>Reconciler / evaluator (extend this)</td>
-<td><code>services/controller/src/silvasonic/controller/reconciler.py</code></td>
-</tr>
-<tr>
-<td>ContainerManager (generic, no changes needed)</td>
-<td><code>services/controller/src/silvasonic/controller/container_manager.py</code></td>
-</tr>
-<tr>
-<td>Controller settings</td>
-<td><code>services/controller/src/silvasonic/controller/settings.py</code></td>
-</tr>
-<tr>
-<td>Defaults YAML (schedule, bandwidth)</td>
-<td><code>services/controller/config/defaults.yml</code></td>
-</tr>
-<tr>
-<td>Tier 2 management (ADR-0013)</td>
-<td><code>docs/adr/0013-tier2-container-management.md</code></td>
-</tr>
-<tr>
-<td>Resource limits / QoS (ADR-0020)</td>
-<td><code>docs/adr/0020-resource-limits-qos.md</code></td>
-</tr>
-<tr>
-<td>Existing spec tests — pattern to extend</td>
-<td><code>services/controller/tests/unit/test_container_spec.py</code></td>
-</tr>
-<tr>
-<td>Existing reconciler tests — pattern to extend</td>
-<td><code>services/controller/tests/unit/test_reconciler.py</code></td>
-</tr>
-<tr>
-<td>Controller conftest (DB cleanup order)</td>
-<td><code>services/controller/tests/conftest.py</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="tasks_1">Tasks<a class="headerlink" href="#tasks_1" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[ ] Add <code>build_uploader_spec()</code> factory + <code>UploaderEnvConfig</code> to <code>container_spec.py</code>:</li>
-<li>Import <code>StorageRemote</code> from <code>silvasonic.core.database.models.uploader</code></li>
-<li><code>UploaderEnvConfig(BaseSettings)</code> — env defaults: image, memory, CPU, network, workspace, DB connection</li>
-<li>Build <code>Tier2ServiceSpec</code> with:<ul>
-<li>Image: <code>localhost/silvasonic_uploader:latest</code></li>
-<li>Name: <code>silvasonic-uploader-{remote.slug}</code></li>
-<li>Labels: <code>io.silvasonic.tier=2</code>, <code>io.silvasonic.owner=controller</code>, <code>io.silvasonic.service=uploader</code>, <code>io.silvasonic.device_id={slug}</code></li>
-<li>Environment: <code>SILVASONIC_STORAGE_REMOTE_SLUG</code>, <code>SILVASONIC_REDIS_URL</code>, <code>SILVASONIC_INSTANCE_ID</code>, DB connection vars (<code>POSTGRES_HOST</code>, <code>POSTGRES_PORT</code>, <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, <code>POSTGRES_DB</code>)</li>
-<li>Mounts: <strong>Single mount</strong> of the entire recorder workspace — <code>{host_workspace}/recorder → /workspace/recorder:ro,z</code> (KISS: one mount covers all recorders, Uploader resolves exact file paths by joining the <code>/workspace/recorder</code> root with the relative path stored in <code>recordings.file_raw</code>, Consumer Principle ADR-0009)</li>
-<li>Resources: <code>memory_limit=256m</code>, <code>cpu_limit=0.5</code>, <code>oom_score_adj=250</code> (ADR-0020)</li>
-<li><strong>No</strong> <code>devices</code>, <code>group_add</code>, <code>privileged</code> (unlike Recorder)</li>
-</ul>
-</li>
-<li>[ ] Refactor <code>DeviceStateEvaluator.evaluate()</code> in <code>reconciler.py</code>:</li>
-<li>Extract existing logic into <code>_evaluate_recorders(session)</code> (rename only, no behavior change)</li>
-<li>Add <code>_evaluate_uploaders(session)</code>:<ul>
-<li><strong>Early exit:</strong> If <code>UploaderSettings.enabled == false</code> → return empty list (no containers started). This is the "global pause" — checked here, not inside the Uploader container</li>
-<li>Query <code>StorageRemote</code> WHERE <code>is_active = true</code></li>
-<li>Respect <code>max_uploaders</code> from <code>SystemSettings</code> in <code>system_config</code>. If there are more active remotes than allowed, Controller must select deterministically by <code>created_at ASC, slug ASC</code>.</li>
-<li>Build <code>Tier2ServiceSpec</code> via <code>build_uploader_spec()</code> per active remote</li>
-<li>Skip remotes with invalid config → log warning (rate-limited via <code>_warned_remotes</code> set)</li>
-</ul>
-</li>
-<li><code>evaluate()</code> returns combined list: <code>recorder_specs + uploader_specs</code></li>
-<li>[ ] Update Controller docstring in <code>__main__.py</code>: mention "Tier 2 services (Recorder and Uploader instances)"</li>
-<li>[ ] Add <code>"uploads"</code> to <code>_CLEANUP_TABLES</code> in FK-safe order (<code>uploads</code> before <code>recordings</code>, before <code>storage_remotes</code>) in these 3 files:</li>
-<li><code>services/controller/tests/integration/conftest.py</code></li>
-<li><code>services/processor/tests/integration/conftest.py</code></li>
-<li><code>tests/integration/conftest.py</code></li>
-</ul>
-<h3 id="acceptance-criteria_1">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_1" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Phase is complete when <code>just check</code> passes and all tests below are green.</p>
-</blockquote>
-<h4 id="unit-tests-servicescontrollertestsunittest_container_specpy-pytestmarkunit">Unit Tests (<code>services/controller/tests/unit/test_container_spec.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicescontrollertestsunittest_container_specpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_uploader_spec_from_remote</code></td>
-<td>Valid <code>StorageRemote</code> → correct spec with all fields</td>
-</tr>
-<tr>
-<td><code>test_uploader_name_format</code></td>
-<td>Container name = <code>silvasonic-uploader-{slug}</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_labels</code></td>
-<td><code>service=uploader</code>, <code>device_id={slug}</code>, <code>tier=2</code>, <code>owner=controller</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_readonly_mounts</code></td>
-<td>Recorder workspace mounted as <code>read_only=True</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_resource_limits</code></td>
-<td><code>256m</code> memory, <code>0.5</code> CPU, <code>OOM=250</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_no_privileged_no_devices</code></td>
-<td><code>privileged=False</code>, <code>devices=[]</code>, <code>group_add=[]</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_db_env_vars</code></td>
-<td>DB connection env vars present (<code>POSTGRES_HOST</code>, etc.)</td>
-</tr>
-<tr>
-<td><code>test_uploader_env_slug</code></td>
-<td><code>SILVASONIC_STORAGE_REMOTE_SLUG</code> matches <code>remote.slug</code></td>
-</tr>
-</tbody>
-</table>
-<h4 id="unit-tests-servicescontrollertestsunittest_reconcilerpy-pytestmarkunit">Unit Tests (<code>services/controller/tests/unit/test_reconciler.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicescontrollertestsunittest_reconcilerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_evaluates_uploaders_from_active_remotes</code></td>
-<td>Active <code>StorageRemote</code> rows → Uploader specs</td>
-</tr>
-<tr>
-<td><code>test_inactive_remote_excluded</code></td>
-<td><code>is_active=false</code> → no spec generated</td>
-</tr>
-<tr>
-<td><code>test_uploader_enabled_false_returns_empty</code></td>
-<td><code>UploaderSettings.enabled=false</code> → 0 Uploader specs (global pause)</td>
-</tr>
-<tr>
-<td><code>test_max_uploaders_respected_order</code></td>
-<td>More remotes than <code>max_uploaders</code> → list truncated, ordered by <code>created_at ASC, slug ASC</code></td>
-</tr>
-<tr>
-<td><code>test_combined_recorders_and_uploaders</code></td>
-<td>Devices + remotes → combined spec list</td>
-</tr>
-<tr>
-<td><code>test_missing_remote_config_logged</code></td>
-<td>Invalid config → warning logged, remote skipped</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicescontrollertestsintegrationtest_uploader_reconciliationpy-pytestmarkintegration">Integration Tests (<code>services/controller/tests/integration/test_uploader_reconciliation.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicescontrollertestsintegrationtest_uploader_reconciliationpy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_active_remote_produces_spec</code></td>
-<td>Seed <code>storage_remotes</code> row → evaluate → Uploader spec returned</td>
-</tr>
-<tr>
-<td><code>test_deactivated_remote_disappears</code></td>
-<td>Deactivate remote → re-evaluate → no Uploader spec</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="phase-3-upload-pipeline">Phase 3: Upload Pipeline<a class="headerlink" href="#phase-3-upload-pipeline" title="Permanent link">&para;</a></h2>
-<p><strong>Goal:</strong> Implement the complete upload pipeline: find pending recordings, compress WAV→FLAC, upload via rclone, log the attempt, update the database. This is one coherent domain — all modules exist to serve the pipeline and are tested together.</p>
-<p><strong>User Stories:</strong> US-U01 (Automatischer Cloud-Upload mit FLAC), US-U06 (Lückenlose Nachverfolgung)</p>
-<p><strong>Dependency:</strong> Phase 1 (Uploader service with <code>run()</code> placeholder).</p>
-<h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Module</th>
-<th>File</th>
-<th>Responsibility</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Work Poller</strong></td>
-<td><code>work_poller.py</code></td>
-<td>Find recordings not yet uploaded to THIS remote (via <code>uploads</code> table)</td>
-</tr>
-<tr>
-<td><strong>FLAC Encoder</strong></td>
-<td><code>flac_encoder.py</code></td>
-<td>WAV→FLAC via ffmpeg subprocess</td>
-</tr>
-<tr>
-<td><strong>Path Builder</strong></td>
-<td><code>path_builder.py</code></td>
-<td>Build remote path from DB fields (date-based archive layout, station name slugified)</td>
-</tr>
-<tr>
-<td><strong>Rclone Client</strong></td>
-<td><code>rclone_client.py</code></td>
-<td>Upload files via rclone subprocess</td>
-</tr>
-<tr>
-<td><strong>Audit Logger</strong></td>
-<td><code>audit_logger.py</code></td>
-<td>Immutable <code>uploads</code> table + mark <code>recordings.uploaded</code> (Janitor signal)</td>
-</tr>
-<tr>
-<td><strong>Upload Stats</strong></td>
-<td><code>upload_stats.py</code></td>
-<td>Two-Phase Logging: startup detail → periodic summary (mirrors RecordingStats pattern)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="source-references_2">Source References<a class="headerlink" href="#source-references_2" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>Read these files before starting Phase 3:</strong></p>
-</blockquote>
-<table>
-<thead>
-<tr>
-<th>Purpose</th>
-<th>File</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>RecordingStats — Two-Phase pattern to copy</td>
+<td>RecordingStats — Two-Phase Logging pattern</td>
 <td><code>services/recorder/src/silvasonic/recorder/recording_stats.py</code></td>
 </tr>
 <tr>
-<td>ControllerStats — Two-Phase pattern reference</td>
-<td><code>services/controller/src/silvasonic/controller/controller_stats.py</code></td>
-</tr>
-<tr>
-<td>Recording DB model (query target)</td>
+<td>Recording DB model</td>
 <td><code>packages/core/src/silvasonic/core/database/models/recordings.py</code></td>
 </tr>
 <tr>
-<td>StorageRemote + Upload DB models (both in same file after Phase 1 move)</td>
-<td><code>packages/core/src/silvasonic/core/database/models/uploader.py</code></td>
-</tr>
-<tr>
-<td>SystemConfig model</td>
+<td>Upload DB model</td>
 <td><code>packages/core/src/silvasonic/core/database/models/system.py</code></td>
-</tr>
-<tr>
-<td>Async session factory</td>
-<td><code>packages/core/src/silvasonic/core/database/session.py</code></td>
 </tr>
 <tr>
 <td>UploaderSettings schema</td>
@@ -4515,106 +3669,72 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <td>Worker Pull orchestration (ADR-0018)</td>
 <td><code>docs/adr/0018-worker-pull-orchestration.md</code></td>
 </tr>
-<tr>
-<td>Zero Trust / Consumer Principle (ADR-0009)</td>
-<td><code>docs/adr/0009-zero-trust-data-sharing.md</code></td>
-</tr>
-<tr>
-<td>Health monitor API</td>
-<td><code>packages/core/src/silvasonic/core/health.py</code></td>
-</tr>
-<tr>
-<td>Heartbeat publisher</td>
-<td><code>packages/core/src/silvasonic/core/heartbeat.py</code></td>
-</tr>
 </tbody>
 </table>
-<h3 id="tasks_2">Tasks<a class="headerlink" href="#tasks_2" title="Permanent link">&para;</a></h3>
+<h3 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Implement <code>silvasonic/uploader/work_poller.py</code>:</li>
-<li><code>find_pending_uploads(session, remote_slug, batch_size) -&gt; list[PendingUpload]</code></li>
-<li><strong>Per-remote query</strong> — each Uploader only sees recordings not yet uploaded to ITS remote:
-    <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">recordings</span><span class="w"> </span><span class="n">r</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">local_deleted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="p">(</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">uploads</span><span class="w"> </span><span class="n">u</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">recording_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">id</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="k">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">remote_slug</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">:</span><span class="n">my_slug</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="k">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="p">)</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="k">time</span><span class="w"> </span><span class="k">ASC</span><span class="w"> </span><span class="k">LIMIT</span><span class="w"> </span><span class="p">:</span><span class="n">batch</span>
-</code></pre></div></li>
-<li>Note for DB indexes: We strongly recommend adding a composite index on <code>uploads(recording_id, remote_slug, success)</code> for efficient polling.</li>
-<li><code>recordings.uploaded</code> is NOT used for polling — it is only the Janitor's deletion signal</li>
-<li><code>batch_size</code> default comes from <code>UploaderSettings.batch_size</code> (added in Phase 1 prerequisite, default: <code>50</code>)</li>
+<li>[ ] Add <code>rclone</code> to Processor <code>Containerfile</code> system dependencies (alongside existing <code>ffmpeg</code>)</li>
+<li>[ ] Add <code>"python-slugify&gt;=8.0.0"</code> to <code>services/processor/pyproject.toml</code> dependencies, run <code>uv lock</code></li>
+<li>[ ] Implement <code>upload_worker.py</code>:</li>
+<li><code>UploadWorker(session_factory, settings, stats)</code> — main async loop</li>
+<li>Early exit: if <code>UploaderSettings.enabled == false</code> → log and skip (global pause)</li>
+<li>Poll loop: <code>find_pending()</code> → encode → upload → audit → repeat</li>
+<li>Sequential per file (parallel deferred to post-v1.0.0)</li>
+<li>Inline schedule check (opt-in): <code>_is_within_window(start_hour, end_hour) -&gt; bool</code> (KISS — 4-line function). Default: both <code>null</code> → 24/7 continuous upload</li>
+<li>Break on connection error: abort remaining batch, wait for next cycle</li>
+<li>Missing file handling: if WAV file not on disk (Janitor deleted it) → log, skip to next</li>
+<li>Respect <code>UploaderSettings.poll_interval</code> between cycles</li>
+<li>Health: <code>self.health.update_status("upload_worker", True/False, details)</code></li>
+<li>Heartbeat extra meta: <code>pending_count</code>, <code>uploaded_count</code>, <code>failed_count</code>, <code>last_upload_at</code></li>
+<li>[ ] Implement <code>work_poller.py</code>:</li>
+<li><code>find_pending_uploads(session, batch_size) -&gt; list[PendingUpload]</code></li>
+<li>Single-target query: <code>WHERE uploaded=false AND local_deleted=false ORDER BY time ASC LIMIT batch</code></li>
+<li>Uses <code>ix_recordings_upload_pending</code> partial index on <code>recordings</code></li>
 <li><code>PendingUpload</code> Pydantic model: <code>recording_id, file_raw, sensor_id, time</code></li>
-<li>[ ] Implement <code>silvasonic/uploader/flac_encoder.py</code>:</li>
+<li>[ ] Implement <code>flac_encoder.py</code>:</li>
 <li><code>encode_wav_to_flac(wav_path: Path, output_dir: Path) -&gt; Path</code></li>
 <li>ffmpeg subprocess: <code>ffmpeg -i input.wav -c:a flac -compression_level 5 output.flac</code></li>
 <li>Validate output file (exists, non-zero size)</li>
 <li>Clean up partial FLAC file on failure</li>
-<li>No FLAC caching — re-encode on retry (KISS, encoding is &lt;1s per segment on RPi 5)</li>
-<li>[ ] <strong>Prerequisite: Add <code>python-slugify</code> dependency</strong> to <code>packages/core/pyproject.toml</code>:</li>
-<li>Add <code>"python-slugify&gt;=8.0.0"</code> to <code>[project] dependencies</code></li>
-<li>Run <code>uv lock</code> to regenerate <code>uv.lock</code></li>
-<li>[ ] Implement <code>silvasonic/uploader/path_builder.py</code>:</li>
+<li>No FLAC caching — re-encode on retry (encoding is &lt;1s per segment on RPi 5)</li>
+<li>[ ] Implement <code>path_builder.py</code>:</li>
 <li><code>build_remote_path(station_name, sensor_id, time, filename) -&gt; str</code></li>
 <li>Convention: <code>silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac</code></li>
-<li>Date extracted from <code>recordings.time</code>, station name from <code>system_config</code></li>
-<li><strong>Station name slugified:</strong> <code>from slugify import slugify</code> — lowercase, non-alphanumeric → <code>-</code>, strip leading/trailing <code>-</code>. Example: <code>"Silvasonic Müller-Station [Test]"</code> → <code>"silvasonic-mueller-station-test"</code></li>
-<li>This is the <strong>only module</strong> that knows the remote directory convention</li>
-<li>[ ] Implement <code>silvasonic/uploader/rclone_client.py</code>:</li>
-<li><code>RcloneClient(remote_slug, remote_type, config)</code>:<ul>
-<li><code>generate_rclone_conf() -&gt; Path</code> — write temp <code>rclone.conf</code> from <code>StorageRemote.config</code> JSONB</li>
+<li>Station name slugified via <code>python-slugify</code></li>
+<li>[ ] Implement <code>rclone_client.py</code>:</li>
+<li><code>RcloneClient(remote_config: dict)</code>:<ul>
+<li><code>generate_rclone_conf() -&gt; Path</code> — write temp <code>rclone.conf</code> from <code>UploaderSettings</code> config</li>
 <li>For WebDAV/Nextcloud: set <code>vendor = nextcloud</code></li>
 <li><code>upload_file(local, remote_path, bandwidth_limit) -&gt; RcloneResult</code></li>
 <li><code>RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)</code></li>
-<li><code>is_connection_error</code> distinguishes network failures (abort batch) from file-specific errors (skip file, continue)</li>
 <li>Bandwidth limiting via <code>--bwlimit</code> from <code>UploaderSettings.bandwidth_limit</code></li>
-<li>Checksum verification via <code>--checksum</code> flag (rclone verifies post-upload integrity)</li>
+<li>Checksum verification via <code>--checksum</code> flag</li>
 </ul>
 </li>
-<li>[ ] Implement <code>silvasonic/uploader/audit_logger.py</code>:</li>
-<li><code>log_upload_attempt(session, recording_id, remote_slug, filename, size, success, error)</code>:<ul>
-<li>INSERT into <code>uploads</code> table (immutable audit log — even failures are recorded)</li>
-<li>On success: Check if this file has now been successfully uploaded to <strong>ALL currently active remotes</strong>.</li>
-<li><code>recordings.uploaded</code> is evaluated against the set of active remotes at the time the completion check is executed. Newly activated remotes do not retroactively invalidate previously completed recordings (<code>uploaded=true</code> stays true) unless an explicit reconciliation/backfill mechanism is introduced.</li>
-<li>If ALL active remotes are complete: UPDATE <code>recordings SET uploaded=true, uploaded_at=now()</code> — <strong>Janitor signal only</strong> ("all required remotes are safe")</li>
-<li>On failure: <code>uploads</code> row with <code>success=false</code> — <code>recordings.uploaded</code> unchanged</li>
+<li>[ ] Implement <code>audit_logger.py</code>:</li>
+<li><code>log_upload_attempt(session, recording_id, filename, size, success, error)</code>:<ul>
+<li>INSERT into <code>uploads</code> table (immutable audit log)</li>
+<li>On success: UPDATE <code>recordings SET uploaded=true, uploaded_at=now()</code> — Janitor signal</li>
+<li>On failure: <code>uploads</code> row with <code>success=false</code>, <code>recordings.uploaded</code> unchanged</li>
 </ul>
 </li>
-<li>[ ] Implement <code>silvasonic/uploader/upload_stats.py</code>:</li>
-<li><code>UploadStats</code> class — Two-Phase Logging (same pattern as <code>RecordingStats</code> and <code>ControllerStats</code>):<ul>
-<li><strong>Startup Phase</strong> (default 5min): Log every upload individually:
-  <code>upload.completed  remote=nextcloud  file=raw_20260329_143000.flac  size_bytes=3200000  duration_s=4.5</code>
-  <code>upload.failed  remote=nextcloud  file=raw_20260329_143010.flac  error="connection refused"</code></li>
-<li><strong>Steady State</strong>: Accumulate and emit periodic summary every 5min:
-  <code>upload.summary  interval_uploaded=42  interval_failed=1  interval_bytes=134000000  rate_mb_h=1608.0  total_uploaded=840  total_failed=3  uptime_s=7200</code></li>
-<li><strong>Shutdown</strong>: <code>emit_final_summary()</code> → <code>upload.final_summary</code> with lifetime totals</li>
+<li>[ ] Implement <code>upload_stats.py</code>:</li>
+<li><code>UploadStats</code> — Two-Phase Logging (same pattern as <code>RecordingStats</code>):<ul>
+<li><strong>Startup Phase</strong> (default 5min): log every upload individually</li>
+<li><strong>Steady State</strong>: periodic summary every 5min</li>
+<li><strong>Shutdown</strong>: <code>emit_final_summary()</code> with lifetime totals</li>
 </ul>
 </li>
-<li>Methods: <code>record_upload(remote_slug, filename, size_bytes, duration_s)</code>, <code>record_error(remote_slug, filename, error)</code>, <code>record_connection_abort(remote_slug)</code>, <code>record_skipped_missing(filename)</code>, <code>maybe_emit_summary()</code>, <code>emit_final_summary()</code></li>
-<li>Counters: <code>interval_uploaded/total_uploaded</code>, <code>interval_failed/total_failed</code>, <code>interval_bytes/total_bytes</code>, <code>interval_connection_aborts</code>, <code>interval_skipped_missing</code></li>
-<li>No <code>threading.Lock</code> needed — Uploader is single-threaded (KISS, unlike Recorder)</li>
-<li>Phase transition: 1× <code>upload.startup_phase_complete</code> log</li>
-<li>[ ] Wire pipeline into <code>UploaderService.run()</code>:</li>
-<li>Poll loop: <code>find_pending_uploads(remote_slug)</code> → <code>encode_wav_to_flac()</code> → <code>build_remote_path()</code> → <code>upload_file()</code> → <code>log_upload_attempt()</code> → <code>stats.record_upload()</code> → cleanup temp FLAC</li>
-<li>Call <code>stats.maybe_emit_summary()</code> after each batch cycle</li>
-<li>Call <code>stats.emit_final_summary()</code> on shutdown</li>
-<li>Sequential per file (parallel deferred to post-v1.0.0)</li>
-<li><strong>Inline schedule check (opt-in):</strong> <code>_is_within_window(start_hour, end_hour) -&gt; bool</code> as private method (KISS — 4-line function, no separate module). <strong>Default: both <code>null</code> → 24/7 continuous upload.</strong> Users can opt-in to a time window via Web-UI (e.g. start=22, end=6 → upload only at night)</li>
-<li><strong>Break on connection error:</strong> If <code>RcloneResult.is_connection_error</code> → abort remaining batch, <code>stats.record_connection_abort()</code>, wait for next cycle</li>
-<li><strong>Missing file handling:</strong> If WAV file does not exist on disk (Janitor deleted it) → <code>stats.record_skipped_missing()</code>, skip to next recording</li>
-<li><code>UploaderSettings.enabled</code> is <strong>NOT checked here</strong> — it is enforced by the Controller in <code>_evaluate_uploaders()</code>. If enabled=false, no containers are started at all</li>
-<li>Respect <code>UploaderSettings.poll_interval</code> between cycles</li>
-<li>Health: <code>self.health.update_status("upload_engine", True/False, details)</code></li>
-<li>Heartbeat: <code>get_extra_meta()</code> → <code>pending_count</code>, <code>uploaded_count</code>, <code>failed_count</code>, <code>last_upload_at</code>, <code>current_remote_slug</code></li>
+<li>No <code>threading.Lock</code> needed — single-threaded worker</li>
+<li>[ ] Wire <code>UploadWorker</code> into <code>ProcessorService.__main__.py</code>:</li>
+<li>Start alongside Indexer and Janitor as third internal worker</li>
+<li>Shutdown: <code>emit_final_summary()</code> on SIGTERM</li>
 </ul>
-<h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
+<h3 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p>Phase is complete when <code>just check</code> passes and all tests below are green.</p>
 </blockquote>
-<h4 id="unit-tests-servicesuploadertestsunittest_work_pollerpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_work_poller.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_work_pollerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_upload_workerpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_upload_worker.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_upload_workerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4624,24 +3744,59 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </thead>
 <tbody>
 <tr>
-<td><code>test_finds_pending_for_remote</code></td>
-<td>Mocked session + remote_slug → correct pending list returned</td>
+<td><code>test_upload_disabled_skips</code></td>
+<td><code>enabled=false</code> → worker does not poll</td>
 </tr>
 <tr>
-<td><code>test_excludes_already_uploaded_to_this_remote</code></td>
-<td>Recording with successful <code>uploads</code> row for this slug → excluded</td>
+<td><code>test_poll_loop_processes_pending</code></td>
+<td>Mocked pending list → encode → upload → audit called in sequence</td>
 </tr>
 <tr>
-<td><code>test_includes_uploaded_to_other_remote</code></td>
-<td>Recording uploaded to <code>nextcloud</code> but not <code>s3</code> → included for <code>s3</code></td>
+<td><code>test_connection_error_aborts_batch</code></td>
+<td><code>is_connection_error=True</code> → remaining batch skipped</td>
+</tr>
+<tr>
+<td><code>test_missing_file_skipped</code></td>
+<td>WAV not on disk → logged, next recording processed</td>
+</tr>
+<tr>
+<td><code>test_null_schedule_always_active</code></td>
+<td>Both hours <code>null</code> → 24/7 upload</td>
+</tr>
+<tr>
+<td><code>test_within_window</code></td>
+<td><code>_is_within_window(22, 6)</code>: hour=23 → <code>True</code></td>
+</tr>
+<tr>
+<td><code>test_outside_window</code></td>
+<td><code>_is_within_window(22, 6)</code>: hour=12 → <code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="unit-tests-servicesprocessortestsunittest_work_pollerpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_work_poller.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_work_pollerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Validates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_finds_pending_recordings</code></td>
+<td><code>uploaded=false, local_deleted=false</code> → returned</td>
+</tr>
+<tr>
+<td><code>test_excludes_already_uploaded</code></td>
+<td><code>uploaded=true</code> → excluded</td>
 </tr>
 <tr>
 <td><code>test_excludes_locally_deleted</code></td>
-<td><code>local_deleted=true</code> → excluded from results</td>
+<td><code>local_deleted=true</code> → excluded</td>
 </tr>
 <tr>
 <td><code>test_batch_size_respected</code></td>
-<td>Query LIMIT matches parameter</td>
+<td>LIMIT matches parameter</td>
 </tr>
 <tr>
 <td><code>test_empty_result</code></td>
@@ -4649,7 +3804,7 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_flac_encoderpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_flac_encoder.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_flac_encoderpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_flac_encoderpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_flac_encoder.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_flac_encoderpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4663,10 +3818,6 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <td>Mock subprocess → FLAC path returned</td>
 </tr>
 <tr>
-<td><code>test_encode_returns_correct_path</code></td>
-<td>Output path: <code>{stem}.flac</code></td>
-</tr>
-<tr>
 <td><code>test_encode_fails_on_ffmpeg_error</code></td>
 <td>returncode != 0 → raises <code>FlacEncodingError</code></td>
 </tr>
@@ -4674,13 +3825,9 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <td><code>test_encode_cleanup_on_failure</code></td>
 <td>Partial FLAC removed on error</td>
 </tr>
-<tr>
-<td><code>test_encode_preserves_filename_stem</code></td>
-<td>Output filename matches input stem</td>
-</tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_path_builderpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_path_builder.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_path_builderpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_path_builderpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_path_builder.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_path_builderpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4691,19 +3838,11 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <tbody>
 <tr>
 <td><code>test_builds_correct_remote_path</code></td>
-<td><code>silvasonic/{station_slug}/{sensor}/{YYYY-MM-DD}/{filename}.flac</code></td>
-</tr>
-<tr>
-<td><code>test_date_extracted_from_time</code></td>
-<td><code>time=2026-03-29T14:30:00</code> → <code>2026-03-29</code> directory</td>
+<td><code>silvasonic/{slug}/{sensor}/{date}/{filename}.flac</code></td>
 </tr>
 <tr>
 <td><code>test_station_name_slugified</code></td>
-<td><code>"Silvasonic Müller-Station [Test]"</code> → <code>"silvasonic-mueller-station-test"</code></td>
-</tr>
-<tr>
-<td><code>test_station_name_simple</code></td>
-<td><code>"Silvasonic MVP"</code> → <code>"silvasonic-mvp"</code></td>
+<td><code>"Silvasonic Müller-Station"</code> → <code>"silvasonic-mueller-station"</code></td>
 </tr>
 <tr>
 <td><code>test_filename_extension_replaced</code></td>
@@ -4711,7 +3850,7 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_rclone_clientpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_rclone_client.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_rclone_clientpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_rclone_clientpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_rclone_client.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_rclone_clientpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4722,43 +3861,23 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <tbody>
 <tr>
 <td><code>test_generate_rclone_conf_format</code></td>
-<td>Correct INI format written to temp file</td>
-</tr>
-<tr>
-<td><code>test_generate_rclone_conf_webdav_nextcloud</code></td>
-<td>Nextcloud <code>vendor</code> param set correctly</td>
-</tr>
-<tr>
-<td><code>test_generate_rclone_conf_s3</code></td>
-<td>S3 access/secret keys in correct INI section</td>
+<td>Correct INI format written</td>
 </tr>
 <tr>
 <td><code>test_upload_success</code></td>
 <td>Mock subprocess → <code>RcloneResult(success=True)</code></td>
 </tr>
 <tr>
-<td><code>test_upload_failure_file_error</code></td>
-<td>File-specific error → <code>RcloneResult(success=False, is_connection_error=False)</code></td>
-</tr>
-<tr>
-<td><code>test_upload_failure_connection_error</code></td>
-<td>Network error → <code>RcloneResult(success=False, is_connection_error=True)</code></td>
+<td><code>test_upload_failure_connection</code></td>
+<td>Network error → <code>is_connection_error=True</code></td>
 </tr>
 <tr>
 <td><code>test_bandwidth_limit_in_args</code></td>
 <td><code>--bwlimit</code> present in CLI args</td>
 </tr>
-<tr>
-<td><code>test_checksum_flag_in_args</code></td>
-<td><code>--checksum</code> present in CLI args</td>
-</tr>
-<tr>
-<td><code>test_upload_timeout</code></td>
-<td>Subprocess timeout → <code>RcloneResult(is_connection_error=True)</code></td>
-</tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_audit_loggerpy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_audit_logger.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_audit_loggerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_audit_loggerpy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_audit_logger.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_audit_loggerpy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4768,15 +3887,11 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </thead>
 <tbody>
 <tr>
-<td><code>test_success_creates_upload_and_marks_recording</code></td>
-<td><code>success=true</code> + all active remotes done → <code>uploads</code> INSERT + <code>recordings.uploaded=true</code></td>
+<td><code>test_success_marks_uploaded</code></td>
+<td><code>success=true</code> → <code>uploads</code> INSERT + <code>recordings.uploaded=true</code></td>
 </tr>
 <tr>
-<td><code>test_success_partial_remotes</code></td>
-<td><code>success=true</code> but other active remotes pending → <code>uploads</code> INSERT, <code>recordings.uploaded=false</code></td>
-</tr>
-<tr>
-<td><code>test_failure_creates_upload_only</code></td>
+<td><code>test_failure_no_flag_change</code></td>
 <td><code>success=false</code> → <code>uploads</code> INSERT, <code>recordings.uploaded</code> unchanged</td>
 </tr>
 <tr>
@@ -4785,7 +3900,7 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_upload_statspy-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_upload_stats.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_upload_statspy-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<h4 id="unit-tests-servicesprocessortestsunittest_upload_statspy-pytestmarkunit">Unit Tests (<code>services/processor/tests/unit/test_upload_stats.py</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesprocessortestsunittest_upload_statspy-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4796,135 +3911,23 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <tbody>
 <tr>
 <td><code>test_startup_phase_logs_individually</code></td>
-<td>During startup (&lt; 5min): <code>record_upload()</code> emits <code>upload.completed</code> log</td>
+<td>During startup: individual <code>upload.completed</code> log</td>
 </tr>
 <tr>
 <td><code>test_steady_state_accumulates</code></td>
-<td>After startup: <code>record_upload()</code> does NOT emit individual log</td>
+<td>After startup: no individual log</td>
 </tr>
 <tr>
 <td><code>test_summary_emitted_after_interval</code></td>
-<td><code>maybe_emit_summary()</code> after interval elapsed → <code>upload.summary</code> with counters</td>
-</tr>
-<tr>
-<td><code>test_summary_resets_interval_counters</code></td>
-<td>After summary: interval counters reset to 0, lifetime counters preserved</td>
+<td><code>maybe_emit_summary()</code> → <code>upload.summary</code></td>
 </tr>
 <tr>
 <td><code>test_final_summary_on_shutdown</code></td>
-<td><code>emit_final_summary()</code> → <code>upload.final_summary</code> with lifetime totals</td>
-</tr>
-<tr>
-<td><code>test_phase_transition_logged_once</code></td>
-<td><code>upload.startup_phase_complete</code> emitted exactly once</td>
-</tr>
-<tr>
-<td><code>test_record_error_always_logged</code></td>
-<td>Errors logged individually regardless of phase</td>
-</tr>
-<tr>
-<td><code>test_connection_abort_counted</code></td>
-<td><code>record_connection_abort()</code> increments <code>interval_connection_aborts</code></td>
-</tr>
-<tr>
-<td><code>test_skipped_missing_counted</code></td>
-<td><code>record_skipped_missing()</code> increments <code>interval_skipped_missing</code></td>
+<td><code>emit_final_summary()</code> → lifetime totals</td>
 </tr>
 </tbody>
 </table>
-<h4 id="unit-tests-servicesuploadertestsunittest_uploaderpy-schedule-tests-pytestmarkunit">Unit Tests (<code>services/uploader/tests/unit/test_uploader.py</code> — schedule tests) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-tests-servicesuploadertestsunittest_uploaderpy-schedule-tests-pytestmarkunit" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_null_schedule_always_active</code></td>
-<td>Default: both hours <code>null</code> → 24/7 upload (always <code>True</code>)</td>
-</tr>
-<tr>
-<td><code>test_within_window</code></td>
-<td><code>_is_within_window(22, 6)</code>: hour=23 → returns <code>True</code></td>
-</tr>
-<tr>
-<td><code>test_outside_window</code></td>
-<td><code>_is_within_window(22, 6)</code>: hour=12 → returns <code>False</code></td>
-</tr>
-<tr>
-<td><code>test_overnight_window</code></td>
-<td>start=22, end=6 → 23:00 inside, 12:00 outside</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicesuploadertestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration">Integration Tests (<code>services/uploader/tests/integration/test_flac_encoder_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesuploadertestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_real_wav_to_flac</code></td>
-<td>Synthetic WAV (numpy) → ffmpeg → FLAC — file valid</td>
-</tr>
-<tr>
-<td><code>test_flac_smaller_than_wav</code></td>
-<td>FLAC output is smaller than WAV input</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicesuploadertestsintegrationtest_work_poller_e2epy-pytestmarkintegration">Integration Tests (<code>services/uploader/tests/integration/test_work_poller_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesuploadertestsintegrationtest_work_poller_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_pending_query_real_db</code></td>
-<td>Seed <code>recordings</code> in Testcontainer DB → correct rows returned for given remote_slug</td>
-</tr>
-<tr>
-<td><code>test_multi_remote_independence</code></td>
-<td>Seed 1 recording + 1 successful upload for <code>nextcloud</code> → <code>find_pending(slug='nextcloud')</code> returns empty, <code>find_pending(slug='s3')</code> returns the recording</td>
-</tr>
-<tr>
-<td><code>test_uploaded_true_does_not_affect_polling</code></td>
-<td>Seed recording with <code>uploaded=true</code> but no <code>uploads</code> row for this slug → still returned as pending</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicesuploadertestsintegrationtest_audit_logger_e2epy-pytestmarkintegration">Integration Tests (<code>services/uploader/tests/integration/test_audit_logger_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesuploadertestsintegrationtest_audit_logger_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_upload_success_chain</code></td>
-<td>Seed recording → log success → <code>uploads</code> row + <code>recordings.uploaded=true</code></td>
-</tr>
-<tr>
-<td><code>test_upload_failure_chain</code></td>
-<td>Seed recording → log failure → <code>uploads</code> row, <code>recordings.uploaded=false</code></td>
-</tr>
-<tr>
-<td><code>test_multiple_remotes_tracked</code></td>
-<td>Same recording, 2 remotes → 2 <code>uploads</code> rows</td>
-</tr>
-</tbody>
-</table>
-<h4 id="integration-tests-servicesuploadertestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration">Integration Tests (<code>services/uploader/tests/integration/test_upload_pipeline_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesuploadertestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
+<h4 id="integration-tests-servicesprocessortestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration">Integration Tests (<code>services/processor/tests/integration/test_upload_pipeline_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesprocessortestsintegrationtest_upload_pipeline_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -4935,87 +3938,19 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <tbody>
 <tr>
 <td><code>test_full_pipeline_mock_rclone</code></td>
-<td>Seed recordings + workspace → Uploader cycle → FLAC → mock rclone → <code>uploads</code> row + <code>recordings.uploaded=true</code></td>
+<td>Seed recordings + workspace → poll → FLAC → mock rclone → audit → <code>uploaded=true</code></td>
 </tr>
 <tr>
-<td><code>test_pipeline_skips_already_uploaded_to_this_remote</code></td>
-<td>Recording with successful <code>uploads</code> row for this slug → not re-uploaded</td>
-</tr>
-<tr>
-<td><code>test_pipeline_still_uploads_to_other_remote</code></td>
-<td>Recording uploaded to <code>nextcloud</code> (uploads row exists) → pipeline for <code>s3</code> still picks it up and uploads</td>
+<td><code>test_pipeline_skips_already_uploaded</code></td>
+<td><code>uploaded=true</code> recording → not re-processed</td>
 </tr>
 <tr>
 <td><code>test_pipeline_handles_missing_file</code></td>
 <td>Recording in DB, file missing → error logged, pipeline continues</td>
 </tr>
-<tr>
-<td><code>test_uploaded_flag_set_as_janitor_signal</code></td>
-<td>After successful upload to ALL active remotes → <code>recordings.uploaded=true</code>, <code>recordings.uploaded_at</code> set</td>
-</tr>
-<tr>
-<td><code>test_inactive_remotes_ignored_for_uploaded_flag</code></td>
-<td>Upload to active remote completes, inactive remote skipped → <code>recordings.uploaded=true</code></td>
-</tr>
 </tbody>
 </table>
-<hr />
-<h2 id="phase-4-system-tests">Phase 4: System Tests<a class="headerlink" href="#phase-4-system-tests" title="Permanent link">&para;</a></h2>
-<p><strong>Goal:</strong> Verify Controller correctly manages Uploader containers end-to-end with real Podman. Verify Janitor integration. Equivalent to v0.3.0/v0.5.0 system tests for Recorder/Processor.</p>
-<p><strong>User Stories:</strong> US-U02 (Unbegrenzt weiter aufnehmen), US-U03 (Multi-Target)</p>
-<p><strong>Dependency:</strong> Phase 2 (Controller manages Uploaders) + Phase 3 (Uploader has functional pipeline).</p>
-<h3 id="source-references_3">Source References<a class="headerlink" href="#source-references_3" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>Read these files before starting Phase 4:</strong></p>
-</blockquote>
-<table>
-<thead>
-<tr>
-<th>Purpose</th>
-<th>File</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Existing system tests — pattern to follow</td>
-<td><code>tests/system/test_processor_lifecycle.py</code></td>
-</tr>
-<tr>
-<td>Existing resilience tests — pattern to follow</td>
-<td><code>tests/system/test_processor_resilience.py</code></td>
-</tr>
-<tr>
-<td>System test helpers</td>
-<td><code>tests/system/_processor_helpers.py</code></td>
-</tr>
-<tr>
-<td>Test-utils shared fixtures</td>
-<td><code>packages/test-utils/src/silvasonic/test_utils/</code></td>
-</tr>
-<tr>
-<td>Root conftest (Testcontainer setup)</td>
-<td><code>conftest.py</code></td>
-</tr>
-<tr>
-<td>Integration conftest (DB sessions)</td>
-<td><code>tests/integration/conftest.py</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="tasks_3">Tasks<a class="headerlink" href="#tasks_3" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[ ] Verify Uploader container appears in <code>podman ps</code> with correct labels</li>
-<li>[ ] Verify Controller starts Uploaders when <code>storage_remotes</code> rows are active</li>
-<li>[ ] Verify Controller stops Uploaders when remote is deactivated</li>
-<li>[ ] Verify Uploader workspace is mounted read-only</li>
-<li>[ ] Verify LogForwarder captures Uploader logs automatically</li>
-<li>[ ] Update Controller <code>README.md</code> with Uploader management section</li>
-</ul>
-<h3 id="acceptance-criteria_3">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_3" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Phase is complete when <code>just check-all</code> passes (including image build) and all tests below are green.</p>
-</blockquote>
-<h4 id="system-tests-testssystemtest_uploader_lifecyclepy-pytestmarksystem">System Tests (<code>tests/system/test_uploader_lifecycle.py</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-tests-testssystemtest_uploader_lifecyclepy-pytestmarksystem" title="Permanent link">&para;</a></h4>
+<h4 id="integration-tests-servicesprocessortestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration">Integration Tests (<code>services/processor/tests/integration/test_flac_encoder_e2e.py</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-tests-servicesprocessortestsintegrationtest_flac_encoder_e2epy-pytestmarkintegration" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -5025,24 +3960,51 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </thead>
 <tbody>
 <tr>
-<td><code>test_uploader_started_for_active_remote</code></td>
-<td>Seed <code>storage_remotes</code> → Controller reconciles → Uploader container running with correct labels</td>
+<td><code>test_real_wav_to_flac</code></td>
+<td>Synthetic WAV (numpy) → ffmpeg → valid FLAC file</td>
 </tr>
 <tr>
-<td><code>test_uploader_stopped_when_remote_disabled</code></td>
-<td>Disable remote → Controller reconciles → Uploader stopped and removed</td>
-</tr>
-<tr>
-<td><code>test_uploader_crash_recovery</code></td>
-<td>Kill Uploader → Controller reconciles → Uploader restarted</td>
-</tr>
-<tr>
-<td><code>test_uploader_readonly_workspace</code></td>
-<td>Uploader container mounts recorder workspace as <code>:ro</code></td>
+<td><code>test_flac_smaller_than_wav</code></td>
+<td>FLAC output is smaller than WAV input</td>
 </tr>
 </tbody>
 </table>
-<h4 id="system-tests-testssystemtest_uploader_resiliencepy-pytestmarksystem">System Tests (<code>tests/system/test_uploader_resilience.py</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-tests-testssystemtest_uploader_resiliencepy-pytestmarksystem" title="Permanent link">&para;</a></h4>
+<hr />
+<h2 id="phase-2-system-tests">Phase 2: System Tests<a class="headerlink" href="#phase-2-system-tests" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Verify upload worker runs correctly within the full Processor container. Verify Janitor integration with upload status.</p>
+<p><strong>User Stories:</strong> US-U02 (Continue recording indefinitely)</p>
+<p><strong>Dependency:</strong> Phase 1 (upload worker implemented and unit-tested).</p>
+<h3 id="tasks_1">Tasks<a class="headerlink" href="#tasks_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Verify upload worker starts alongside Indexer and Janitor in Processor container</li>
+<li>[ ] Verify <code>UploaderSettings.enabled=false</code> → upload worker inactive (no rclone calls)</li>
+<li>[ ] Verify Janitor respects <code>uploaded</code> flag for retention decisions</li>
+<li>[ ] Update Processor <code>README.md</code> with Cloud-Sync-Worker section</li>
+</ul>
+<h3 id="acceptance-criteria_1">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_1" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Phase is complete when <code>just check-all</code> passes (including Processor image build).</p>
+</blockquote>
+<h4 id="system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem">System Tests (<code>tests/system/test_processor_lifecycle.py</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Validates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_upload_worker_starts_with_processor</code></td>
+<td>Processor container logs show upload worker initialization</td>
+</tr>
+<tr>
+<td><code>test_upload_disabled_no_rclone</code></td>
+<td><code>enabled=false</code> → no rclone subprocess spawned</td>
+</tr>
+</tbody>
+</table>
+<h4 id="system-tests-testssystemtest_processor_resiliencepy-pytestmarksystem">System Tests (<code>tests/system/test_processor_resilience.py</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-tests-testssystemtest_processor_resiliencepy-pytestmarksystem" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -5053,68 +4015,35 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <tbody>
 <tr>
 <td><code>test_janitor_respects_uploaded_flag</code></td>
-<td><code>uploaded=true</code> → Janitor Housekeeping may delete; <code>uploaded=false</code> → keeps file</td>
-</tr>
-<tr>
-<td><code>test_uploader_survives_controller_restart</code></td>
-<td>Kill Controller → Uploader running → new Controller adopts on restart</td>
-</tr>
-<tr>
-<td><code>test_multi_remote_upload_independence</code></td>
-<td>Seed 2 <code>storage_remotes</code> + recordings → Controller starts 2 Uploaders → both upload all recordings independently → <code>uploads</code> table has entries for both remotes → <code>recordings.uploaded=true</code> ONLY after BOTH successes</td>
-</tr>
-</tbody>
-</table>
-<h4 id="smoke-tests-testssmoketest_healthpy-pytestmarksmoke">Smoke Tests (<code>tests/smoke/test_health.py</code>) — <code>@pytest.mark.smoke</code><a class="headerlink" href="#smoke-tests-testssmoketest_healthpy-pytestmarksmoke" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>Validates</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>test_uploader_healthy</code></td>
-<td>Uploader image builds, container starts, <code>/healthy</code> → <code>200</code></td>
-</tr>
-<tr>
-<td><code>test_uploader_heartbeat_in_redis</code></td>
-<td>Uploader heartbeat visible in Redis within 15s</td>
+<td><code>uploaded=true</code> → Janitor may delete; <code>uploaded=false</code> → keeps file</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="phase-5-documentation-release">Phase 5: Documentation &amp; Release<a class="headerlink" href="#phase-5-documentation-release" title="Permanent link">&para;</a></h2>
+<h2 id="phase-3-documentation-release">Phase 3: Documentation &amp; Release<a class="headerlink" href="#phase-3-documentation-release" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Finalize documentation, bump version, run full pipeline, create release.</p>
-<p><strong>User Stories:</strong> —</p>
 <p><strong>Dependency:</strong> All previous phases complete.</p>
-<h3 id="tasks_4">Tasks<a class="headerlink" href="#tasks_4" title="Permanent link">&para;</a></h3>
+<h3 id="tasks_2">Tasks<a class="headerlink" href="#tasks_2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Update <code>VISION.md</code>: Uploader status → <code>✅ AS-IS</code></li>
-<li>[ ] Update <code>docs/services/uploader.md</code>: Status → <code>implemented</code></li>
-<li>[ ] Update Glossary: Uploader → remove <code>(Planned)</code> prefix</li>
+<li>[ ] Update <code>VISION.md</code>: Processor status annotation (Cloud-Sync-Worker → <code>✅ AS-IS</code>)</li>
 <li>[ ] Update <code>ROADMAP.md</code>: v0.6.0 → <code>✅ Done</code></li>
-<li>[ ] Update User Stories: mark completed acceptance criteria (US-U01–U03, US-U06 backend)</li>
+<li>[ ] Update User Stories: mark completed acceptance criteria (US-U01, US-U02, US-U06 backend)</li>
+<li>[ ] Update Processor <code>README.md</code>: Implementation Status table</li>
 <li>[ ] Update this file (<code>milestone_0_6_0.md</code>): check all items, Status → <code>✅ Done</code></li>
-<li>[ ] Version bump <code>0.5.0</code> → <code>0.6.0</code> in 3 files (per <code>release_checklist.md</code> §1):</li>
+<li>[ ] Version bump <code>0.5.x</code> → <code>0.6.0</code> in 3 files (per <code>release_checklist.md</code> §1):</li>
 <li><code>packages/core/src/silvasonic/core/__init__.py</code></li>
 <li><code>pyproject.toml</code> (root)</li>
 <li><code>README.md</code> Line 5</li>
-<li>[ ] <code>just check-all</code> passes (full 12-stage pipeline including Uploader image build)</li>
-<li>[ ] <code>just test-hw</code> passes (recommended — no regressions in hardware tests)</li>
+<li>[ ] <code>just check-all</code> passes (full pipeline including Processor image rebuild with rclone)</li>
+<li>[ ] <code>just test-hw</code> passes (recommended — no regressions)</li>
 <li>[ ] Commit + annotated tag + push:
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;release: v0.6.0 — Uploader (FLAC Compression &amp; Cloud Sync)&quot;</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v0.6.0<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;v0.6.0 — Uploader (FLAC Compression &amp; Cloud Sync)&quot;</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v0.6.0
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;release: v0.6.0 — Processor Cloud Sync (Upload Worker)&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v0.6.0<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;v0.6.0 — Processor Cloud Sync (Upload Worker)&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v0.6.0
 </code></pre></div></li>
 </ul>
-<h3 id="acceptance-criteria_4">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_4" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Phase is complete when <code>just check-all</code> and <code>just test-hw</code> pass, tag is pushed.</p>
-</blockquote>
 <hr />
 <h2 id="out-of-scope-deferred">Out of Scope (Deferred)<a class="headerlink" href="#out-of-scope-deferred" title="Permanent link">&para;</a></h2>
 <table>
@@ -5126,7 +4055,7 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 </thead>
 <tbody>
 <tr>
-<td>Web-UI for storage remote configuration (US-U04)</td>
+<td>Web-UI for remote target configuration (US-U04)</td>
 <td>v0.9.0</td>
 </tr>
 <tr>
@@ -5138,11 +4067,7 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <td>v0.9.0</td>
 </tr>
 <tr>
-<td><code>system_services</code> row for Uploader (no consumer until Web-UI)</td>
-<td>v0.9.0</td>
-</tr>
-<tr>
-<td>Parallel uploads (multiple files concurrently per instance)</td>
+<td>Parallel uploads (multiple files concurrently)</td>
 <td>post-v1.0.0</td>
 </tr>
 <tr>
@@ -5150,15 +4075,19 @@ It reads <code>recordings.time</code> for the date, <code>recordings.sensor_id</
 <td>post-v1.0.0</td>
 </tr>
 <tr>
-<td>Encryption at rest for <code>storage_remotes.config</code></td>
+<td>Multi-target upload</td>
+<td>post-v1.0.0</td>
+</tr>
+<tr>
+<td>Encryption at rest for credentials in <code>system_config</code></td>
 <td>post-v1.0.0</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p><strong>Note:</strong> US-U04 (Settings via Web-Oberfläche) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the <strong>backend support</strong> — <code>UploaderSettings</code> schema, heartbeat payload with upload metrics. Web-Mock routes (<code>/uploaders</code>, <code>/uploaders/{id}</code>) already exist with hardcoded data. The real UI will be added in v0.9.0.</p>
-<p><strong>Note:</strong> US-U06 (Lückenlose Nachverfolgung) is split: the audit <strong>backend</strong> (immutable <code>uploads</code> table, <code>log_upload_attempt()</code>) is implemented here. The Web-Interface for browsing the audit log is deferred to v0.9.0.</p>
-<p><strong>Note:</strong> The Uploader only uploads <strong>Raw</strong> recordings as FLAC (ADR-0011 §4: "The Uploader converts <code>raw</code> artifacts to FLAC"). Processed (48kHz) files can be regenerated from the lossless FLAC on the cloud side if needed.</p>
+<p><strong>Note:</strong> US-U04 (Settings via Web UI) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the <strong>backend support</strong> — <code>UploaderSettings</code> schema, heartbeat payload with upload metrics. Web-Mock routes (<code>/upload</code>) already exist with mock data.</p>
+<p><strong>Note:</strong> US-U06 (Seamless tracking) is split: the audit <strong>backend</strong> (immutable <code>uploads</code> table) is implemented here. The Web-Interface for browsing the audit log is deferred to v0.9.0.</p>
+<p><strong>Note:</strong> The upload worker only uploads <strong>Raw</strong> recordings as FLAC (ADR-0011 §4). Processed (48kHz) files can be regenerated from the lossless FLAC on the cloud side if needed.</p>
 </blockquote>
 
 

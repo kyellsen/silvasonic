@@ -850,34 +850,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../services/gateway/" class="md-nav__link">
         
   
@@ -2440,6 +2412,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../development/idea/" class="md-nav__link">
         
   
@@ -2718,14 +2718,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/uploader/" class="md-nav__link">
+      <a href="../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2986,7 +2986,7 @@
 </tr>
 <tr>
 <td>v0.6.0</td>
-<td>Uploader (immutable Tier 2, Controller-managed, FLAC compression, remote sync)</td>
+<td>Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)</td>
 <td>⏳ Planned</td>
 </tr>
 <tr>
@@ -3036,7 +3036,7 @@
 </tr>
 <tr>
 <td>v1.4.0</td>
-<td>Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Uploader extension, analytics-optimized)</td>
+<td>Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Cloud-Sync extension, analytics-optimized)</td>
 <td>⏳ Planned</td>
 </tr>
 <tr>
@@ -3055,7 +3055,7 @@
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_3_0.md">Milestone v0.3.0</a></strong> — Phases &amp; tasks for Tier 2 Container Management</li>
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_4_0.md">Milestone v0.4.0</a></strong> — Phases &amp; tasks for Audio Recording (Dual Stream)</li>
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_5_0.md">Milestone v0.5.0</a></strong> — Phases &amp; tasks for Analysis &amp; Backend Orchestration</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_6_0.md">Milestone v0.6.0</a></strong> — Phases &amp; tasks for Uploader (FLAC Compression &amp; Cloud Sync)</li>
+<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_6_0.md">Milestone v0.6.0</a></strong> — Phases &amp; tasks for Processor Cloud Sync (Upload Worker)</li>
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_8_0.md">Milestone v0.8.0</a></strong> — BirdNET (On-device Avian Inference)</li>
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_9_0.md">Milestone v0.9.0</a></strong> — Web-Interface (Dashboard, Service Control, <code>system_services</code> Seeding)</li>
 <li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestone_0_10_0.md">Milestone v0.10.0</a></strong> — Marketing Landing Page (Astro) -&gt; <em><code>silvasonic.de</code> repo</em></li>

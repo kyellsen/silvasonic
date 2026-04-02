@@ -768,34 +768,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../services/gateway/" class="md-nav__link">
         
   
@@ -2358,6 +2330,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../development/idea/" class="md-nav__link">
         
   
@@ -2636,14 +2636,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/uploader/" class="md-nav__link">
+      <a href="../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2978,30 +2978,17 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tr>
 <tr>
 <td><strong>Processor</strong></td>
-<td>Tier 1 service (single instance) for data ingestion, indexing, and cleanup. Contains the Janitor logic. <strong>Immutable</strong> — config at startup, restart to reconfigure (ADR-0019).</td>
+<td>Tier 1 service (single instance) for data ingestion, indexing, cleanup, and cloud sync. Contains the Janitor and Cloud-Sync-Worker (v0.6.0). <strong>Immutable</strong> — config at startup, restart to reconfigure (ADR-0019).</td>
 </tr>
 <tr>
 <td><strong>Recorder</strong></td>
 <td>Tier 2 audio capture service. Captures audio via FFmpeg subprocess (ADR-0024), writes dual-stream output (Raw &amp; Processed) to NVMe, and sends a live Opus stream to Icecast (best-effort). Immutable, no DB access, config via Profile Injection (Microphone Profiles). <strong>Multi-instance: one Recorder per microphone.</strong></td>
 </tr>
-<tr>
-<td><strong>Uploader</strong></td>
-<td>(Planned) Tier 2 service for compressing Raw recordings to FLAC and synchronizing them to remote storage (e.g. Nextcloud, S3). <strong>Multi-instance: one Uploader per remote storage target.</strong></td>
-</tr>
-<tr>
-<td><strong>Weather</strong></td>
-<td>(Planned) Tier 2 service (single instance). First downloads environmental data from external APIs (e.g. OpenMeteo) and stores it in the database, then correlates it with acoustic recordings.</td>
-</tr>
-<tr>
-<td><strong>Web-Interface</strong></td>
-<td>(Planned) Tier 1 local management console targeting production use (single instance). Uses the Read+Subscribe Pattern (Redis SET+TTL + Pub/Sub) for real-time service status. Controls services via DB writes + <code>PUBLISH silvasonic:nudge "reconcile"</code> (State Reconciliation Pattern).</td>
-</tr>
-<tr>
-<td><strong>Web-Mock</strong></td>
-<td>Tier 1 development prototype and UI shell (single instance). FastAPI + Jinja2 + HTMX serving hardcoded mock data. Precursor to the full Web-Interface. Uses <code>ServiceContext</code> lifespan. Port 8001.</td>
-</tr>
 </tbody>
 </table>
+<p>| <strong>Weather</strong>       | (Planned) Tier 2 service (single instance). First downloads environmental data from external APIs (e.g. OpenMeteo) and stores it in the database, then correlates it with acoustic recordings.                                                                                                                                                                    |
+| <strong>Web-Interface</strong> | (Planned) Tier 1 local management console targeting production use (single instance). Uses the Read+Subscribe Pattern (Redis SET+TTL + Pub/Sub) for real-time service status. Controls services via DB writes + <code>PUBLISH silvasonic:nudge "reconcile"</code> (State Reconciliation Pattern). |
+| <strong>Web-Mock</strong>      | Tier 1 development prototype and UI shell (single instance). FastAPI + Jinja2 + HTMX serving hardcoded mock data. Precursor to the full Web-Interface. Uses <code>ServiceContext</code> lifespan. Port 8001. |</p>
 <hr />
 <h2 id="database-entities">Database Entities<a class="headerlink" href="#database-entities" title="Permanent link">&para;</a></h2>
 <table>
@@ -3033,38 +3020,13 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 <td><code>recordings</code></td>
 <td>Registry entry for an audio file pair (Raw + Processed) captured by a Recorder instance. Tracks duration, sample rate, file sizes, upload status, and analysis state. Standard PostgreSQL table (not a Hypertable — ADR-0025) to preserve FK constraints from <code>detections</code> and <code>uploads</code>.</td>
 </tr>
-<tr>
-<td><strong>Storage Remote</strong></td>
-<td><code>storage_remotes</code></td>
-<td>Configuration for a remote storage provider (S3, WebDAV, SFTP). Used by the Uploader to configure synchronization targets.</td>
-</tr>
-<tr>
-<td><strong>System Config</strong></td>
-<td><code>system_config</code></td>
-<td>Global key-value store for application-wide settings.</td>
-</tr>
-<tr>
-<td><strong>System Service</strong></td>
-<td><code>system_services</code></td>
-<td>Registry of Tier 1 services and Tier 2 singletons (BirdNET, BatDetect, Weather), tracking desired state (<code>enabled</code>, <code>status</code>). Multi-instance Tier 2 services (Recorder, Uploader) derive desired state from domain tables (<code>devices</code>, <code>storage_remotes</code>). See ADR-0017.</td>
-</tr>
-<tr>
-<td><strong>Taxonomy</strong></td>
-<td><code>taxonomy</code></td>
-<td>Metadata registry mapping raw detection labels to human-readable information: scientific name, localized common names, description, images, and conservation status (IUCN).</td>
-</tr>
-<tr>
-<td><strong>Upload</strong></td>
-<td><code>uploads</code></td>
-<td>Immutable audit log entry for a single upload attempt. Links a Recording to a Storage Remote and records success/failure, file size, and errors.</td>
-</tr>
-<tr>
-<td><strong>Weather Observation</strong></td>
-<td><code>weather</code></td>
-<td>Environmental data point from a local sensor (e.g. BME280) or external API (e.g. OpenMeteo). TimescaleDB hypertable partitioned by time.</td>
-</tr>
 </tbody>
 </table>
+<p>| <strong>System Config</strong>       | <code>system_config</code>       | Global key-value store for application-wide settings.                                                                                                                                                                                                                    |
+| <strong>System Service</strong>      | <code>system_services</code>     | Registry of Tier 1 services and Tier 2 singletons (BirdNET, BatDetect, Weather), tracking desired state (<code>enabled</code>, <code>status</code>). Multi-instance Tier 2 services (Recorder) derive desired state from domain tables (<code>devices</code>). Upload state is managed via <code>system_config</code> key <code>"upload"</code>. See ADR-0017.                    |
+| <strong>Taxonomy</strong>            | <code>taxonomy</code>            | Metadata registry mapping raw detection labels to human-readable information: scientific name, localized common names, description, images, and conservation status (IUCN).                                                                                              |
+| <strong>Upload</strong>              | <code>uploads</code>             | Immutable audit log entry for a single upload attempt. Links a Recording to a Storage Remote and records success/failure, file size, and errors.                                                                                                                         |
+| <strong>Weather Observation</strong> | <code>weather</code>             | Environmental data point from a local sensor (e.g. BME280) or external API (e.g. OpenMeteo). TimescaleDB hypertable partitioned by time.                                                                                                                                 |</p>
 <hr />
 <h2 id="architecture-domain-concepts">Architecture &amp; Domain Concepts<a class="headerlink" href="#architecture-domain-concepts" title="Permanent link">&para;</a></h2>
 <table>
@@ -3233,7 +3195,7 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tr>
 <tr>
 <td><strong>Tier 2 (Application)</strong></td>
-<td>Services managed dynamically by the Controller at runtime. All Tier 2 containers are immutable. Includes Recorder, Uploader, BirdNET, BatDetect, Weather.</td>
+<td>Services managed dynamically by the Controller at runtime. All Tier 2 containers are immutable. Includes Recorder, BirdNET, BatDetect, Weather.</td>
 </tr>
 <tr>
 <td><strong>Worker Pull</strong></td>

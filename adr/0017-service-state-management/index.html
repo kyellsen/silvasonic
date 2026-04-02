@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2514,6 +2486,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2792,14 +2792,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3101,8 +3101,10 @@
 *   <strong>Tier 1 services</strong> (Processor, Web-Interface, Icecast, etc.)
 *   <strong>Tier 2 singletons</strong> (BirdNET, BatDetect, Weather)</p>
 <p>For multi-instance Tier 2 services, the Controller derives desired state from domain tables:
-*   <strong>Recorder:</strong> <code>devices</code> + <code>microphone_profiles</code> (one Recorder per enrolled device)
-*   <strong>Uploader:</strong> <code>storage_remotes</code> (one Uploader per remote target)</p>
+*   <strong>Recorder:</strong> <code>devices</code> + <code>microphone_profiles</code> (one Recorder per enrolled device)</p>
+<blockquote>
+<p><strong>Note:</strong> Upload desired state is managed via <code>system_config</code> key <code>"uploader"</code> (<code>UploaderSettings.enabled</code>), not via a separate domain table. See <a href="../development/refactoring_uploader_to_processor.md">Refactoring Plan</a>.</p>
+</blockquote>
 <h3 id="actual-state-redis-v020">Actual State → Redis (v0.2.0)<a class="headerlink" href="#actual-state-redis-v020" title="Permanent link">&para;</a></h3>
 <p>Runtime health and activity is <strong>ephemeral</strong> and stored in Redis via two complementary mechanisms:</p>
 <ol>

@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2855,6 +2827,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../idea/" class="md-nav__link">
         
   
@@ -3133,14 +3133,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3968,7 +3968,7 @@
 <li>Log each deletion: filename, reason, mode</li>
 <li>[x] Implement <strong>Panic Mode fallback</strong>:</li>
 <li>If DB is unreachable during Panic Mode, fall back to filesystem <code>mtime</code> for blind cleanup (oldest files first)</li>
-<li>[x] Implement <strong>Uploader-Fallback</strong>: When no Uploader is configured (no active <code>storage_remotes</code> rows), skip <code>uploaded</code> condition in Housekeeping/Defensive. Logged at WARNING with <code>janitor.uploader_fallback_active</code></li>
+<li>[x] Implement <strong>Uploader-Fallback</strong>: When upload is not enabled (<code>UploaderSettings.enabled = false</code> in <code>system_config</code>), skip <code>uploaded</code> condition in Housekeeping/Defensive. Logged at WARNING with <code>janitor.uploader_fallback_active</code></li>
 <li>[x] Implement <strong>Batch Size Limit</strong>: <code>janitor_batch_size</code> (default 50) per cleanup cycle. Add to <code>ProcessorSettings</code></li>
 <li>[x] Exclusive delete authority: only the Processor deletes Recorder files — enforced by RW mount on Recorder workspace (all others mount <code>:ro</code>, ADR-0009)</li>
 <li>[x] Integrate Janitor as periodic async task in <code>ProcessorService.run()</code></li>
@@ -3985,9 +3985,9 @@
 <li><code>test_defensive_mode_triggers</code> — 85% usage → mode <code>defensive</code></li>
 <li><code>test_panic_mode_triggers</code> — 95% usage → mode <code>panic</code></li>
 <li><code>test_housekeeping_criteria_with_uploader</code> — only deletes <code>uploaded=true AND analysis_state complete</code></li>
-<li><code>test_housekeeping_no_uploader_fallback</code> — no <code>storage_remotes</code> → skips <code>uploaded</code> check</li>
+<li><code>test_housekeeping_no_uploader_fallback</code> — upload not enabled → skips <code>uploaded</code> check</li>
 <li><code>test_defensive_criteria_with_uploader</code> — deletes <code>uploaded=true</code> regardless of analysis</li>
-<li><code>test_defensive_no_uploader_fallback</code> — no <code>storage_remotes</code> → deletes all non-deleted</li>
+<li><code>test_defensive_no_uploader_fallback</code> — upload not enabled → deletes all non-deleted</li>
 <li><code>test_panic_criteria</code> — deletes oldest files regardless of status</li>
 <li><code>test_soft_delete_updates_db</code> — physical delete + DB row <code>local_deleted=true</code> (mocked fs/DB)</li>
 <li><code>test_panic_fallback_no_db</code> — DB unreachable → falls back to <code>mtime</code>-based filesystem cleanup</li>
@@ -4108,7 +4108,7 @@
 <td>v1.3.0</td>
 </tr>
 <tr>
-<td>Uploader service (FLAC compression, remote sync)</td>
+<td>Upload Worker (Cloud Sync within Processor)</td>
 <td>v0.6.0</td>
 </tr>
 <tr>

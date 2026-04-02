@@ -766,34 +766,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2356,6 +2328,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2634,14 +2634,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -2937,7 +2937,7 @@
 </ul>
 <p>These are classic OLTP queries that benefit from B-Tree indices, not chunk-based partitioning.</p>
 <h3 id="fk-constraints-are-critical">FK Constraints Are Critical<a class="headerlink" href="#fk-constraints-are-critical" title="Permanent link">&para;</a></h3>
-<p>The <code>detections</code> table (a Hypertable itself) references <code>recordings.id</code>. Dropping this FK would mean a bug in BirdNET or BatDetect could insert detections pointing to non-existent recordings — violating data integrity silently. Enforcing referential integrity in application code across multiple independent services (BirdNET, BatDetect, Uploader) contradicts the KISS principle and the Zero-Trust philosophy (ADR-0009).</p>
+<p>The <code>detections</code> table (a Hypertable itself) references <code>recordings.id</code>. Dropping this FK would mean a bug in BirdNET or BatDetect could insert detections pointing to non-existent recordings — violating data integrity silently. Enforcing referential integrity in application code across multiple independent services (BirdNET, BatDetect) contradicts the KISS principle and the Zero-Trust philosophy (ADR-0009).</p>
 <h3 id="worker-pull-performance">Worker Pull Performance<a class="headerlink" href="#worker-pull-performance" title="Permanent link">&para;</a></h3>
 <p>The <code>FOR UPDATE SKIP LOCKED</code> pattern (ADR-0018) works optimally on standard tables. On Hypertables, the query planner must scan across chunks, adding overhead for no benefit at this data volume. A partial index provides microsecond-level performance:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">ix_recordings_analysis_pending</span>

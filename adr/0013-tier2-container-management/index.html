@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2536,6 +2508,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2814,14 +2814,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3129,10 +3129,10 @@
 <p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-02-17</p>
 </blockquote>
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
-<p>The Controller (Tier 1) must dynamically manage <strong>Tier 2 services</strong> (Recorder, Uploader, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:</p>
+<p>The Controller (Tier 1) must dynamically manage <strong>Tier 2 services</strong> (Recorder, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:</p>
 <ul>
-<li><strong>Immutable Tier 2 containers:</strong> Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (Uploader, BirdNET, etc.) may access the database.</li>
-<li><strong>Multi-instance support:</strong> Multiple Recorder instances may run concurrently (one per USB microphone). Uploader instances are launched per Cloud Storage Account up to the <code>max_uploaders</code> constraint, at which point the Controller manages them via deterministic scheduling.</li>
+<li><strong>Immutable Tier 2 containers:</strong> Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (BirdNET, etc.) may access the database.</li>
+<li><strong>Multi-instance support:</strong> Multiple Recorder instances may run concurrently (one per USB microphone).</li>
 <li><strong>Pre-built images:</strong> All images are built before deployment (<code>just build</code>). The Controller never builds images at runtime.</li>
 <li><strong>Container-in-Container (DooD):</strong> The Controller itself runs in a container and manages sibling containers on the host engine via the host's Podman socket (Docker-out-of-Docker pattern).</li>
 <li><strong>Years of autonomous operation:</strong> Minimal moving parts, deterministic behavior, no runtime dependencies on Compose semantics.</li>

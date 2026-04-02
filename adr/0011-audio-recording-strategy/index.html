@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -1645,10 +1617,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#uploader-fallback-pre-v060" class="md-nav__link">
+  <a href="#upload-fallback-pre-v060" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uploader-Fallback (Pre-v0.6.0)
+        Upload-Fallback (Pre-v0.6.0)
       
     </span>
   </a>
@@ -2525,6 +2497,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -2803,14 +2803,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3056,10 +3056,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#uploader-fallback-pre-v060" class="md-nav__link">
+  <a href="#upload-fallback-pre-v060" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uploader-Fallback (Pre-v0.6.0)
+        Upload-Fallback (Pre-v0.6.0)
       
     </span>
   </a>
@@ -3105,7 +3105,7 @@
 <h1 id="adr-0011-audio-recording-strategy-raw-vs-processed">ADR-0011: Audio Recording Strategy (Raw vs Processed)<a class="headerlink" href="#adr-0011-audio-recording-strategy-raw-vs-processed" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Status:</strong> Accepted (amended 2026-03-30) • <strong>Date:</strong> 2026-01-31</p>
-<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) and <code>uploader</code> (v0.6.0) are implemented. References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.</p>
+<p><strong>NOTE:</strong> The <code>processor</code> (v0.5.0) is implemented. The <code>uploader</code> has been archived as a standalone service and is being integrated into the Processor as a Cloud-Sync-Worker (v0.6.0). References to <code>birdnet</code>, <code>batdetect</code>, or <code>weather</code> refer to planned services.</p>
 </blockquote>
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
 <p>The system supports various hardware microphones with different native capabilities (e.g., Dodotronic Ultramic at 384kHz, standard USB mics at 48kHz). Previously, we used terminology like "High Res" and "Low Res" or hardcoded 384kHz/48kHz assumptions. This is brittle and does not scale to different hardware configurations.</p>
@@ -3146,7 +3146,7 @@
 <ul>
 <li><strong>Format</strong>: <code>FLAC</code> (Free Lossless Audio Codec).</li>
 <li><strong>Motivation</strong>: Bandwidth efficiency. Uploading uncompressed WAVs is wasteful.</li>
-<li><strong>Policy</strong>: The Uploader service converts <code>raw</code> artifacts to FLAC on-the-fly (or uses a buffer) before/during upload.</li>
+<li><strong>Policy</strong>: The Processor's Cloud-Sync-Worker converts <code>raw</code> artifacts to FLAC on-the-fly (or uses a buffer) before/during upload.</li>
 </ul>
 </li>
 </ol>
@@ -3224,9 +3224,9 @@
 <p>We have decided to enforce <strong>Data Capture Integrity</strong> via an escalating retention policy based on local disk utilization. As storage fills up, the policy progressively sacrifices first local analysis completeness, and eventually remote backup guarantees, to ensure the Recorder never faces a "Disk Full" scenario and never stops recording.</p>
 <h3 id="batch-size-limit">Batch Size Limit<a class="headerlink" href="#batch-size-limit" title="Permanent link">&para;</a></h3>
 <p>Deletions are limited to <code>janitor_batch_size</code> (default: <strong>50</strong>) files per cleanup cycle to prevent I/O storms and excessive database load. At 10-second segments, this corresponds to ~8 minutes of audio per batch.</p>
-<h3 id="uploader-fallback-pre-v060">Uploader-Fallback (Pre-v0.6.0)<a class="headerlink" href="#uploader-fallback-pre-v060" title="Permanent link">&para;</a></h3>
-<p>When no Uploader is configured (no active <code>storage_remotes</code> rows in the database), the <code>uploaded</code> condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at <code>WARNING</code> level with the key <code>janitor.uploader_fallback_active</code>.
-If Uploaders <em>are</em> configured, the <code>uploaded</code> condition is strictly interpreted as meaning the file has been successfully uploaded to <strong>ALL currently active remotes</strong>.</p>
+<h3 id="upload-fallback-pre-v060">Upload-Fallback (Pre-v0.6.0)<a class="headerlink" href="#upload-fallback-pre-v060" title="Permanent link">&para;</a></h3>
+<p>When upload is not enabled (<code>UploaderSettings.enabled = false</code> in <code>system_config</code>), the <code>uploaded</code> condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at <code>WARNING</code> level with the key <code>janitor.uploader_fallback_active</code>.
+If upload <em>is</em> enabled, the <code>uploaded</code> condition is strictly interpreted as meaning the file has been successfully uploaded to the configured remote target.</p>
 <p>The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the <strong><a href="../../services/processor/">Processor Service Documentation</a></strong>.</p>
 <h2 id="7-implementation-ffmpeg-audio-engine-v040">7. Implementation: FFmpeg Audio Engine (v0.4.0)<a class="headerlink" href="#7-implementation-ffmpeg-audio-engine-v040" title="Permanent link">&para;</a></h2>
 <blockquote>

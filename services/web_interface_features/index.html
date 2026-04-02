@@ -772,34 +772,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../gateway/" class="md-nav__link">
         
   
@@ -1049,10 +1021,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#uploaders-uploaders" class="md-nav__link">
+  <a href="#cloud-sync-cloud-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ☁️ Uploaders (/uploaders)
+        ☁️ Cloud Sync (/cloud-sync)
       
     </span>
   </a>
@@ -1254,10 +1226,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#uploader-us-u01u06" class="md-nav__link">
+  <a href="#upload-cloud-sync-us-u01u06" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uploader (US-U01–U06)
+        Upload / Cloud Sync (US-U01–U06)
       
     </span>
   </a>
@@ -2834,6 +2806,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -3112,14 +3112,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user_stories/uploader/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3381,10 +3381,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#uploaders-uploaders" class="md-nav__link">
+  <a href="#cloud-sync-cloud-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ☁️ Uploaders (/uploaders)
+        ☁️ Cloud Sync (/cloud-sync)
       
     </span>
   </a>
@@ -3586,10 +3586,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#uploader-us-u01u06" class="md-nav__link">
+  <a href="#upload-cloud-sync-us-u01u06" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uploader (US-U01–U06)
+        Upload / Cloud Sync (US-U01–U06)
       
     </span>
   </a>
@@ -3759,7 +3759,7 @@
 </tr>
 <tr>
 <td>Upload Indicator</td>
-<td>Cloud icon with number of active uploaders</td>
+<td>Cloud icon with upload sync status</td>
 <td>✅ v0.2.0</td>
 </tr>
 <tr>
@@ -3791,7 +3791,7 @@
 <tbody>
 <tr>
 <td>System Group</td>
-<td>Dashboard, Recorders, Processor, Uploaders — always visible</td>
+<td>Dashboard, Recorders, Processor, Cloud Sync — always visible</td>
 <td>✅ v0.2.0</td>
 </tr>
 <tr>
@@ -3897,9 +3897,9 @@
 <td>v0.9.0</td>
 </tr>
 <tr>
-<td><strong>Uploaders</strong></td>
+<td><strong>Cloud Sync</strong></td>
 <td>Queue total, throughput, last upload</td>
-<td><strong>Uploader Card →</strong> Target details: URL, auth, queue, latest errors, retries</td>
+<td><strong>Sync Detail →</strong> Target details: URL, auth, queue, latest errors, retries</td>
 <td>v0.9.0</td>
 </tr>
 <tr>
@@ -3959,7 +3959,7 @@
 <tbody>
 <tr>
 <td>Orchestration Card</td>
-<td>Recorder/Uploader/Pending counters, Health badge</td>
+<td>Recorder/Pending counters, Health badge, Cloud Sync status</td>
 <td>v0.9.0</td>
 </tr>
 <tr>
@@ -4079,7 +4079,7 @@
 <p>Configuration of Retention Policy → <strong>Settings → Storage &amp; Retention</strong></p>
 </blockquote>
 <hr />
-<h2 id="uploaders-uploaders">☁️ Uploaders (<code>/uploaders</code>)<a class="headerlink" href="#uploaders-uploaders" title="Permanent link">&para;</a></h2>
+<h2 id="cloud-sync-cloud-sync">☁️ Cloud Sync (<code>/cloud-sync</code>)<a class="headerlink" href="#cloud-sync-cloud-sync" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4090,13 +4090,8 @@
 </thead>
 <tbody>
 <tr>
-<td>Bento-Grid (max 3)</td>
-<td>Uploader Cards: queue size, throughput, last sync, status, target type</td>
-<td>v0.9.0</td>
-</tr>
-<tr>
-<td>Uploader Detail (<code>/uploaders/{id}</code>)</td>
-<td>Detail view: target URL, auth status, queue details, bandwidth, upload window</td>
+<td>Single-Target View</td>
+<td>Upload queue size, throughput, last sync, status, configured remote target</td>
 <td>v0.9.0</td>
 </tr>
 <tr>
@@ -4105,14 +4100,14 @@
 <td>v0.9.0</td>
 </tr>
 <tr>
-<td>Enable/Disable Uploader</td>
-<td>Toggle per Uploader instance</td>
+<td>Enable/Disable Upload</td>
+<td>Global toggle for Cloud Sync</td>
 <td>v0.9.0</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p>Configuration of Remote Targets → <strong>Settings → Remotes</strong></p>
+<p>Configuration of Remote Target → <strong>Settings → Remotes</strong></p>
 </blockquote>
 <hr />
 <h2 id="birds-birds">🐦 Birds (<code>/birds</code>)<a class="headerlink" href="#birds-birds" title="Permanent link">&para;</a></h2>
@@ -4714,7 +4709,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="uploader-us-u01u06">Uploader (US-U01–U06)<a class="headerlink" href="#uploader-us-u01u06" title="Permanent link">&para;</a></h3>
+<h3 id="upload-cloud-sync-us-u01u06">Upload / Cloud Sync (US-U01–U06)<a class="headerlink" href="#upload-cloud-sync-us-u01u06" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4728,20 +4723,20 @@
 <tr>
 <td>US-U01</td>
 <td>Recordings automatically to the cloud</td>
-<td>Uploaders Page (Queue, Throughput, Status)</td>
+<td>Cloud Sync Page (Queue, Throughput, Status)</td>
 <td>✅</td>
 </tr>
 <tr>
 <td>US-U02</td>
 <td>Continue recording indefinitely</td>
-<td>Processor Retention + Uploader Status (Interaction)</td>
+<td>Processor Retention + Cloud Sync Status (Interaction)</td>
 <td>✅</td>
 </tr>
 <tr>
-<td>US-U03</td>
-<td>Multiple storage targets simultaneously</td>
-<td>Settings → Remotes (Dropdown of multiple targets)</td>
-<td>✅</td>
+<td>~~US-U03~~</td>
+<td>~~Multiple storage targets~~</td>
+<td>~~Archived — KISS single-target~~</td>
+<td>❌ Archived</td>
 </tr>
 <tr>
 <td>US-U04</td>
@@ -4752,13 +4747,13 @@
 <tr>
 <td>US-U05</td>
 <td>Upload progress in dashboard</td>
-<td>Uploaders Page (Queue, Throughput, Last Sync) + Dashboard</td>
+<td>Cloud Sync Page (Queue, Throughput, Last Sync) + Dashboard</td>
 <td>✅</td>
 </tr>
 <tr>
 <td>US-U06</td>
 <td>Seamless upload tracking</td>
-<td>Uploader Detail: Upload History Table (Audit-Log)</td>
+<td>Cloud Sync: Upload History Table (Audit-Log)</td>
 <td>✅</td>
 </tr>
 </tbody>
@@ -4992,14 +4987,14 @@
 <td>3</td>
 <td><strong>Upload Bandwidth + Time Window</strong></td>
 <td>US-U04</td>
-<td>Bandwidth Limit (KB/s) + Upload Window in Settings → Remotes and Uploader Detail</td>
+<td>Bandwidth Limit (KB/s) + Upload Window in Settings → Remotes and Cloud Sync Detail</td>
 <td>✅ Web-Mock</td>
 </tr>
 <tr>
 <td>4</td>
 <td><strong>Upload Protocol (Audit-Log)</strong></td>
 <td>US-U06</td>
-<td>Upload History Table on Uploader Detail (Status ✓/✗/⏳, Size, Duration, Error)</td>
+<td>Upload History Table on Cloud Sync Page (Status ✓/✗/⏳, Size, Duration, Error)</td>
 <td>✅ Web-Mock</td>
 </tr>
 <tr>
@@ -5094,7 +5089,7 @@
 <tr>
 <td><strong>FLAC Compression</strong> before Upload</td>
 <td>US-U01</td>
-<td>Uploader</td>
+<td>Processor (Cloud-Sync-Worker)</td>
 <td>Transparent optimization — user only notices smaller upload sizes</td>
 </tr>
 <tr>
@@ -5165,7 +5160,7 @@
 </tr>
 <tr>
 <td><strong>Store &amp; Forward</strong></td>
-<td>🔒 Backend-Only — Uploaders show Queue (indirect hint)</td>
+<td>🔒 Backend-Only — Cloud Sync shows Queue (indirect hint)</td>
 </tr>
 <tr>
 <td><strong>Fleet Mode</strong> (Ansible Zero-Touch)</td>
@@ -5193,7 +5188,7 @@
 </tr>
 <tr>
 <td>v0.9.0 (Web-Interface)</td>
-<td>~57 (Dashboard Live, Recorders incl. Enrollment/Watchdog, Uploaders incl. Audit-Log, Settings incl. Confidence/Window/Bandwidth, Auth)</td>
+<td>~57 (Dashboard Live, Recorders incl. Enrollment/Watchdog, Cloud Sync incl. Audit-Log, Settings incl. Confidence/Window/Bandwidth, Auth)</td>
 </tr>
 <tr>
 <td>v1.1.0 (Icecast)</td>

@@ -770,34 +770,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/uploader/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Uploader Service
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../services/gateway/" class="md-nav__link">
         
   
@@ -2360,6 +2332,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../development/refactoring_uploader_to_processor.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refactoring Plan (Uploader)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../development/idea/" class="md-nav__link">
         
   
@@ -3076,14 +3076,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../uploader/" class="md-nav__link">
+      <a href="../cloud_sync/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uploader
+    Cloud Sync
   
 
     
@@ -3696,7 +3696,7 @@
 </ul>
 <h4 id="isolation-from-other-services">Isolation from other services<a class="headerlink" href="#isolation-from-other-services" title="Permanent link">&para;</a></h4>
 <ul>
-<li>[x] No other service (BirdNET, BatDetect, Uploader) may impact the recording (Enforced by Controller cgroups).</li>
+<li>[x] No other service (BirdNET, BatDetect) may impact the recording (Enforced by Controller cgroups).</li>
 <li>[x] All non-recording services receive CPU and memory limits (Enforced by Controller).</li>
 <li>[x] Analysis and upload services access recording files <strong>read-only</strong> (Enforced by Zero-Trust mounts).</li>
 <li>[x] The crash of any analysis or upload service has no impact.</li>
