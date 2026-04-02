@@ -1,0 +1,4059 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Bioacoustic Monitoring System Documentation">
+      
+      
+        <meta name="author" content="Silvasonic Team">
+      
+      
+        <link rel="canonical" href="https://docs.silvasonic.de/development/milestones/milestone_0_5_0/">
+      
+      
+        <link rel="prev" href="../milestone_0_4_0/">
+      
+      
+        <link rel="next" href="../milestone_0_6_0/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Milestone v0.5.0 - Silvasonic</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#milestone-v050-analysis-backend-orchestration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silvasonic
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Milestone v0.5.0
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kyellsen/silvasonic" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Silvasonic
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kyellsen/silvasonic" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../AGENTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../VISION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vision
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/filesystem_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Filesystem Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/messaging_patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Messaging Patterns & Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/port_allocation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port Allocation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/microphone_profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Microphone Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Services
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/controller/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controller Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/database/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/recorder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recorder Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/web_mock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web-Mock Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processor Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/web_interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web-Interface Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/frontend_design_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI/UX Design System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../arch/frontend_features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web-Interface Feature Specs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/icecast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Icecast Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/birdnet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BirdNET Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/weather/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weather Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/batdetect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BatDetect Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../services/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tailscale Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ADRs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0001-use-uv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Use uv
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0002-use-pyproject-toml/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0002: Use pyproject.toml
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0003-frontend-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003: Frontend Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0004-use-podman/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0004: Use Podman
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0005-two-worlds-separation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005: Two-Worlds Separation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0006: Bind Mounts over Volumes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0007-rootless-os-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0007: Rootless OS Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0008-domain-driven-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008: Domain-Driven Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009: Zero-Trust Data Sharing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0010-naming-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010: Naming Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0011-audio-recording-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011: Audio Recording Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0012-use-pydantic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012: Use Pydantic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0013-tier2-container-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0013: Tier 2 Container Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014: Dual Deployment Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0015-nvme-only-storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015: NVMe-Only Storage Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016: Hybrid YAML/DB Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0017-service-state-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017: Service State Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018: Worker Pull Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019: Unified Service Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0020-resource-limits-qos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0020: Resource Limits & QoS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0021-frontend-design-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021: Frontend Design System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0022-live-log-streaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022: Live Log Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0023-configuration-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023: Configuration Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024: FFmpeg Audio Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_1_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_2_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_3_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.3.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_4_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.4.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.5.0
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.5.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-processor-service-skeleton-compose-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Processor Service Skeleton &amp; Compose Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1: Processor Service Skeleton &amp; Compose Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smoke-testssmoke-pytestmarksmoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smoke (tests/smoke/) — @pytest.mark.smoke
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-database-schema-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Database Schema Enhancements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2: Database Schema Enhancements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-packagescoretestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (packages/core/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-testsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-indexer-filesystem-polling-recording-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Indexer — Filesystem Polling &amp; Recording Registration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3: Indexer — Filesystem Polling &amp; Recording Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-janitor-data-retention-storage-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Janitor — Data Retention &amp; Storage Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4: Janitor — Data Retention &amp; Storage Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-5-configuration-seeding-controller-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5: Configuration Seeding &amp; Controller Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 5: Configuration Seeding &amp; Controller Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicescontrollertestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/controller/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicescontrollertestsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/controller/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-6-robustness-end-to-end-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 6: Robustness &amp; End-to-End Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 6: Robustness &amp; End-to-End Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-testssystem-pytestmarksystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System (tests/system/) — @pytest.mark.system
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smoke-testssmoke-pytestmarksmoke_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smoke (tests/smoke/) — @pytest.mark.smoke
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-hw-testssystem-pytestmarksystem_hw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System HW (tests/system/) — @pytest.mark.system_hw
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of Scope (Deferred)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_6_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.6.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_8_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.8.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_9_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.9.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_0_10_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v0.10.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../milestone_1_0_0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone v1.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../_template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestone Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../service_blueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release_checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Stories
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Stories
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/controller/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/recorder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Recorder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/birdnet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BirdNET
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/batdetect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BatDetect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/icecast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Icecast
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/cloud_sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../user_stories/web_interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web-Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../hardware/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-processor-service-skeleton-compose-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Processor Service Skeleton &amp; Compose Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1: Processor Service Skeleton &amp; Compose Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smoke-testssmoke-pytestmarksmoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smoke (tests/smoke/) — @pytest.mark.smoke
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-database-schema-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Database Schema Enhancements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2: Database Schema Enhancements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-packagescoretestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (packages/core/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-testsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-indexer-filesystem-polling-recording-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Indexer — Filesystem Polling &amp; Recording Registration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3: Indexer — Filesystem Polling &amp; Recording Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-janitor-data-retention-storage-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Janitor — Data Retention &amp; Storage Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4: Janitor — Data Retention &amp; Storage Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicesprocessortestsintegration-pytestmarkintegration_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/processor/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-5-configuration-seeding-controller-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5: Configuration Seeding &amp; Controller Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 5: Configuration Seeding &amp; Controller Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicescontrollertestsunit-pytestmarkunit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/controller/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unit-servicesprocessortestsunit-pytestmarkunit_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unit (services/processor/tests/unit/) — @pytest.mark.unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-servicescontrollertestsintegration-pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration (services/controller/tests/integration/) — @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-6-robustness-end-to-end-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 6: Robustness &amp; End-to-End Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 6: Robustness &amp; End-to-End Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tasks_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-testssystem-pytestmarksystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System (tests/system/) — @pytest.mark.system
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smoke-testssmoke-pytestmarksmoke_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smoke (tests/smoke/) — @pytest.mark.smoke
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-hw-testssystem-pytestmarksystem_hw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System HW (tests/system/) — @pytest.mark.system_hw
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of Scope (Deferred)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="milestone-v050-analysis-backend-orchestration">Milestone v0.5.0 — Analysis &amp; Backend Orchestration<a class="headerlink" href="#milestone-v050-analysis-backend-orchestration" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Target:</strong> v0.5.0 — Processor Service (Indexer + Janitor), <code>recordings</code> Schema &amp; Indices, Processor Config Seeding, Controller Integration</p>
+<p><strong>Status:</strong> ✅ Done</p>
+<p><strong>References:</strong> <a href="../../../adr/0009-zero-trust-data-sharing/">ADR-0009</a>, <a href="../../../adr/0011-audio-recording-strategy/">ADR-0011</a>, <a href="../../../adr/0018-worker-pull-orchestration/">ADR-0018</a>, <a href="../../../adr/0019-unified-service-infrastructure/">ADR-0019</a>, <a href="../../../adr/0023-configuration-management/">ADR-0023</a>, <a href="../../../adr/0025-recordings-standard-table/">ADR-0025</a>, <a href="../../../services/processor/">Processor Service Spec</a>, <a href="../../service_blueprint/">Service Blueprint</a></p>
+<p><strong>User Stories:</strong> <a href="../../../user_stories/processor/#us-p01">US-P01</a>, <a href="../../../user_stories/processor/#us-p02">US-P02</a>, <a href="../../../user_stories/processor/#us-p03">US-P03</a>, <a href="../../../user_stories/processor/#us-p04">US-P04</a></p>
+</blockquote>
+<hr />
+<h2 id="phase-1-processor-service-skeleton-compose-integration">Phase 1: Processor Service Skeleton &amp; Compose Integration<a class="headerlink" href="#phase-1-processor-service-skeleton-compose-integration" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Create the Processor service following the Service Blueprint, integrate into Compose as a Tier 1 service, and verify basic lifecycle (health, heartbeat, graceful shutdown).</p>
+<p><strong>User Stories:</strong> —</p>
+<h3 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Scaffold <code>services/processor/</code> following the Service Blueprint (§1):</li>
+<li><code>Containerfile</code>, <code>pyproject.toml</code>, <code>README.md</code></li>
+<li><code>src/silvasonic/processor/__init__.py</code>, <code>__main__.py</code>, <code>py.typed</code></li>
+<li><code>tests/unit/</code>, <code>tests/integration/</code></li>
+<li>[x] Implement <code>ProcessorService(SilvaService)</code> in <code>__main__.py</code>:</li>
+<li><code>service_name = "processor"</code>, <code>service_port = 9200</code></li>
+<li>Override <code>run()</code> with placeholder logic (Phase 3+4 fill this in)</li>
+<li>Read <code>ProcessorSettings</code> from <code>system_config</code> table on startup (single DB read, Immutable Container pattern, ADR-0019)</li>
+<li>[x] Register in workspace:</li>
+<li>Root <code>pyproject.toml</code>: add <code>silvasonic-processor</code> to <code>[project] dependencies</code> and <code>[tool.uv.sources]</code></li>
+<li>[x] Add <code>Containerfile</code> following the Service Blueprint (§5):</li>
+<li>Base: <code>python:3.13-slim-bookworm</code></li>
+<li>System deps: <code>curl</code>, <code>libsndfile1</code> (WAV metadata via <code>soundfile</code>)</li>
+<li>Port: <code>9200</code></li>
+<li>[x] Add Processor to <code>compose.yml</code> as Tier 1 service:</li>
+<li><code>container_name: silvasonic-processor</code></li>
+<li>Depends on <code>database</code> (healthy)</li>
+<li>Mount Recorder workspace <strong>read-write</strong> (<code>${SILVASONIC_WORKSPACE_PATH}/recorder:/data/recorder:z</code>) — Processor is the <strong>only</strong> non-Recorder service with <code>:rw</code> access (Janitor delete authority, ADR-0009)</li>
+<li>Mount Processor workspace read-write (<code>${SILVASONIC_WORKSPACE_PATH}/processor:/data/processor:z</code>)</li>
+<li>Redis URL, DB env vars</li>
+<li>Healthcheck on <code>:9200/healthy</code></li>
+<li>[x] Add <code>compose.override.yml</code> dev mounts for hot-reload</li>
+<li>[x] Add <code>SILVASONIC_PROCESSOR_PORT=9200</code> to <code>.env.example</code></li>
+<li>[x] <code>just check</code> passes</li>
+</ul>
+<h3 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h3>
+<h4 id="unit-servicesprocessortestsunit-pytestmarkunit">Unit (<code>services/processor/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicesprocessortestsunit-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_processor.py</code> — <code>TestProcessorService</code></li>
+<li><code>test_package_import</code> — <code>import silvasonic.processor</code> succeeds</li>
+<li><code>test_service_name_and_port</code> — <code>service_name == "processor"</code>, <code>service_port == 9200</code></li>
+<li><code>test_lifecycle_start_shutdown</code> — <code>ProcessorService</code> starts, shutdown signal triggers clean exit (mocked DB/Redis)</li>
+<li><code>test_settings_loaded_from_db</code> — Pydantic <code>ProcessorSettings</code> correctly deserialized from mock <code>system_config</code> row</li>
+<li><code>test_settings_defaults</code> — <code>ProcessorSettings()</code> defaults match <code>config/defaults.yml</code> values</li>
+</ul>
+<h4 id="integration-servicesprocessortestsintegration-pytestmarkintegration">Integration (<code>services/processor/tests/integration/</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-servicesprocessortestsintegration-pytestmarkintegration" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_processor_lifecycle.py</code> — <code>TestProcessorLifecycle</code></li>
+<li><code>test_processor_starts_with_db</code> — Processor starts in Testcontainer with real DB, <code>/healthy</code> returns 200 with <code>{"status": "ok"}</code></li>
+<li><code>test_processor_heartbeat_published</code> — Processor publishes heartbeat to Redis within 15s</li>
+</ul>
+<h4 id="smoke-testssmoke-pytestmarksmoke">Smoke (<code>tests/smoke/</code>) — <code>@pytest.mark.smoke</code><a class="headerlink" href="#smoke-testssmoke-pytestmarksmoke" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_health.py</code> — <code>TestServiceHealth::test_processor_healthy</code> + <code>TestServiceHeartbeats::test_processor_heartbeat_in_redis</code></li>
+</ul>
+<hr />
+<h2 id="phase-2-database-schema-enhancements">Phase 2: Database Schema Enhancements<a class="headerlink" href="#phase-2-database-schema-enhancements" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Finalize the <code>recordings</code> table schema and add indices for Worker Pull (ADR-0018) and Upload polling (v0.6.0 prep) — before the Indexer writes to this table.</p>
+<p><strong>User Stories:</strong> —</p>
+<blockquote>
+<p><strong>Decision (ADR-0025):</strong> <code>recordings</code> remains a <strong>standard PostgreSQL table</strong> (no Hypertable). FK constraints from <code>detections</code> and <code>uploads</code> are preserved. Data volume (~2M rows/year) does not require partitioning. See <a href="../../../adr/0025-recordings-standard-table/">ADR-0025</a>.</p>
+</blockquote>
+<h3 id="tasks_1">Tasks<a class="headerlink" href="#tasks_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Add partial index for Worker Pull pattern (ADR-0018):
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">ix_recordings_analysis_pending</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">ON</span><span class="w"> </span><span class="n">recordings</span><span class="w"> </span><span class="p">(</span><span class="k">time</span><span class="w"> </span><span class="k">ASC</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">local_deleted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+</code></pre></div></li>
+<li>[x] Add partial index for Upload polling (v0.6.0 preparation):
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">ix_recordings_upload_pending</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">ON</span><span class="w"> </span><span class="n">recordings</span><span class="w"> </span><span class="p">(</span><span class="k">time</span><span class="w"> </span><span class="k">ASC</span><span class="p">)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">uploaded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">local_deleted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+</code></pre></div></li>
+<li>[x] Verify <code>analysis_state</code> JSONB column supports the Worker Pull <code>SELECT ... FOR UPDATE SKIP LOCKED</code> pattern efficiently</li>
+<li>[x] Update <code>services/database/init/01-init-schema.sql</code> with new indices</li>
+<li>[x] Update SQLAlchemy ORM models in <code>silvasonic.core.database.models</code> if schema changes apply</li>
+</ul>
+<h3 id="tests_1">Tests<a class="headerlink" href="#tests_1" title="Permanent link">&para;</a></h3>
+<h4 id="unit-packagescoretestsunit-pytestmarkunit">Unit (<code>packages/core/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-packagescoretestsunit-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_recording_model.py</code> — <code>TestRecordingModel</code></li>
+<li><code>test_analysis_state_default_empty_jsonb</code> — new <code>Recording()</code> has <code>analysis_state == {}</code></li>
+<li><code>test_local_deleted_default_false</code> — new <code>Recording()</code> has <code>local_deleted == False</code></li>
+<li><code>test_uploaded_default_false</code> — new <code>Recording()</code> has <code>uploaded == False</code></li>
+</ul>
+<h4 id="integration-testsintegration-pytestmarkintegration">Integration (<code>tests/integration/</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-testsintegration-pytestmarkintegration" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_worker_pull_query.py</code> — <code>TestWorkerPullQuery</code></li>
+<li><code>test_for_update_skip_locked</code> — Two concurrent sessions: first locks a row, second gets a different row via <code>SKIP LOCKED</code></li>
+<li><code>test_partial_index_used</code> — <code>EXPLAIN</code> confirms <code>ix_recordings_analysis_pending</code> index is used</li>
+<li><code>test_upload_pending_index</code> — <code>EXPLAIN</code> confirms <code>ix_recordings_upload_pending</code> index is used</li>
+</ul>
+<hr />
+<h2 id="phase-3-indexer-filesystem-polling-recording-registration">Phase 3: Indexer — Filesystem Polling &amp; Recording Registration<a class="headerlink" href="#phase-3-indexer-filesystem-polling-recording-registration" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> The Indexer scans the Recorder workspace for promoted WAV files, extracts metadata, and registers them in the <code>recordings</code> table. Recordings appear in the database within seconds of being written to disk.</p>
+<p><strong>User Stories:</strong> US-P01 (Aufnahmen erscheinen automatisch)</p>
+<h3 id="tasks_2">Tasks<a class="headerlink" href="#tasks_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Implement <code>silvasonic/processor/indexer.py</code> — <code>Indexer</code> class:</li>
+<li>Periodic filesystem polling of all <code>recorder/*/data/processed/*.wav</code> (configurable interval from <code>ProcessorSettings.indexer_poll_interval</code>, default: <code>2.0</code> seconds)</li>
+<li>Extract WAV metadata via <code>soundfile</code>: duration, sample_rate, channels, file size</li>
+<li>Determine <code>sensor_id</code> from directory structure (<code>recorder/{device_name}/data/...</code>)</li>
+<li>Locate corresponding raw file: <code>recorder/{device_name}/data/raw/{same_filename}.wav</code></li>
+<li>Calculate <code>filesize_raw</code> from the raw file</li>
+<li>[x] Register each new WAV in the <code>recordings</code> table:</li>
+<li><code>time</code>: parsed from segment filename (ISO timestamp)</li>
+<li><code>sensor_id</code>: device name from directory path</li>
+<li><code>file_raw</code>, <code>file_processed</code>: relative paths to both streams</li>
+<li><code>duration</code>, <code>sample_rate</code>, <code>filesize_raw</code>, <code>filesize_processed</code></li>
+<li><code>uploaded = false</code>, <code>local_deleted = false</code></li>
+<li><code>analysis_state = '{}'::jsonb</code> (empty — no workers have processed it yet)</li>
+<li>Idempotent: check for existing entry by <code>file_processed</code> before insert (avoid duplicates)</li>
+<li>[x] Only index files from <code>data/</code> directories — never from <code>.buffer/</code> (only complete, promoted segments)</li>
+<li>[x] Integrate Indexer as periodic async task in <code>ProcessorService.run()</code></li>
+<li>[x] Report indexing metrics via <code>get_extra_meta()</code> for heartbeat:</li>
+<li><code>last_indexed_at</code>, <code>pending_count</code> (files on disk not yet in DB), <code>total_indexed</code></li>
+<li>[x] Update health component: <code>self.health.update_status("indexer", True/False, details)</code></li>
+<li>[x] Implement <strong>Filesystem Reconciliation Audit</strong> (Split-Brain Healing):</li>
+<li>Runs once on Processor startup, before the Indexer polling loop begins</li>
+<li>Queries all <code>recordings</code> rows where <code>local_deleted = false</code></li>
+<li>Verifies <code>file_processed</code> exists on the filesystem</li>
+<li>If file is missing: sets <code>local_deleted = true</code> and logs at <code>WARNING</code> level with reason <code>"reconciliation"</code></li>
+<li>Reports <code>reconciled_count</code> in startup log and heartbeat metrics</li>
+<li>Rationale: Heals Split-Brain state caused by Panic-Mode blind deletion (Phase 4) during DB outages</li>
+</ul>
+<h3 id="tests_2">Tests<a class="headerlink" href="#tests_2" title="Permanent link">&para;</a></h3>
+<h4 id="unit-servicesprocessortestsunit-pytestmarkunit_1">Unit (<code>services/processor/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicesprocessortestsunit-pytestmarkunit_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_indexer.py</code> — <code>TestIndexer</code></li>
+<li><code>test_wav_metadata_extraction</code> — <code>soundfile.info()</code> returns correct duration, sample_rate, channels from a synthetic WAV</li>
+<li><code>test_sensor_id_from_path</code> — path <code>recorder/ultramic-01/data/processed/seg.wav</code> extracts <code>sensor_id == "ultramic-01"</code></li>
+<li><code>test_timestamp_from_filename</code> — ISO-timestamp filename parsed correctly</li>
+<li><code>test_raw_file_path_resolution</code> — given processed path, resolves corresponding raw path</li>
+<li><code>test_idempotent_skip_existing</code> — file already in DB (mocked) is not re-inserted</li>
+<li><code>test_buffer_dir_excluded</code> — files in <code>.buffer/</code> are never indexed</li>
+<li><code>test_only_data_dir_scanned</code> — only <code>data/processed/</code> is scanned, not parent or sibling dirs</li>
+<li>[x] <code>test_reconciliation.py</code> — <code>TestReconciliationAudit</code></li>
+<li><code>test_missing_file_marked_deleted</code> — DB row with <code>local_deleted=false</code>, file absent → sets <code>local_deleted=true</code></li>
+<li><code>test_existing_file_unchanged</code> — DB row with <code>local_deleted=false</code>, file present → no change</li>
+<li><code>test_already_deleted_row_skipped</code> — DB row with <code>local_deleted=true</code> is not re-checked</li>
+<li><code>test_reconciled_count_reported</code> — returns correct count of reconciled rows</li>
+</ul>
+<h4 id="integration-servicesprocessortestsintegration-pytestmarkintegration_1">Integration (<code>services/processor/tests/integration/</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-servicesprocessortestsintegration-pytestmarkintegration_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_indexer_e2e.py</code> — <code>TestIndexerIntegration</code></li>
+<li><code>test_new_wav_indexed</code> — place WAV files in mock workspace → Indexer picks them up → verify <code>recordings</code> rows in DB (Testcontainer PostgreSQL)</li>
+<li><code>test_idempotent_reindex</code> — run Indexer twice on same files → no duplicate <code>recordings</code> rows</li>
+<li><code>test_multiple_sensors_indexed</code> — files from two sensor directories → correct <code>sensor_id</code> per row</li>
+<li>[x] <code>test_reconciliation_e2e.py</code> — <code>TestReconciliationIntegration</code></li>
+<li><code>test_orphaned_rows_healed</code> — seed DB with <code>local_deleted=false</code> rows, remove files from disk → Reconciliation Audit marks them <code>local_deleted=true</code></li>
+<li><code>test_valid_rows_preserved</code> — seed DB with <code>local_deleted=false</code> rows, files exist → no changes</li>
+</ul>
+<hr />
+<h2 id="phase-4-janitor-data-retention-storage-management">Phase 4: Janitor — Data Retention &amp; Storage Management<a class="headerlink" href="#phase-4-janitor-data-retention-storage-management" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> The Janitor monitors NVMe disk utilization and enforces the escalating retention policy (ADR-0011 §6) to prevent storage exhaustion. The Recorder never stops due to a full disk.</p>
+<p><strong>User Stories:</strong> US-P02 (Endlos-Aufnahme ohne Speichersorgen)</p>
+<h3 id="tasks_3">Tasks<a class="headerlink" href="#tasks_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Implement <code>silvasonic/processor/janitor.py</code> — <code>Janitor</code> class:</li>
+<li>Periodic disk usage check (configurable interval from <code>ProcessorSettings.janitor_interval_seconds</code>)</li>
+<li>Monitor mount point of <code>/data/recorder</code> via <code>shutil.disk_usage()</code></li>
+<li>
+<p>Implement three escalating retention modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Threshold</th>
+<th>Criteria</th>
+<th>Log Level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Housekeeping</strong></td>
+<td>&gt; 70%</td>
+<td><code>uploaded=true</code> AND <code>analysis_state</code> complete for all workers</td>
+<td><code>INFO</code></td>
+</tr>
+<tr>
+<td><strong>Defensive</strong></td>
+<td>&gt; 80%</td>
+<td><code>uploaded=true</code> (regardless of analysis)</td>
+<td><code>WARNING</code></td>
+</tr>
+<tr>
+<td><strong>Panic</strong></td>
+<td>&gt; 90%</td>
+<td><strong>Oldest</strong> files regardless of status</td>
+<td><code>CRITICAL</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>[x] Implement <strong>Soft Delete</strong> pattern:</p>
+</li>
+<li>Physically delete both <code>raw</code> and <code>processed</code> WAV files from disk</li>
+<li>Update DB row: <code>local_deleted = TRUE</code> (preserve historical inventory)</li>
+<li>Log each deletion: filename, reason, mode</li>
+<li>[x] Implement <strong>Panic Mode fallback</strong>:</li>
+<li>If DB is unreachable during Panic Mode, fall back to filesystem <code>mtime</code> for blind cleanup (oldest files first)</li>
+<li>[x] Implement <strong>Uploader-Fallback</strong>: When upload is not enabled (<code>UploaderSettings.enabled = false</code> in <code>system_config</code>), skip <code>uploaded</code> condition in Housekeeping/Defensive. Logged at WARNING with <code>janitor.uploader_fallback_active</code></li>
+<li>[x] Implement <strong>Batch Size Limit</strong>: <code>janitor_batch_size</code> (default 50) per cleanup cycle. Add to <code>ProcessorSettings</code></li>
+<li>[x] Exclusive delete authority: only the Processor deletes Recorder files — enforced by RW mount on Recorder workspace (all others mount <code>:ro</code>, ADR-0009)</li>
+<li>[x] Integrate Janitor as periodic async task in <code>ProcessorService.run()</code></li>
+<li>[x] Report retention metrics via <code>get_extra_meta()</code>:</li>
+<li><code>disk_usage_percent</code>, <code>current_mode</code> (idle/housekeeping/defensive/panic), <code>files_deleted_total</code></li>
+<li>[x] Update health component: <code>self.health.update_status("janitor", ...)</code></li>
+</ul>
+<h3 id="tests_3">Tests<a class="headerlink" href="#tests_3" title="Permanent link">&para;</a></h3>
+<h4 id="unit-servicesprocessortestsunit-pytestmarkunit_2">Unit (<code>services/processor/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicesprocessortestsunit-pytestmarkunit_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_janitor.py</code> — <code>TestEvaluateMode</code>, <code>TestFindDeletable</code>, <code>TestDeleteFiles</code>, <code>TestSoftDelete</code>, <code>TestPanicFilesystemFallback</code>, <code>TestRunCleanup</code></li>
+<li><code>test_idle_below_all_thresholds</code> — 60% usage → mode <code>idle</code>, no deletions</li>
+<li><code>test_housekeeping_mode_triggers</code> — 75% usage → mode <code>housekeeping</code></li>
+<li><code>test_defensive_mode_triggers</code> — 85% usage → mode <code>defensive</code></li>
+<li><code>test_panic_mode_triggers</code> — 95% usage → mode <code>panic</code></li>
+<li><code>test_housekeeping_criteria_with_uploader</code> — only deletes <code>uploaded=true AND analysis_state complete</code></li>
+<li><code>test_housekeeping_no_uploader_fallback</code> — upload not enabled → skips <code>uploaded</code> check</li>
+<li><code>test_defensive_criteria_with_uploader</code> — deletes <code>uploaded=true</code> regardless of analysis</li>
+<li><code>test_defensive_no_uploader_fallback</code> — upload not enabled → deletes all non-deleted</li>
+<li><code>test_panic_criteria</code> — deletes oldest files regardless of status</li>
+<li><code>test_soft_delete_updates_db</code> — physical delete + DB row <code>local_deleted=true</code> (mocked fs/DB)</li>
+<li><code>test_panic_fallback_no_db</code> — DB unreachable → falls back to <code>mtime</code>-based filesystem cleanup</li>
+<li><code>test_db_offline_housekeeping_skips</code> — DB offline during Housekeeping → skips (no data loss)</li>
+<li><code>test_metrics_reported</code> — <code>disk_usage_percent</code>, <code>current_mode</code>, <code>files_deleted_total</code> in heartbeat extras</li>
+<li><code>test_batch_size_respected</code> — max N files per LIMIT parameter</li>
+</ul>
+<h4 id="integration-servicesprocessortestsintegration-pytestmarkintegration_2">Integration (<code>services/processor/tests/integration/</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-servicesprocessortestsintegration-pytestmarkintegration_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_janitor_e2e.py</code> — <code>TestJanitorIntegration</code></li>
+<li><code>test_housekeeping_deletes_correct_files</code> — seed DB + filesystem, mock <code>shutil.disk_usage</code> at 75% → only uploaded+analyzed files deleted, DB rows updated</li>
+<li><code>test_defensive_deletes_uploaded_only</code> — mock 85% → uploaded files deleted regardless of analysis state</li>
+<li><code>test_panic_deletes_oldest</code> — mock 95% → oldest files deleted regardless of status</li>
+<li><code>test_panic_filesystem_fallback</code> — mock 95% + DB offline → files deleted by <code>mtime</code>, DB untouched</li>
+</ul>
+<hr />
+<h2 id="phase-5-configuration-seeding-controller-integration">Phase 5: Configuration Seeding &amp; Controller Integration<a class="headerlink" href="#phase-5-configuration-seeding-controller-integration" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> The Controller seeds <code>ProcessorSettings</code> defaults into <code>system_config</code> on startup, and the Processor reads them. Configuration changes via Web-Interface trigger a Processor restart via State Reconciliation.</p>
+<p><strong>User Stories:</strong> US-P03 (Speicherregeln anpassen)</p>
+<h3 id="tasks_4">Tasks<a class="headerlink" href="#tasks_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Uncomment <code>processor</code> settings block in <code>config/defaults.yml</code>:
+  <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">processor</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">janitor_threshold_warning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">70.0</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">janitor_threshold_critical</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80.0</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">janitor_threshold_emergency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90.0</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">janitor_interval_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">janitor_batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">indexer_poll_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.0</span>
+</code></pre></div></li>
+<li>[x] Verify Controller's <code>ConfigSeeder</code> correctly seeds <code>processor</code> key into <code>system_config</code> table on startup (<code>INSERT ... ON CONFLICT DO NOTHING</code>)</li>
+<li>[x] Verify <code>ProcessorSettings</code> Pydantic schema defaults match YAML seed values (CI test from ADR-0023)</li>
+<li>~~Add <code>processor</code> entry to <code>system_services</code> table seed~~ → <strong>Deferred to <a href="../milestone_0_9_0/">v0.9.0</a></strong> (no consumer until Web-Interface)</li>
+<li>[x] Add Processor workspace directory (<code>processor/</code>) to <code>scripts/init.py</code> initialization</li>
+</ul>
+<h3 id="tests_4">Tests<a class="headerlink" href="#tests_4" title="Permanent link">&para;</a></h3>
+<h4 id="unit-servicescontrollertestsunit-pytestmarkunit">Unit (<code>services/controller/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicescontrollertestsunit-pytestmarkunit" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_seeder.py</code> (extend existing) — <code>TestConfigSeeder::test_seed_inserts_defaults</code></li>
+<li><code>test_seed_inserts_defaults</code> — <code>ConfigSeeder</code> inserts all 4 schema_map keys (<code>system</code>, <code>processor</code>, <code>uploader</code>, <code>birdnet</code>) with correct defaults</li>
+<li><code>test_seed_skips_existing_values</code> — seeding twice does not overwrite existing values</li>
+<li>[x] <code>test_seeder.py</code> — <code>TestDefaultsYamlParity</code> (drift guard)</li>
+<li><code>test_yaml_keys_covered_by_schema_map</code> — every YAML config key has a schema_map entry</li>
+<li><code>test_schema_map_keys_present_in_yaml</code> — every schema_map key exists in defaults.yml</li>
+<li><code>test_all_yaml_values_pass_pydantic_validation</code> — every YAML section validates against its Pydantic schema</li>
+</ul>
+<h4 id="unit-servicesprocessortestsunit-pytestmarkunit_3">Unit (<code>services/processor/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicesprocessortestsunit-pytestmarkunit_3" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_processor.py</code> — <code>TestProcessorSettings</code></li>
+<li><code>test_settings_defaults</code> — <code>ProcessorSettings()</code> defaults match config/defaults.yml values</li>
+<li><code>test_settings_round_trip</code> — serialize to JSON → deserialize → identical Pydantic model</li>
+</ul>
+<h4 id="integration-servicescontrollertestsintegration-pytestmarkintegration">Integration (<code>services/controller/tests/integration/</code>) — <code>@pytest.mark.integration</code><a class="headerlink" href="#integration-servicescontrollertestsintegration-pytestmarkintegration" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_seeder.py</code> (existing) — <code>TestConfigSeederIntegration</code></li>
+<li><code>test_seed_inserts_system_config</code> — fresh DB → Controller seeds → <code>system_config</code> contains keys with correct JSONB</li>
+<li><code>test_seed_is_idempotent</code> — seeding twice does not overwrite</li>
+<li>[x] <code>test_processor_lifecycle.py</code> — <code>TestProcessorLifecycle::test_processor_starts_with_db</code> — Processor reads seeded settings from DB</li>
+<li>~~<code>test_processor_system_service_registered</code>~~ → <strong>Deferred to <a href="../milestone_0_9_0/">v0.9.0</a></strong></li>
+</ul>
+<hr />
+<h2 id="phase-6-robustness-end-to-end-verification">Phase 6: Robustness &amp; End-to-End Verification<a class="headerlink" href="#phase-6-robustness-end-to-end-verification" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> Verify end-to-end pipeline from Recorder output to database registration, and ensure the Processor survives infrastructure failures.</p>
+<p><strong>User Stories:</strong> US-P01, US-P02, US-P04 (Pipeline-Status)</p>
+<h3 id="tasks_5">Tasks<a class="headerlink" href="#tasks_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Verify heartbeat payload contains Processor-specific metrics (indexer + janitor status)</li>
+<li>[x] Update Processor <code>README.md</code> with implemented features and status</li>
+<li>[x] Update <code>ROADMAP.md</code>: mark v0.5.0 as <code>🔨 In Progress</code></li>
+<li>[x] <code>just check-all</code> passes (full CI pipeline)</li>
+</ul>
+<h3 id="tests_5">Tests<a class="headerlink" href="#tests_5" title="Permanent link">&para;</a></h3>
+<h4 id="system-testssystem-pytestmarksystem">System (<code>tests/system/</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-testssystem-pytestmarksystem" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_processor_lifecycle.py</code> — <code>TestProcessorLifecycle</code></li>
+<li><code>test_recorder_to_processor_pipeline</code> ✅</li>
+<li><code>test_processor_restart_idempotent</code> ✅</li>
+<li><code>test_concurrent_recorders_indexed</code> ✅</li>
+<li><code>test_heartbeat_has_processor_metrics</code> ✅</li>
+<li>[x] <code>test_processor_resilience.py</code> — <code>TestProcessorResilience</code></li>
+<li><code>test_redis_outage_indexing_continues</code> ✅</li>
+<li><code>test_redis_outage_janitor_continues</code> ✅</li>
+<li><code>test_db_outage_housekeeping_skips</code> ✅</li>
+<li><code>test_db_outage_panic_filesystem_fallback</code> ✅</li>
+<li><code>test_split_brain_healing</code> ✅</li>
+</ul>
+<h4 id="smoke-testssmoke-pytestmarksmoke_1">Smoke (<code>tests/smoke/</code>) — <code>@pytest.mark.smoke</code><a class="headerlink" href="#smoke-testssmoke-pytestmarksmoke_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[x] <code>test_health.py</code> — <code>TestServiceHealth</code></li>
+<li><code>test_processor_healthy</code> ✅</li>
+<li>[x] <code>test_health.py</code> — <code>TestServiceHeartbeats</code></li>
+<li><code>test_processor_heartbeat_in_redis</code> ✅</li>
+</ul>
+<h4 id="system-hw-testssystem-pytestmarksystem_hw">System HW (<code>tests/system/</code>) — <code>@pytest.mark.system_hw</code><a class="headerlink" href="#system-hw-testssystem-pytestmarksystem_hw" title="Permanent link">&para;</a></h4>
+<blockquote>
+<p><strong>Note:</strong> Only if v0.5.0 changes affect device detection or Recorder interaction. Recommended but not mandatory.</p>
+</blockquote>
+<ul>
+<li>[x] <code>test_hw_recording.py</code> (extend existing) — <code>TestFullPipelineE2E</code></li>
+<li><code>test_hw_recorder_to_processor_pipeline</code> — real USB mic → Recorder → WAV → Processor Indexer → DB recordings ✅ (implemented, requires <code>just test-hw</code>)</li>
+</ul>
+<hr />
+<h2 id="out-of-scope-deferred">Out of Scope (Deferred)<a class="headerlink" href="#out-of-scope-deferred" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Target Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BirdNET analysis worker</td>
+<td>v0.8.0</td>
+</tr>
+<tr>
+<td>BatDetect analysis worker</td>
+<td>v1.3.0</td>
+</tr>
+<tr>
+<td>Upload Worker (Cloud Sync within Processor)</td>
+<td>v0.6.0</td>
+</tr>
+<tr>
+<td>Web-Interface (Dashboard, settings UI)</td>
+<td>v0.9.0</td>
+</tr>
+<tr>
+<td>Redis <code>PUBLISH</code> optimization for instant worker wake</td>
+<td>post-v1.0.0</td>
+</tr>
+<tr>
+<td>TimescaleDB continuous aggregates</td>
+<td>post-v1.0.0</td>
+</tr>
+<tr>
+<td>Archive-before-delete safety</td>
+<td>post-v1.0.0</td>
+</tr>
+<tr>
+<td>Live Opus stream (Recorder → Icecast)</td>
+<td>v1.1.0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The ROADMAP.md scope for v0.5.0 mentions "Local Inference (BirdNET &amp; BatDetect models)" — BirdNET is now scheduled for <strong>v0.8.0</strong> (pre-MVP) and BatDetect for v1.3.0 (post-MVP). This milestone focuses on the critical Processor infrastructure that all workers depend on. The Processor's Indexer and Janitor are prerequisites for any analysis worker (ADR-0018).</p>
+<p><strong>Note:</strong> US-P03 (settings via Web-Interface) requires both the Processor (this milestone) and the Web-Interface (v0.9.0). This milestone implements the backend support (config seeding, read-on-startup). The UI will be added in v0.9.0.</p>
+<p><strong>Note:</strong> US-P04 (pipeline status in dashboard) requires the Web-Interface (v0.9.0). This milestone ships the heartbeat payload with the required metrics. The dashboard visualization is deferred.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

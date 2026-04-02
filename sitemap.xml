@@ -13,11 +13,11 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
-         <loc>https://docs.silvasonic.de/VISION/</loc>
+         <loc>https://docs.silvasonic.de/STRUCTURE/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
-         <loc>https://docs.silvasonic.de/api_reference/</loc>
+         <loc>https://docs.silvasonic.de/VISION/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -26,10 +26,6 @@
     </url>
     <url>
          <loc>https://docs.silvasonic.de/hardware/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/project_readme/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -137,6 +133,10 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
+         <loc>https://docs.silvasonic.de/adr/0026-timescaledb-edge-analytics/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
          <loc>https://docs.silvasonic.de/adr/_template/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
@@ -146,6 +146,14 @@
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/filesystem_governance/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/arch/frontend_design_system/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/arch/frontend_features/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -165,59 +173,7 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
-         <loc>https://docs.silvasonic.de/development/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
          <loc>https://docs.silvasonic.de/development/commit/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/idea/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_10_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_1_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_2_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_3_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_4_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_5_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_6_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_8_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_0_9_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_1_0_0/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/development/milestone_template/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -262,6 +218,54 @@
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/_template/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/_template/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_10_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_1_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_2_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_3_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_4_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_5_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_6_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_7_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_8_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_9_0/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_1_0_0/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -317,15 +321,7 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
-         <loc>https://docs.silvasonic.de/services/web_interface_features/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
          <loc>https://docs.silvasonic.de/services/web_mock/</loc>
-         <lastmod>2026-04-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.silvasonic.de/services/web_interface/02_ui_ux_design_system/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
