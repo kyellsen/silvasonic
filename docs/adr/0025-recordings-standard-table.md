@@ -35,7 +35,7 @@ These are classic OLTP queries that benefit from B-Tree indices, not chunk-based
 
 ### FK Constraints Are Critical
 
-The `detections` table (a Hypertable itself) references `recordings.id`. Dropping this FK would mean a bug in BirdNET or BatDetect could insert detections pointing to non-existent recordings — violating data integrity silently. Enforcing referential integrity in application code across multiple independent services (BirdNET, BatDetect, Uploader) contradicts the KISS principle and the Zero-Trust philosophy (ADR-0009).
+The `detections` table (a Hypertable itself) references `recordings.id`. Dropping this FK would mean a bug in BirdNET or BatDetect could insert detections pointing to non-existent recordings — violating data integrity silently. Enforcing referential integrity in application code across multiple independent services (BirdNET, BatDetect) contradicts the KISS principle and the Zero-Trust philosophy (ADR-0009).
 
 ### Worker Pull Performance
 

@@ -2,7 +2,7 @@
 
 > **Status:** Accepted (amended 2026-03-30) • **Date:** 2026-01-31
 
-> **NOTE:** The `processor` (v0.5.0) and `uploader` (v0.6.0) are implemented. References to `birdnet`, `batdetect`, or `weather` refer to planned services.
+> **NOTE:** The `processor` (v0.5.0) is implemented. The `uploader` has been archived as a standalone service and is being integrated into the Processor as a Cloud-Sync-Worker (v0.6.0). References to `birdnet`, `batdetect`, or `weather` refer to planned services.
 
 ## 1. Context & Problem
 The system supports various hardware microphones with different native capabilities (e.g., Dodotronic Ultramic at 384kHz, standard USB mics at 48kHz). Previously, we used terminology like "High Res" and "Low Res" or hardcoded 384kHz/48kHz assumptions. This is brittle and does not scale to different hardware configurations.
@@ -33,7 +33,7 @@ We need a standardized way to handle audio streams to ensure downstream services
 4.  **Cloud Storage Format**:
     *   **Format**: `FLAC` (Free Lossless Audio Codec).
     *   **Motivation**: Bandwidth efficiency. Uploading uncompressed WAVs is wasteful.
-    *   **Policy**: The Uploader service converts `raw` artifacts to FLAC on-the-fly (or uses a buffer) before/during upload.
+    *   **Policy**: The Processor's Cloud-Sync-Worker converts `raw` artifacts to FLAC on-the-fly (or uses a buffer) before/during upload.
 
 ## 3. Options Considered
 *   **Single Stream (Processed only):**
@@ -83,10 +83,10 @@ We have decided to enforce **Data Capture Integrity** via an escalating retentio
 
 Deletions are limited to `janitor_batch_size` (default: **50**) files per cleanup cycle to prevent I/O storms and excessive database load. At 10-second segments, this corresponds to ~8 minutes of audio per batch.
 
-### Uploader-Fallback (Pre-v0.6.0)
+### Upload-Fallback (Pre-v0.6.0)
 
-When no Uploader is configured (no active `storage_remotes` rows in the database), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
-If Uploaders *are* configured, the `uploaded` condition is strictly interpreted as meaning the file has been successfully uploaded to **ALL currently active remotes**.
+When upload is not enabled (`UploaderSettings.enabled = false` in `system_config`), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.uploader_fallback_active`.
+If upload *is* enabled, the `uploaded` condition is strictly interpreted as meaning the file has been successfully uploaded to the configured remote target.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
 

@@ -32,7 +32,7 @@ The existing `system_config` table (key TEXT, value JSONB) stores all applicatio
 | ----------- | ------------------- | ---------------------------------------------------------------------------------- |
 | `system`    | `SystemSettings`    | All services (latitude, longitude, station name, resource limits, auto_enrollment) |
 | `processor` | `ProcessorSettings` | Processor (Janitor thresholds, Indexer intervals)                                  |
-| `uploader`  | `UploaderSettings`  | Uploader (polling, bandwidth, schedule)                                            |
+| `uploader`  | `UploaderSettings`  | Processor Cloud-Sync-Worker (enabled flag, polling, bandwidth, schedule)            |
 | `birdnet`   | `BirdnetSettings`   | BirdNET (confidence threshold)                                                     |
 
 Each key maps to a Pydantic `BaseModel` that defines field types and default values. Services read their settings **once on startup** (Immutable Container pattern, ADR-0019). The Web-Interface writes changes to `system_config`, then triggers a `silvasonic:nudge` so the Controller restarts the affected service.
@@ -47,7 +47,7 @@ system:
   latitude: 53.55
   longitude: 9.99
   max_recorders: 5
-  max_uploaders: 3
+  max_uploaders: 3          # Deprecated: removed in v0.6.0 KISS refactoring
   station_name: "Silvasonic Dev"
   auto_enrollment: true   # Auto-enroll devices with exact profile match (runtime-changeable)
 
@@ -108,7 +108,7 @@ All configuration blobs are parsed and validated via Pydantic `BaseModel` classe
 | Redis host                    | `.env`                  | Required before Redis is reachable |
 | Podman socket path            | `.env`                  | Infrastructure prerequisite        |
 | User passwords                | `users` table           | Different structure, RBAC-ready    |
-| Cloud storage credentials     | `storage_remotes` table | Already has its own table          |
+| Cloud storage credentials     | `system_config` key `"uploader"` | Stored as JSONB in `UploaderSettings` (KISS, single-target) |
 
 ## 3. Options Considered
 

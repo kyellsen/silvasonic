@@ -53,4 +53,4 @@ The following services are permitted to run with `privileged: true`:
 | **Controller** | Manages the host Podman socket (DooD pattern, see ADR-0013). Must create Tier 2 containers with arbitrary device mappings. | Specific capabilities (`CAP_SYS_ADMIN`) — insufficient for full socket access.                                                                               |
 | **Recorder**   | Direct access to audio hardware (`/dev/snd`, ALSA subsystem) and GPIO.                                                     | Specific device mounts + `group_add: [audio]` — works for audio but not for all GPIO/USB scenarios. Keeping `privileged` for robustness on diverse hardware. |
 
-**All other services** (Database, Gateway, Processor, Redis, Web-Interface, Tailscale, and all non-hardware Tier 2 services like Uploader, BirdNET, BatDetect, Weather) **MUST NOT** use `privileged: true`.
+**All other services** (Database, Gateway, Processor, Redis, Web-Interface, Tailscale, and all non-hardware Tier 2 services like BirdNET, BatDetect, Weather) **MUST NOT** use `privileged: true`.

@@ -18,7 +18,6 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 | **Recorder** (Health)  | 9500          | —               | — (internal only)               | ✅ Scaffold         |
 | **BirdNET** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned v1.1     |
 | **BatDetect** (Health) | 9500          | —               | — (internal only)               | 📋 Planned v1.3     |
-| **Uploader** (Health)  | 9500          | —               | — (internal only)               | 📋 Planned v0.6     |
 | **Weather** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned v1.2     |
 | Gateway (Caddy) HTTP   | 80            | 80              | `SILVASONIC_GATEWAY_HTTP_PORT`  | 📋 Planned v0.7     |
 | Gateway (Caddy) HTTPS  | 443           | 443             | `SILVASONIC_GATEWAY_HTTPS_PORT` | 📋 Planned v0.7     |
@@ -38,7 +37,7 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 ## Health Port Convention
 
 - Services **with an API** (Controller, Web-Interface): Health is a route on the API port (`/healthy` on `9100`)
-- Services **without an API** (Recorder, BirdNET, BatDetect, Uploader, Weather): Use `silvasonic.core.health` on default port `9500`
+- Services **without an API** (Recorder, BirdNET, BatDetect, Weather): Use `silvasonic.core.health` on default port `9500`
 - Compose health checks run **inside** the container — no host port needed
 - Multiple recorder instances can all use `9500` internally (container isolation)
 

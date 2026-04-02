@@ -28,7 +28,7 @@ Without a unified pattern, each service implements these concerns independently,
 
 | Category           | Services                                                   | Behavior at Runtime                                                                                 |
 | ------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Immutable**      | Recorder, Uploader, BirdNET, BatDetect, Weather, Processor | Config injected at start (env vars / DB read on init). No runtime commands. Restart to reconfigure. |
+| **Immutable**      | Recorder, BirdNET, BatDetect, Weather, Processor | Config injected at start (env vars / DB read on init). No runtime commands. Restart to reconfigure. |
 | **Mutable**        | Controller, Web-Interface                                  | Maintain and change state at runtime. React to events and user input.                               |
 | **Infrastructure** | Database, Redis, Gateway, Icecast, Tailscale               | External services managed by Compose/Quadlets. Not Python services.                                 |
 

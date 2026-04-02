@@ -23,7 +23,6 @@ Every `Tier2ServiceSpec` **MUST** include `memory_limit` and `cpu_limit`. The Co
 | **Recorder**  | `512m`         | `1.0`       | Low memory footprint (audio buffering only), 1 core max |
 | **BirdNET**   | `1g`           | `1.0`       | TFLite inference requires ~600–900 MB, 1 core max       |
 | **BatDetect** | `1g`           | `1.0`       | Similar ML inference workload                           |
-| **Uploader**  | `256m`         | `0.5`       | FLAC compression + network I/O, low compute             |
 | **Weather**   | `128m`         | `0.25`      | Lightweight API polling + DB writes                     |
 
 > [!NOTE]
@@ -47,7 +46,6 @@ The `oom_score_adj` parameter tells the Linux kernel which processes to kill fir
 | ---------------- | --------------- | --------------------------- | ----------------------------------------------------- |
 | **Protected**    | `-999`          | Recorder                    | Data Capture Integrity is paramount. Never kill.      |
 | **Default**      | `0`             | Tier 1 infrastructure       | Managed by Compose/Quadlets, default kernel behavior. |
-| **Low Priority** | `250`           | Uploader                    | Important but can recover — retry after restart.      |
 | **Expendable**   | `500`           | BirdNET, BatDetect, Weather | Optional features — safe to kill and restart.         |
 
 > [!IMPORTANT]

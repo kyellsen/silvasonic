@@ -67,7 +67,7 @@ Services are identified by a combination of `service` (type) and `instance_id` (
 | ------------------------- | ------------------------ | ---------------------------------- |
 | Tier 1 Singletons         | `= service name`         | `silvasonic:status:controller`     |
 | Recorder (multi-instance) | `= devices.name`         | `silvasonic:status:ultramic-01`    |
-| Uploader (multi-instance) | `= storage_remotes.slug` | `silvasonic:status:nextcloud-main` |
+| ~~Uploader~~ (archived) | — | Upload is now handled by the Processor's Cloud-Sync-Worker (v0.6.0) |
 | Tier 2 Singletons         | `= service name`         | `silvasonic:status:birdnet`        |
 
 ---

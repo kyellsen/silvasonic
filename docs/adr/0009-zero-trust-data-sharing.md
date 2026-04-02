@@ -2,7 +2,7 @@
 
 > **Status:** Accepted • **Date:** 2026-01-31
 
-> **NOTE:** The `processor` (v0.5.0) and `uploader` (v0.6.0) are implemented. References to `birdnet`, `batdetect`, or `weather` refer to planned services.
+> **NOTE:** The `processor` (v0.5.0) is implemented. The `uploader` has been archived as a standalone service (v0.6.0 = Processor Cloud-Sync-Worker). References to `birdnet`, `batdetect`, or `weather` refer to planned services.
 
 ## 1. Context & Problem
 In an audio pipeline, "downstream" services (like Analyzers or Uploaders) need to access data produced by "upstream" services (Recorder). If downstream services are granted write access, a bug or misconfiguration in an experimental analyzer could involve deleting or corrupting the original master recordings. We need to protect the "Source of Truth".

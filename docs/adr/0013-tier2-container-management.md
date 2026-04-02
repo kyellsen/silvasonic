@@ -4,10 +4,10 @@
 
 ## 1. Context & Problem
 
-The Controller (Tier 1) must dynamically manage **Tier 2 services** (Recorder, Uploader, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:
+The Controller (Tier 1) must dynamically manage **Tier 2 services** (Recorder, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:
 
-*   **Immutable Tier 2 containers:** Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (Uploader, BirdNET, etc.) may access the database.
-*   **Multi-instance support:** Multiple Recorder instances may run concurrently (one per USB microphone). Uploader instances are launched per Cloud Storage Account up to the `max_uploaders` constraint, at which point the Controller manages them via deterministic scheduling.
+*   **Immutable Tier 2 containers:** Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (BirdNET, etc.) may access the database.
+*   **Multi-instance support:** Multiple Recorder instances may run concurrently (one per USB microphone).
 *   **Pre-built images:** All images are built before deployment (`just build`). The Controller never builds images at runtime.
 *   **Container-in-Container (DooD):** The Controller itself runs in a container and manages sibling containers on the host engine via the host's Podman socket (Docker-out-of-Docker pattern).
 *   **Years of autonomous operation:** Minimal moving parts, deterministic behavior, no runtime dependencies on Compose semantics.
