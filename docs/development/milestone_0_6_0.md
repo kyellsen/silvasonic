@@ -4,7 +4,7 @@
 >
 > **Status:** ⏳ Planned
 >
-> **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Refactoring Plan](refactoring_uploader_to_processor.md), [Processor README](../../services/processor/README.md), [Testing Guidelines](testing.md)
+> **References:** [ADR-0009](../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../adr/0011-audio-recording-strategy.md), [ADR-0018](../adr/0018-worker-pull-orchestration.md), [ADR-0019](../adr/0019-unified-service-infrastructure.md), [ADR-0023](../adr/0023-configuration-management.md), [ADR-0024](../adr/0024-ffmpeg-audio-engine.md), [Refactoring Plan](refactoring_uploader_to_processor.md), [Processor Service](../services/processor.md), [Testing Guidelines](testing.md)
 >
 > **User Stories:** [US-U01](../user_stories/uploader.md#us-u01), [US-U02](../user_stories/uploader.md#us-u02), [US-U04](../user_stories/uploader.md#us-u04), [US-U06](../user_stories/uploader.md#us-u06)
 >

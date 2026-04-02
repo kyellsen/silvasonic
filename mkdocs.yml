@@ -85,6 +85,7 @@ nav:
       - Service Blueprint: development/service_blueprint.md
       - Testing Guide: development/testing.md
       - Release Checklist: development/release_checklist.md
+      - "Refactoring Plan (Uploader)": development/refactoring_uploader_to_processor.md
       - "Future Features & Ideas": development/idea.md
   - User Stories:
       - Controller: user_stories/controller.md

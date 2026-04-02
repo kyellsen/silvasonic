@@ -3,7 +3,7 @@
 > **Service:** ~~Uploader~~ → Processor Cloud-Sync-Worker · ~~**Tier:** 2~~ → Tier 1 (Processor) · **Status:** Archived — migrated to Processor (v0.6.0)
 >
 > [!WARNING]
-> **Archived:** The standalone Uploader service has been replaced by an internal Cloud-Sync-Worker within the Processor. User stories below are retained for traceability but reflect the original multi-target architecture. The KISS refactoring simplifies to a single-target model. See [Refactoring Plan](../../docs/development/refactoring_uploader_to_processor.md).
+> **Archived:** The standalone Uploader service has been replaced by an internal Cloud-Sync-Worker within the Processor. User stories below are retained for traceability but reflect the original multi-target architecture. The KISS refactoring simplifies to a single-target model. See [Refactoring Plan](../development/refactoring_uploader_to_processor.md).
 
 ---
 
@@ -66,7 +66,7 @@
 
 ### References
 
-- [Refactoring Plan](../../docs/development/refactoring_uploader_to_processor.md)
+- [Refactoring Plan](../development/refactoring_uploader_to_processor.md)
 
 ---
 
