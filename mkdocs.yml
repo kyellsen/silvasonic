@@ -31,7 +31,7 @@ nav:
       - Redis Service: services/redis.md
       - Web-Mock Service: services/web_mock.md
       - Processor Service: services/processor.md
-      - Uploader Service: services/uploader.md
+      - "Upload (Archived)": services/uploader.md
       - Gateway Service: services/gateway.md
       - Web-Interface Service: services/web_interface.md
       - "UI/UX Design System": services/web_interface/02_ui_ux_design_system.md
@@ -94,7 +94,7 @@ nav:
       - Processor: user_stories/processor.md
       - Gateway: user_stories/gateway.md
       - Icecast: user_stories/icecast.md
-      - Uploader: user_stories/uploader.md
+      - "Upload (Archived)": user_stories/uploader.md
       - Web-Interface: user_stories/web_interface.md
   - Hardware: hardware.md
   - API Reference: api_reference.md

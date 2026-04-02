@@ -199,7 +199,7 @@
   - Log each deletion: filename, reason, mode
 - [x] Implement **Panic Mode fallback**:
   - If DB is unreachable during Panic Mode, fall back to filesystem `mtime` for blind cleanup (oldest files first)
-- [x] Implement **Uploader-Fallback**: When no Uploader is configured (no active `storage_remotes` rows), skip `uploaded` condition in Housekeeping/Defensive. Logged at WARNING with `janitor.uploader_fallback_active`
+- [x] Implement **Uploader-Fallback**: When upload is not enabled (`UploaderSettings.enabled = false` in `system_config`), skip `uploaded` condition in Housekeeping/Defensive. Logged at WARNING with `janitor.uploader_fallback_active`
 - [x] Implement **Batch Size Limit**: `janitor_batch_size` (default 50) per cleanup cycle. Add to `ProcessorSettings`
 - [x] Exclusive delete authority: only the Processor deletes Recorder files — enforced by RW mount on Recorder workspace (all others mount `:ro`, ADR-0009)
 - [x] Integrate Janitor as periodic async task in `ProcessorService.run()`
@@ -217,9 +217,9 @@
   - `test_defensive_mode_triggers` — 85% usage → mode `defensive`
   - `test_panic_mode_triggers` — 95% usage → mode `panic`
   - `test_housekeeping_criteria_with_uploader` — only deletes `uploaded=true AND analysis_state complete`
-  - `test_housekeeping_no_uploader_fallback` — no `storage_remotes` → skips `uploaded` check
+  - `test_housekeeping_no_uploader_fallback` — upload not enabled → skips `uploaded` check
   - `test_defensive_criteria_with_uploader` — deletes `uploaded=true` regardless of analysis
-  - `test_defensive_no_uploader_fallback` — no `storage_remotes` → deletes all non-deleted
+  - `test_defensive_no_uploader_fallback` — upload not enabled → deletes all non-deleted
   - `test_panic_criteria` — deletes oldest files regardless of status
   - `test_soft_delete_updates_db` — physical delete + DB row `local_deleted=true` (mocked fs/DB)
   - `test_panic_fallback_no_db` — DB unreachable → falls back to `mtime`-based filesystem cleanup
@@ -338,7 +338,7 @@
 | ---------------------------------------------------- | -------------- |
 | BirdNET analysis worker                              | v0.8.0         |
 | BatDetect analysis worker                            | v1.3.0         |
-| Uploader service (FLAC compression, remote sync)     | v0.6.0         |
+| Upload Worker (Cloud Sync within Processor)      | v0.6.0         |
 | Web-Interface (Dashboard, settings UI)               | v0.9.0         |
 | Redis `PUBLISH` optimization for instant worker wake | post-v1.0.0    |
 | TimescaleDB continuous aggregates                    | post-v1.0.0    |
