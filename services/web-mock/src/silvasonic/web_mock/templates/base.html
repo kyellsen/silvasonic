@@ -92,15 +92,14 @@
         REC {{ active_recorders }}
       </span>
       {% endif %}
-      {% if active_uploaders > 0 %}
-      <span class="flex items-center gap-1 text-info">
+      {% if upload_enabled %}
+      <span class="flex items-center gap-1 text-info" title="Cloud Sync Enabled">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="16 16 12 12 8 16" />
           <line x1="12" y1="12" x2="12" y2="21" />
           <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
         </svg>
-        {{ active_uploaders }}
       </span>
       {% endif %}
     </div>
@@ -181,7 +180,7 @@
     'bg-mod-processor-strong/15 text-mod-processor-strong font-semibold', '
     <circle cx="12" cy="12" r="3" />
     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />'),
-    ('/uploaders', 'uploaders', 'Uploaders', 'hover:ring-1 hover:ring-inset hover:ring-mod-uploader-strong',
+    ('/upload', 'upload', 'Cloud Sync', 'hover:ring-1 hover:ring-inset hover:ring-mod-uploader-strong',
     'bg-mod-uploader-strong/15 text-mod-uploader-strong font-semibold', '
     <polyline points="16 16 12 12 8 16" />
     <line x1="12" y1="12" x2="12" y2="21" />

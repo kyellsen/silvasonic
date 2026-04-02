@@ -56,7 +56,7 @@
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" x2="12" y1="3" y2="15" />
                     </svg>
-                    Remotes
+                    Cloud Sync
                 </button>
                 <button @click="activeTab = 'network'"
                     :class="activeTab === 'network' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200 text-base-content/70 hover:text-base-content'"
@@ -390,30 +390,19 @@
             </div>
         </div>
 
-        <!-- Remotes Settings -->
-        <div x-show="activeTab === 'remotes'" x-data="{ activeRemote: '{{ settings.remotes[0].id }}' }"
-            x-transition:enter="transition ease-out duration-300 transform"
+        <!-- Cloud Sync Settings -->
+        <div x-show="activeTab === 'remotes'" x-transition:enter="transition ease-out duration-300 transform"
             x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
             class="space-y-6" style="display: none;">
             <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 class="text-xl font-bold">Remote Targets</h1>
+                    <h1 class="text-xl font-bold">Cloud Sync Target</h1>
                     <p class="text-xs text-base-content/50 mt-0.5">Configure where uploaded recordings and metadata are
                         sent.</p>
                 </div>
-                <select class="select select-bordered font-medium bg-base-100 shadow-sm w-full sm:w-56"
-                    x-model="activeRemote">
-                    {% for remote in settings.remotes %}
-                    <option value="{{ remote.id }}">{{ remote.name }}</option>
-                    {% endfor %}
-                </select>
             </div>
 
-            {% for remote in settings.remotes %}
-            <div x-show="activeRemote === '{{ remote.id }}'" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
-                class="silva-card-form"
-                style="display: none;">
+            <div class="silva-card-form">
                 <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
                     <h3 class="font-bold text-lg flex items-center gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -423,9 +412,9 @@
                             <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
                             <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
                         </svg>
-                        {{ remote.name }}
+                        {{ settings.remote.name }}
                     </h3>
-                    <span class="badge badge-primary badge-outline font-mono text-xs">{{ remote.target_type | upper
+                    <span class="badge badge-primary badge-outline font-mono text-xs">{{ settings.remote.target_type | upper
                         }}</span>
                 </div>
 
@@ -434,7 +423,7 @@
                         <label class="label py-1"><span class="label-text font-medium text-sm">Server URL</span></label>
                         <input type="text"
                             class="input input-bordered focus:input-primary transition-all font-mono w-full"
-                            value="{{ remote.url }}" />
+                            value="{{ settings.remote.url }}" />
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -442,7 +431,7 @@
                             <label class="label py-1"><span class="label-text font-medium text-sm">Username / Key
                                     ID</span></label>
                             <input type="text" class="input input-bordered focus:input-primary transition-all font-mono"
-                                value="{{ remote.username }}" />
+                                value="{{ settings.remote.username }}" />
                         </div>
                         <div class="form-control">
                             <label class="label py-1"><span class="label-text font-medium text-sm">Password / Secret
@@ -469,7 +458,7 @@
                             <label class="label py-1"><span class="label-text font-medium text-sm">Bandwidth Limit (KB/s)</span></label>
                             <input type="number"
                                 class="input input-bordered focus:input-primary transition-all font-mono"
-                                value="{{ remote.bandwidth_limit_kbps or '' }}"
+                                value="{{ settings.remote.bandwidth_limit_kbps or '' }}"
                                 placeholder="Unlimited" />
                             <label class="label py-1"><span class="label-text-alt text-base-content/50">Leave empty for unlimited bandwidth.</span></label>
                         </div>
@@ -477,10 +466,10 @@
                             <label class="label py-1"><span class="label-text font-medium text-sm">Upload Window</span></label>
                             <div class="flex items-center gap-2">
                                 <input type="time" class="input input-bordered input-sm focus:input-primary font-mono flex-1"
-                                    value="{{ remote.upload_window_start }}" />
+                                    value="{{ settings.remote.upload_window_start }}" />
                                 <span class="text-base-content/40">–</span>
                                 <input type="time" class="input input-bordered input-sm focus:input-primary font-mono flex-1"
-                                    value="{{ remote.upload_window_end }}" />
+                                    value="{{ settings.remote.upload_window_end }}" />
                             </div>
                             <label class="label py-1"><span class="label-text-alt text-base-content/50">Leave empty for 24/7 uploads.</span></label>
                         </div>
@@ -495,7 +484,6 @@
                     </div>
                 </div>
             </div>
-            {% endfor %}
         </div>
 
         <!-- Network Settings -->

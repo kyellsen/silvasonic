@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_macros.html" import breadcrumb, status_badge %}
+{% block title %}Cloud Sync{% endblock %}
+
+{% block breadcrumb %}
+{{ breadcrumb([('System',), ('Cloud Sync',)]) }}
+{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex items-center justify-between">
+    <div>
+        <h1 class="text-xl font-bold">Cloud Sync</h1>
+        <p class="text-xs text-base-content/50 mt-0.5">Centralized data upload and global synchronization</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 cursor-pointer group">
+            <span class="text-xs font-semibold text-base-content/60 group-hover:text-base-content transition-colors">On/Off</span>
+            <input type="checkbox" class="toggle toggle-sm toggle-primary" {% if upload_enabled %}checked{% endif %} />
+        </label>
+        <button class="btn btn-outline btn-sm">Sync Now</button>
+        <a href="/settings" class="btn btn-primary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 inline-block">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Configure Target
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <!-- Status Card -->
+    <div class="silva-card col-span-2">
+        <div class="card-body p-6">
+            <h2 class="silva-label mb-4">Worker Status</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div>
+                    <div class="text-xs text-base-content/50 uppercase tracking-widest mb-1">State</div>
+                    <div class="flex items-center gap-2">
+                        {{ status_badge(upload_status.status) }}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-base-content/50 uppercase tracking-widest mb-1">Queue</div>
+                    <div class="text-2xl font-bold font-mono">{{ upload_status.queue_files }}<span class="text-xs font-sans text-base-content/40 ml-1">files</span></div>
+                </div>
+                <div>
+                    <div class="text-xs text-base-content/50 uppercase tracking-widest mb-1">Throughput</div>
+                    <div class="text-2xl font-bold font-mono">{{ upload_status.throughput_kbps }}<span class="text-xs font-sans text-base-content/40 ml-1">KB/s</span></div>
+                </div>
+                <div>
+                    <div class="text-xs text-base-content/50 uppercase tracking-widest mb-1">Last Sync</div>
+                    <div class="text-sm font-medium mt-1.5">{{ upload_status.last_sync }}</div>
+                </div>
+            </div>
+            <div class="mt-8 border-t border-base-content/5 pt-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-semibold text-base-content/80">Total Data Uploaded</div>
+                        <div class="text-xs text-base-content/40 font-mono mt-0.5">Lifetime statistics</div>
+                    </div>
+                    <div class="text-xl font-bold text-primary font-mono">{{ upload_status.total_uploaded_gb }} GB</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network / Environment -->
+    <div class="silva-card-static">
+        <div class="card-body p-6">
+            <h2 class="silva-label mb-4">Connectivity</h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-base-content/60">Success Rate</span>
+                    <span class="font-mono text-sm text-success font-bold">{{ upload_status.success_rate_pct }}%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-base-content/60">Bandwidth Policy</span>
+                    <span class="font-mono text-sm">Unlimited</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-base-content/60">Schedule</span>
+                    <span class="font-mono text-sm">24/7</span>
+                </div>
+            </div>
+            <!-- Progress success bar -->
+            <div class="mt-4 flex-1 flex flex-col justify-end">
+                <div class="flex justify-between text-xs text-base-content/40 mb-1">
+                    <span>Performance Score</span>
+                    <span>Excellent</span>
+                </div>
+                <progress class="progress progress-success w-full bg-base-200" value="{{ upload_status.success_rate_pct }}" max="100"></progress>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="silva-card">
+    <div class="p-4 border-b border-base-content/5 flex items-center justify-between">
+        <h2 class="silva-label m-0">Recent Transfers</h2>
+        <div class="flex items-center gap-2 text-xs font-mono text-base-content/40">
+            <span class="w-2 h-2 rounded-full bg-success"></span> Success
+            <span class="w-2 h-2 rounded-full bg-error ml-2"></span> Failed
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="table table-sm table-zebra w-full text-xs font-mono">
+            <thead>
+                <tr class="text-base-content/40">
+                    <th class="w-8"></th>
+                    <th>Timestamp</th>
+                    <th>File</th>
+                    <th>Size</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in audit_log %}
+                <tr>
+                    <td>
+                        <span class="w-2 h-2 rounded-full inline-block {% if entry.status == 'success' %}bg-success{% else %}bg-error{% endif %} shadow-sm"></span>
+                    </td>
+                    <td class="text-base-content/60">{{ entry.ts }}</td>
+                    <td class="font-medium truncate max-w-xs xl:max-w-md" title="{{ entry.file }}">{{ entry.file }}</td>
+                    <td>{{ entry.size_mb }} MB</td>
+                    <td class="text-base-content/50">{{ entry.duration }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-8 text-base-content/30 italic">No transfers recorded in the current log window.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -119,7 +119,7 @@ class TestWebMockLifespan:
             "/",
             "/recorders",
             "/processor",
-            "/uploaders",
+            "/upload",
             "/birds",
             "/bats",
             "/weather",

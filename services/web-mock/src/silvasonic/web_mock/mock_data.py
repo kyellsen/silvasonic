@@ -44,7 +44,7 @@ SYSTEM_METRICS = {
 }
 
 ACTIVE_RECORDERS = 3
-ACTIVE_UPLOADERS = 3
+UPLOAD_ENABLED = True
 
 ALERTS = [
     {"level": "warn", "message": "Dropped frames detected on mic_01 (3 frames)", "ts": "17:43:15"},
@@ -165,7 +165,7 @@ INSPECTOR_SERVICES: list[ServiceMock] = [
     ServiceMock("postgres", "PostgresDB", "running", "Idle"),
     ServiceMock("redis", "Redis", "running", "Active connections: 4"),
     ServiceMock("recorder", "Recorder", "down", "Offline"),
-    ServiceMock("uploader", "Uploader", "running", "Uploading rec_001.wav"),
+    ServiceMock("upload-worker", "Upload Worker", "running", "Uploading rec_001.wav"),
     ServiceMock("birdnet", "BirdNet", "down", "Offline"),
     ServiceMock("batdetect", "BatDetect", "running", "Idle"),
     ServiceMock("weather", "Weather", "running", "Fetching API..."),
@@ -246,13 +246,13 @@ RECORDERS: list[RecorderMock] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Uploaders (max 3, using Bento-Grid layout)
+# Upload Status (single target)
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class UploaderMock:
-    """Mock uploader instance data."""
+class UploadStatusMock:
+    """Mock upload status instance data."""
 
     id: str
     label: str
@@ -266,44 +266,18 @@ class UploaderMock:
     upload_window: str  # "always" | "HH:MM-HH:MM"
 
 
-UPLOADERS: list[UploaderMock] = [
-    UploaderMock(
-        id="upload_01",
-        label="Nextcloud-Backup",
-        target_type="nextcloud",
-        status="syncing",
-        queue_files=14,
-        throughput_kbps=320,
-        last_sync="2026-02-23T17:45:00Z",
-        schedule="*/5 * * * *",
-        bandwidth_limit_kbps=None,
-        upload_window="always",
-    ),
-    UploaderMock(
-        id="upload_02",
-        label="Nextcloud-Archive",
-        target_type="nextcloud",
-        status="idle",
-        queue_files=0,
-        throughput_kbps=0,
-        last_sync="2026-02-23T16:00:00Z",
-        schedule="0 * * * *",
-        bandwidth_limit_kbps=None,
-        upload_window="always",
-    ),
-    UploaderMock(
-        id="upload_03",
-        label="GCP-Cold-Storage",
-        target_type="google-cloud",
-        status="throttled",
-        queue_files=102,
-        throughput_kbps=50,
-        last_sync="2026-02-23T17:35:00Z",
-        schedule="0 0 * * *",
-        bandwidth_limit_kbps=512,
-        upload_window="02:00-06:00",
-    ),
-]
+UPLOAD_STATUS: UploadStatusMock = UploadStatusMock(
+    id="upload_01",
+    label="Nextcloud-Backup",
+    target_type="nextcloud",
+    status="syncing",
+    queue_files=14,
+    throughput_kbps=320,
+    last_sync="2026-02-23T17:45:00Z",
+    schedule="*/5 * * * *",
+    bandwidth_limit_kbps=None,
+    upload_window="always",
+)
 
 # ---------------------------------------------------------------------------
 # Bird detections (BirdNET)
@@ -650,28 +624,16 @@ SETTINGS: dict[str, Any] = {
         "min_free_gb": 20,
         "delete_after_upload": False,
     },
-    "remotes": [
-        {
-            "id": "remote_01",
-            "name": "Cloud Backup (Nextcloud)",
-            "target_type": "nextcloud",
-            "url": "https://cloud.example.org/remote.php/webdav/",
-            "username": "station-01-sync",
-            "bandwidth_limit_kbps": None,
-            "upload_window_start": "",
-            "upload_window_end": "",
-        },
-        {
-            "id": "remote_02",
-            "name": "Archive (S3)",
-            "target_type": "s3",
-            "url": "s3.eu-central-1.amazonaws.com",
-            "username": "AKIAIOSFODNN7EXAMPLE",
-            "bandwidth_limit_kbps": 512,
-            "upload_window_start": "02:00",
-            "upload_window_end": "06:00",
-        },
-    ],
+    "remote": {
+        "id": "remote_01",
+        "name": "Cloud Backup (Nextcloud)",
+        "target_type": "nextcloud",
+        "url": "https://cloud.example.org/remote.php/webdav/",
+        "username": "station-01-sync",
+        "bandwidth_limit_kbps": None,
+        "upload_window_start": "",
+        "upload_window_end": "",
+    },
     "user": {
         "username": "admin",
     },
@@ -683,7 +645,6 @@ SETTINGS: dict[str, Any] = {
 
 UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
     {
-        "uploader_id": "upload_01",
         "filename": "20260223_174000_mic01.wav",
         "target": "Nextcloud-Backup",
         "status": "success",
@@ -693,7 +654,6 @@ UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
         "error": None,
     },
     {
-        "uploader_id": "upload_01",
         "filename": "20260223_173500_mic01.wav",
         "target": "Nextcloud-Backup",
         "status": "success",
@@ -703,9 +663,8 @@ UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
         "error": None,
     },
     {
-        "uploader_id": "upload_03",
         "filename": "20260223_173000_mic01.wav",
-        "target": "GCP-Cold-Storage",
+        "target": "Nextcloud-Backup",
         "status": "failed",
         "size_mb": 4.2,
         "duration_s": 45,
@@ -713,9 +672,8 @@ UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
         "error": "HTTP 503 Service Unavailable",
     },
     {
-        "uploader_id": "upload_03",
         "filename": "20260223_173000_mic01.wav",
-        "target": "GCP-Cold-Storage",
+        "target": "Nextcloud-Backup",
         "status": "retrying",
         "size_mb": 4.2,
         "duration_s": 0,
@@ -723,9 +681,8 @@ UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
         "error": "Retry 1/3 scheduled",
     },
     {
-        "uploader_id": "upload_02",
         "filename": "20260223_170000_mic02.wav",
-        "target": "Nextcloud-Archive",
+        "target": "Nextcloud-Backup",
         "status": "success",
         "size_mb": 4.1,
         "duration_s": 18,
@@ -733,7 +690,6 @@ UPLOAD_AUDIT_LOG: list[dict[str, Any]] = [
         "error": None,
     },
     {
-        "uploader_id": "upload_01",
         "filename": "20260223_173000_mic02.wav",
         "target": "Nextcloud-Backup",
         "status": "success",
@@ -752,7 +708,7 @@ FAKE_LOG_LINES: list[str] = [
     '{"level":"info","service":"recorder","instance_id":"mic_01","message":"segment written: rec_001.wav","timestamp":"2026-02-23T17:43:00Z"}',  # noqa: E501
     '{"level":"warn","service":"recorder","instance_id":"mic_01","message":"dropped frames: 3","timestamp":"2026-02-23T17:43:15Z"}',  # noqa: E501
     '{"level":"info","service":"birdnet","instance_id":"birdnet","message":"Analysis complete: 5 detections in rec_001.wav","timestamp":"2026-02-23T17:44:00Z"}',  # noqa: E501
-    '{"level":"info","service":"uploader","instance_id":"upload_01","message":"Uploaded rec_001.wav (4.2 MB) -> Nextcloud","timestamp":"2026-02-23T17:44:30Z"}',  # noqa: E501
+    '{"level":"info","service":"processor","instance_id":"upload_worker","message":"Uploaded rec_001.wav (4.2 MB) -> Nextcloud","timestamp":"2026-02-23T17:44:30Z"}',  # noqa: E501
     '{"level":"info","service":"controller","instance_id":"controller","message":"Heartbeat OK - 2 recorders active","timestamp":"2026-02-23T17:45:00Z"}',  # noqa: E501
     '{"level":"info","service":"recorder","instance_id":"mic_02","message":"segment written: rec_002.wav","timestamp":"2026-02-23T17:48:00Z"}',  # noqa: E501
     '{"level":"info","service":"birdnet","instance_id":"birdnet","message":"Analysis complete: 3 detections in rec_002.wav","timestamp":"2026-02-23T17:49:00Z"}',  # noqa: E501
@@ -763,5 +719,5 @@ LOG_SERVICES: list[dict[str, str]] = [
     {"id": "mic_01", "label": "Recorder mic_01"},
     {"id": "mic_02", "label": "Recorder mic_02"},
     {"id": "birdnet", "label": "BirdNET"},
-    {"id": "upload_01", "label": "Uploader"},
+    {"id": "upload_worker", "label": "Cloud Sync Worker"},
 ]

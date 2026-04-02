@@ -80,7 +80,7 @@ class TestPageRoutes:
             "/",
             "/recorders",
             "/processor",
-            "/uploaders",
+            "/upload",
             "/birds",
             "/bats",
             "/weather",
@@ -119,18 +119,11 @@ class TestDetailRoutes:
         resp = client.get("/recorders/nonexistent-id")
         assert resp.status_code == 404
 
-    def test_uploader_detail(self, client: TestClient) -> None:
-        """Uploader detail page renders targeting info."""
-        up = mock_data.UPLOADERS[0]
-        resp = client.get(f"/uploaders/{up.id}")
+    def test_upload_detail(self, client: TestClient) -> None:
+        """Upload page renders single target status."""
+        resp = client.get("/upload")
         assert resp.status_code == 200
-        assert up.label in resp.text
-        assert up.target_type in resp.text
-
-    def test_uploader_detail_404(self, client: TestClient) -> None:
-        """GET /uploaders/{id} for unknown ID returns 404."""
-        resp = client.get("/uploaders/nonexistent-id")
-        assert resp.status_code == 404
+        assert "Cloud Sync" in resp.text
 
     def test_bird_detail(self, client: TestClient) -> None:
         """Bird species detail page renders scientific name."""

@@ -112,7 +112,7 @@ def _base_ctx(
         "station": station,
         "metrics": mock_data.SYSTEM_METRICS,
         "active_recorders": mock_data.ACTIVE_RECORDERS,
-        "active_uploaders": mock_data.ACTIVE_UPLOADERS,
+        "upload_enabled": mock_data.UPLOAD_ENABLED,
         "alerts": mock_data.ALERTS,
         "log_services": mock_data.LOG_SERVICES,
         "inspector_services": mock_data.INSPECTOR_SERVICES,
@@ -240,31 +240,16 @@ async def processor(
     return templates.TemplateResponse(request, "processor.html", ctx)
 
 
-@app.get("/uploaders", response_class=HTMLResponse)
-async def uploaders(
-    request: Request, station: dict[str, str] = Depends(get_station)
-) -> HTMLResponse:
-    """Uploaders — bento-grid of uploader cards."""
-    ctx = {**_base_ctx(request, station, "uploaders"), "uploaders": mock_data.UPLOADERS}
-    return templates.TemplateResponse(request, "uploaders.html", ctx)
-
-
-@app.get("/uploaders/{uploader_id}", response_class=HTMLResponse)
-async def uploader_detail(
-    request: Request, uploader_id: str, station: dict[str, str] = Depends(get_station)
-) -> HTMLResponse:
-    """Uploader detail view."""
-    uploader = next((u for u in mock_data.UPLOADERS if u.id == uploader_id), None)
-    if not uploader:
-        raise HTTPException(status_code=404, detail="Uploader not found")
-    audit_log = [e for e in mock_data.UPLOAD_AUDIT_LOG if e["uploader_id"] == uploader_id]
+@app.get("/upload", response_class=HTMLResponse)
+async def upload(request: Request, station: dict[str, str] = Depends(get_station)) -> HTMLResponse:
+    """Upload Status — single target display."""
     ctx = {
-        **_base_ctx(request, station, "uploaders"),
-        "uploader": uploader,
+        **_base_ctx(request, station, "upload"),
+        "upload_status": mock_data.UPLOAD_STATUS,
+        "audit_log": mock_data.UPLOAD_AUDIT_LOG,
         "metrics": mock_data.SYSTEM_METRICS,
-        "audit_log": audit_log,
     }
-    return templates.TemplateResponse(request, "uploader_detail.html", ctx)
+    return templates.TemplateResponse(request, "upload.html", ctx)
 
 
 @app.get("/birds", response_class=HTMLResponse)
