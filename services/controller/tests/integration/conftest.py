@@ -11,8 +11,7 @@ between tests so that leftover rows never cause false positives.
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 
 import asyncpg  # type: ignore[import-untyped]
 import pytest
@@ -47,7 +46,7 @@ async def _delete_all(container: PostgresContainer) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
+async def _clean_db_tables(postgres_container: PostgresContainer) -> AsyncIterator[None]:
     """Reset application tables after each test for parallel safety.
 
     Runs **after** every integration test in this directory.  Deletes
@@ -56,4 +55,4 @@ def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
     database cannot interfere with each other.
     """
     yield
-    asyncio.get_event_loop().run_until_complete(_delete_all(postgres_container))
+    await _delete_all(postgres_container)

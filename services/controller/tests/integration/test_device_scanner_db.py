@@ -51,6 +51,7 @@ class TestDeviceScannerHostRead:
             assert d.alsa_card_index >= 0
             assert d.alsa_device.startswith("hw:")
 
+    @pytest.mark.system_hw
     def test_scan_usb_devices_have_vendor_info(self) -> None:
         """USB-Audio devices should have vendor/product IDs (if sysfs is accessible)."""
         scanner = DeviceScanner()

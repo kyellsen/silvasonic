@@ -17,9 +17,9 @@ from pydantic import ValidationError
 from silvasonic.core.config_schemas import (
     AuthDefaults,
     BirdnetSettings,
+    CloudSyncSettings,
     ProcessorSettings,
     SystemSettings,
-    UploaderSettings,
 )
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import SystemConfig, User
@@ -93,7 +93,7 @@ class ConfigSeeder:
         schema_map: dict[str, type] = {
             "system": SystemSettings,
             "processor": ProcessorSettings,
-            "uploader": UploaderSettings,
+            "cloud_sync": CloudSyncSettings,
             "birdnet": BirdnetSettings,
         }
 

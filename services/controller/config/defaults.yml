@@ -10,7 +10,7 @@
 # Changes in the Web-UI are persisted in the database and take effect
 # immediately (or after service restart, depending on the service).
 #
-# The key names (system, auth, processor, uploader, birdnet) map to entries
+# The key names (system, auth, processor, cloud_sync, birdnet) map to entries
 # in the system_config table and are validated against Pydantic schemas
 # in packages/core/src/silvasonic/core/config_schemas.py.
 #
@@ -49,8 +49,8 @@ processor:
   # How often (seconds) the Indexer scans for new WAV files.  Range: 1-30.
   indexer_poll_interval: 2.0
 
-# --- Uploader: Cloud Sync (key: "uploader", v0.6.0) ---
-uploader:
+# --- Cloud Sync (key: "cloud_sync", v0.6.0) ---
+cloud_sync:
   # Enable/disable cloud upload entirely
   enabled: false
   # Seconds between upload batch checks.  Range: 10-300.

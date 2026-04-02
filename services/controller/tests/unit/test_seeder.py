@@ -98,7 +98,7 @@ def _make_defaults_yml(tmp_path: Path) -> Path:
     """Create a valid defaults.yml covering ALL seeder keys.
 
     Mirrors the real defaults.yml structure so that ConfigSeeder exercises
-    every entry in its schema_map (system, processor, uploader, birdnet)
+    every entry in its schema_map (system, processor, cloud_sync, birdnet)
     plus the auth block handled by AuthSeeder.
     """
     yml = tmp_path / "defaults.yml"
@@ -123,7 +123,7 @@ processor:
   janitor_batch_size: 50
   indexer_poll_interval: 2.0
 
-uploader:
+cloud_sync:
   enabled: false
   poll_interval: 30
   bandwidth_limit: "1M"
@@ -205,13 +205,13 @@ class TestConfigSeeder:
         # Should seed all 4 config keys (auth is handled by AuthSeeder)
         assert session.add.call_count == 4
         added_keys = {call[0][0].key for call in session.add.call_args_list}
-        assert added_keys == {"system", "processor", "uploader", "birdnet"}
+        assert added_keys == {"system", "processor", "cloud_sync", "birdnet"}
 
         # Spot-check specific values
         added_by_key = {call[0][0].key: call[0][0].value for call in session.add.call_args_list}
         assert added_by_key["system"]["station_name"] == "Test Station"
         assert added_by_key["processor"]["janitor_batch_size"] == 50
-        assert added_by_key["uploader"]["bandwidth_limit"] == "1M"
+        assert added_by_key["cloud_sync"]["bandwidth_limit"] == "1M"
         assert added_by_key["birdnet"]["confidence_threshold"] == 0.25
 
     async def test_seed_skips_existing_values(self, tmp_path: Path) -> None:
@@ -688,15 +688,15 @@ class TestDefaultsYamlParity:
         """Return the same schema_map the seeder uses at runtime."""
         from silvasonic.core.config_schemas import (
             BirdnetSettings,
+            CloudSyncSettings,
             ProcessorSettings,
             SystemSettings,
-            UploaderSettings,
         )
 
         return {
             "system": SystemSettings,
             "processor": ProcessorSettings,
-            "uploader": UploaderSettings,
+            "cloud_sync": CloudSyncSettings,
             "birdnet": BirdnetSettings,
         }
 

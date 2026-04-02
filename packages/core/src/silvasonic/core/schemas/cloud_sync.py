@@ -1,4 +1,4 @@
-"""Pydantic schemas for Uploader and Rclone remote configurations."""
+"""Pydantic schemas for Cloud Sync and Rclone remote configurations."""
 
 from typing import Any
 

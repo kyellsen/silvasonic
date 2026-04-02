@@ -4,7 +4,7 @@ Uses the shared ``postgres_container`` Testcontainer fixture (conftest.py)
 to verify the full Janitor cycle against a real database:
 - Correct SQL query execution per retention mode
 - Soft-delete pattern (physical file removal + DB flag update)
-- Uploader-Fallback: cloud sync disabled → skip ``uploaded`` condition
+- Cloud-Sync-Fallback: cloud sync disabled → skip ``uploaded`` condition
 - Batch-size enforcement against real DB
 - Mode-specific file preservation guarantees
 """
@@ -109,7 +109,7 @@ async def _enable_upload_config(factory: async_sessionmaker[Any]) -> None:
         await session.execute(
             text("""
                 INSERT INTO system_config (key, value)
-                VALUES ('uploader', '{"enabled": true}'::jsonb)
+                VALUES ('cloud_sync', '{"enabled": true}'::jsonb)
                 ON CONFLICT (key) DO UPDATE SET value = '{"enabled": true}'::jsonb
             """)
         )
@@ -122,7 +122,7 @@ async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
         await session.execute(
             text("""
                 INSERT INTO system_config (key, value)
-                VALUES ('uploader', '{"enabled": false}'::jsonb)
+                VALUES ('cloud_sync', '{"enabled": false}'::jsonb)
                 ON CONFLICT (key) DO UPDATE SET value = '{"enabled": false}'::jsonb
             """)
         )
@@ -134,7 +134,7 @@ async def _cleanup(factory: async_sessionmaker[Any]) -> None:
     async with factory() as session:
         await session.execute(text("DELETE FROM recordings"))
         await session.execute(text("DELETE FROM devices"))
-        await session.execute(text("DELETE FROM system_config WHERE key = 'uploader'"))
+        await session.execute(text("DELETE FROM system_config WHERE key = 'cloud_sync'"))
         await session.commit()
 
 
@@ -160,7 +160,7 @@ class TestJanitorIntegration:
     async def test_housekeeping_deletes_correct_files(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """75% disk + Uploader → only uploaded+analyzed files deleted."""
+        """75% disk + Cloud Sync → only uploaded+analyzed files deleted."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -206,7 +206,7 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.HOUSEKEEPING
         assert result.files_deleted == 1
-        assert result.uploader_fallback is False
+        assert result.cloud_sync_fallback is False
         assert not del_proc.exists()
         assert kept_proc.exists()
 
@@ -224,10 +224,10 @@ class TestJanitorIntegration:
         await _cleanup(factory)
         await engine.dispose()
 
-    async def test_housekeeping_uploader_fallback(
+    async def test_housekeeping_cloud_sync_fallback(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """75% disk + NO Uploader → 'uploaded' condition skipped, fallback active."""
+        """75% disk + NO Cloud Sync → 'uploaded' condition skipped, fallback active."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -258,7 +258,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.uploader_fallback is True
+        assert result.cloud_sync_fallback is True
         assert result.files_deleted == 1
         assert not proc.exists()
 
@@ -275,7 +275,7 @@ class TestJanitorIntegration:
     async def test_defensive_deletes_uploaded_only(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """85% disk + Uploader → uploaded files deleted even without analysis."""
+        """85% disk + Cloud Sync → uploaded files deleted even without analysis."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -317,10 +317,10 @@ class TestJanitorIntegration:
         await _cleanup(factory)
         await engine.dispose()
 
-    async def test_defensive_uploader_fallback(
+    async def test_defensive_cloud_sync_fallback(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """85% disk + NO Uploader → all non-deleted recordings eligible."""
+        """85% disk + NO Cloud Sync → all non-deleted recordings eligible."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -349,7 +349,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.DEFENSIVE
-        assert result.uploader_fallback is True
+        assert result.cloud_sync_fallback is True
         assert result.files_deleted == 1
         assert not proc.exists()
 

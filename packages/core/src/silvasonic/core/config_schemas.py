@@ -4,7 +4,7 @@ Each schema corresponds to a key in the ``system_config`` table.
 Defaults here MUST mirror ``config/defaults.yml``.
 
 Order: cross-cutting (system, auth) first, then by roadmap milestone
-(processor v0.5, uploader v0.6, birdnet v0.7).
+(processor v0.5, cloud sync v0.6, birdnet v0.7).
 """
 
 from __future__ import annotations
@@ -40,8 +40,8 @@ class ProcessorSettings(BaseModel):
     indexer_poll_interval: float = 2.0
 
 
-class UploaderSettings(BaseModel):
-    """Uploader settings (key: ``uploader``, v0.6.0)."""
+class CloudSyncSettings(BaseModel):
+    """Cloud Sync settings (key: ``cloud_sync``, v0.6.0)."""
 
     enabled: bool = False
     poll_interval: int = 30

@@ -10,7 +10,7 @@ Three escalating modes:
 - **Defensive** (>80%): Delete uploaded recordings (analysis state ignored).
 - **Panic** (>90%): Delete oldest files regardless of any status.
 
-**Uploader-Fallback:** When ``UploaderSettings.enabled`` is ``false``
+**Cloud-Sync-Fallback:** When ``CloudSyncSettings.enabled`` is ``false``
 (no upload target configured), the ``uploaded`` condition is skipped in Housekeeping and
 Defensive modes.  This prevents the Janitor from remaining idle until Panic
 threshold is reached when the Cloud Sync feature is disabled.
@@ -53,7 +53,7 @@ class JanitorResult:
     disk_usage_percent: float
     files_deleted: int = 0
     errors: int = 0
-    uploader_fallback: bool = False
+    cloud_sync_fallback: bool = False
     error_details: list[str] = field(default_factory=list)
 
 
@@ -89,14 +89,14 @@ def evaluate_mode(disk_pct: float, settings: ProcessorSettings) -> RetentionMode
     return RetentionMode.IDLE
 
 
-async def has_uploader_configured(session: AsyncSession) -> bool:
+async def is_cloud_sync_enabled(session: AsyncSession) -> bool:
     """Check whether cloud sync is enabled in the system configuration.
 
-    Returns ``False`` when ``UploaderSettings.enabled`` is ``false``,
-    which triggers the Uploader-Fallback in Housekeeping and Defensive modes.
+    Returns ``False`` when ``CloudSyncSettings.enabled`` is ``false``,
+    which triggers the Cloud-Sync-Fallback in Housekeeping and Defensive modes.
     """
     result = await session.execute(
-        text("SELECT value->>'enabled' FROM system_config WHERE key = 'uploader'")
+        text("SELECT value->>'enabled' FROM system_config WHERE key = 'cloud_sync'")
     )
     row = result.fetchone()
     if row is not None and row[0] is not None:
@@ -108,7 +108,7 @@ async def find_deletable(
     session: AsyncSession,
     mode: RetentionMode,
     batch_size: int,
-    uploader_active: bool,
+    cloud_sync_active: bool,
 ) -> list[tuple[int, str, str]]:
     """Query recordings eligible for deletion in the given mode.
 
@@ -116,13 +116,13 @@ async def find_deletable(
         session: Active async DB session.
         mode: Current retention mode.
         batch_size: Maximum rows to return.
-        uploader_active: Whether an Uploader is configured.
+        cloud_sync_active: Whether Cloud Sync is enabled.
 
     Returns:
         List of ``(id, file_raw, file_processed)`` tuples, sorted oldest first.
     """
     if mode == RetentionMode.HOUSEKEEPING:
-        if uploader_active:
+        if cloud_sync_active:
             query = text("""
                 SELECT id, file_raw, file_processed
                 FROM recordings
@@ -136,7 +136,7 @@ async def find_deletable(
                 LIMIT :batch
             """)
         else:
-            # Uploader-Fallback: skip uploaded condition
+            # Cloud-Sync-Fallback: skip uploaded condition
             query = text("""
                 SELECT id, file_raw, file_processed
                 FROM recordings
@@ -150,7 +150,7 @@ async def find_deletable(
             """)
 
     elif mode == RetentionMode.DEFENSIVE:
-        if uploader_active:
+        if cloud_sync_active:
             query = text("""
                 SELECT id, file_raw, file_processed
                 FROM recordings
@@ -160,7 +160,7 @@ async def find_deletable(
                 LIMIT :batch
             """)
         else:
-            # Uploader-Fallback: skip uploaded condition
+            # Cloud-Sync-Fallback: skip uploaded condition
             query = text("""
                 SELECT id, file_raw, file_processed
                 FROM recordings
@@ -306,12 +306,12 @@ async def run_cleanup(
         batch_size=settings.janitor_batch_size,
     )
 
-    # Check Uploader availability (for Housekeeping/Defensive fallback)
-    uploader_active = await has_uploader_configured(session)
-    if not uploader_active and mode in (RetentionMode.HOUSEKEEPING, RetentionMode.DEFENSIVE):
-        result.uploader_fallback = True
+    # Check Cloud Sync availability (for Housekeeping/Defensive fallback)
+    cloud_sync_active = await is_cloud_sync_enabled(session)
+    if not cloud_sync_active and mode in (RetentionMode.HOUSEKEEPING, RetentionMode.DEFENSIVE):
+        result.cloud_sync_fallback = True
         log.warning(
-            "janitor.uploader_fallback_active",
+            "janitor.cloud_sync_fallback_active",
             mode=mode.value,
             reason="upload_disabled",
             detail=(
@@ -322,7 +322,7 @@ async def run_cleanup(
         )
 
     # Find deletable recordings
-    rows = await find_deletable(session, mode, settings.janitor_batch_size, uploader_active)
+    rows = await find_deletable(session, mode, settings.janitor_batch_size, cloud_sync_active)
 
     # Delete files + soft-delete in DB
     for rec_id, file_raw, file_processed in rows:
@@ -335,7 +335,7 @@ async def run_cleanup(
                 recording_id=rec_id,
                 file_processed=file_processed,
                 mode=mode.value,
-                uploader_fallback=result.uploader_fallback,
+                cloud_sync_fallback=result.cloud_sync_fallback,
             )
         except Exception:
             result.errors += 1
@@ -355,7 +355,7 @@ async def run_cleanup(
         files_deleted=result.files_deleted,
         errors=result.errors,
         disk_usage_percent=round(disk_pct, 1),
-        uploader_fallback=result.uploader_fallback,
+        cloud_sync_fallback=result.cloud_sync_fallback,
     )
 
     return result

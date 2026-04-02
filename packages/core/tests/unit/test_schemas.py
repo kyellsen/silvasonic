@@ -1,20 +1,20 @@
-"""Unit tests for silvasonic.core.schemas (devices + uploader)."""
+"""Unit tests for silvasonic.core.schemas (devices + cloud sync)."""
 
 import pytest
 from pydantic import ValidationError
-from silvasonic.core.schemas.devices import (
-    AudioConfig,
-    MicrophoneProfile,
-    ProcessingConfig,
-    StreamConfig,
-)
-from silvasonic.core.schemas.uploader import (
+from silvasonic.core.schemas.cloud_sync import (
     BaseRcloneConfig,
     DriveConfig,
     S3Config,
     SFTPConfig,
     WebDAVConfig,
     validate_rclone_config,
+)
+from silvasonic.core.schemas.devices import (
+    AudioConfig,
+    MicrophoneProfile,
+    ProcessingConfig,
+    StreamConfig,
 )
 
 # ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ class TestMicrophoneProfile:
 
 
 # ---------------------------------------------------------------------------
-# Uploader / Rclone Schemas
+# Cloud Sync / Rclone Schemas
 # ---------------------------------------------------------------------------
 
 

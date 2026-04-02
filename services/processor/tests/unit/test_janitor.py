@@ -2,7 +2,7 @@
 
 Covers:
 - Retention mode evaluation (idle/housekeeping/defensive/panic)
-- Deletion criteria per mode (with and without Uploader-Fallback)
+- Deletion criteria per mode (with and without Cloud-Sync-Fallback)
 - Soft delete pattern (physical file removal + DB flag update)
 - Panic filesystem fallback (mtime-based blind cleanup)
 - Batch size enforcement
@@ -24,7 +24,7 @@ from silvasonic.processor.janitor import (
     evaluate_mode,
     find_deletable,
     get_disk_usage,
-    has_uploader_configured,
+    is_cloud_sync_enabled,
     panic_filesystem_fallback,
     run_cleanup,
     soft_delete,
@@ -93,12 +93,12 @@ class TestGetDiskUsage:
 
 
 # ---------------------------------------------------------------------------
-# Uploader Fallback Detection
+# Cloud Sync Fallback Detection
 # ---------------------------------------------------------------------------
 
 
-class TestHasUploaderConfigured:
-    """Tests for has_uploader_configured()."""
+class TestIsCloudSyncEnabled:
+    """Tests for is_cloud_sync_enabled()."""
 
     async def test_config_missing_returns_false(self) -> None:
         """Row missing or enabled missing → returns False."""
@@ -107,7 +107,7 @@ class TestHasUploaderConfigured:
         mock_result.fetchone.return_value = None
         mock_session.execute.return_value = mock_result
 
-        assert await has_uploader_configured(mock_session) is False
+        assert await is_cloud_sync_enabled(mock_session) is False
 
     async def test_config_disabled_returns_false(self) -> None:
         """Enabled is false → returns False."""
@@ -116,7 +116,7 @@ class TestHasUploaderConfigured:
         mock_result.fetchone.return_value = ("false",)
         mock_session.execute.return_value = mock_result
 
-        assert await has_uploader_configured(mock_session) is False
+        assert await is_cloud_sync_enabled(mock_session) is False
 
     async def test_config_enabled_returns_true(self) -> None:
         """Enabled is true → returns True."""
@@ -125,7 +125,7 @@ class TestHasUploaderConfigured:
         mock_result.fetchone.return_value = ("true",)
         mock_session.execute.return_value = mock_result
 
-        assert await has_uploader_configured(mock_session) is True
+        assert await is_cloud_sync_enabled(mock_session) is True
 
 
 # ---------------------------------------------------------------------------
@@ -136,15 +136,15 @@ class TestHasUploaderConfigured:
 class TestFindDeletable:
     """Tests for find_deletable() query construction."""
 
-    async def test_housekeeping_criteria_with_uploader(self) -> None:
-        """Housekeeping + uploader: query includes uploaded=true + analysis check."""
+    async def test_housekeeping_criteria_with_cloud_sync(self) -> None:
+        """Housekeeping + cloud_sync: query includes uploaded=true + analysis check."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
         mock_session.execute.return_value = mock_result
 
         rows = await find_deletable(
-            mock_session, RetentionMode.HOUSEKEEPING, 50, uploader_active=True
+            mock_session, RetentionMode.HOUSEKEEPING, 50, cloud_sync_active=True
         )
         assert len(rows) == 1
         # Verify the SQL contained 'uploaded = true'
@@ -152,42 +152,42 @@ class TestFindDeletable:
         sql_text = str(call_args[0][0].text)
         assert "uploaded = true" in sql_text
 
-    async def test_housekeeping_no_uploader_fallback(self) -> None:
-        """Housekeeping + no uploader: query skips uploaded condition."""
+    async def test_housekeeping_no_cloud_sync_fallback(self) -> None:
+        """Housekeeping + no cloud_sync: query skips uploaded condition."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
         mock_session.execute.return_value = mock_result
 
         rows = await find_deletable(
-            mock_session, RetentionMode.HOUSEKEEPING, 50, uploader_active=False
+            mock_session, RetentionMode.HOUSEKEEPING, 50, cloud_sync_active=False
         )
         assert len(rows) == 1
         call_args = mock_session.execute.call_args
         sql_text = str(call_args[0][0].text)
         assert "uploaded = true" not in sql_text
 
-    async def test_defensive_criteria_with_uploader(self) -> None:
-        """Defensive + uploader: query includes uploaded=true only."""
+    async def test_defensive_criteria_with_cloud_sync(self) -> None:
+        """Defensive + cloud_sync: query includes uploaded=true only."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
         mock_session.execute.return_value = mock_result
 
-        await find_deletable(mock_session, RetentionMode.DEFENSIVE, 50, uploader_active=True)
+        await find_deletable(mock_session, RetentionMode.DEFENSIVE, 50, cloud_sync_active=True)
         call_args = mock_session.execute.call_args
         sql_text = str(call_args[0][0].text)
         assert "uploaded = true" in sql_text
         assert "analysis_state" not in sql_text
 
-    async def test_defensive_no_uploader_fallback(self) -> None:
-        """Defensive + no uploader: query deletes all non-deleted recordings."""
+    async def test_defensive_no_cloud_sync_fallback(self) -> None:
+        """Defensive + no cloud_sync: query deletes all non-deleted recordings."""
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
         mock_session.execute.return_value = mock_result
 
-        await find_deletable(mock_session, RetentionMode.DEFENSIVE, 50, uploader_active=False)
+        await find_deletable(mock_session, RetentionMode.DEFENSIVE, 50, cloud_sync_active=False)
         call_args = mock_session.execute.call_args
         sql_text = str(call_args[0][0].text)
         assert "uploaded = true" not in sql_text
@@ -199,7 +199,7 @@ class TestFindDeletable:
         mock_result.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
         mock_session.execute.return_value = mock_result
 
-        rows = await find_deletable(mock_session, RetentionMode.PANIC, 50, uploader_active=True)
+        rows = await find_deletable(mock_session, RetentionMode.PANIC, 50, cloud_sync_active=True)
         assert len(rows) == 1
         call_args = mock_session.execute.call_args
         sql_text = str(call_args[0][0].text)
@@ -209,7 +209,7 @@ class TestFindDeletable:
     async def test_idle_returns_empty(self) -> None:
         """Idle mode: returns empty list (no query executed)."""
         mock_session = AsyncMock()
-        rows = await find_deletable(mock_session, RetentionMode.IDLE, 50, uploader_active=True)
+        rows = await find_deletable(mock_session, RetentionMode.IDLE, 50, cloud_sync_active=True)
         assert rows == []
         mock_session.execute.assert_not_called()
 
@@ -220,7 +220,7 @@ class TestFindDeletable:
         mock_result.fetchall.return_value = []
         mock_session.execute.return_value = mock_result
 
-        await find_deletable(mock_session, RetentionMode.PANIC, 25, uploader_active=True)
+        await find_deletable(mock_session, RetentionMode.PANIC, 25, cloud_sync_active=True)
         call_args = mock_session.execute.call_args
         params = call_args[0][1]
         assert params["batch"] == 25
@@ -377,14 +377,14 @@ class TestRunCleanup:
     async def test_metrics_reported(self) -> None:
         """Result contains disk usage, mode, and deletion counts."""
         mock_session = AsyncMock()
-        # has_uploader_configured returns False
-        mock_result_uploader = MagicMock()
-        mock_result_uploader.fetchone.return_value = None
+        # is_cloud_sync_enabled returns False
+        mock_result_cloud_sync = MagicMock()
+        mock_result_cloud_sync.fetchone.return_value = None
         # find_deletable returns empty
         mock_result_find = MagicMock()
         mock_result_find.fetchall.return_value = []
 
-        mock_session.execute.side_effect = [mock_result_uploader, mock_result_find]
+        mock_session.execute.side_effect = [mock_result_cloud_sync, mock_result_find]
         settings = ProcessorSettings()
 
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
@@ -394,19 +394,19 @@ class TestRunCleanup:
         assert result.mode == RetentionMode.HOUSEKEEPING
         assert result.disk_usage_percent == 75.0
         assert result.files_deleted == 0
-        assert result.uploader_fallback is True
+        assert result.cloud_sync_fallback is True
 
     async def test_delete_error_records_in_result(self) -> None:
         """Exception during delete_files/soft_delete is caught, counted, and logged."""
         mock_session = AsyncMock()
-        # has_uploader_configured → no uploader
-        mock_result_uploader = MagicMock()
-        mock_result_uploader.fetchone.return_value = None
+        # is_cloud_sync_enabled → no cloud_sync
+        mock_result_cloud_sync = MagicMock()
+        mock_result_cloud_sync.fetchone.return_value = None
         # find_deletable → 1 row
         mock_result_find = MagicMock()
         mock_result_find.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
 
-        mock_session.execute.side_effect = [mock_result_uploader, mock_result_find]
+        mock_session.execute.side_effect = [mock_result_cloud_sync, mock_result_find]
         settings = ProcessorSettings()
 
         with (
@@ -426,9 +426,9 @@ class TestRunCleanup:
     async def test_successful_deletion_commits_session(self) -> None:
         """Successful file deletion triggers session.commit()."""
         mock_session = AsyncMock()
-        # has_uploader_configured → no uploader
-        mock_result_uploader = MagicMock()
-        mock_result_uploader.fetchone.return_value = None
+        # is_cloud_sync_enabled → no cloud_sync
+        mock_result_cloud_sync = MagicMock()
+        mock_result_cloud_sync.fetchone.return_value = None
         # find_deletable → 1 row
         mock_result_find = MagicMock()
         mock_result_find.fetchall.return_value = [(1, "raw.wav", "proc.wav")]
@@ -436,7 +436,7 @@ class TestRunCleanup:
         mock_result_update = MagicMock()
 
         mock_session.execute.side_effect = [
-            mock_result_uploader,
+            mock_result_cloud_sync,
             mock_result_find,
             mock_result_update,
         ]
@@ -478,11 +478,11 @@ class TestRunCleanupSafe:
 
         settings = ProcessorSettings()
         mock_session = AsyncMock()
-        mock_result_uploader = MagicMock()
-        mock_result_uploader.fetchone.return_value = None
+        mock_result_cloud_sync = MagicMock()
+        mock_result_cloud_sync.fetchone.return_value = None
         mock_result_find = MagicMock()
         mock_result_find.fetchall.return_value = []
-        mock_session.execute.side_effect = [mock_result_uploader, mock_result_find]
+        mock_session.execute.side_effect = [mock_result_cloud_sync, mock_result_find]
 
         mock_ctx = MagicMock()
         mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)

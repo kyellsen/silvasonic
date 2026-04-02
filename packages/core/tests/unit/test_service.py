@@ -2,7 +2,7 @@
 
 Covers the SilvaService base class lifecycle (_setup, _main, _teardown),
 signal handling, dying-gasp, load_config hook, get_extra_meta, health
-property, config schemas (System/Birdnet/Processor/Uploader), and lazy
+property, config schemas (System/Birdnet/Processor/CloudSync), and lazy
 session initialization.
 """
 
@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from silvasonic.core.config_schemas import (
     BirdnetSettings,
+    CloudSyncSettings,
     ProcessorSettings,
     SystemSettings,
-    UploaderSettings,
 )
 
 # ===================================================================
@@ -437,9 +437,9 @@ class TestConfigSchemas:
         assert s.janitor_batch_size == 50
         assert s.indexer_poll_interval == 2.0
 
-    def test_uploader_settings_defaults(self) -> None:
-        """UploaderSettings has correct defaults."""
-        s = UploaderSettings()
+    def test_cloud_sync_settings_defaults(self) -> None:
+        """CloudSyncSettings has correct defaults."""
+        s = CloudSyncSettings()
         assert s.enabled is False
         assert s.bandwidth_limit == "1M"
         assert s.schedule_start_hour is None
