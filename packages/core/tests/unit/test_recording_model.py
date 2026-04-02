@@ -32,13 +32,6 @@ class TestRecordingModel:
         col = Recording.__table__.columns["uploaded"]
         assert col.default.arg is False
 
-    def test_upload_info_default_empty_jsonb(self) -> None:
-        """Upload_info default produces an empty dict."""
-        col = Recording.__table__.columns["upload_info"]
-        assert col.default is not None
-        assert callable(col.default.arg)
-        assert col.default.arg.__name__ == "dict"
-
     def test_analysis_state_has_server_default(self) -> None:
         """Analysis_state column has a server_default for raw SQL inserts."""
         col = Recording.__table__.columns["analysis_state"]

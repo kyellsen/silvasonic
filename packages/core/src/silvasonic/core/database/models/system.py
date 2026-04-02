@@ -84,10 +84,6 @@ class Upload(Base):
         BigInteger, ForeignKey("recordings.id"), nullable=False, index=True
     )
 
-    remote_slug: Mapped[str] = mapped_column(
-        Text, ForeignKey("storage_remotes.slug"), nullable=False, index=True
-    )
-
     attempt_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

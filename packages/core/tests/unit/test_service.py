@@ -440,7 +440,7 @@ class TestConfigSchemas:
     def test_uploader_settings_defaults(self) -> None:
         """UploaderSettings has correct defaults."""
         s = UploaderSettings()
-        assert s.enabled is True
+        assert s.enabled is False
         assert s.bandwidth_limit == "1M"
         assert s.schedule_start_hour is None
         assert s.schedule_end_hour is None

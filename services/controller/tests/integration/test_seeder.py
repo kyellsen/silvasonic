@@ -32,7 +32,6 @@ system:
   latitude: 53.55
   longitude: 9.99
   max_recorders: 5
-  max_uploaders: 3
   station_name: "Integration Test Station"
   auto_enrollment: true
 

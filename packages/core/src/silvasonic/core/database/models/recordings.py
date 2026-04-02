@@ -53,6 +53,3 @@ class Recording(Base):
         server_default=text("'{}'::jsonb"),
         nullable=False,
     )
-
-    # Upload detailed status/error history
-    upload_info: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

@@ -108,7 +108,6 @@ system:
   latitude: 53.55
   longitude: 9.99
   max_recorders: 5
-  max_uploaders: 3
   station_name: "Test Station"
   auto_enrollment: true
 
@@ -125,7 +124,7 @@ processor:
   indexer_poll_interval: 2.0
 
 uploader:
-  enabled: true
+  enabled: false
   poll_interval: 30
   bandwidth_limit: "1M"
   schedule_start_hour: null
@@ -248,7 +247,6 @@ system:
   latitude: "not_a_float"
   longitude: 9.99
   max_recorders: 5
-  max_uploaders: 3
   station_name: "Test"
   auto_enrollment: true
 """,

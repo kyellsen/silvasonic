@@ -24,10 +24,7 @@ system:
   # GPS coordinates of the monitoring station (used for sunrise/sunset calculation)
   latitude: 53.55
   longitude: 9.99
-  # Maximum number of concurrent Recorder containers
   max_recorders: 5
-  # Maximum number of concurrent Uploader workers (v0.6.0)
-  max_uploaders: 3
   # Human-readable name shown in the Web-UI header
   station_name: "Silvasonic MVP"
   # Automatically enroll newly detected USB microphones (true/false)
@@ -55,7 +52,7 @@ processor:
 # --- Uploader: Cloud Sync (key: "uploader", v0.6.0) ---
 uploader:
   # Enable/disable cloud upload entirely
-  enabled: true
+  enabled: false
   # Seconds between upload batch checks.  Range: 10-300.
   poll_interval: 30
   # Bandwidth limit for uploads (rsync/rclone format, e.g. "1M", "500k")

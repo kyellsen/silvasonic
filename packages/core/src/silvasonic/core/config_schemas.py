@@ -18,7 +18,6 @@ class SystemSettings(BaseModel):
     latitude: float = 53.55
     longitude: float = 9.99
     max_recorders: int = 5
-    max_uploaders: int = 3
     station_name: str = "Silvasonic MVP"
     auto_enrollment: bool = True
 
@@ -44,7 +43,7 @@ class ProcessorSettings(BaseModel):
 class UploaderSettings(BaseModel):
     """Uploader settings (key: ``uploader``, v0.6.0)."""
 
-    enabled: bool = True
+    enabled: bool = False
     poll_interval: int = 30
     bandwidth_limit: str = "1M"
     schedule_start_hour: int | None = None
