@@ -3364,7 +3364,7 @@
 <hr />
 <h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
 <p>The Cloud-Sync-Worker is an <strong>internal async worker within the Processor</strong> (Tier 1), following the same pattern as the Indexer and Janitor. It is <strong>NOT</strong> a standalone Tier 2 container — there is no Controller management, no multi-instance orchestration, and no separate health port.</p>
-<p>This is a KISS simplification of the <a href="#">original multi-target Uploader architecture</a>.</p>
+<p>This is a KISS simplification of the original multi-target Uploader architecture (archived, see ADR-0009 NOTE).</p>
 <h3 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3388,7 +3388,7 @@
 <tr>
 <td>Config source?</td>
 <td><strong><code>CloudSyncSettings</code></strong> in <code>system_config</code> JSONB</td>
-<td>No <code>storage_remotes</code> table needed; same Pydantic schema pattern as other settings</td>
+<td>No <code>storage_remotes</code> table needed; same Pydantic schema pattern as other settings. Remote target via <code>remote_type</code> + <code>remote_config</code> dict</td>
 </tr>
 <tr>
 <td>Upload tracking?</td>
@@ -3434,7 +3434,7 @@
 <h2 id="phase-1-upload-worker-module-scaffold">Phase 1: Upload Worker Module Scaffold<a class="headerlink" href="#phase-1-upload-worker-module-scaffold" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Create the Cloud-Sync-Worker modules within the Processor service. The worker polls for pending recordings, compresses WAV→FLAC, uploads via rclone, logs the attempt, and updates the database.</p>
 <p><strong>User Stories:</strong> US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)</p>
-<p><strong>Dependency:</strong> Preparatory refactoring (v0.5.x) must be complete — <code>storage_remotes</code> table removed, <code>CloudSyncSettings.enabled</code> defaults to <code>false</code>.</p>
+<p><strong>Dependency:</strong> Preparatory refactoring (v0.5.x) must be complete — <code>storage_remotes</code> table removed, <code>CloudSyncSettings.enabled</code> defaults to <code>false</code>, <code>remote_type</code> / <code>remote_config</code> fields present in schema.</p>
 <h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3539,6 +3539,7 @@
 <li>[ ] Implement <code>upload_worker.py</code>:</li>
 <li><code>UploadWorker(session_factory, settings, stats)</code> — main async loop</li>
 <li>Early exit: if <code>CloudSyncSettings.enabled == false</code> → log and skip (global pause)</li>
+<li>Early exit: if <code>CloudSyncSettings.remote_type is None</code> → log warning and skip (no target configured)</li>
 <li>Poll loop: <code>find_pending()</code> → encode → upload → audit → repeat</li>
 <li>Sequential per file (parallel deferred to post-v1.0.0)</li>
 <li>Inline schedule check (opt-in): <code>_is_within_window(start_hour, end_hour) -&gt; bool</code> (KISS — 4-line function). Default: both <code>null</code> → 24/7 continuous upload</li>
@@ -3563,8 +3564,9 @@
 <li>Convention: <code>silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac</code></li>
 <li>Station name slugified via <code>python-slugify</code></li>
 <li>[ ] Implement <code>rclone_client.py</code>:</li>
-<li><code>RcloneClient(remote_config: dict)</code>:<ul>
-<li><code>generate_rclone_conf() -&gt; Path</code> — write temp <code>rclone.conf</code> from <code>CloudSyncSettings</code> config</li>
+<li><code>RcloneClient(cloud_sync_settings: CloudSyncSettings)</code>:<ul>
+<li><code>generate_rclone_conf() -&gt; Path</code> — write temp <code>rclone.conf</code> from <code>CloudSyncSettings.remote_type</code> + <code>remote_config</code></li>
+<li>Validate <code>remote_config</code> via <code>schemas.cloud_sync.validate_rclone_config(remote_type, remote_config)</code> on init</li>
 <li>For WebDAV/Nextcloud: set <code>vendor = nextcloud</code></li>
 <li><code>upload_file(local, remote_path, bandwidth_limit) -&gt; RcloneResult</code></li>
 <li><code>RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)</code></li>

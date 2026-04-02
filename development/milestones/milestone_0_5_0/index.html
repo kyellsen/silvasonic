@@ -3830,7 +3830,7 @@
 <li>Log each deletion: filename, reason, mode</li>
 <li>[x] Implement <strong>Panic Mode fallback</strong>:</li>
 <li>If DB is unreachable during Panic Mode, fall back to filesystem <code>mtime</code> for blind cleanup (oldest files first)</li>
-<li>[x] Implement <strong>Uploader-Fallback</strong>: When upload is not enabled (<code>UploaderSettings.enabled = false</code> in <code>system_config</code>), skip <code>uploaded</code> condition in Housekeeping/Defensive. Logged at WARNING with <code>janitor.uploader_fallback_active</code></li>
+<li>[x] Implement <strong>Cloud-Sync-Fallback</strong>: When upload is not enabled (<code>CloudSyncSettings.enabled = false</code> in <code>system_config</code>), skip <code>uploaded</code> condition in Housekeeping/Defensive. Logged at WARNING with <code>janitor.cloud_sync_fallback_active</code></li>
 <li>[x] Implement <strong>Batch Size Limit</strong>: <code>janitor_batch_size</code> (default 50) per cleanup cycle. Add to <code>ProcessorSettings</code></li>
 <li>[x] Exclusive delete authority: only the Processor deletes Recorder files — enforced by RW mount on Recorder workspace (all others mount <code>:ro</code>, ADR-0009)</li>
 <li>[x] Integrate Janitor as periodic async task in <code>ProcessorService.run()</code></li>
@@ -3846,10 +3846,10 @@
 <li><code>test_housekeeping_mode_triggers</code> — 75% usage → mode <code>housekeeping</code></li>
 <li><code>test_defensive_mode_triggers</code> — 85% usage → mode <code>defensive</code></li>
 <li><code>test_panic_mode_triggers</code> — 95% usage → mode <code>panic</code></li>
-<li><code>test_housekeeping_criteria_with_uploader</code> — only deletes <code>uploaded=true AND analysis_state complete</code></li>
-<li><code>test_housekeeping_no_uploader_fallback</code> — upload not enabled → skips <code>uploaded</code> check</li>
-<li><code>test_defensive_criteria_with_uploader</code> — deletes <code>uploaded=true</code> regardless of analysis</li>
-<li><code>test_defensive_no_uploader_fallback</code> — upload not enabled → deletes all non-deleted</li>
+<li><code>test_housekeeping_criteria_with_cloud_sync</code> — only deletes <code>uploaded=true AND analysis_state complete</code></li>
+<li><code>test_housekeeping_no_cloud_sync_fallback</code> — upload not enabled → skips <code>uploaded</code> check</li>
+<li><code>test_defensive_criteria_with_cloud_sync</code> — deletes <code>uploaded=true</code> regardless of analysis</li>
+<li><code>test_defensive_no_cloud_sync_fallback</code> — upload not enabled → deletes all non-deleted</li>
 <li><code>test_panic_criteria</code> — deletes oldest files regardless of status</li>
 <li><code>test_soft_delete_updates_db</code> — physical delete + DB row <code>local_deleted=true</code> (mocked fs/DB)</li>
 <li><code>test_panic_fallback_no_db</code> — DB unreachable → falls back to <code>mtime</code>-based filesystem cleanup</li>
@@ -3889,7 +3889,7 @@
 <h4 id="unit-servicescontrollertestsunit-pytestmarkunit">Unit (<code>services/controller/tests/unit/</code>) — <code>@pytest.mark.unit</code><a class="headerlink" href="#unit-servicescontrollertestsunit-pytestmarkunit" title="Permanent link">&para;</a></h4>
 <ul>
 <li>[x] <code>test_seeder.py</code> (extend existing) — <code>TestConfigSeeder::test_seed_inserts_defaults</code></li>
-<li><code>test_seed_inserts_defaults</code> — <code>ConfigSeeder</code> inserts all 4 schema_map keys (<code>system</code>, <code>processor</code>, <code>uploader</code>, <code>birdnet</code>) with correct defaults</li>
+<li><code>test_seed_inserts_defaults</code> — <code>ConfigSeeder</code> inserts all 4 schema_map keys (<code>system</code>, <code>processor</code>, <code>cloud_sync</code>, <code>birdnet</code>) with correct defaults</li>
 <li><code>test_seed_skips_existing_values</code> — seeding twice does not overwrite existing values</li>
 <li>[x] <code>test_seeder.py</code> — <code>TestDefaultsYamlParity</code> (drift guard)</li>
 <li><code>test_yaml_keys_covered_by_schema_map</code> — every YAML config key has a schema_map entry</li>

@@ -2965,7 +2965,7 @@
 <p>For multi-instance Tier 2 services, the Controller derives desired state from domain tables:
 *   <strong>Recorder:</strong> <code>devices</code> + <code>microphone_profiles</code> (one Recorder per enrolled device)</p>
 <blockquote>
-<p><strong>Note:</strong> Upload desired state is managed via <code>system_config</code> key <code>"uploader"</code> (<code>UploaderSettings.enabled</code>), not via a separate domain table. See <a href="#">Refactoring Plan</a>.</p>
+<p><strong>Note:</strong> Upload desired state is managed via <code>system_config</code> key <code>"cloud_sync"</code> (<code>CloudSyncSettings.enabled</code>), not via a separate domain table.</p>
 </blockquote>
 <h3 id="actual-state-redis-v020">Actual State → Redis (v0.2.0)<a class="headerlink" href="#actual-state-redis-v020" title="Permanent link">&para;</a></h3>
 <p>Runtime health and activity is <strong>ephemeral</strong> and stored in Redis via two complementary mechanisms:</p>
