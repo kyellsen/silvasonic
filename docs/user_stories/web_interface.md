@@ -7,7 +7,7 @@
 > **UX Concept:** [docs/services/web_interface.md](../services/web_interface.md) — Layout, Routing Rulebook, Action Risk Classification, Page Blueprints, Migration Path.
 
 > [!NOTE]
-> **Intentionally few stories:** Page-specific UX requirements (dashboard widgets, recorder cards, species lists, etc.) are specified by the Web-Mock prototype and the [Page Blueprints](../services/web_interface.md#4-page-blueprints). Functional requirements for data display are in the respective service user stories (e.g., [US-C05](./controller.md#us-c05), [US-P04](./processor.md#us-p04), [US-U05](./uploader.md#us-u05), [US-B02](./birdnet.md#us-b02)). This document describes only **cross-cutting UI behavior** that is not apparent from the prototype or the service stories.
+> **Intentionally few stories:** Page-specific UX requirements (dashboard widgets, recorder cards, species lists, etc.) are specified by the Web-Mock prototype and the [Page Blueprints](../services/web_interface.md#4-page-blueprints). Functional requirements for data display are in the respective service user stories (e.g., [US-C05](./controller.md#us-c05), [US-P04](./processor.md#us-p04), [US-B02](./birdnet.md#us-b02)). This document describes only **cross-cutting UI behavior** that is not apparent from the prototype or the service stories.
 
 ---
 
@@ -105,7 +105,7 @@
 - [ ] Activation status is read from the database (`system_services` table, `enabled` flag).
 - [ ] If a module is enabled/disabled, the sidebar updates **without a page reload** (HTMX swap or SSE push).
 - [ ] Accessing the URL of a disabled module (e.g., `/birds` when BirdNET is disabled) shows a friendly notice page — no 404.
-- [ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Uploaders) are visible.
+- [ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Cloud Sync) are visible.
 
 ### Milestone
 

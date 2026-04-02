@@ -15,7 +15,7 @@
 | Logo → Dashboard | Clicking logo navigates to dashboard | ✅ v0.2.0 |
 | Notification Dropdown 🔔 | Dropdown with active alerts (level: error/warn/info, timestamp) | v0.9.0 |
 | REC Indicator | Pulsing display: `REC N` — number of active recorders | ✅ v0.2.0 |
-| Upload Indicator | Cloud icon with number of active uploaders | ✅ v0.2.0 |
+| Upload Indicator | Cloud icon with upload sync status | ✅ v0.2.0 |
 | Dark/Light Mode Toggle 🌗 | Toggle between `silvadark` / `silvalight` theme (localStorage) | ✅ v0.2.0 |
 | Inspector Toggle | Collapse/expand right panel | ✅ v0.2.0 |
 | User Menu (Avatar) | Dropdown: "Signed in as...", User Settings, **Sign Out** | v0.9.0 |
@@ -23,7 +23,7 @@
 ### Sidebar Navigation
 | Feature | Description | Milestone |
 |---------|-------------|-----------|
-| System Group | Dashboard, Recorders, Processor, Uploaders — always visible | ✅ v0.2.0 |
+| System Group | Dashboard, Recorders, Processor, Cloud Sync — always visible | ✅ v0.2.0 |
 | Module Group | Livesound, Birds, Bats, Weather — **only if enabled** (DB-driven) | v0.9.0 |
 | Settings / About | Pinned to the bottom of the sidebar | ✅ v0.2.0 |
 
@@ -51,7 +51,7 @@ The Inspector **always shows context-dependent details** about the currently sel
 | **Recorders** | Quick preview: active/inactive recorders, total recording time | **Recorder Card →** Profile details, ALSA device, workspace, segment duration, gain, enrollment status, watchdog restarts | v0.9.0 |
 | **Recorders** | *(Selection)* | **Audio Preview →** Wavesurfer.js waveform + spectrogram of the last recording | v0.9.0+ |
 | **Processor** | Indexer summary: files today, total stock, last cleanup | **File Row →** File details: path, duration, sample rate, channels, size, upload/analysis status | v0.9.0 |
-| **Uploaders** | Queue total, throughput, last upload | **Uploader Card →** Target details: URL, auth, queue, latest errors, retries | v0.9.0 |
+| **Cloud Sync** | Queue total, throughput, last upload | **Sync Detail →** Target details: URL, auth, queue, latest errors, retries | v0.9.0 |
 | **Birds** | Species summary: total species, detections today | **Species Card →** Species profile: image, name (en + sci), taxonomy, frequency, confidence | v0.9.0 |
 | **Birds** | *(Analyzer Tab)* | **Detection Row →** Wavesurfer.js spectrogram + annotation region, confidence value, recording link | v0.9.0 |
 | **Bats** | Species summary (analog to Birds) | **Species Card →** Species profile + ultrasound spectrogram | v1.3.0 |
@@ -66,7 +66,7 @@ The Inspector **always shows context-dependent details** about the currently sel
 
 | Feature | Description | Milestone |
 |---------|-------------|-----------|
-| Orchestration Card | Recorder/Uploader/Pending counters, Health badge | v0.9.0 |
+| Orchestration Card | Recorder/Pending counters, Health badge, Cloud Sync status | v0.9.0 |
 | Data Pipeline Card | Index age, Backlog counter, Janitor status | v0.9.0 |
 | SSD Storage Card | Radial Progress: used/total GB, percentage | v0.9.0 |
 | CPU Card | Avg Load %, Core bar chart (hover: single value), temperature | v0.9.0 |
@@ -103,16 +103,15 @@ The Inspector **always shows context-dependent details** about the currently sel
 
 ---
 
-## ☁️ Uploaders (`/uploaders`)
+## ☁️ Cloud Sync (`/cloud-sync`)
 
 | Feature | Description | Milestone |
 |---------|-------------|-----------|
-| Bento-Grid (max 3) | Uploader Cards: queue size, throughput, last sync, status, target type | v0.9.0 |
-| Uploader Detail (`/uploaders/{id}`) | Detail view: target URL, auth status, queue details, bandwidth, upload window | v0.9.0 |
+| Single-Target View | Upload queue size, throughput, last sync, status, configured remote target | v0.9.0 |
 | Upload History (Audit-Log) | Table of upload attempts: file, status (✓/✗/⏳), size, duration, error text | v0.9.0 |
-| Enable/Disable Uploader | Toggle per Uploader instance | v0.9.0 |
+| Enable/Disable Upload | Global toggle for Cloud Sync | v0.9.0 |
 
-> Configuration of Remote Targets → **Settings → Remotes**
+> Configuration of Remote Target → **Settings → Remotes**
 
 ---
 
@@ -282,16 +281,16 @@ Every User Story and whether its acceptance criteria become visible in the front
 | US-P03 | Adjust storage rules | Settings → Storage & Retention | ✅ |
 | US-P04 | Data pipeline status in dashboard | Dashboard → Data Pipeline Card | ✅ |
 
-### Uploader (US-U01–U06)
+### Upload / Cloud Sync (US-U01–U06)
 
 | Story | Title | Frontend Feature | Covered? |
 |-------|-------|-----------------|------------|
-| US-U01 | Recordings automatically to the cloud | Uploaders Page (Queue, Throughput, Status) | ✅ |
-| US-U02 | Continue recording indefinitely | Processor Retention + Uploader Status (Interaction) | ✅ |
-| US-U03 | Multiple storage targets simultaneously | Settings → Remotes (Dropdown of multiple targets) | ✅ |
+| US-U01 | Recordings automatically to the cloud | Cloud Sync Page (Queue, Throughput, Status) | ✅ |
+| US-U02 | Continue recording indefinitely | Processor Retention + Cloud Sync Status (Interaction) | ✅ |
+| ~~US-U03~~ | ~~Multiple storage targets~~ | ~~Archived — KISS single-target~~ | ❌ Archived |
 | US-U04 | Adjust upload settings | Settings → Remotes (URL, Auth, Path, Bandwidth, Window) | ✅ |
-| US-U05 | Upload progress in dashboard | Uploaders Page (Queue, Throughput, Last Sync) + Dashboard | ✅ |
-| US-U06 | Seamless upload tracking | Uploader Detail: Upload History Table (Audit-Log) | ✅ |
+| US-U05 | Upload progress in dashboard | Cloud Sync Page (Queue, Throughput, Last Sync) + Dashboard | ✅ |
+| US-U06 | Seamless upload tracking | Cloud Sync: Upload History Table (Audit-Log) | ✅ |
 
 ### BirdNET (US-B01–B06)
 
@@ -350,8 +349,8 @@ These features are **successfully validated in the `web-mock` UI prototype**, bu
 |---|-----|-----------|------------------------|--------|
 | 1 | **Enrollment Status** | US-C10 | Badge on Recorder Card: `enrolled` (green) / `generic` (yellow) / `pending` (orange) | ✅ Web-Mock |
 | 2 | **Watchdog Status** | US-R06 | Watchdog Health Card on Recorder Detail: Progress-Bar `restarts / max` | ✅ Web-Mock |
-| 3 | **Upload Bandwidth + Time Window** | US-U04 | Bandwidth Limit (KB/s) + Upload Window in Settings → Remotes and Uploader Detail | ✅ Web-Mock |
-| 4 | **Upload Protocol (Audit-Log)** | US-U06 | Upload History Table on Uploader Detail (Status ✓/✗/⏳, Size, Duration, Error) | ✅ Web-Mock |
+| 3 | **Upload Bandwidth + Time Window** | US-U04 | Bandwidth Limit (KB/s) + Upload Window in Settings → Remotes and Cloud Sync Detail | ✅ Web-Mock |
+| 4 | **Upload Protocol (Audit-Log)** | US-U06 | Upload History Table on Cloud Sync Page (Status ✓/✗/⏳, Size, Duration, Error) | ✅ Web-Mock |
 | 5 | **BirdNET/BatDetect Confidence** | US-B04, US-BD04 | Min. Confidence Range-Slider in Settings → Modules (per service) | ✅ Web-Mock |
 | 6 | **Analysis Window** | US-BD03, US-B04 | Start/End time picker in Settings → Modules (BirdNET + BatDetect, Default: empty = 24/7) | ✅ Web-Mock |
 
@@ -373,7 +372,7 @@ These features are essential but are **intentionally not** exposed in the fronte
 | **Auth Seeder** (bcrypt Default-Admin) | US-C08 | Controller | One-time initialization — result visible at login |
 | **Stable Device ID** (Vendor+Product+Serial) | US-C01 | Controller | Internal identification — user only sees the device name |
 | **Dual-Stream Buffer → Data Promotion** | US-R03 | Recorder | Filesystem mechanics — user only sees finished files in Indexer |
-| **FLAC Compression** before Upload | US-U01 | Uploader | Transparent optimization — user only notices smaller upload sizes |
+| **FLAC Compression** before Upload | US-U01 | Processor (Cloud-Sync-Worker) | Transparent optimization — user only notices smaller upload sizes |
 | **TLS Termination** (Caddy auto-cert) | US-GW02 | Gateway | Automatic certificate management — user sees lock in browser |
 | **Reverse Proxy Routing** | US-GW01 | Gateway | Transparent URL mapping — user only types one address |
 | **Icecast Mount-Point Management** | US-IC02 | Icecast | Internal stream management — UI only shows recorder selection |
@@ -392,7 +391,7 @@ These features are essential but are **intentionally not** exposed in the fronte
 | **Transparency** (structured logging) | Console Panel with live JSON logs |
 | **Security** (container isolation) | Login Page, HTTPS Lock icon |
 | **Resource Isolation** (cgroups) | 🔒 Backend-Only — no UI needed, works in background |
-| **Store & Forward** | 🔒 Backend-Only — Uploaders show Queue (indirect hint) |
+| **Store & Forward** | 🔒 Backend-Only — Cloud Sync shows Queue (indirect hint) |
 | **Fleet Mode** (Ansible Zero-Touch) | 🔒 Backend-Only — no UI access necessary for zero-touch provisioning |
 | **Soundscape Scope** (full spectrum) | Recorder Detail shows Sample Rate (e.g. 384 kHz for ultrasound) |
 
@@ -403,7 +402,7 @@ These features are essential but are **intentionally not** exposed in the fronte
 | Milestone | Feature Count |
 |-----------|---------------|
 | ✅ v0.2.0 (Web-Mock) | ~12 (Shell basics, Station Name, About) |
-| v0.9.0 (Web-Interface) | ~57 (Dashboard Live, Recorders incl. Enrollment/Watchdog, Uploaders incl. Audit-Log, Settings incl. Confidence/Window/Bandwidth, Auth) |
+| v0.9.0 (Web-Interface) | ~57 (Dashboard Live, Recorders incl. Enrollment/Watchdog, Cloud Sync incl. Audit-Log, Settings incl. Confidence/Window/Bandwidth, Auth) |
 | v1.1.0 (Icecast) | ~4 (Livesound Player, Stream URL) |
 | v0.9.0 (BirdNET) | ~5 (Birds Discovery/Analyzer/Statistics) |
 | v1.2.0 (Weather) | ~4 (Weather Tabs) |

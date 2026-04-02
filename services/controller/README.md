@@ -206,9 +206,9 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 > **Status:** ✅ Implemented
 
-The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices`, `microphone_profiles`, and `storage_remotes` tables) against **actual state** (running containers queried via Podman labels).
+The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices` and `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
 
-While Recorders are mapped 1:1 to plugged devices, Uploaders are mapped 1:1 to configured `storage_remotes` target in the DB. The Controller evaluates active remotes and schedules up to `max_uploaders` instances at a time. If the active remotes exceed `max_uploaders`, they are scheduled deterministically ordered by `created_at ASC, slug ASC`.
+Recorders are mapped 1:1 to plugged devices. Upload is handled internally by the Processor's Cloud-Sync-Worker (v0.6.0) and is not managed by the Controller.
 
 Every Tier 2 container is tagged with labels for lifecycle management:
 
@@ -339,7 +339,6 @@ Specific technical rules the Controller must obey:
 | ---------------- | --------------- | --------------------------- |
 | **Protected**    | `-999`          | Recorder                    |
 | **Default**      | `0`             | Tier 1 infrastructure       |
-| **Low Priority** | `250`           | Uploader                    |
 | **Expendable**   | `500`           | BirdNET, BatDetect, Weather |
 
 The Recorder's `oom_score_adj=-999` ensures it is the **last** process the Linux OOM Killer targets. This is the final line of defense for Data Capture Integrity.

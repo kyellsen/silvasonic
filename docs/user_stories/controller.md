@@ -117,7 +117,7 @@
 #### QoS Prioritization
 - [x] Recording instances are maximally protected (lowest OOM score) — they are the last to be terminated by the system.
 - [x] Analysis services (BirdNET, BatDetect) are marked as "expendable" and are terminated **first** during bottlenecks.
-- [x] Upload and infrastructure services (Uploader, Gateway) also receive lower priority than recording.
+- [x] Upload and infrastructure services (Processor Cloud-Sync-Worker, Gateway) also receive lower priority than recording.
 
 #### File Isolation (Zero-Trust)
 - [x] All non-recording services receive **read-only** access to recording files (Read-Only Bind Mounts).

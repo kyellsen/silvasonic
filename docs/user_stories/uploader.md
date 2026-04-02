@@ -1,6 +1,9 @@
-# User Stories — Uploader Service
+# User Stories — Upload / Cloud Sync (Archived)
 
-> **Service:** Uploader · **Tier:** 2 (Immutable) · **Status:** Planned (since v0.6.0)
+> **Service:** ~~Uploader~~ → Processor Cloud-Sync-Worker · ~~**Tier:** 2~~ → Tier 1 (Processor) · **Status:** Archived — migrated to Processor (v0.6.0)
+>
+> [!WARNING]
+> **Archived:** The standalone Uploader service has been replaced by an internal Cloud-Sync-Worker within the Processor. User stories below are retained for traceability but reflect the original multi-target architecture. The KISS refactoring simplifies to a single-target model. See [Refactoring Plan](../../docs/development/refactoring_uploader_to_processor.md).
 
 ---
 
@@ -15,7 +18,7 @@
 
 - [ ] New recordings are automatically detected and uploaded to the cloud — without manual intervention.
 - [ ] Before upload, files are losslessly compressed (FLAC) to save bandwidth (~50% smaller).
-- [ ] After confirmed upload to **all currently active storage targets**, the file is marked as "uploaded" in the database (`uploaded=true`).
+- [ ] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (`uploaded=true`).
 - [ ] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store & Forward).
 
 ### Milestone
@@ -39,7 +42,7 @@
 
 ### Acceptance Criteria
 
-- [ ] After confirmed upload to **all active storage targets**, the system marks the file as backed up (`uploaded=true`).
+- [ ] After confirmed upload to the configured remote target, the system marks the file as backed up (`uploaded=true`).
 - [ ] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).
 - [ ] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.
 - [ ] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.
@@ -57,27 +60,13 @@
 ---
 
 <a id="us-u03"></a>
-## US-U03: Multiple storage targets simultaneously 🗄️
+## ~~US-U03: Multiple storage targets simultaneously 🗄️~~ (Archived)
 
-> **As a researcher**
-> **I want to** send my recordings to multiple storage targets simultaneously (e.g., Nextcloud for sharing, S3 for long-term archiving),
-> **so that** I can use different backup and sharing strategies in parallel.
-
-### Acceptance Criteria
-
-- [ ] Multiple cloud storages can be configured in the web interface (e.g., Nextcloud, Amazon S3, SFTP Server).
-- [ ] For each active storage target, a separate logical upload instance exists. If there are more active storage targets than `max_uploaders` allows, the Controller deterministically selects the running instances in the order `created_at ASC, slug ASC`.
-- [ ] Individual storage targets can be enabled and disabled without affecting the others.
-- [ ] A file is only considered fully backed up (and thus deletable by the Janitor) when it has been successfully uploaded to **all** active storage targets. Inactive storage targets do not block this status.
-
-### Milestone
-
-- **Milestone:** v0.6.0
+> **Archived:** The KISS refactoring replaces the multi-target Uploader with a single-target Cloud-Sync-Worker within the Processor. This user story is no longer applicable.
 
 ### References
 
-- [Uploader Service Docs §Configuration](../services/uploader.md)
-- [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
+- [Refactoring Plan](../../docs/development/refactoring_uploader_to_processor.md)
 
 ---
 

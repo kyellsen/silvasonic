@@ -66,7 +66,7 @@ The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-f
 
 ### 3.1 Layout & Navigation
 
-Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. Sidebar has two groups: **System** (Dashboard, Recorders, Processor, Uploaders) and **Modules** (Livesound, Birds, Bats, Weather). Settings + About pinned to bottom.
+Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. Sidebar has two groups: **System** (Dashboard, Recorders, Processor, Cloud Sync) and **Modules** (Livesound, Birds, Bats, Weather). Settings + About pinned to bottom.
 
 > [!IMPORTANT]
 > **Conditional Module Rendering:** Module sidebar entries are only visible when the corresponding module is enabled in Settings → Modules. This is DB-driven and not yet implemented in the web-mock (which shows all modules always).
@@ -75,7 +75,7 @@ Five fixed zones: Header, Sidebar Nav, Main Content, Inspector (right), Footer. 
 
 | Content Type                             | Pattern                    | Applies To                           |
 | ---------------------------------------- | -------------------------- | ------------------------------------ |
-| Hardware/Service instances (hard-limited) | **Bento-Grid → Inspector** | Recorders (max 5), Uploaders (max 3) |
+| Hardware/Service instances (hard-limited) | **Bento-Grid → Inspector** | Recorders (max 5)                    |
 | Worker results / data analyses           | **Horizontal Tabs**        | Birds, Bats, Weather                 |
 | Admin subsections                        | **Horizontal Tabs**        | Settings                             |
 
@@ -105,9 +105,9 @@ Grid of Recorder Cards: live level bar, sample rate, channels, segment, gain, st
 
 Single page (no tabs): Indexer file table + Retention event log. Storage & Retention configuration is managed in **Settings → Storage & Retention**.
 
-### 4.4 Uploaders (Bento-Grid, max 3)
+### 4.4 Cloud Sync (Single-Target)
 
-Grid of Uploader Cards: queue size, throughput, last sync, status. Detail view with target type and auth.
+Single-page view: upload queue size, throughput, last sync, status, configured remote target. Replaces the former multi-target "Uploaders" Bento-Grid (KISS refactoring, v0.6.0).
 
 ### 4.5 Birds / Bats (Tabs)
 
@@ -126,7 +126,7 @@ ECharts time-series for temperature, precipitation, humidity, pressure, wind. Co
 `[ General ] [ Modules ] [ Storage & Retention ] [ Remotes ] [ Network ] [ User ]`
 
 - **Modules:** Toggle per module with system reload. Module state drives sidebar visibility.
-- **Remotes:** Per-target configuration (Nextcloud, S3). Test Connection + Save.
+- **Remotes:** Single-target upload configuration (Nextcloud, S3). Test Connection + Save.
 - **Network:** WLAN Hotspot + Tailscale VPN status and config.
 - **User:** Password management for local admin.
 

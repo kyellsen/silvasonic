@@ -47,7 +47,7 @@
 - [x] On errors in the recording pipeline, an automatic restart occurs.
 
 #### Isolation from other services
-- [x] No other service (BirdNET, BatDetect, Uploader) may impact the recording (Enforced by Controller cgroups).
+- [x] No other service (BirdNET, BatDetect) may impact the recording (Enforced by Controller cgroups).
 - [x] All non-recording services receive CPU and memory limits (Enforced by Controller).
 - [x] Analysis and upload services access recording files **read-only** (Enforced by Zero-Trust mounts).
 - [x] The crash of any analysis or upload service has no impact.
