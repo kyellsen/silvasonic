@@ -108,7 +108,8 @@ All configuration blobs are parsed and validated via Pydantic `BaseModel` classe
 | Redis host                    | `.env`                  | Required before Redis is reachable |
 | Podman socket path            | `.env`                  | Infrastructure prerequisite        |
 | User passwords                | `users` table           | Different structure, RBAC-ready    |
-| Cloud storage credentials     | `system_config` key `"cloud_sync"` | Stored as JSONB in `CloudSyncSettings` (KISS, single-target) |
+| Cloud storage credentials     | `system_config` key `"cloud_sync"` | Fernet-encrypted (`enc:` prefix) in `CloudSyncSettings.remote_config` (v0.6.0) |
+| Encryption key                | `.env`                  | `SILVASONIC_ENCRYPTION_KEY` — Fernet key for cloud credential encryption |
 
 ## 3. Options Considered
 

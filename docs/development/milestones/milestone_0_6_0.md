@@ -28,7 +28,7 @@ This is a KISS simplification of the original multi-target Uploader architecture
 | FLAC encoding? | **`ffmpeg`** subprocess (ADR-0024) | Same tool as Recorder; lossless, ~50% size reduction |
 | Upload backend? | **`rclone`** subprocess | Universal protocol support (WebDAV/Nextcloud, S3, SFTP) without Python library dependencies |
 | Default state? | **`enabled: false`** | Prevents Janitor deadlock when no rclone target is configured |
-| Credentials? | **Plaintext in `system_config` JSONB** | Acceptable for local network MVP; encryption deferred to post-v1.0.0 |
+| Credentials? | **Fernet-encrypted in `system_config` JSONB** | Sensitive values (user, pass) AES-encrypted via `SILVASONIC_ENCRYPTION_KEY` (.env); `enc:` prefix detection for graceful plaintext fallback |
 
 ### Remote Path Convention
 
@@ -66,6 +66,8 @@ The `path_builder` module is the **only component** that knows about the remote 
 | **Audit Logger** | `audit_logger.py` | Immutable `uploads` table + set `recordings.uploaded=true` |
 | **Upload Stats** | `upload_stats.py` | Two-Phase Logging: startup detail → periodic summary |
 
+> **Cross-Cutting Dependency (core):** Credential encryption uses `packages/core/src/silvasonic/core/crypto.py` — a thin Fernet wrapper (`encrypt_value`, `decrypt_value`) added to `silvasonic-core` as part of this milestone. The encryption key lives in `.env` as `SILVASONIC_ENCRYPTION_KEY`.
+
 ### Source References
 
 > **Read these files before starting Phase 1:**
@@ -81,6 +83,8 @@ The `path_builder` module is the **only component** that knows about the remote 
 | CloudSyncSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
 | FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-engine.md` |
 | Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
+| Environment config | `.env` / `.env.example` |
+| Existing Controller seeder pattern | `services/controller/src/silvasonic/controller/seeder.py` |
 
 ### Tasks
 
@@ -89,6 +93,22 @@ The `path_builder` module is the **only component** that knows about the remote 
   - Add `CREATE INDEX ix_uploads_attempt_at ON uploads (attempt_at DESC)` in `01-init-schema.sql`
   - Add `remote_path: Mapped[str | None]` to `Upload` model in `packages/core/src/silvasonic/core/database/models/system.py`
 - [ ] Add `rclone` to Processor `Containerfile` system dependencies (alongside existing `ffmpeg`)
+- [ ] Implement `packages/core/src/silvasonic/core/crypto.py`:
+  - `encrypt_value(plaintext: str, key: bytes) -> str` — Fernet encrypt, returns `enc:<token>` prefixed string
+  - `decrypt_value(value: str, key: bytes) -> str` — if `enc:` prefix → decrypt; otherwise return as-is (plaintext fallback)
+  - `load_encryption_key() -> bytes` — read `SILVASONIC_ENCRYPTION_KEY` from env, raise clear error if missing
+  - Key generation helper: `python -m silvasonic.core.crypto generate-key` (prints new Fernet key to stdout)
+- [ ] Add `cryptography>=43.0` to `packages/core/pyproject.toml` dependencies
+- [ ] Add `SILVASONIC_ENCRYPTION_KEY` to `.env` and `.env.example` with generated Fernet key
+- [ ] Implement `CloudSyncSeeder` in `services/controller/src/silvasonic/controller/seeder.py`:
+  - Reads 4 optional env vars: `SILVASONIC_CLOUD_REMOTE_TYPE`, `_URL`, `_USER`, `_PASS`
+  - **All-or-nothing:** if any of the 4 is missing → log debug + skip (cloud sync stays as seeded by defaults.yml)
+  - If all 4 present: build `remote_config` dict, encrypt `user` and `pass` via `crypto.encrypt_value()`
+  - **UPSERT** (not `ON CONFLICT DO NOTHING`): `.env` is infrastructure, always overwrites DB values
+  - Sets `cloud_sync.enabled = true`, `cloud_sync.remote_type`, `cloud_sync.remote_config` in `system_config`
+  - For `remote_type=webdav`: auto-set `vendor=nextcloud` if URL contains `nextcloud` or ends with `/webdav/`
+  - Requires `SILVASONIC_ENCRYPTION_KEY` — if missing while credentials are set → clear error + skip
+  - Wired into `run_all_seeders()` after `ConfigSeeder` (so defaults exist first), before `AuthSeeder`
 - [ ] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
   - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
@@ -117,9 +137,9 @@ The `path_builder` module is the **only component** that knows about the remote 
   - Convention: `silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
   - Station name slugified via simple inline regex (no external dependency)
 - [ ] Implement `rclone_client.py`:
-  - `RcloneClient(cloud_sync_settings: CloudSyncSettings)`:
-    - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `CloudSyncSettings.remote_type` + `remote_config`
-    - Validate `remote_config` via `schemas.cloud_sync.validate_rclone_config(remote_type, remote_config)` on init
+  - `RcloneClient(cloud_sync_settings: CloudSyncSettings, encryption_key: bytes)`:
+    - `generate_rclone_conf() -> Path` — decrypt `enc:`-prefixed values in `remote_config` via `crypto.decrypt_value()`, then write temp `rclone.conf`
+    - Validate `remote_config` via `schemas.cloud_sync.validate_rclone_config(remote_type, remote_config)` on init (validates after decryption)
     - For WebDAV/Nextcloud: set `vendor = nextcloud`
     - `upload_file(local, remote_path, bandwidth_limit) -> RcloneResult`
     - `RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)`
@@ -191,6 +211,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 | `test_upload_success` | Mock subprocess → `RcloneResult(success=True)` |
 | `test_upload_failure_connection` | Network error → `is_connection_error=True` |
 | `test_bandwidth_limit_in_args` | `--bwlimit` present in CLI args |
+| `test_encrypted_credentials_decrypted` | `enc:`-prefixed values in `remote_config` → plaintext in generated `rclone.conf` |
 
 #### Unit Tests (`services/processor/tests/unit/test_audit_logger.py`) — `@pytest.mark.unit`
 
@@ -208,6 +229,27 @@ The `path_builder` module is the **only component** that knows about the remote 
 | `test_steady_state_accumulates` | After startup: no individual log |
 | `test_summary_emitted_after_interval` | `maybe_emit_summary()` → `upload.summary` |
 | `test_final_summary_on_shutdown` | `emit_final_summary()` → lifetime totals |
+
+#### Unit Tests (`packages/core/tests/unit/test_crypto.py`) — `@pytest.mark.unit`
+
+| Test | Validates |
+|------|----------|
+| `test_encrypt_decrypt_roundtrip` | `decrypt_value(encrypt_value(s, k), k) == s` |
+| `test_plaintext_fallback` | No `enc:` prefix → returned as-is |
+| `test_decrypt_wrong_key_fails` | Wrong key → `InvalidToken` raised |
+| `test_load_encryption_key_missing` | Env var not set → clear error message |
+| `test_generate_key_valid_fernet` | Generated key is valid Fernet key |
+
+#### Unit Tests (`services/controller/tests/unit/test_cloud_sync_seeder.py`) — `@pytest.mark.unit`
+
+| Test | Validates |
+|------|----------|
+| `test_all_env_vars_set_seeds_encrypted` | All 4 vars → `system_config` updated with `enc:` values, `enabled=true` |
+| `test_partial_env_vars_skips` | Only 2 of 4 vars → no DB change, debug log |
+| `test_no_env_vars_skips` | No vars → no DB change, no error |
+| `test_upsert_overwrites_existing` | Existing `cloud_sync` in DB → overwritten with new `.env` values |
+| `test_missing_encryption_key_errors` | Credentials set but no `SILVASONIC_ENCRYPTION_KEY` → clear error, skip |
+| `test_webdav_auto_vendor_nextcloud` | `remote_type=webdav` + URL with `/webdav/` → `vendor=nextcloud` auto-set |
 
 #### Integration Tests (`services/processor/tests/integration/test_upload_pipeline_e2e.py`) — `@pytest.mark.integration`
 
@@ -300,7 +342,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 | Parallel uploads (multiple files concurrently) | post-v1.0.0 |
 | Resume support (partial upload tracking) | post-v1.0.0 |
 | Multi-target upload | post-v1.0.0 |
-| Encryption at rest for credentials in `system_config` | post-v1.0.0 |
+| Hardware-backed KMS / Secure Element integration | post-v1.0.0 |
 
 > **Note:** US-U04 (Settings via Web UI) and US-U05 (Dashboard Status) require the Web-Interface (v0.9.0). This milestone implements the **backend support** — `CloudSyncSettings` schema, heartbeat payload with upload metrics. Web-Mock routes (`/upload`) already exist with mock data.
 >

@@ -52,6 +52,10 @@ class CloudSyncSettings(BaseModel):
     Remote credentials are **not** seeded via ``defaults.yml`` — they must
     be configured via Web-UI (v0.9.0) or direct DB insert.  The worker
     stays inactive (``enabled=false``) until a valid remote is configured.
+
+    Sensitive values in ``remote_config`` (user, pass) are Fernet-encrypted
+    at rest (``enc:`` prefix).  Decryption uses ``SILVASONIC_ENCRYPTION_KEY``
+    from ``.env`` via ``silvasonic.core.crypto.decrypt_value()``.
     """
 
     enabled: bool = False
