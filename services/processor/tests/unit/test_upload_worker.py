@@ -1,7 +1,5 @@
 """Unit tests for the main UploadWorker."""
 
-from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -37,10 +35,16 @@ def test_null_schedule_always_active() -> None:
 
 
 @pytest.fixture
-def worker() -> UploadWorker:
-    session_factory: Callable[[], AbstractAsyncContextManager[Any]] = MagicMock()
+def worker(tmp_path: Path) -> UploadWorker:
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    session_factory = MagicMock()
+    session_factory.return_value.__aenter__.return_value = session
+
     health = MagicMock()
-    worker = UploadWorker(session_factory, health)
+    recordings_dir = tmp_path / "recorder"
+    worker = UploadWorker(session_factory, health, recordings_dir)
     return worker
 
 
@@ -203,3 +207,39 @@ async def test_missing_file_skipped(
 
     assert success is True
     mock_encode.assert_not_called()
+
+
+# ────────────────────────────────────────────────────
+# Regression: UploadWorker passes recordings_dir
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+@patch("silvasonic.processor.upload_worker.find_pending_uploads")
+async def test_process_batch_passes_recordings_dir(
+    mock_find: MagicMock,
+    worker: UploadWorker,
+) -> None:
+    """UploadWorker._process_batch passes recordings_dir to find_pending_uploads.
+
+    Regression: UploadWorker never provided recordings_dir to the poller,
+    resulting in relative paths and permanent file_missing warnings.
+    """
+    mock_find.return_value = []
+
+    conf = {
+        "access_key_id": "d",
+        "secret_access_key": "d",
+        "region": "d",
+        "endpoint": "d",
+        "acl": "private",
+    }
+    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    await worker._process_batch("my-station", settings, b"dummy-key")
+
+    mock_find.assert_called_once()
+    call_args = mock_find.call_args
+    # recordings_dir must be the second positional arg (after session)
+    assert call_args[1].get("recordings_dir") == worker._recordings_dir or (
+        len(call_args[0]) >= 2 and call_args[0][1] == worker._recordings_dir
+    )

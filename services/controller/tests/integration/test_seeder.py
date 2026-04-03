@@ -254,3 +254,166 @@ class TestRunAllSeedersIntegration:
         assert config_count >= 1, "system_config should have at least 1 row"
         assert profile_count >= 1, "microphone_profiles should have at least 1 row"
         assert user_count >= 1, "users should have at least 1 row"
+
+
+@pytest.mark.integration
+class TestRunAllSeedersCloudSync:
+    """Regression tests: run_all_seeders with cloud env vars.
+
+    Covers the duplicate-key bug where ConfigSeeder and CloudSyncSeeder
+    both insert a ``cloud_sync`` key in the same session batch, causing
+    an IntegrityError that kills the entire load_config() hook and
+    prevents Recorder startup (Data Capture Integrity violation).
+    """
+
+    async def test_run_all_seeders_with_cloud_env_vars(
+        self,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """run_all_seeders succeeds when SILVASONIC_CLOUD_REMOTE_* vars are set.
+
+        Regression: ConfigSeeder inserts cloud_sync with defaults, then
+        CloudSyncSeeder UPSERTs with env-var credentials.  Both must
+        coexist without IntegrityError.
+        """
+        from unittest.mock import patch as _patch
+
+        from cryptography.fernet import Fernet
+        from silvasonic.controller.seeder import run_all_seeders
+        from silvasonic.core.database.models.system import SystemConfig
+
+        key = Fernet.generate_key().decode()
+        env = {
+            "SILVASONIC_CLOUD_REMOTE_TYPE": "webdav",
+            "SILVASONIC_CLOUD_REMOTE_URL": "https://example.com/remote.php/webdav/",
+            "SILVASONIC_CLOUD_REMOTE_USER": "testuser",
+            "SILVASONIC_CLOUD_REMOTE_PASS": "testpass",
+            "SILVASONIC_ENCRYPTION_KEY": key,
+        }
+
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+        async with session_factory() as session:
+            with _patch.dict("os.environ", env):
+                await run_all_seeders(session)
+
+        # Verify: cloud_sync exists with enabled=True and encrypted creds
+        async with session_factory() as session:
+            row = await session.get(SystemConfig, "cloud_sync")
+
+        await engine.dispose()
+
+        assert row is not None, "cloud_sync row must exist after seeding"
+        assert row.value["enabled"] is True
+        assert row.value["remote_type"] == "webdav"
+        assert row.value["remote_config"]["user"].startswith("enc:")
+        assert row.value["remote_config"]["pass"].startswith("enc:")
+
+    async def test_run_all_seeders_without_cloud_env_vars(
+        self,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """run_all_seeders succeeds with default cloud_sync (no env vars).
+
+        Baseline: ConfigSeeder inserts cloud_sync with enabled=false.
+        CloudSyncSeeder does nothing without env vars.
+        """
+        from unittest.mock import patch as _patch
+
+        from silvasonic.controller.seeder import run_all_seeders
+        from silvasonic.core.database.models.system import SystemConfig
+
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+        # Ensure cloud env vars are NOT set
+        env_clear = {
+            "SILVASONIC_CLOUD_REMOTE_TYPE": "",
+            "SILVASONIC_CLOUD_REMOTE_URL": "",
+            "SILVASONIC_CLOUD_REMOTE_USER": "",
+            "SILVASONIC_CLOUD_REMOTE_PASS": "",
+        }
+
+        async with session_factory() as session:
+            with _patch.dict("os.environ", env_clear):
+                await run_all_seeders(session)
+
+        # Verify: cloud_sync exists with defaults (enabled=false)
+        async with session_factory() as session:
+            row = await session.get(SystemConfig, "cloud_sync")
+
+        await engine.dispose()
+
+        assert row is not None, "cloud_sync row must exist after seeding"
+        assert row.value["enabled"] is False
+        assert row.value["remote_type"] is None
+
+    async def test_run_all_seeders_idempotent_with_cloud_env(
+        self,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """Running run_all_seeders twice with cloud env vars is safe.
+
+        Simulates a Controller restart: second run should UPSERT
+        (not INSERT) the cloud_sync row without errors.
+        """
+        from unittest.mock import patch as _patch
+
+        from cryptography.fernet import Fernet
+        from silvasonic.controller.seeder import run_all_seeders
+        from silvasonic.core.database.models.system import SystemConfig
+
+        key = Fernet.generate_key().decode()
+        env = {
+            "SILVASONIC_CLOUD_REMOTE_TYPE": "webdav",
+            "SILVASONIC_CLOUD_REMOTE_URL": "https://example.com/webdav/",
+            "SILVASONIC_CLOUD_REMOTE_USER": "testuser",
+            "SILVASONIC_CLOUD_REMOTE_PASS": "testpass",
+            "SILVASONIC_ENCRYPTION_KEY": key,
+        }
+
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+        # First run
+        async with session_factory() as session:
+            with _patch.dict("os.environ", env):
+                await run_all_seeders(session)
+
+        # Second run (simulates restart)
+        async with session_factory() as session:
+            with _patch.dict("os.environ", env):
+                await run_all_seeders(session)
+
+        # Verify single row, updated values
+        async with session_factory() as session:
+            result = await session.execute(
+                text("SELECT count(*) FROM system_config WHERE key = 'cloud_sync'")
+            )
+            count = result.scalar_one()
+            row = await session.get(SystemConfig, "cloud_sync")
+
+        await engine.dispose()
+
+        assert count == 1, f"Expected exactly 1 cloud_sync row, got {count}"
+        assert row is not None
+        assert row.value["enabled"] is True

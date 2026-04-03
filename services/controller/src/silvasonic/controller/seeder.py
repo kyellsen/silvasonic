@@ -374,6 +374,10 @@ async def run_all_seeders(session: AsyncSession) -> None:
     defaults = _load_defaults(_get_defaults_yml())
 
     await ConfigSeeder().seed(session, defaults=defaults)
+    # Flush ConfigSeeder INSERTs so CloudSyncSeeder sees them via session.get().
+    # Without this, both seeders add a "cloud_sync" key to the pending batch,
+    # causing a duplicate-key IntegrityError on commit (Data Capture Integrity).
+    await session.flush()
     await CloudSyncSeeder().seed(session)
     await ProfileBootstrapper().seed(session)
     await AuthSeeder().seed(session, defaults=defaults)

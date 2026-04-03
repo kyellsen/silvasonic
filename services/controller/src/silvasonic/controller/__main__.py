@@ -95,18 +95,25 @@ class ControllerService(SilvaService):
         return {"host_resources": self._host_resources.collect()}
 
     async def load_config(self) -> None:
-        """Bootstrap DB with factory defaults (idempotent, ADR-0023).
+        """Bootstrap DB with factory defaults and scan devices (ADR-0023).
 
-        Called by ``SilvaService._setup()`` before ``run()``.  Best-effort:
-        if the DB is unreachable the base class logs a warning and the
-        service starts with hardcoded defaults.
+        Called by ``SilvaService._setup()`` before ``run()``.  Seeding and
+        device scanning are decoupled: a seeder failure must NOT prevent
+        the initial device scan (Data Capture Integrity — AGENTS.md §1).
         """
-        async with get_session() as session:
-            await run_all_seeders(session)
+        # Step 1: Seed factory defaults (best-effort)
+        try:
+            async with get_session() as session:
+                await run_all_seeders(session)
+        except Exception as exc:
+            log.error("controller.seeding_failed", error=str(exc))
 
-        # Phase 4: Initial device scan after seeding
-        count = await self._reconciliation_loop.scan_and_sync_devices()
-        log.info("controller.initial_scan", devices_found=count)
+        # Step 2: Initial device scan (MUST run even if seeding failed)
+        try:
+            count = await self._reconciliation_loop.scan_and_sync_devices()
+            log.info("controller.initial_scan", devices_found=count)
+        except Exception as exc:
+            log.error("controller.initial_scan_failed", error=str(exc))
 
     async def run(self) -> None:
         """Main orchestration loop.

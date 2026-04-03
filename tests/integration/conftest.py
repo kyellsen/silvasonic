@@ -46,7 +46,7 @@ async def _delete_all(container: PostgresContainer) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:  # noqa: F811
+def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
     """Reset application tables after each test for parallel safety.
 
     Runs **after** every integration test in this directory.  Deletes

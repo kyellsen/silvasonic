@@ -288,6 +288,58 @@ class TestControllerLoadConfig:
         mock_seeders.assert_awaited_once_with(mock_ctx)
         svc._reconciliation_loop.scan_and_sync_devices.assert_awaited_once()
 
+    async def test_scan_runs_even_if_seeding_fails(self) -> None:
+        """Device scan MUST execute even when run_all_seeders raises.
+
+        Data Capture Integrity (AGENTS.md §1): hardware detection must
+        never depend on successful DB seeding.
+        """
+        svc = _make_bare_service()
+        svc._reconciliation_loop.scan_and_sync_devices = AsyncMock(return_value=2)
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.get_session",
+            ) as mock_session,
+            patch(
+                "silvasonic.controller.__main__.run_all_seeders",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("IntegrityError: duplicate key"),
+            ),
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+
+            # Must NOT raise — load_config catches the seeder error
+            await svc.load_config()
+
+        # Device scan MUST still have been called
+        svc._reconciliation_loop.scan_and_sync_devices.assert_awaited_once()
+
+    async def test_scan_failure_does_not_propagate(self) -> None:
+        """load_config() catches scan errors without crashing the service."""
+        svc = _make_bare_service()
+        svc._reconciliation_loop.scan_and_sync_devices = AsyncMock(
+            side_effect=OSError("sysfs unavailable"),
+        )
+
+        with (
+            patch(
+                "silvasonic.controller.__main__.get_session",
+            ) as mock_session,
+            patch(
+                "silvasonic.controller.__main__.run_all_seeders",
+                new_callable=AsyncMock,
+            ),
+        ):
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+
+            # Must NOT raise
+            await svc.load_config()
+
 
 # ---------------------------------------------------------------------------
 # ControllerService.run()

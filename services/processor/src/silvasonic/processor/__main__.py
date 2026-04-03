@@ -126,7 +126,7 @@ class ProcessorService(SilvaService):
         # Initialize Upload Worker
         from silvasonic.processor.upload_worker import UploadWorker
 
-        self._upload_worker = UploadWorker(get_session, self.health)
+        self._upload_worker = UploadWorker(get_session, self.health, self._recordings_dir)
 
         # --- Phase 1: Reconciliation Audit (once on startup) ---
         try:

@@ -653,6 +653,55 @@ class TestRunAllSeeders:
             auth_seed.assert_called_once()
             session.commit.assert_called_once()
 
+    async def test_flushes_between_config_and_cloud_sync(self) -> None:
+        """session.flush() is called between ConfigSeeder and CloudSyncSeeder.
+
+        Prevents the duplicate-key batch INSERT bug where both seeders
+        add a ``cloud_sync`` key to the pending session without an
+        intermediate flush (Data Capture Integrity regression guard).
+        """
+        call_order: list[str] = []
+
+        session = AsyncMock(add=MagicMock())
+        session.get = AsyncMock(return_value=None)
+        session.flush = AsyncMock(side_effect=lambda: call_order.append("flush"))
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=result_mock)
+
+        async def _track_config(*a: object, **kw: object) -> None:
+            call_order.append("config_seed")
+
+        async def _track_cloud(*a: object, **kw: object) -> None:
+            call_order.append("cloud_sync_seed")
+
+        with (
+            patch(
+                "silvasonic.controller.seeder.ConfigSeeder.seed",
+                new_callable=AsyncMock,
+                side_effect=_track_config,
+            ),
+            patch(
+                "silvasonic.controller.seeder.CloudSyncSeeder.seed",
+                new_callable=AsyncMock,
+                side_effect=_track_cloud,
+            ),
+            patch(
+                "silvasonic.controller.seeder.ProfileBootstrapper.seed",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "silvasonic.controller.seeder.AuthSeeder.seed",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await run_all_seeders(session)
+
+        # Verify ordering: config → flush → cloud_sync
+        assert call_order.index("config_seed") < call_order.index("flush")
+        assert call_order.index("flush") < call_order.index("cloud_sync_seed")
+
 
 # ===================================================================
 # Defaults YAML ↔ Schema Parity (Drift Guard)

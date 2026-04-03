@@ -9,6 +9,7 @@ import asyncio
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
+from pathlib import Path
 
 import structlog
 from silvasonic.core.config_schemas import CloudSyncSettings
@@ -48,11 +49,13 @@ class UploadWorker:
         self,
         session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]],
         health_monitor: HealthMonitor,
+        recordings_dir: Path,
         stats: UploadStats | None = None,
     ) -> None:
         """Initialize the UploadWorker."""
         self.session_factory = session_factory
         self.health = health_monitor
+        self._recordings_dir = recordings_dir
         self.stats = stats or UploadStats()
         self._shutdown_event = asyncio.Event()
 
@@ -85,7 +88,11 @@ class UploadWorker:
     ) -> bool:
         """Process a single batch. Return False if connection error forces abort."""
         async with self.session_factory() as session:
-            pending = await find_pending_uploads(session, batch_size=50)
+            pending = await find_pending_uploads(
+                session,
+                self._recordings_dir,
+                batch_size=50,
+            )
             self.stats.update_pending(len(pending))
 
             if not pending:

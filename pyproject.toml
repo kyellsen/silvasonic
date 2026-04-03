@@ -65,6 +65,7 @@ dev = [
 
     # -- Testing Utilities (Mocking & Integration) --
     "faker>=23.0.0",          # Generates realistic dummy data (names, IPs, etc.)
+    "minio>=7.2.14",          # Required by testcontainers.minio
     "polyfactory>=2.14.0",    # State-of-the-art factory for Pydantic/SQLAlchemy mocks
     "silvasonic-test-utils",  # Shared testcontainer fixtures (packages/test-utils)
     "structlog>=24.1.0",

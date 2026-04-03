@@ -197,6 +197,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
@@ -262,6 +263,7 @@ class TestProcessorRun:
                 new_callable=AsyncMock,
                 side_effect=lambda _: svc._shutdown_event.set(),
             ),
+            patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
             patch(
                 "silvasonic.processor.__main__.indexer.index_recordings",
                 new_callable=AsyncMock,
@@ -311,6 +313,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
@@ -358,6 +361,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
@@ -404,6 +408,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
@@ -455,6 +460,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
@@ -508,6 +514,7 @@ class TestProcessorRun:
                     new_callable=AsyncMock,
                     return_value=0,
                 ),
+                patch("silvasonic.processor.upload_worker.UploadWorker", autospec=True),
                 patch(
                     "silvasonic.processor.__main__.indexer.index_recordings",
                     new_callable=AsyncMock,
