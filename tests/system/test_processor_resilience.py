@@ -213,6 +213,113 @@ class TestProcessorResilience:
             podman_stop_rm(processor_name)
 
     @pytest.mark.timeout(90)
+    def test_janitor_respects_uploaded_flag(
+        self,
+        system_db: tuple[str, str],
+        system_redis: tuple[str, int, str],
+        system_network: str,
+        tmp_path: Path,
+        run_id: str,
+    ) -> None:
+        """Janitor deletes only uploaded=true recordings when threshold reached."""
+        require_recorder_image()
+        require_processor_image()
+
+        db_container, _ = system_db
+
+        recordings_root = tmp_path / "recorder"
+        device_workspace = recordings_root / "test-device"
+        recordings_root.mkdir(parents=True, exist_ok=True)
+        device_workspace.mkdir(parents=True, exist_ok=True)
+        recordings_root.chmod(0o777)
+        device_workspace.chmod(0o777)
+
+        recorder_name = f"silvasonic-recorder-janflag-{run_id}"
+        processor_name = f"silvasonic-processor-janflag-{run_id}"
+
+        try:
+            podman_run(
+                recorder_name,
+                "localhost/silvasonic_recorder:latest",
+                env=make_recorder_env(),
+                volumes=[f"{device_workspace}:/app/workspace:z"],
+                network=system_network,
+            )
+
+            # Produce WAVs
+            time.sleep(25)
+            podman_stop_rm(recorder_name)
+
+            baseline_wavs = count_wav_files(recordings_root)
+            assert baseline_wavs >= 2, f"Need at least 2 WAV files, got {baseline_wavs}"
+
+            # Start Processor to index them
+            podman_run(
+                processor_name,
+                PROCESSOR_IMAGE,
+                env=make_processor_env(),
+                volumes=[f"{recordings_root}:/data/recorder:z"],
+                network=system_network,
+            )
+            time.sleep(15)
+
+            # Mark 1 recording as uploaded=false (should be default but just in case),
+            # mark 1 as uploaded=true manually via exec.
+            psql_query(
+                db_container,
+                "UPDATE recordings SET uploaded = true "
+                "WHERE id = (SELECT id FROM recordings LIMIT 1)",
+            )
+            psql_query(
+                db_container,
+                "INSERT INTO system_config (key, value) "
+                "VALUES ('cloud_sync', '{\"enabled\": true}'::jsonb) "
+                "ON CONFLICT (key) DO UPDATE SET value = system_config.value || EXCLUDED.value",
+            )
+
+            # Now set the thresholds to force Defensive Mode (critical)
+            # without hitting Panic (emergency)
+            seed_processor_config(
+                db_container,
+                janitor_threshold_warning=-20.0,
+                janitor_threshold_critical=-10.0,
+                janitor_threshold_emergency=101.0,
+                janitor_interval_seconds=2,
+                janitor_batch_size=5,
+                indexer_poll_interval=2.0,
+            )
+
+            # Restart Processor so it reads the new config
+            podman_stop_rm(processor_name)
+            time.sleep(2)
+            podman_run(
+                processor_name,
+                PROCESSOR_IMAGE,
+                env=make_processor_env(),
+                volumes=[f"{recordings_root}:/data/recorder:z"],
+                network=system_network,
+            )
+
+            time.sleep(15)  # Wait for Janitor to act
+
+            after_wavs = count_wav_files(recordings_root)
+            if after_wavs != baseline_wavs - 2:
+                print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
+
+                rows_str = psql_query(db_container, "SELECT id, uploaded FROM recordings")
+                print(f"\n--- DB RECORDINGS ---\n{rows_str}")
+
+            assert after_wavs == baseline_wavs - 2, (
+                f"Janitor should only delete the exact 1 uploaded recording (raw+processed)! "
+                f"baseline={baseline_wavs} → after={after_wavs}"
+            )
+
+            print(f"\n  ✅ Janitor respected uploaded=true flag: {baseline_wavs} → {after_wavs}")
+        finally:
+            podman_stop_rm(processor_name)
+            podman_stop_rm(recorder_name)
+
+    @pytest.mark.timeout(90)
     def test_db_outage_housekeeping_skips(
         self,
         system_db: tuple[str, str],

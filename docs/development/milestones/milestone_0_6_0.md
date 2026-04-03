@@ -70,19 +70,19 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Tasks
 
-- [ ] Update Database Schema & Models:
+- [x] Update Database Schema & Models:
   - Add `remote_path TEXT` column to `uploads` table in `01-init-schema.sql`
   - Add `CREATE INDEX ix_uploads_attempt_at ON uploads (attempt_at DESC)` in `01-init-schema.sql`
   - Add `remote_path: Mapped[str | None]` to `Upload` model in `packages/core/src/silvasonic/core/database/models/system.py`
-- [ ] Add `rclone` to Processor `Containerfile` system dependencies (alongside existing `ffmpeg`)
-- [ ] Implement `packages/core/src/silvasonic/core/crypto.py`:
+- [x] Add `rclone` to Processor `Containerfile` system dependencies (alongside existing `ffmpeg`)
+- [x] Implement `packages/core/src/silvasonic/core/crypto.py`:
   - `encrypt_value(plaintext: str, key: bytes) -> str` — Fernet encrypt, returns `enc:<token>` prefixed string
   - `decrypt_value(value: str, key: bytes) -> str` — if `enc:` prefix → decrypt; otherwise return as-is (plaintext fallback)
   - `load_encryption_key() -> bytes` — read `SILVASONIC_ENCRYPTION_KEY` from env, raise clear error if missing
   - Key generation helper: `python -m silvasonic.core.crypto generate-key` (prints new Fernet key to stdout)
-- [ ] Add `cryptography>=43.0` to `packages/core/pyproject.toml` dependencies
-- [ ] Add `SILVASONIC_ENCRYPTION_KEY` to `.env` and `.env.example` with generated Fernet key
-- [ ] Implement `CloudSyncSeeder` in `services/controller/src/silvasonic/controller/seeder.py`:
+- [x] Add `cryptography>=43.0` to `packages/core/pyproject.toml` dependencies
+- [x] Add `SILVASONIC_ENCRYPTION_KEY` to `.env` and `.env.example` with generated Fernet key
+- [x] Implement `CloudSyncSeeder` in `services/controller/src/silvasonic/controller/seeder.py`:
   - Reads 4 optional env vars: `SILVASONIC_CLOUD_REMOTE_TYPE`, `_URL`, `_USER`, `_PASS`
   - **All-or-nothing:** if any of the 4 is missing → log debug + skip (cloud sync stays as seeded by defaults.yml)
   - If all 4 present: build `remote_config` dict, encrypt `user` and `pass` via `crypto.encrypt_value()`
@@ -156,7 +156,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Tasks
 
-- [ ] Implement `upload_worker.py`:
+- [x] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
   - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
   - Early exit: if `CloudSyncSettings.remote_type is None` → log warning and skip (no target configured)
@@ -168,22 +168,22 @@ The `path_builder` module is the **only component** that knows about the remote 
   - Respect `CloudSyncSettings.poll_interval` between cycles
   - Health: `self.health.update_status("upload_worker", True/False, details)`
   - Heartbeat extra meta: `pending_count`, `uploaded_count`, `failed_count`, `last_upload_at`
-- [ ] Implement `work_poller.py`:
+- [x] Implement `work_poller.py`:
   - `find_pending_uploads(session, batch_size) -> list[PendingUpload]`
   - Single-target query: `WHERE uploaded=false AND local_deleted=false ORDER BY time ASC LIMIT batch`
   - Uses `ix_recordings_upload_pending` partial index on `recordings`
   - `PendingUpload` Pydantic model: `recording_id, file_raw, sensor_id, time`
-- [ ] Implement `flac_encoder.py`:
+- [x] Implement `flac_encoder.py`:
   - `encode_wav_to_flac(wav_path: Path, output_dir: Path) -> Path`
   - ffmpeg subprocess: `ffmpeg -i input.wav -c:a flac -compression_level 5 output.flac`
   - Validate output file (exists, non-zero size)
   - Clean up partial FLAC file on failure
   - No FLAC caching — re-encode on retry (encoding is <1s per segment on RPi 5)
-- [ ] Implement `path_builder.py`:
+- [x] Implement `path_builder.py`:
   - `build_remote_path(station_name, sensor_id, time, filename) -> str`
   - Convention: `silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
   - Station name slugified via simple inline regex (no external dependency)
-- [ ] Implement `rclone_client.py`:
+- [x] Implement `rclone_client.py`:
   - `RcloneClient(cloud_sync_settings: CloudSyncSettings, encryption_key: bytes)`:
     - `generate_rclone_conf() -> Path` — decrypt `enc:`-prefixed values in `remote_config` via `crypto.decrypt_value()`, then write temp `rclone.conf`
     - Validate `remote_config` via `schemas.cloud_sync.validate_rclone_config(remote_type, remote_config)` on init (validates after decryption)
@@ -192,19 +192,19 @@ The `path_builder` module is the **only component** that knows about the remote 
     - `RcloneResult(success, bytes_transferred, error_message, duration_s, is_connection_error)`
     - Bandwidth limiting via `--bwlimit` from `CloudSyncSettings.bandwidth_limit`
     - Checksum verification via `--checksum` flag
-- [ ] Implement `audit_logger.py`:
+- [x] Implement `audit_logger.py`:
   - `log_upload_attempt(session, recording_id, filename, remote_path, size, success, error_message)`:
     - INSERT into `uploads` table (immutable audit log)
     - Pass `duration_s` as JSON within `error_message` if needed for detailed metrics (KISS)
     - On success: UPDATE `recordings SET uploaded=true, uploaded_at=now()` — Janitor signal
     - On failure: `uploads` row with `success=false`, `recordings.uploaded` unchanged
-- [ ] Implement `upload_stats.py`:
+- [x] Implement `upload_stats.py`:
   - `UploadStats` — Two-Phase Logging (same pattern as `RecordingStats`):
     - **Startup Phase** (default 5min): log every upload individually
     - **Steady State**: periodic summary every 5min
     - **Shutdown**: `emit_final_summary()` with lifetime totals
   - No `threading.Lock` needed — single-threaded worker
-- [ ] Wire `UploadWorker` into `ProcessorService.__main__.py`:
+- [x] Wire `UploadWorker` into `ProcessorService.__main__.py`:
   - Start alongside Indexer and Janitor as third internal worker
   - Shutdown: `emit_final_summary()` on SIGTERM
 
@@ -304,10 +304,10 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Tasks
 
-- [ ] Verify upload worker starts alongside Indexer and Janitor in Processor container
-- [ ] Verify `CloudSyncSettings.enabled=false` → upload worker inactive (no rclone calls)
-- [ ] Verify Janitor respects `uploaded` flag for retention decisions
-- [ ] Update Processor `README.md` with Cloud-Sync-Worker section
+- [x] Verify upload worker starts alongside Indexer and Janitor in Processor container
+- [x] Verify `CloudSyncSettings.enabled=false` → upload worker inactive (no rclone calls)
+- [x] Verify Janitor respects `uploaded` flag for retention decisions
+- [x] Update Processor `README.md` with Cloud-Sync-Worker section
 
 ### Acceptance Criteria
 

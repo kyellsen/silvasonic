@@ -49,6 +49,13 @@ Immutable Container pattern (ADR-0019): reads config from `system_config` on sta
 *   Heals Split-Brain state caused by Panic Mode blind deletion during DB outages.
 *   Marks orphaned `recordings` rows (`local_deleted = false` but file missing) as `local_deleted = true`.
 
+### Upload Worker (`upload_worker.py`)
+
+*   **Cloud Synchronization:** Polls for pending recordings and intelligently batches processing.
+*   **Audio Conversion:** Compresses `.wav` files to lossless `.flac` via `flac_encoder.py`.
+*   **Transfers:** Integrates securely with external `rclone` (using memory-mapped credentials decrypting) pushing processed files transparently to cloud storage.
+*   **Audit Logger:** Manages tracking of uploaded tasks directly within the `uploads` PostgreSQL ledger without holding DB-locks blocking the primary thread.
+
 ### Janitor (`janitor.py`)
 
 The **only** service authorized to delete files from the Recorder workspace (ADR-0009). Operates in three escalating modes based on NVMe utilization (ADR-0011 §6):

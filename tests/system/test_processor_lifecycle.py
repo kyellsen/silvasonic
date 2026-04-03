@@ -259,6 +259,85 @@ class TestProcessorLifecycle:
         finally:
             podman_stop_rm(processor_name)
 
+    @pytest.mark.timeout(60)
+    def test_upload_worker_starts_with_processor(
+        self,
+        system_db: tuple[str, str],
+        system_redis: tuple[str, int, str],
+        system_network: str,
+        tmp_path: Path,
+        run_id: str,
+    ) -> None:
+        """Upload worker initializes successfully when Processor starts."""
+        require_processor_image()
+
+        workspace = tmp_path / "recorder"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace.chmod(0o777)
+
+        processor_name = f"silvasonic-processor-uw-start-{run_id}"
+
+        try:
+            podman_run(
+                processor_name,
+                PROCESSOR_IMAGE,
+                env=make_processor_env(),
+                volumes=[f"{workspace}:/data/recorder:z"],
+                network=system_network,
+            )
+
+            # Wait for Processor to publish logs
+            time.sleep(12)
+
+            logs = podman_logs(processor_name)
+
+            assert "upload_worker.started" in logs, (
+                f"Missing upload_worker.started in logs:\n{logs}"
+            )
+
+            print("\n  ✅ Upload worker start verified.")
+        finally:
+            podman_stop_rm(processor_name)
+
+    @pytest.mark.timeout(60)
+    def test_upload_disabled_no_rclone(
+        self,
+        system_db: tuple[str, str],
+        system_redis: tuple[str, int, str],
+        system_network: str,
+        tmp_path: Path,
+        run_id: str,
+    ) -> None:
+        """Disabled CloudSyncSettings skips upload worker processing safely."""
+        require_processor_image()
+
+        workspace = tmp_path / "recorder"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace.chmod(0o777)
+
+        processor_name = f"silvasonic-processor-uw-dis-{run_id}"
+
+        try:
+            podman_run(
+                processor_name,
+                PROCESSOR_IMAGE,
+                env=make_processor_env(),
+                volumes=[f"{workspace}:/data/recorder:z"],
+                network=system_network,
+            )
+
+            time.sleep(12)
+
+            logs = podman_logs(processor_name)
+
+            assert "rclone" not in logs.lower() and "upload_worker.started" in logs, (
+                f"Upload worker should not spawn rclone when disabled:\n{logs}"
+            )
+
+            print("\n  ✅ Upload worker handles disabled state.")
+        finally:
+            podman_stop_rm(processor_name)
+
     @pytest.mark.timeout(120)
     def test_processor_restart_idempotent(
         self,
