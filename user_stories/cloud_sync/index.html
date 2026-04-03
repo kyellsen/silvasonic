@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -3136,10 +3136,10 @@
 </blockquote>
 <h3 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] New recordings are automatically detected and uploaded to the cloud — without manual intervention.</li>
-<li>[ ] Before upload, files are losslessly compressed (FLAC) to save bandwidth (~50% smaller).</li>
-<li>[ ] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (<code>uploaded=true</code>).</li>
-<li>[ ] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store &amp; Forward).</li>
+<li>[x] New recordings are automatically detected and uploaded to the cloud — without manual intervention.</li>
+<li>[x] Before upload, files are losslessly compressed (FLAC) to save bandwidth (~50% smaller).</li>
+<li>[x] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (<code>uploaded=true</code>).</li>
+<li>[x] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store &amp; Forward).</li>
 </ul>
 <h3 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3157,10 +3157,10 @@
 </blockquote>
 <h3 id="acceptance-criteria_1">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] After confirmed upload to the configured remote target, the system marks the file as backed up (<code>uploaded=true</code>).</li>
-<li>[ ] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).</li>
-<li>[ ] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.</li>
-<li>[ ] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.</li>
+<li>[x] After confirmed upload to the configured remote target, the system marks the file as backed up (<code>uploaded=true</code>).</li>
+<li>[x] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).</li>
+<li>[x] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.</li>
+<li>[x] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.</li>
 </ul>
 <h3 id="references_1">References<a class="headerlink" href="#references_1" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3178,7 +3178,7 @@
 <h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Bandwidth limit is adjustable (e.g., "max 1 MB/s") to avoid overloading the internet connection.</li>
-<li>[ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day.</li>
+<li>[ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day. Default Bandwidth limit off!</li>
 <li>[ ] A storage target can be configured via the web interface.</li>
 <li>[ ] Changes are automatically applied — the upload service restarts if necessary.</li>
 </ul>
@@ -3218,9 +3218,9 @@
 </blockquote>
 <h3 id="acceptance-criteria_4">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Every upload attempt is logged — success, failure, file size, duration, and target.</li>
+<li>[x] Every upload attempt is logged — success, failure, file size, duration, and target.</li>
 <li>[ ] The upload log is viewable via the web interface.</li>
-<li>[ ] Failed uploads are automatically retried.</li>
+<li>[x] Failed uploads are automatically retried.</li>
 <li>[ ] Persistently failed uploads are shown as a warning in the dashboard (→ US-U05).</li>
 </ul>
 <h3 id="references_4">References<a class="headerlink" href="#references_4" title="Permanent link">&para;</a></h3>

@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -3135,7 +3135,12 @@
 <tr>
 <td>Cloud storage credentials</td>
 <td><code>system_config</code> key <code>"cloud_sync"</code></td>
-<td>Stored as JSONB in <code>CloudSyncSettings</code> (KISS, single-target)</td>
+<td>Fernet-encrypted (<code>enc:</code> prefix) in <code>CloudSyncSettings.remote_config</code> (v0.6.0)</td>
+</tr>
+<tr>
+<td>Encryption key</td>
+<td><code>.env</code></td>
+<td><code>SILVASONIC_ENCRYPTION_KEY</code> — Fernet key for cloud credential encryption</td>
 </tr>
 </tbody>
 </table>
