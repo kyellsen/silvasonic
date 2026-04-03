@@ -2,7 +2,7 @@
 
 > **Target:** v0.6.0 — Single-target cloud sync as internal Processor worker: FLAC compression, Rclone-based upload, Janitor integration, Audit logging
 >
-> **Status:** ⏳ Planned
+> **Status:** ✅ Done
 >
 > **References:** [ADR-0009](../../adr/0009-zero-trust-data-sharing.md), [ADR-0011](../../adr/0011-audio-recording-strategy.md), [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [ADR-0019](../../adr/0019-unified-service-infrastructure.md), [ADR-0023](../../adr/0023-configuration-management.md), [ADR-0024](../../adr/0024-ffmpeg-audio-engine.md), [Refactoring Plan](#), [Processor Service](../../services/processor.md), [Testing Guidelines](../testing.md), [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [Glossary](../../glossary.md)
 >
@@ -336,18 +336,18 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Tasks
 
-- [ ] Update `VISION.md`: Processor status annotation (Cloud-Sync-Worker → `✅ AS-IS`)
-- [ ] Update `ROADMAP.md`: v0.6.0 → `✅ Done`
-- [ ] Update User Stories: mark completed acceptance criteria (US-U01, US-U02, US-U06 backend)
-- [ ] Update Processor `README.md`: Implementation Status table
-- [ ] Update this file (`milestone_0_6_0.md`): check all items, Status → `✅ Done`
-- [ ] Version bump `0.5.x` → `0.6.0` in 3 files (per `release_checklist.md` §1):
+- [x] Update `VISION.md`: Processor status annotation (Cloud-Sync-Worker → `✅ AS-IS`)
+- [x] Update `ROADMAP.md`: v0.6.0 → `✅ Done`
+- [x] Update User Stories: mark completed acceptance criteria (US-U01, US-U02, US-U06 backend)
+- [x] Update Processor `README.md`: Implementation Status table
+- [x] Update this file (`milestone_0_6_0.md`): check all items, Status → `✅ Done`
+- [x] Version bump `0.5.x` → `0.6.0` in 3 files (per `release_checklist.md` §1):
   - `packages/core/src/silvasonic/core/__init__.py`
   - `pyproject.toml` (root)
   - `README.md` Line 5
-- [ ] `just check-all` passes (full pipeline including Processor image rebuild with rclone)
-- [ ] `just test-hw` passes (recommended — no regressions)
-- [ ] Commit + annotated tag + push:
+- [x] `just check-all` passes (full pipeline including Processor image rebuild with rclone)
+- [x] `just test-hw` passes (recommended — no regressions)
+- [x] Commit + annotated tag + push:
   ```bash
   git add -A
   git commit -m "release: v0.6.0 — Processor Cloud Sync (Upload Worker)"

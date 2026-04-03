@@ -1,6 +1,6 @@
 # Processor Service
 
-> **Status:** implemented (v0.5.0)
+> **Status:** implemented (v0.6.0)
 >
 > **Tier:** 1 (Infrastructure) · **Port:** 9200
 
