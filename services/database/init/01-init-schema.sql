@@ -151,6 +151,7 @@ CREATE TABLE uploads (
     recording_id BIGINT NOT NULL,
     attempt_at TIMESTAMP WITH TIME ZONE NOT NULL,
     filename TEXT NOT NULL,
+    remote_path TEXT,
     size BIGINT NOT NULL,
     success BOOLEAN NOT NULL,
     error_message TEXT,
@@ -158,6 +159,7 @@ CREATE TABLE uploads (
     FOREIGN KEY(recording_id) REFERENCES recordings (id)
 );
 CREATE INDEX ix_uploads_recording_id ON uploads (recording_id);
+CREATE INDEX ix_uploads_attempt_at ON uploads (attempt_at DESC);
 
 -- 11. TimescaleDB Setup
 SELECT create_hypertable('weather', 'time', if_not_exists => TRUE);

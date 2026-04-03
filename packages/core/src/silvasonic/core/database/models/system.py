@@ -88,6 +88,7 @@ class Upload(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     filename: Mapped[str] = mapped_column(Text, nullable=False)
+    remote_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     size: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)

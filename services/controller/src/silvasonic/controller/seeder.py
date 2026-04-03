@@ -254,14 +254,127 @@ class AuthSeeder:
         log.info("seeder.auth.created", username=username)
 
 
+class CloudSyncSeeder:
+    """Seed cloud sync credentials from environment variables (v0.6.0).
+
+    Reads ``SILVASONIC_CLOUD_REMOTE_TYPE``, ``_URL``, ``_USER``, ``_PASS``
+    from the environment.  If ALL four are set, encrypts user/pass via
+    Fernet and UPSERTs into ``system_config`` key ``"cloud_sync"``.
+
+    **UPSERT semantics:** ``.env`` is infrastructure — always overwrites
+    DB values.  If env vars are absent, the seeder does nothing (existing
+    DB values are preserved for Web-UI configuration).
+    """
+
+    _ENV_VARS = (
+        "SILVASONIC_CLOUD_REMOTE_TYPE",
+        "SILVASONIC_CLOUD_REMOTE_URL",
+        "SILVASONIC_CLOUD_REMOTE_USER",
+        "SILVASONIC_CLOUD_REMOTE_PASS",
+    )
+
+    async def seed(self, session: AsyncSession) -> None:
+        """Read env vars and UPSERT cloud_sync config if all are present."""
+        import os
+
+        values = {v: os.environ.get(v, "").strip() for v in self._ENV_VARS}
+        present = {k for k, v in values.items() if v}
+
+        if not present:
+            log.debug("seeder.cloud_sync.no_env_vars")
+            return
+
+        if present != set(self._ENV_VARS):
+            missing = set(self._ENV_VARS) - present
+            log.warning(
+                "seeder.cloud_sync.partial_env_vars",
+                missing=sorted(missing),
+                hint="Set ALL four SILVASONIC_CLOUD_REMOTE_* variables or none.",
+            )
+            return
+
+        # Require encryption key
+        try:
+            from silvasonic.core.crypto import encrypt_value, load_encryption_key
+
+            encryption_key = load_encryption_key()
+        except RuntimeError:
+            log.error(
+                "seeder.cloud_sync.missing_encryption_key",
+                hint=(
+                    "SILVASONIC_ENCRYPTION_KEY must be set when cloud credentials "
+                    "are provided. Generate with: python -m silvasonic.core.crypto generate-key"
+                ),
+            )
+            return
+
+        remote_type = values["SILVASONIC_CLOUD_REMOTE_TYPE"]
+        remote_url = values["SILVASONIC_CLOUD_REMOTE_URL"]
+        remote_user = values["SILVASONIC_CLOUD_REMOTE_USER"]
+        remote_pass = values["SILVASONIC_CLOUD_REMOTE_PASS"]
+
+        # Build remote_config with encrypted credentials
+        remote_config: dict[str, Any] = {
+            "url": remote_url,
+            "user": encrypt_value(remote_user, encryption_key),
+            "pass": encrypt_value(remote_pass, encryption_key),
+        }
+
+        # Auto-detect Nextcloud vendor for WebDAV
+        if remote_type == "webdav" and (
+            "nextcloud" in remote_url.lower() or remote_url.rstrip("/").endswith("/webdav")
+        ):
+            remote_config["vendor"] = "nextcloud"
+
+        # Validate the settings
+        try:
+            validated = CloudSyncSettings(
+                enabled=True,
+                remote_type=remote_type,
+                remote_config=remote_config,
+            )
+        except ValidationError as exc:
+            log.error(
+                "seeder.cloud_sync.validation_failed",
+                errors=exc.error_count(),
+            )
+            return
+
+        cloud_sync_value = validated.model_dump()
+
+        # UPSERT: .env is infrastructure, always overwrites
+        existing = await session.get(SystemConfig, "cloud_sync")
+        if existing is not None:
+            # Merge: keep non-credential settings (poll_interval, bandwidth, schedule),
+            # overwrite remote_type, remote_config, and enable.
+            merged = dict(existing.value)
+            merged["enabled"] = True
+            merged["remote_type"] = remote_type
+            merged["remote_config"] = remote_config
+            existing.value = merged
+            log.info(
+                "seeder.cloud_sync.upserted",
+                remote_type=remote_type,
+                action="updated",
+            )
+        else:
+            session.add(SystemConfig(key="cloud_sync", value=cloud_sync_value))
+            log.info(
+                "seeder.cloud_sync.upserted",
+                remote_type=remote_type,
+                action="inserted",
+            )
+
+
 async def run_all_seeders(session: AsyncSession) -> None:
-    """Run all seeders in order: config → profiles → auth (idempotent)."""
+    """Run all seeders in order: config → cloud_sync → profiles → auth (idempotent)."""
     log.info("seeder.start")
 
     # Load defaults.yml once, share across seeders
     defaults = _load_defaults(_get_defaults_yml())
 
     await ConfigSeeder().seed(session, defaults=defaults)
+    await CloudSyncSeeder().seed(session)
     await ProfileBootstrapper().seed(session)
     await AuthSeeder().seed(session, defaults=defaults)
 
