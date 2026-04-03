@@ -2730,10 +2730,11 @@
 <p><strong>Goal:</strong> Create the <code>gateway</code> service adhering to the Service Blueprint.</p>
 <h3 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Scaffold <code>services/gateway/</code></li>
+<li>[ ] Scaffold <code>services/gateway/</code> and <code>Caddyfile</code></li>
 <li>[ ] Configure Caddyfile for internal routing and API access</li>
-<li>[ ] Implement HTTPS termination (self-signed and valid certs)</li>
-<li>[ ] Setup fundamental authentication mechanisms</li>
+<li>[ ] Implement internal TLS for silvasonic.local via <code>tls internal</code></li>
+<li>[ ] Setup Basic Auth in Caddy for MVP</li>
+<li>[ ] Integrate Gateway into compose.yml and .env</li>
 </ul>
 <p><em>(Further phases and tasks will be detailed as development begins)</em></p>
 <hr />
