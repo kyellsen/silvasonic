@@ -1,0 +1,23 @@
+{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
+    tls internal
+
+    # Simple Basic Auth. Using a test user for MVP. Password Hash generated via `caddy hash-password`
+    # Default: admin / silvasonic (bcrypt, cost 4)
+    basicauth /* {
+        admin $2a$04$vjO46Zk/7rC2k/Y95S.9R.t8gB27m5I6dO31xH23N6H1h0dIu1Jg2
+    }
+
+    log {
+        output file /var/log/caddy/access.log
+    }
+
+    # Proxy root to Web-Mock (since Web-Interface is not yet available)
+    handle /* {
+        reverse_proxy web-mock:8001
+    }
+
+    # Proxy live stream to Icecast (Planned)
+    # handle /stream/* {
+    #     reverse_proxy icecast:8080
+    # }
+}

@@ -16,10 +16,11 @@
 
 ### Tasks
 
-- [ ] Scaffold `services/gateway/`
+- [ ] Scaffold `services/gateway/` and `Caddyfile`
 - [ ] Configure Caddyfile for internal routing and API access
-- [ ] Implement HTTPS termination (self-signed and valid certs)
-- [ ] Setup fundamental authentication mechanisms
+- [ ] Implement internal TLS for silvasonic.local via `tls internal`
+- [ ] Setup Basic Auth in Caddy for MVP
+- [ ] Integrate Gateway into compose.yml and .env
 
 *(Further phases and tasks will be detailed as development begins)*
 

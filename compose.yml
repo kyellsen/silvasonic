@@ -4,6 +4,27 @@
 # ==============================================================================
 
 services:
+  # --- Gateway (Caddy) ---
+  # Tier 1 - Unified Entry Point for all web services
+  gateway:
+    container_name: silvasonic-gateway
+    image: docker.io/library/caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${SILVASONIC_GATEWAY_HTTP_PORT:-80}:80"
+      - "${SILVASONIC_GATEWAY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./services/gateway/Caddyfile:/etc/caddy/Caddyfile:ro,z
+      - caddy_data:/data
+      - caddy_config:/config
+      - ${SILVASONIC_WORKSPACE_PATH}/gateway/logs:/var/log/caddy:z
+    networks:
+      - silvasonic-net
+    depends_on:
+      web-mock:
+        condition: service_healthy
+
   # --- Database (TimescaleDB) ---
   database:
     container_name: silvasonic-database
@@ -193,6 +214,8 @@ services:
 volumes:
   db-data:
   redis-data:
+  caddy_data:
+  caddy_config:
 
     # --- Networks ---
 networks:
