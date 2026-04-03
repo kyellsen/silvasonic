@@ -84,8 +84,11 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Tasks
 
+- [ ] Update Database Schema & Models:
+  - Add `remote_path TEXT` column to `uploads` table in `01-init-schema.sql`
+  - Add `CREATE INDEX ix_uploads_attempt_at ON uploads (attempt_at DESC)` in `01-init-schema.sql`
+  - Add `remote_path: Mapped[str | None]` to `Upload` model in `packages/core/src/silvasonic/core/database/models/system.py`
 - [ ] Add `rclone` to Processor `Containerfile` system dependencies (alongside existing `ffmpeg`)
-- [ ] Add `"python-slugify>=8.0.0"` to `services/processor/pyproject.toml` dependencies, run `uv lock`
 - [ ] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
   - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
@@ -112,7 +115,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 - [ ] Implement `path_builder.py`:
   - `build_remote_path(station_name, sensor_id, time, filename) -> str`
   - Convention: `silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
-  - Station name slugified via `python-slugify`
+  - Station name slugified via simple inline regex (no external dependency)
 - [ ] Implement `rclone_client.py`:
   - `RcloneClient(cloud_sync_settings: CloudSyncSettings)`:
     - `generate_rclone_conf() -> Path` — write temp `rclone.conf` from `CloudSyncSettings.remote_type` + `remote_config`
@@ -123,8 +126,9 @@ The `path_builder` module is the **only component** that knows about the remote 
     - Bandwidth limiting via `--bwlimit` from `CloudSyncSettings.bandwidth_limit`
     - Checksum verification via `--checksum` flag
 - [ ] Implement `audit_logger.py`:
-  - `log_upload_attempt(session, recording_id, filename, size, success, error)`:
+  - `log_upload_attempt(session, recording_id, filename, remote_path, size, success, error_message)`:
     - INSERT into `uploads` table (immutable audit log)
+    - Pass `duration_s` as JSON within `error_message` if needed for detailed metrics (KISS)
     - On success: UPDATE `recordings SET uploaded=true, uploaded_at=now()` — Janitor signal
     - On failure: `uploads` row with `success=false`, `recordings.uploaded` unchanged
 - [ ] Implement `upload_stats.py`:
