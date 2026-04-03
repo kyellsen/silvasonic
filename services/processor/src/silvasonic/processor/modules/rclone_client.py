@@ -55,7 +55,19 @@ class RcloneClient:
                 decrypted[key] = value
         return decrypted
 
-    def _generate_rclone_conf(self) -> Path:
+    async def _obscure_value(self, value: str) -> str:
+        """Use rclone to obscure sensitive strings like passwords."""
+        proc = await asyncio.create_subprocess_exec(
+            "rclone",
+            "obscure",
+            value,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        return stdout.decode("utf-8").strip()
+
+    async def _generate_rclone_conf(self) -> Path:
         """Generate a temporary rclone config file.
 
         Note: The returned Path must be unlinked by the caller!
@@ -65,7 +77,10 @@ class RcloneClient:
         parser = configparser.ConfigParser()
         parser["myremote"] = {"type": str(self.settings.remote_type)}
         for key, value in self.decrypted_config.items():
-            parser["myremote"][key] = str(value)
+            if "pass" in key.lower():
+                parser["myremote"][key] = await self._obscure_value(str(value))
+            else:
+                parser["myremote"][key] = str(value)
 
         # Write to secure temporary file
         fd, config_path = tempfile.mkstemp(prefix="silvasonic_rclone_", suffix=".conf")
@@ -85,7 +100,7 @@ class RcloneClient:
             RcloneResult with the transfer outcome.
         """
         start_time = time.monotonic()
-        config_file = self._generate_rclone_conf()
+        config_file = await self._generate_rclone_conf()
 
         try:
             # We copy a single file: `rclone copyto local myremote:remote_path`
@@ -129,6 +144,7 @@ class RcloneClient:
                     source=local_path.name,
                     code=proc.returncode,
                     is_conn_error=is_conn_error,
+                    error=err_output[:500],
                 )
                 return RcloneResult(
                     success=False,

@@ -34,7 +34,7 @@ async def test_finds_pending_recordings(mock_session: AsyncMock, recordings_dir:
     rec.file_raw = "ultramic/data/raw/file.wav"
     rec.time = datetime(2024, 1, 1, 12, tzinfo=UTC)
 
-    mock_session.execute.return_value = _mock_db_result([(rec, "mic_1")])
+    mock_session.execute.return_value = _mock_db_result([(rec, "mic_1", "test_profile")])
 
     pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=50)
 
@@ -85,7 +85,7 @@ async def test_pending_upload_file_raw_is_absolute(
     rec.file_raw = "rode-nt-usb-p3d6/data/raw/2026-04-03T18-05-21Z_15s_dc67adae_00000000.wav"
     rec.time = datetime(2026, 4, 3, 18, 5, 21, tzinfo=UTC)
 
-    mock_session.execute.return_value = _mock_db_result([(rec, "19f7-0003-port3-6")])
+    mock_session.execute.return_value = _mock_db_result([(rec, "19f7-0003-port3-6", "rode_nt_usb")])
 
     pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=10)
 
@@ -113,7 +113,9 @@ async def test_pending_upload_preserves_relative_structure(
     )
     rec.time = datetime(2026, 4, 3, 18, 5, 20, tzinfo=UTC)
 
-    mock_session.execute.return_value = _mock_db_result([(rec, "0869-0389-00000000034F")])
+    mock_session.execute.return_value = _mock_db_result(
+        [(rec, "0869-0389-00000000034F", "ultramic_384_evo")]
+    )
 
     pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=10)
 
@@ -123,3 +125,25 @@ async def test_pending_upload_preserves_relative_structure(
         "processed",
         "2026-04-03T18-05-20Z_15s_8a4b57f5_00000000.wav",
     )
+
+
+# ────────────────────────────────────────────────────
+# Regression tests: Retry limit
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+async def test_find_pending_uploads_accepts_max_retries(
+    mock_session: AsyncMock, recordings_dir: Path
+) -> None:
+    """find_pending_uploads accepts a max_retries parameter.
+
+    Regression: Without retry limits, failed uploads are re-polled
+    endlessly every 30s, creating an ever-growing retry storm that
+    blocks the upload queue.
+    """
+    mock_session.execute.return_value = _mock_db_result([])
+
+    # Must accept max_retries without error
+    pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=50, max_retries=3)
+    assert pending == []

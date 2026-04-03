@@ -27,7 +27,9 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-def build_remote_path(station_name: str, sensor_id: str, time: datetime, filename: str) -> str:
+def build_remote_path(
+    station_name: str, profile_slug: str, sensor_id: str, time: datetime, filename: str
+) -> str:
     """Build the target remote path for a recording.
 
     Format: ``silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}``
@@ -36,6 +38,7 @@ def build_remote_path(station_name: str, sensor_id: str, time: datetime, filenam
 
     Args:
         station_name: Raw station name from system config (may contain spaces).
+        profile_slug: Microphone profile slug (e.g. `ultramic_384_evo`).
         sensor_id: The ID of the sensor (e.g. `mic_1`).
         time: The start time of the recording.
         filename: The target filename (e.g. `20240101_120000.flac`).
@@ -44,6 +47,7 @@ def build_remote_path(station_name: str, sensor_id: str, time: datetime, filenam
         String path compatible with rclone remotes.
     """
     station_slug = slugify(station_name)
+    prof_slug = slugify(profile_slug)
     # Ensure time is UTC for path partitioning
     time = time.replace(tzinfo=UTC) if time.tzinfo is None else time.astimezone(UTC)
 
@@ -53,4 +57,4 @@ def build_remote_path(station_name: str, sensor_id: str, time: datetime, filenam
     if not filename.endswith(".flac"):
         filename = f"{Path(filename).stem}.flac"
 
-    return f"silvasonic/{station_slug}/{sensor_id}/{date_str}/{filename}"
+    return f"silvasonic/{station_slug}/{prof_slug}-{sensor_id}/{date_str}/{filename}"

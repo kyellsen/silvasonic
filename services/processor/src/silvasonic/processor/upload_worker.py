@@ -115,13 +115,13 @@ class UploadWorker:
 
                 target_filename = item.file_raw.with_suffix(".flac").name
                 remote_path = build_remote_path(
-                    item.station_name, item.sensor_id, item.time, target_filename
+                    item.station_name, item.profile_slug, item.sensor_id, item.time, target_filename
                 )
 
                 # 1. Encode
                 try:
                     flac_path = await encode_wav_to_flac(item.file_raw, item.file_raw.parent)
-                except FlacEncodingError as e:
+                except (FlacEncodingError, OSError) as e:
                     self.stats.record_attempt(False, 0, item.file_raw.name, remote_path, 0.0)
                     await log_upload_attempt(
                         session,

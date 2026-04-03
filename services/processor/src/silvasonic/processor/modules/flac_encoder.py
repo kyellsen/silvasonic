@@ -53,11 +53,17 @@ async def encode_wav_to_flac(wav_path: Path, output_dir: Path) -> Path:
     ]
 
     log.debug("flac_encoder.start", source=wav_path.name, target=flac_path.name)
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except OSError as exc:
+        # ffmpeg binary not found, not executable, or similar system error.
+        # Wrap so callers only need to handle FlacEncodingError.
+        msg = f"ffmpeg not found or not executable: {exc}"
+        raise FlacEncodingError(msg) from exc
 
     _, stderr = await proc.communicate()
 

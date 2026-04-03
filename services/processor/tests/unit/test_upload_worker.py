@@ -94,6 +94,7 @@ async def test_poll_loop_processes_pending(
         sensor_id="mic1",
         station_name="",
         time=datetime.now(UTC),
+        profile_slug="prof1",
     )
     mock_find.return_value = [pending]
 
@@ -146,8 +147,8 @@ async def test_connection_error_aborts_batch(
     dummy_wav = tmp_path / "test.wav"
     dummy_wav.touch()
 
-    p1 = PendingUpload(1, dummy_wav, "mic1", "", datetime.now(UTC))
-    p2 = PendingUpload(2, dummy_wav, "mic1", "", datetime.now(UTC))
+    p1 = PendingUpload(1, dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
+    p2 = PendingUpload(2, dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
     mock_find.return_value = [p1, p2]
 
     dummy_flac = tmp_path / "test.flac"
@@ -192,7 +193,7 @@ async def test_missing_file_skipped(
 ) -> None:
     """Test that missing WAV files are skipped gracefully."""
     missing_wav = tmp_path / "missing.wav"
-    p1 = PendingUpload(1, missing_wav, "mic1", "", datetime.now(UTC))
+    p1 = PendingUpload(1, missing_wav, "mic1", "", datetime.now(UTC), "prof1")
     mock_find.return_value = [p1]
 
     conf = {
@@ -243,3 +244,58 @@ async def test_process_batch_passes_recordings_dir(
     assert call_args[1].get("recordings_dir") == worker._recordings_dir or (
         len(call_args[0]) >= 2 and call_args[0][1] == worker._recordings_dir
     )
+
+
+# ────────────────────────────────────────────────────
+# Regression: Encoding errors handled per-item
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+@patch("silvasonic.processor.upload_worker.find_pending_uploads")
+@patch("silvasonic.processor.upload_worker.encode_wav_to_flac")
+@patch("silvasonic.processor.upload_worker.log_upload_attempt")
+async def test_process_batch_handles_encoding_oserror_gracefully(
+    mock_log: MagicMock,
+    mock_encode: MagicMock,
+    mock_find: MagicMock,
+    worker: UploadWorker,
+    tmp_path: Path,
+) -> None:
+    """_process_batch handles OSError from FLAC encoding without crashing.
+
+    Regression: FileNotFoundError (ffmpeg missing) propagated past
+    ``except FlacEncodingError`` and crashed the entire worker with a
+    60-second retry loop. OSError must be caught per-item so the batch
+    continues with the next file.
+    """
+    dummy_wav = tmp_path / "test.wav"
+    dummy_wav.write_bytes(b"data")
+
+    pending = PendingUpload(
+        recording_id=1,
+        file_raw=dummy_wav,
+        sensor_id="mic1",
+        station_name="",
+        time=datetime.now(UTC),
+        profile_slug="prof1",
+    )
+    mock_find.return_value = [pending]
+
+    # Simulate ffmpeg binary not found
+    mock_encode.side_effect = FileNotFoundError(2, "No such file or directory", "ffmpeg")
+
+    conf = {
+        "access_key_id": "d",
+        "secret_access_key": "d",
+        "region": "d",
+        "endpoint": "d",
+        "acl": "private",
+    }
+    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+
+    # Must NOT raise — should handle gracefully and return True
+    success = await worker._process_batch("my-station", settings, b"dummy-key")
+
+    assert success is True
+    mock_log.assert_called_once()  # Audit log should capture the failure

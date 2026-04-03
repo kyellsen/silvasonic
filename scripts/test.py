@@ -35,7 +35,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Per-suite parallel workers (0 = sequential).
 # Override via SILVASONIC_{UNIT,INTEGRATION,SYSTEM}_WORKERS env vars.
 UNIT_WORKERS = int(os.environ.get("SILVASONIC_UNIT_WORKERS", "10"))
-INTEGRATION_WORKERS = int(os.environ.get("SILVASONIC_INTEGRATION_WORKERS", "8"))
+INTEGRATION_WORKERS = int(os.environ.get("SILVASONIC_INTEGRATION_WORKERS", "6"))
 # System tests: 6 is the sweet-spot.  At 8+ workers the rootless Podman
 # socket becomes a bottleneck (60s read timeouts on the API).
 SYSTEM_WORKERS = int(os.environ.get("SILVASONIC_SYSTEM_WORKERS", "6"))
@@ -281,14 +281,17 @@ def _preflight_hw() -> None:
 
     # 2. Podman socket — use `podman info` instead of Path.exists() because
     #    systemd socket-activated files are not visible via stat().
-    socket_ok = (
-        subprocess.run(
-            ["podman", "info", "--format", "{{.Host.RemoteSocket.Path}}"],
-            capture_output=True,
-            timeout=5,
-        ).returncode
-        == 0
-    )
+    try:
+        socket_ok = (
+            subprocess.run(
+                ["podman", "info", "--format", "{{.Host.RemoteSocket.Path}}"],
+                capture_output=True,
+                timeout=5,
+            ).returncode
+            == 0
+        )
+    except subprocess.TimeoutExpired:
+        socket_ok = False
     socket_detail = "podman info OK" if socket_ok else "unreachable"
     icon = ok if socket_ok else fail
     print(f"  {icon}  Podman socket ...... {socket_detail}")

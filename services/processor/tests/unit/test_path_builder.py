@@ -20,9 +20,9 @@ def test_builds_correct_remote_path() -> None:
     dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
 
     # Base case
-    path = build_remote_path("Test Station", "mic_1", dt, "file1.flac")
-    assert path == "silvasonic/test-station/mic_1/2024-01-01/file1.flac"
+    path = build_remote_path("Test Station", "test_profile", "mic_1", dt, "file1.flac")
+    assert path == "silvasonic/test-station/test-profile-mic_1/2024-01-01/file1.flac"
 
     # Ensures .flac extension
-    path2 = build_remote_path("Test Station", "mic_1", dt, "file2.wav")
-    assert path2 == "silvasonic/test-station/mic_1/2024-01-01/file2.flac"
+    path2 = build_remote_path("Test Station", "test_profile", "mic_1", dt, "file2.wav")
+    assert path2 == "silvasonic/test-station/test-profile-mic_1/2024-01-01/file2.flac"

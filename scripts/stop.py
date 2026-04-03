@@ -57,6 +57,8 @@ def main() -> None:
     print_header("Stopping Silvasonic Services")
     keep_tier2 = "--keep-tier2" in sys.argv
     if not keep_tier2:
+        print_step("Stopping Controller to prevent Tier 2 respawn...")
+        compose("stop", "controller")
         _stop_managed_recorders()
     else:
         print_step("Keeping Tier 2 containers (--keep-tier2)")

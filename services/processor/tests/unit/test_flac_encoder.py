@@ -75,3 +75,45 @@ async def test_encode_cleanup_on_failure(dummy_wav: Path) -> None:
         await encode_wav_to_flac(dummy_wav, dummy_wav.parent)
 
     assert not target_flac.exists()
+
+
+# ────────────────────────────────────────────────────
+# Regression tests: Missing ffmpeg binary
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+async def test_encode_raises_flac_error_on_missing_ffmpeg(dummy_wav: Path) -> None:
+    """encode_wav_to_flac raises FlacEncodingError when ffmpeg is not installed.
+
+    Regression: Without wrapped exception, FileNotFoundError propagates
+    past the ``except FlacEncodingError`` handler in UploadWorker, causing
+    a full crash-loop instead of per-item graceful skip.
+    """
+    with (
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=FileNotFoundError(2, "No such file or directory", "ffmpeg"),
+        ),
+        pytest.raises(FlacEncodingError, match=r"ffmpeg.*not found"),
+    ):
+        await encode_wav_to_flac(dummy_wav, dummy_wav.parent)
+
+
+@pytest.mark.unit
+async def test_encode_raises_flac_error_on_permission_denied(
+    dummy_wav: Path,
+) -> None:
+    """encode_wav_to_flac wraps PermissionError as FlacEncodingError.
+
+    Guards against edge cases where ffmpeg binary exists but is
+    not executable — should be a per-item failure, not a crash.
+    """
+    with (
+        patch(
+            "asyncio.create_subprocess_exec",
+            side_effect=PermissionError(13, "Permission denied", "ffmpeg"),
+        ),
+        pytest.raises(FlacEncodingError, match="ffmpeg"),
+    ):
+        await encode_wav_to_flac(dummy_wav, dummy_wav.parent)

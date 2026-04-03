@@ -2,10 +2,11 @@ FROM python:3.13-slim-bookworm
 
 WORKDIR /app
 
-# 1. System dependencies (curl for healthcheck, libsndfile1 for WAV metadata, rclone for cloud sync)
+# 1. System dependencies (curl for healthcheck, ffmpeg for FLAC encoding, libsndfile1 for WAV metadata, rclone for cloud sync)
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    ffmpeg \
     libsndfile1 \
     rclone \
     && rm -rf /var/lib/apt/lists/*
