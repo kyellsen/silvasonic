@@ -230,6 +230,9 @@ class TestProcessorLifecycle:
             assert heartbeat_raw is not None, "No processor heartbeat found in Redis after 20s"
 
             payload = json.loads(heartbeat_raw)
+            if payload.get("health", {}).get("status") != "ok":
+                print(f"Health was not OK! Payload: {json.dumps(payload, indent=2)}")
+                print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
             assert payload["service"] == "processor"
             assert "health" in payload
             assert payload["health"]["status"] == "ok"

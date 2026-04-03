@@ -87,7 +87,7 @@ class ProcessorService(SilvaService):
 
     def get_extra_meta(self) -> dict[str, Any]:
         """Service-specific heartbeat metadata (ADR-0019 §2.4)."""
-        return {
+        extra = {
             "indexer": {
                 "total_indexed": self._total_indexed,
                 "last_indexed_at": (
@@ -102,13 +102,31 @@ class ProcessorService(SilvaService):
             },
         }
 
+        # Upload Worker metrics
+        if hasattr(self, "_upload_worker"):
+            uw = self._upload_worker.stats
+            extra["cloud_sync"] = {
+                "total_pending": uw.total_pending,
+                "uploaded_count": uw.uploaded_count,
+                "failed_count": uw.failed_count,
+                "last_upload_at": uw.last_upload_at,
+            }
+
+        return extra
+
     async def run(self) -> None:
         """Main service loop — Reconciliation Audit + Indexer polling.
 
         1. Run Reconciliation Audit once on startup (Split-Brain healing).
-        2. Periodic Indexer loop: scan workspace, register new recordings.
+        2. Start the UploadWorker as a background task.
+        3. Periodic Indexer loop: scan workspace, register new recordings.
         """
         self.health.update_status("processor", True, "running")
+
+        # Initialize Upload Worker
+        from silvasonic.processor.upload_worker import UploadWorker
+
+        self._upload_worker = UploadWorker(get_session, self.health)
 
         # --- Phase 1: Reconciliation Audit (once on startup) ---
         try:
@@ -120,6 +138,9 @@ class ProcessorService(SilvaService):
         except Exception:
             log.exception("processor.reconciliation_failed")
             self.health.update_status("indexer", False, "reconciliation_failed")
+
+        # Start Upload Worker in background
+        self._upload_task = asyncio.create_task(self._upload_worker.run())
 
         # --- Phase 2: Indexer + Janitor polling loop ---
         janitor_every_n = max(

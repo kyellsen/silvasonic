@@ -170,6 +170,7 @@ def processor_container(
         .with_env("POSTGRES_DB", "silvasonic")
         .with_env("POSTGRES_PORT", "5432")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_env("SILVASONIC_ENCRYPTION_KEY", "zVwzBZb-B2UaAqyP3jDihh01e_-80u2rD5pYtQYkUaQ=")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/data/recorder": "rw", "/data/processor": "rw"})
     )

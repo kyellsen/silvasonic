@@ -473,6 +473,7 @@ def make_processor_env() -> dict[str, str]:
         "POSTGRES_DB": "silvasonic",
         "SILVASONIC_REDIS_URL": "redis://redis:6379/0",
         "SILVASONIC_RECORDINGS_DIR": "/data/recorder",
+        "SILVASONIC_ENCRYPTION_KEY": "zVwzBZb-B2UaAqyP3jDihh01e_-80u2rD5pYtQYkUaQ=",
     }
 
 
