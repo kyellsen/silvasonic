@@ -59,7 +59,7 @@
 ### Acceptance Criteria
 
 - [ ] Bandwidth limit is adjustable (e.g., "max 1 MB/s") to avoid overloading the internet connection.
-- [ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day.
+- [ ] A time window for uploads can be defined (e.g., only at night from 22:00–06:00) to save bandwidth during the day. Default Bandwidth limit off!
 - [ ] A storage target can be configured via the web interface.
 - [ ] Changes are automatically applied — the upload service restarts if necessary.
 

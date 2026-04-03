@@ -49,8 +49,9 @@ class CloudSyncSettings(BaseModel):
     type-specific Pydantic schemas in ``silvasonic.core.schemas.cloud_sync``
     (e.g. ``WebDAVConfig``, ``S3Config``) via ``validate_rclone_config()``.
 
-    Remote credentials are **not** seeded via ``defaults.yml`` — they must
-    be configured via Web-UI (v0.9.0) or direct DB insert.  The worker
+    Remote credentials are **not** seeded via ``defaults.yml``.  They are
+    provisioned by the ``CloudSyncSeeder`` from ``SILVASONIC_CLOUD_REMOTE_*``
+    environment variables, or configured via Web-UI (v0.9.0).  The worker
     stays inactive (``enabled=false``) until a valid remote is configured.
 
     Sensitive values in ``remote_config`` (user, pass) are Fernet-encrypted

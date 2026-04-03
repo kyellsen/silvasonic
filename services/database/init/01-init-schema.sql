@@ -120,7 +120,7 @@ CREATE INDEX ix_recordings_analysis_pending
 ON recordings (time ASC)
 WHERE local_deleted = false;
 
--- Upload polling (v0.6.0 prep): Uploader finds un-uploaded, non-deleted recordings.
+-- Upload polling (v0.6.0): Cloud-Sync-Worker finds un-uploaded, non-deleted recordings.
 -- Covers queries filtering on uploaded + local_deleted, replacing standalone ix_recordings_uploaded.
 CREATE INDEX ix_recordings_upload_pending
 ON recordings (time ASC)

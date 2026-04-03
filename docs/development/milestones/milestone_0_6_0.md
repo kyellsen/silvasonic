@@ -46,25 +46,13 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ---
 
-## Phase 1: Upload Worker Module Scaffold
+## Phase 1: Core Infrastructure
 
-**Goal:** Create the Cloud-Sync-Worker modules within the Processor service. The worker polls for pending recordings, compresses WAV→FLAC, uploads via rclone, logs the attempt, and updates the database.
+**Goal:** Build the foundation for credential encryption and cloud sync configuration. Add the `crypto` module to core, extend the DB schema, install rclone in the Processor container, and implement the `CloudSyncSeeder` in the Controller.
 
-**User Stories:** US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)
+**User Stories:** US-U06 (Seamless tracking — audit log schema)
 
 **Dependency:** Preparatory refactoring (v0.5.x) must be complete — `storage_remotes` table removed, `CloudSyncSettings.enabled` defaults to `false`, `remote_type` / `remote_config` fields present in schema.
-
-### Modules
-
-| Module | File | Responsibility |
-|--------|------|----------------|
-| **Upload Worker** | `upload_worker.py` | Main async loop: poll → encode → upload → audit → stats |
-| **Work Poller** | `work_poller.py` | Find recordings with `uploaded=false` and `local_deleted=false` |
-| **FLAC Encoder** | `flac_encoder.py` | WAV→FLAC via ffmpeg subprocess |
-| **Path Builder** | `path_builder.py` | Build remote path from DB fields |
-| **Rclone Client** | `rclone_client.py` | Upload files via rclone subprocess |
-| **Audit Logger** | `audit_logger.py` | Immutable `uploads` table + set `recordings.uploaded=true` |
-| **Upload Stats** | `upload_stats.py` | Two-Phase Logging: startup detail → periodic summary |
 
 > **Cross-Cutting Dependency (core):** Credential encryption uses `packages/core/src/silvasonic/core/crypto.py` — a thin Fernet wrapper (`encrypt_value`, `decrypt_value`) added to `silvasonic-core` as part of this milestone. The encryption key lives in `.env` as `SILVASONIC_ENCRYPTION_KEY`.
 
@@ -74,17 +62,11 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 | Purpose | File |
 |---------|------|
-| Processor service entry point | `services/processor/src/silvasonic/processor/__main__.py` |
-| Indexer — internal worker pattern to copy | `services/processor/src/silvasonic/processor/indexer.py` |
-| Janitor — internal worker pattern reference | `services/processor/src/silvasonic/processor/janitor.py` |
-| RecordingStats — Two-Phase Logging pattern | `services/recorder/src/silvasonic/recorder/recording_stats.py` |
-| Recording DB model | `packages/core/src/silvasonic/core/database/models/recordings.py` |
 | Upload DB model | `packages/core/src/silvasonic/core/database/models/system.py` |
 | CloudSyncSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
-| FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-engine.md` |
-| Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
-| Environment config | `.env` / `.env.example` |
+| Database DDL | `services/database/init/01-init-schema.sql` |
 | Existing Controller seeder pattern | `services/controller/src/silvasonic/controller/seeder.py` |
+| Environment config | `.env` / `.env.example` |
 
 ### Tasks
 
@@ -109,6 +91,71 @@ The `path_builder` module is the **only component** that knows about the remote 
   - For `remote_type=webdav`: auto-set `vendor=nextcloud` if URL contains `nextcloud` or ends with `/webdav/`
   - Requires `SILVASONIC_ENCRYPTION_KEY` — if missing while credentials are set → clear error + skip
   - Wired into `run_all_seeders()` after `ConfigSeeder` (so defaults exist first), before `AuthSeeder`
+
+### Acceptance Criteria
+
+> Phase is complete when `just check` passes and all tests below are green.
+
+#### Unit Tests (`packages/core/tests/unit/test_crypto.py`) — `@pytest.mark.unit`
+
+| Test | Validates |
+|------|----------|
+| `test_encrypt_decrypt_roundtrip` | `decrypt_value(encrypt_value(s, k), k) == s` |
+| `test_plaintext_fallback` | No `enc:` prefix → returned as-is |
+| `test_decrypt_wrong_key_fails` | Wrong key → `InvalidToken` raised |
+| `test_load_encryption_key_missing` | Env var not set → clear error message |
+| `test_generate_key_valid_fernet` | Generated key is valid Fernet key |
+
+#### Unit Tests (`services/controller/tests/unit/test_cloud_sync_seeder.py`) — `@pytest.mark.unit`
+
+| Test | Validates |
+|------|----------|
+| `test_all_env_vars_set_seeds_encrypted` | All 4 vars → `system_config` updated with `enc:` values, `enabled=true` |
+| `test_partial_env_vars_skips` | Only 2 of 4 vars → no DB change, debug log |
+| `test_no_env_vars_skips` | No vars → no DB change, no error |
+| `test_upsert_overwrites_existing` | Existing `cloud_sync` in DB → overwritten with new `.env` values |
+| `test_missing_encryption_key_errors` | Credentials set but no `SILVASONIC_ENCRYPTION_KEY` → clear error, skip |
+| `test_webdav_auto_vendor_nextcloud` | `remote_type=webdav` + URL with `/webdav/` → `vendor=nextcloud` auto-set |
+
+---
+
+## Phase 2: Upload Worker Modules
+
+**Goal:** Implement all Cloud-Sync-Worker modules within the Processor service. The worker polls for pending recordings, compresses WAV→FLAC, uploads via rclone, logs the attempt, and updates the database.
+
+**User Stories:** US-U01 (Automatic cloud upload with FLAC), US-U06 (Seamless tracking)
+
+**Dependency:** Phase 1 (Core Infrastructure) must be complete — crypto module available, DB schema updated, rclone installed in container.
+
+### Modules
+
+| Module | File | Responsibility |
+|--------|------|----------------|
+| **Upload Worker** | `upload_worker.py` | Main async loop: poll → encode → upload → audit → stats |
+| **Work Poller** | `work_poller.py` | Find recordings with `uploaded=false` and `local_deleted=false` |
+| **FLAC Encoder** | `flac_encoder.py` | WAV→FLAC via ffmpeg subprocess |
+| **Path Builder** | `path_builder.py` | Build remote path from DB fields |
+| **Rclone Client** | `rclone_client.py` | Upload files via rclone subprocess |
+| **Audit Logger** | `audit_logger.py` | Immutable `uploads` table + set `recordings.uploaded=true` |
+| **Upload Stats** | `upload_stats.py` | Two-Phase Logging: startup detail → periodic summary |
+
+### Source References
+
+> **Read these files before starting Phase 2:**
+
+| Purpose | File |
+|---------|------|
+| Processor service entry point | `services/processor/src/silvasonic/processor/__main__.py` |
+| Indexer — internal worker pattern to copy | `services/processor/src/silvasonic/processor/indexer.py` |
+| Janitor — internal worker pattern reference | `services/processor/src/silvasonic/processor/janitor.py` |
+| RecordingStats — Two-Phase Logging pattern | `services/recorder/src/silvasonic/recorder/recording_stats.py` |
+| Recording DB model | `packages/core/src/silvasonic/core/database/models/recordings.py` |
+| Crypto module (Phase 1) | `packages/core/src/silvasonic/core/crypto.py` |
+| FFmpeg usage pattern (ADR-0024) | `docs/adr/0024-ffmpeg-audio-engine.md` |
+| Worker Pull orchestration (ADR-0018) | `docs/adr/0018-worker-pull-orchestration.md` |
+
+### Tasks
+
 - [ ] Implement `upload_worker.py`:
   - `UploadWorker(session_factory, settings, stats)` — main async loop
   - Early exit: if `CloudSyncSettings.enabled == false` → log and skip (global pause)
@@ -230,27 +277,6 @@ The `path_builder` module is the **only component** that knows about the remote 
 | `test_summary_emitted_after_interval` | `maybe_emit_summary()` → `upload.summary` |
 | `test_final_summary_on_shutdown` | `emit_final_summary()` → lifetime totals |
 
-#### Unit Tests (`packages/core/tests/unit/test_crypto.py`) — `@pytest.mark.unit`
-
-| Test | Validates |
-|------|----------|
-| `test_encrypt_decrypt_roundtrip` | `decrypt_value(encrypt_value(s, k), k) == s` |
-| `test_plaintext_fallback` | No `enc:` prefix → returned as-is |
-| `test_decrypt_wrong_key_fails` | Wrong key → `InvalidToken` raised |
-| `test_load_encryption_key_missing` | Env var not set → clear error message |
-| `test_generate_key_valid_fernet` | Generated key is valid Fernet key |
-
-#### Unit Tests (`services/controller/tests/unit/test_cloud_sync_seeder.py`) — `@pytest.mark.unit`
-
-| Test | Validates |
-|------|----------|
-| `test_all_env_vars_set_seeds_encrypted` | All 4 vars → `system_config` updated with `enc:` values, `enabled=true` |
-| `test_partial_env_vars_skips` | Only 2 of 4 vars → no DB change, debug log |
-| `test_no_env_vars_skips` | No vars → no DB change, no error |
-| `test_upsert_overwrites_existing` | Existing `cloud_sync` in DB → overwritten with new `.env` values |
-| `test_missing_encryption_key_errors` | Credentials set but no `SILVASONIC_ENCRYPTION_KEY` → clear error, skip |
-| `test_webdav_auto_vendor_nextcloud` | `remote_type=webdav` + URL with `/webdav/` → `vendor=nextcloud` auto-set |
-
 #### Integration Tests (`services/processor/tests/integration/test_upload_pipeline_e2e.py`) — `@pytest.mark.integration`
 
 | Test | Validates |
@@ -268,13 +294,13 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ---
 
-## Phase 2: System Tests
+## Phase 3: System Tests
 
 **Goal:** Verify upload worker runs correctly within the full Processor container. Verify Janitor integration with upload status.
 
 **User Stories:** US-U02 (Continue recording indefinitely)
 
-**Dependency:** Phase 1 (upload worker implemented and unit-tested).
+**Dependency:** Phase 2 (upload worker modules implemented and unit-tested).
 
 ### Tasks
 
@@ -302,11 +328,11 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ---
 
-## Phase 3: Documentation & Release
+## Phase 4: Documentation & Release
 
 **Goal:** Finalize documentation, bump version, run full pipeline, create release.
 
-**Dependency:** All previous phases complete.
+**Dependency:** All previous phases (1–3) complete.
 
 ### Tasks
 
