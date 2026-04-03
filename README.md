@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.6.0 — Processor Cloud Sync ✅
+> **Status:** v0.7.0 — Gateway ✅
 
 ---
 
