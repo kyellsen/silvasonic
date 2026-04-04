@@ -1,5 +1,5 @@
-{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
-    tls internal
+http://{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
+    #tls internal
 
     # Default: admin / 1234 (bcrypt, generated via `caddy hash-password`)
     basic_auth /* {
