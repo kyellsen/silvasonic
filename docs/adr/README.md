@@ -30,3 +30,5 @@
 - [ADR-0024: FFmpeg Audio Engine — Replacing sounddevice/soxr with FFmpeg](0024-ffmpeg-audio-engine.md)
 - [ADR-0025: Recordings Table — Standard PostgreSQL Table (No Hypertable)](0025-recordings-standard-table.md)
 - [ADR-0026: Database Engine Selection for Edge Analytics](0026-timescaledb-edge-analytics.md)
+- [ADR-0027: BirdNET Inference Engine — Native TFLite Runtime](0027-birdnet-inference-engine.md)
+- [ADR-0028: Python Version Flexibility for ML Worker Containers](0028-python-version-flexibility-ml-workers.md)

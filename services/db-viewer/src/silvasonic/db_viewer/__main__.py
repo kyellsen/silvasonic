@@ -75,14 +75,12 @@ async def index(
     limit: int = 50,
 ) -> HTMLResponse:
     """Render the main shell layout with the sidebar."""
-    # List of tables to inspect
     tables = [
         "recordings",
         "detections",
         "uploads",
         "devices",
         "system_config",
-        "system_services",
         "microphone_profiles",
         "taxonomy",
         "weather",
@@ -131,7 +129,6 @@ async def get_table_snippet(
         "uploads",
         "devices",
         "system_config",
-        "system_services",
         "microphone_profiles",
         "taxonomy",
         "weather",
@@ -196,7 +193,6 @@ async def export_table(
         "uploads",
         "devices",
         "system_config",
-        "system_services",
         "microphone_profiles",
         "taxonomy",
         "weather",

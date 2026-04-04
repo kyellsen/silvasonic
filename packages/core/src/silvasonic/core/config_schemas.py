@@ -82,4 +82,5 @@ class CloudSyncSettings(BaseModel):
 class BirdnetSettings(BaseModel):
     """BirdNET inference settings (key: ``birdnet``, v0.7.0)."""
 
+    enabled: bool = True
     confidence_threshold: float = 0.25

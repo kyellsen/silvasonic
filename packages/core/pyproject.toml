@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "silvasonic-core"
 description = "Core utilities and shared components for Silvasonic"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 keywords = ["silvasonic", "core", "audio", "monitoring"]
 classifiers = []
 dependencies = [

@@ -7,6 +7,7 @@
 - [Vision](VISION.md)
 - [Milestone Roadmap](ROADMAP.md)
 - [Agents](AGENTS.md)
+- [Documentation Structure](STRUCTURE.md)
 
 ## Architecture
 
@@ -21,7 +22,7 @@
 
 - [Controller](services/controller.md) · [Database](services/database.md) · [Recorder](services/recorder.md)
 - [Redis](services/redis.md) · [Web-Mock](services/web_mock.md) · [Processor](services/processor.md) · [Gateway](services/gateway.md)
-- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md)
+- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md) · [DB-Viewer](services/db_viewer.md)
 - [BirdNET](services/birdnet.md) · [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
 
 ## Deployment
@@ -41,6 +42,8 @@
 - [Milestone v0.4.0](development/milestones/milestone_0_4_0.md) — Audio Recording: Dual Stream, Profile Injection, Generic USB Fallback, Watchdog
 - [Milestone v0.5.0](development/milestones/milestone_0_5_0.md) — Analysis & Backend Orchestration: Processor Service (Indexer + Janitor)
 - [Milestone v0.6.0](development/milestones/milestone_0_6_0.md) — Processor Cloud Sync (Single-Target Upload Worker)
+- [Milestone v0.7.0](development/milestones/milestone_0_7_0.md) — Gateway (Reverse Proxy)
+- [Milestone v0.7.1](development/milestones/milestone_0_7_1.md) — DB-Viewer
 - [Milestone v0.8.0](development/milestones/milestone_0_8_0.md) — BirdNET (On-device Avian Inference)
 - [Milestone v0.9.0](development/milestones/milestone_0_9_0.md) — Web-Interface & Field Deployment
 - [Milestone v0.10.0](development/milestones/milestone_0_10_0.md) — Marketing Landing Page (Astro)

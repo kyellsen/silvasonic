@@ -68,7 +68,7 @@ site/
 
 prompts/*
 COMMANDS.md
-*.wav
+#*.wav
 
 # Frontend (Tailwind CSS build)
 node_modules/
@@ -78,4 +78,4 @@ package-lock.json
 
 docs/development/refactoring_uploader_to_processor.md
 
-old/*
+temp/*

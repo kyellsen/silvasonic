@@ -1,13 +1,13 @@
 # BirdNET Service
 
-> **Status:** planned - Not implemented · **Tier:** 2 · **Instances:** Single
+> **Status:** in-progress · **Tier:** 2 · **Instances:** Single
 
 > [!WARNING]
 > **Docs-as-Code Trap:**
 > This is a temporary **Planning Document**. When the service is implemented, do **NOT** copy this file into the source code as its `README.md`!
 > Instead, strictly follow the rules in `docs/STRUCTURE.md` for Service READMEs (no paraphrased endpoints, no DB tables). Once implemented, this file must be replaced by an abstract link-stub.
 
-**TO-BE:** On-device inference service for avian species classification using the BirdNET-Analyzer framework.
+**TO-BE:** On-device inference service for avian species classification using a native TFLite model pipeline.
 
 ---
 

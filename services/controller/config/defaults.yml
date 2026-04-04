@@ -74,6 +74,8 @@ cloud_sync:
 
 # --- BirdNET Inference (key: "birdnet", v0.7.0) ---
 birdnet:
+  # Toggle the BirdNET Tier 2 analysis worker
+  enabled: true
   # Minimum confidence score (0.0-1.0) to accept a species detection.
   # Lower = more detections (but more false positives).
   # Higher = fewer detections (but higher accuracy).

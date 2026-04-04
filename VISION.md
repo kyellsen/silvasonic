@@ -61,7 +61,7 @@
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------- |
 | **recorder** | Critical path. Managed directly by Controller via Profile Injection (No DB Access). Captures audio via FFmpeg subprocess (ADR-0024), writes dual-stream output (Raw Native & Processed 48kHz) to NVMe. 🔮 Will send a live Opus stream to Icecast | Critical     | ✅ AS-IS    |
 
-| **birdnet**  | On-device inference for avian species classification                                                                                                   | Core Feature   | ⏳ Planned |
+| **birdnet**  | On-device inference for avian species classification                                                                                                   | Core Feature   | 🔨 In Progress |
 | **batdetect** | On-device inference for bat species classification                                                                                                    | Optional Feature | ⏳ Planned |
 | **weather**  | Correlates acoustic data with environmental measurements                                                                                                 | Optional Feature | ⏳ Planned |
 

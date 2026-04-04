@@ -1,8 +1,7 @@
 # Milestone v0.8.0 — BirdNET (On-device Avian Inference)
 
 > **Target:** v0.8.0 — On-device avian species classification (Worker Pull via DB, ADR-0018)
->
-> **Status:** ⏳ Planned
+> **Status:** 🔨 In Progress
 >
 > **References:** [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
@@ -27,12 +26,20 @@ The BirdNET service is an immutable Tier 2 container responsible for performing 
 | ---------- | ------------------------------------------------ |
 | **v0.5.0** | Processor (Indexer + Janitor)                    |
 
-### Architecture Decision: Pending Spike
+### Architecture Decision: Completed ✅
 
-> [!CAUTION]
-> **Architecture Spike Required (TFLite vs. Official Analyzer)**
->
-> Before implementing the BirdNET service, we must evaluate whether to use a completely native `tflite_runtime.Interpreter` implementation or the actively maintained official `BirdNET-Analyzer` Python package. This spike evaluates resource usage and implementation complexity on the Raspberry Pi 5.
+> [!NOTE]
+> **Spike complete.** Native `tflite_runtime` is the chosen inference engine.
+> See [ADR-0027](../../adr/0027-birdnet-inference-engine.md) and [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md).
+
+#### Key Findings (Spike v3)
+- **Native is ~35% faster** per 10s segment (155 ms avg vs 238 ms)
+- **>20× faster cold start** (0.05s vs 1.09s)
+- **Flat vs Leaky Memory:** Native stays flat at ~201 MB RSS. `birdnetlib` leaks memory, swelling beyond ~370 MB running sequentially.
+- **Identical results** to birdnetlib (Passer domesticus 0.8529 confidence, bit-identical)
+- **Container:** `python:3.11-slim-bookworm` required (tflite-runtime lacks aarch64 wheels for Python ≥ 3.12)
+- **Custom code surface:** ~60 lines (sigmoid, labels, meta-model, windowing, numpy mask filtering)
+
 
 ### Existing Infrastructure (Reuse — Do NOT Rebuild)
 
@@ -40,7 +47,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 | Structure | Location | Status | Action for v0.8.0 |
 |---|---|---|---|
-| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `clip_padding_seconds`, `overlap`, `sensitivity`, `threads` |
+| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `enabled`, `clip_padding_seconds`, `overlap`, `sensitivity`, `threads` |
 | `defaults.yml` (birdnet section) | `services/controller/config/defaults.yml:75-80` | Has `confidence_threshold` only | **Extend** with new fields to match schema |
 | `Detection` ORM model | `packages/core/src/silvasonic/core/database/models/detections.py` | Missing `clip_path` column | **Add** `clip_path: Mapped[str \| None]` to match DDL |
 | `Recording` ORM model | `packages/core/src/silvasonic/core/database/models/recordings.py` | Complete — has `analysis_state` JSONB | ✅ Reuse as-is (read-only from BirdNET) |
@@ -49,18 +56,27 @@ The following structures already exist and MUST be reused or extended in-place:
 | `_CLEANUP_TABLES` | `tests/integration/conftest.py:21-27` | Missing `detections` | **Add** `detections` before `recordings` (FK order) |
 | Existing `BirdnetSettings` unit test | `packages/core/tests/unit/test_service.py:426-429` | Only checks `confidence_threshold` | **Extend** to verify new fields and defaults |
 | `ix_recordings_analysis_pending` index | `01-init-schema.sql:119-121` | Complete — partial index on `local_deleted=false` | ✅ Worker Pull query uses this |
+| Global Test Fixtures | `tests/fixtures/audio/` | Three files (Robin, Blackbird, Sparrow) pre-processed to exact 10s, 48kHz mono | ✅ Use for all BirdNET system/integration tests to simulate `Recorder` `processed/` output |
 
 ---
 
-## Phase 1: Architecture Spike: TFLite vs Official Analyzer (Commit 1)
+## Phase 1: Architecture Spike — COMPLETED ✅
 
 **Goal:** Time-boxed evaluation of inference methods to finalize the architectural approach.
 
 ### Tasks
-- [ ] Create a temporary script in `scripts/spike_birdnet/` testing identical 3-second audio chunks.
-- [ ] Benchmark memory footprint AND initialization time of the official `BirdNET-Analyzer` Python package vs. bare-metal `tflite_runtime.Interpreter`.
-- [ ] Document findings in a new architecture decision record (e.g. `docs/adr/0026-birdnet-inference-engine.md`).
-- [ ] Update this milestone document if the official analyzer is chosen to reflect its specific usage constraints.
+- [x] Create a temporary script in `scripts/spikes/birdnet/` testing 10-second audio chunks, processing multiple chunks in succession.
+- [x] Benchmark memory footprint AND initialization time of the official `BirdNET-Analyzer` Python package vs. bare-metal `tflite_runtime.Interpreter`.
+- [x] Optimize post-processing: use numpy boolean mask instead of Python for-loop over all 6,522 species scores (25× faster).
+- [x] Document findings in [ADR-0027](../../adr/0027-birdnet-inference-engine.md) (Inference Engine) and [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md) (Python 3.11 for ML Workers).
+
+#### Implementation Insights from Spike (for Phase 3)
+- **Pre-compute `allowed_mask`** at init: `np.array([label in allowed_species for label in labels], dtype=bool)` — avoids 6,522-element Python loop per window
+- **Numpy vectorized filtering**: `mask = (scores >= min_conf) & allowed_mask; hits = np.where(mask)[0]` — iterate only over actual detections (typically 3-6)
+- **No resampling needed**: Recorder delivers 48 kHz S16LE WAVs; BirdNET model expects 48 kHz
+- **Native CPU Threading**: A single thread (`num_threads=1`) is entirely sufficient for near real-time inference.
+- **Sigmoid convention**: `1.0 / (1.0 + np.exp(sensitivity * clip(x, -15, 15)))` with `sensitivity = -1.0` (negative!)
+- **Meta-model input**: `[latitude, longitude, week_48]` as float32, threshold ≥ 0.03 for location filtering
 
 ---
 
@@ -71,11 +87,11 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [ ] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
-- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`).
+- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`enabled: bool = True`, `clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`).
 - [ ] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
 - [ ] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
 - [ ] **Add** `birdnet` entry to `scripts/workspace_dirs.txt`.
-- [ ] Create `Containerfile` including dependencies chosen in the Spike.
+- [ ] Create `Containerfile` with `python:3.11-slim-bookworm` base image (per [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md)) including `tflite-runtime`, `numpy`, `soundfile` dependencies.
 - [ ] Initialize `SilvaService` base class. Read `system_config` on startup for `BirdnetSettings`, `SystemSettings` (latitude, longitude) — use `SystemConfig` model.
 
 ### Testing (Phase 2)
@@ -103,18 +119,20 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ---
 
-## Phase 4: Controller System Services Orchestration (Commit 4)
+## Phase 4: Controller System Config Orchestration (Commit 4)
 
-**Goal:** Provide generic orchestration capabilities in the Controller for non-recorder background workers based on the `system_services` table.
-**Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop the remote background worker based on the database.
+**Goal:** Provide execution capabilities in the Controller for the BirdNET worker based on the `system_config` table.
+**Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop this background worker.
 
 ### Tasks
-- [ ] Implement a `SystemServiceEvaluator` in `services/controller/src/silvasonic/controller/reconciler.py` that queries the `system_services` table for `enabled=true` services.
-- [ ] Provide a generic spec builder for background workers (e.g. `build_system_service_spec()`) that resolves container images and mounts standard paths.
-- [ ] Add `birdnet` as a seeded entry in the `system_services` table (`enabled=false` initially during development to prevent unchecked startup during testing).
+- [ ] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=300m`, `oom_score_adj=500`).
+- [ ] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that iterates through the registry and matches against the `system_config` dictionary for `enabled = True`.
+- [ ] Refactor `_reconcile_once` in the `ReconciliationLoop` to securely invoke both `DeviceStateEvaluator` and `SystemWorkerEvaluator`. Isolate each with `try...except` blocks to prevent worker configuration mismatches from halting active `recorder` container execution.
+- [ ] Make sure `birdnet` is seeded in the `system_config` table.
 
 ### Testing (Phase 4)
-- [ ] **`unit`** — Add unit tests for `SystemServiceEvaluator` asserting that it only returns specs for enabled services.
+- [ ] **`unit`** — Add unit tests for the newly decoupled `SystemWorkerEvaluator`.
+- [ ] **`unit`** — Ensure `Reconciler._reconcile_once` safely catches simulated exceptions from the worker evaluator while remaining capable of yielding hardware specs.
 
 ---
 
@@ -163,7 +181,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Testing (Phase 7)
 - [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` (and clips, if Stretch Goal is implemented).
-- [ ] **`system_hw_manual`** — `tests/system/test_hw_birdnet_pipeline.py`: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via `enabled=true` system service setting.
+- [ ] **`system_hw_manual`** — `tests/system/test_hw_birdnet_pipeline.py`: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via `enabled=true` system config setting.
 
 ---
 
@@ -172,7 +190,7 @@ The following structures already exist and MUST be reused or extended in-place:
 **Goal:** Formalize the release strictly according to `release_checklist.md`.
 
 ### Tasks
-- [ ] **Release Decision:** Decide if the `birdnet` system_service seeder should be switched to `enabled=true` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
+- [ ] **Release Decision:** Decide if the `birdnet` system_config seeder should be switched to `enabled=true` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
 - [ ] Ensure branch is clean and `just check-all` finishes successfully.
 - [ ] Update `__version__` in `packages/core/src/silvasonic/core/__init__.py`.
 - [ ] Update version in the root `pyproject.toml`.

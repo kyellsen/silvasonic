@@ -93,6 +93,11 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv*",
+]
 
 [tool.ruff.lint]
 select = [

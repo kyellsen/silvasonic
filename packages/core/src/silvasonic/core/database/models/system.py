@@ -34,16 +34,6 @@ class Device(Base):
     workspace_name: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
 
 
-class SystemService(Base):
-    """Registry of dynamic services managed by the Controller."""
-
-    __tablename__ = "system_services"
-
-    name: Mapped[str] = mapped_column(Text, primary_key=True)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    status: Mapped[str] = mapped_column(Text, default="stopped", nullable=False)
-
-
 class SystemConfig(Base):
     """Global Key-Value store for application settings (ADR-0023)."""
 

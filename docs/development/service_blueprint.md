@@ -186,7 +186,11 @@ CMD ["silvasonic.<name>"]
 
 ### Mandatory Rules
 
-- **Base image:** `python:3.13-slim-bookworm` (no exceptions)
+- **Base image:** `python:3.13-slim-bookworm` (default for all services)
+  - **Exception:** ML worker services (e.g., BirdNET) MAY use `python:3.11-slim-bookworm`
+    when hardware-specific ML libraries (e.g., `tflite-runtime` on aarch64) lack wheels for
+    Python ≥ 3.12. This exception **requires** a documented ADR. See
+    [ADR-0028](../adr/0028-python-version-flexibility-ml-workers.md).
 - **Build context:** Always the repo root (`.`), never the service directory
 - `curl` is always required (healthcheck)
 - `packages/` is always copied (contains `silvasonic-core`)
