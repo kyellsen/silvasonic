@@ -23,4 +23,4 @@ stream:
   raw_enabled: true # Archive full 192kHz
   processed_enabled: true # Downsample to 48kHz for BirdNET and Web
   live_stream_enabled: true # Enable MP3 stream
-  segment_duration_s: 15 # Short segments for faster processing
+  segment_duration_s: 10 # Short segments for faster processing

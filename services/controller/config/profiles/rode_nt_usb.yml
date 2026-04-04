@@ -22,4 +22,4 @@ stream:
   raw_enabled: true
   processed_enabled: false    # Native 48kHz = no downsampling needed
   live_stream_enabled: true
-  segment_duration_s: 15
+  segment_duration_s: 10
