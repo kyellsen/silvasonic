@@ -2,366 +2,374 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.silvasonic.de/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/AGENTS/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/ROADMAP/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/STRUCTURE/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/VISION/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/glossary/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/hardware/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0001-use-uv/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0002-use-pyproject-toml/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0003-frontend-architecture/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0004-use-podman/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0005-two-worlds-separation/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0006-bind-mounts-over-volumes/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0007-rootless-os-compliance/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0008-domain-driven-isolation/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0009-zero-trust-data-sharing/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0010-naming-conventions/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0011-audio-recording-strategy/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0012-use-pydantic/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0013-tier2-container-management/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0014-dual-deployment-strategy/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0015-nvme-only-storage/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0016-hybrid-yaml-db-profiles/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0017-service-state-management/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0018-worker-pull-orchestration/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0019-unified-service-infrastructure/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0020-resource-limits-qos/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0021-frontend-design-system/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0022-live-log-streaming/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0023-configuration-management/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0024-ffmpeg-audio-engine/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0025-recordings-standard-table/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/0026-timescaledb-edge-analytics/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/adr/_template/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/filesystem_governance/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/frontend_design_system/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/frontend_features/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/messaging_patterns/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/microphone_profiles/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/arch/port_allocation/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/deployment/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/commit/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/release_checklist/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/service_blueprint/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/testing/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/001-usb-flapping/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/002-ntp-time-jump/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/003-upsert-volatile-config/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/004-recorder-watchdog-silent-exit/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/005-panic-fallback-split-brain/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/006-controller-adopts-unhealthy-recorders/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/007-dry-documentation-refactoring/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/issues/_template/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/_template/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_10_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_1_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_2_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_3_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_4_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_5_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_6_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_7_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/development/milestones/milestone_0_7_1/</loc>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_8_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_0_9_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/development/milestones/milestone_1_0_0/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/_template/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/batdetect/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/birdnet/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/controller/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/database/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/services/db_viewer/</loc>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/gateway/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/icecast/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/processor/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/recorder/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/redis/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/tailscale/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/weather/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/web_interface/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/services/web_mock/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/_template/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/batdetect/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/birdnet/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/cloud_sync/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/controller/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/gateway/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/icecast/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/processor/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/recorder/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
     <url>
          <loc>https://docs.silvasonic.de/user_stories/web_interface/</loc>
-         <lastmod>2026-04-03</lastmod>
+         <lastmod>2026-04-04</lastmod>
     </url>
 </urlset>
