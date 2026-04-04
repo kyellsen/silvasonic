@@ -1,34 +1,44 @@
-# silvasonic-web-mock
+# silvasonic-db-viewer
 
-> **Tier:** 1 (Infrastructure) · **Status:** Implemented · **Port:** 8001
+> **Status:** Implemented (since v0.7.1) · **Tier:** 1 · **Instances:** Single · **Port:** 8002
+>
+> 📋 **User Stories:** `n/a` (Developer Tool)
 
-Development UI scaffold for the Silvasonic Web Interface. Serves the **complete UI shell** (FastAPI + Jinja2 + HTMX + Alpine.js + Tailwind CSS + DaisyUI) with mock data for most views. Uses the **real database** for Settings persistence and station identity, and **Redis** for heartbeat publishing.
+**AS-IS:** Developer UI for inspecting database tables and performing multi-format data exports (CSV, JSON, Parquet).
+**Target:** Stable background utility; UI layout and export functions completed.
+
+---
 
 ## 1. The Problem / The Gap
 
-- Iterate on UI/UX with realistic layout and interactions
-- Validate the full layout: header, sidebar, main, inspector, footer console
-- Serve as the **clonable base** for the real `web-interface` (v0.9.0)
-
-When building the real web-interface, clone this service and replace `mock_data` imports route-by-route with real async DB queries. The `ServiceContext` lifespan pattern, templates, static assets, and routing transfer without modification.
+*   Developers need a way to quickly verify database state (e.g. injected events, processed audio metadata) without dropping into `psql` or setting up complex desktop DB tools.
+*   Data scientists/analysts need to extract processed data chunks easily.
 
 ## 2. User Benefit
+
+*   Visual, responsive verification of system data in real-time.
+*   One-click download of table data into standard formats (CSV, JSON, Parquet) for external analysis tools.
 
 ## 3. Core Responsibilities
 
 ### Inputs
-* User interaction / HTTP Requests.
+*   User interaction via browser.
+*   Direct reads from the TimescaleDB.
+
 ### Processing
-* Jinja2 Server-Side rendering with HTMX swaps.
+*   FastAPI backend rendering dynamic HTML chunks via Jinja2 & HTMX.
+*   Conversion of table rows into structured data files using `polars`.
+
 ### Outputs
-* HTML payload & Tailwind CSS styling.
+*   Responsive HTML payload & Tailwind CSS styling.
+*   Data files (CSV, JSON, Parquet) served over HTTP.
 
 ## 4. Operational Constraints & Rules
 
 | Aspect           | Value / Rule                                                   |
 | ---------------- | -------------------------------------------------------------- |
 | **Immutable**    | Yes                                                            |
-| **DB Access**    | Yes (Reads Settings, Station Identity)                         |
+| **DB Access**    | Read-Only                                                      |
 | **Concurrency**  | Uvicorn Asyncio Event Loop                                     |
 | **State**        | Stateless                                                      |
 | **Privileges**   | Rootless                                                       |
@@ -37,25 +47,27 @@ When building the real web-interface, clone this service and replace `mock_data`
 
 ## 5. Configuration & Environment
 
+| Variable / Mount | Description       | Default / Example |
+| ---------------- | ----------------- | ----------------- |
+| `SILVASONIC_...` | Standard Tier 1 config | ...               |
+
+*(Controlled via `COMPOSE_PROFILES=db-viewer` in `.env`)*
+
 ## 6. Technology Stack
 
-The UI uses **Tailwind CSS v4 + DaisyUI v5**, compiled at build time — no CDN at runtime.
-
-```bash
-# Initial setup (once, requires Node.js):
-cd services/web-mock && npm install
-
-# Build CSS (one-shot, minified):
-npm run css:build
-
-# Watch mode (rebuilds on template/CSS changes):
-npm run css:watch
-```
-
-All frontend dependencies (Alpine.js, HTMX, Geist fonts) are **vendored** in `static/js/` and `static/fonts/` — no external requests at runtime.
+*   **Backend:** `fastapi`, `sqlalchemy` (async), `polars`
+*   **Frontend:** `tailwindcss` v4, `daisyui` v5, `htmx`, `alpine.js`
 
 ## 7. Out of Scope
 
+*   Write operations / Database mutation (Read-Only enforcement).
+*   Production End-User Access (this is an internal development and administrative tool).
+
 ## 8. Implementation Details (Domain Specific)
+
+*   Utilizes a push-style collapsible sidebar to maximize horizontal screen real-estate for large data tables.
+*   Uses `polars` for memory-efficient and rapid generation of Parquet and CSV files for export.
+
 ## 9. References
 
+*   [VISION.md](../../VISION.md) - Project Architecture

@@ -1,4 +1,4 @@
-# Milestone v0.7.1 — DB-Viewer (Interim Dev UI)
+# Milestone v0.7.1 — DB-Viewer
 
 > **Target:** v0.7.1 — DB-Viewer
 >
@@ -13,7 +13,7 @@
 ## Exemption Notice
 
 > [!WARNING]
-> **Test Coverage Exemption:** As a pure developer tool, the DB-Viewer is explicitly exempted from the mandatory "Changed-Path Test Audit" and "Smoke Tests" defined in `release_checklist.md`. 
+> **Test Coverage Exemption:** As an internal development and data export tool, the DB-Viewer is explicitly exempted from the mandatory "Changed-Path Test Audit" and "Smoke Tests" defined in `release_checklist.md`. 
 
 ---
 

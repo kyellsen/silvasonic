@@ -30,11 +30,12 @@
 
 ### Processing
 
-*   **Inference:** Runs BirdNET-Analyzer on 3-second audio segments, producing species predictions with confidence scores.
+*   **Inference:** Loads the BirdNET TFLite model once at startup via `tflite_runtime.Interpreter` (resident in memory for the container's lifetime). Splits processed recordings into 3-second audio windows using `soundfile`/`numpy` and runs inference per chunk. Detections are native Python objects — no CLI subprocess, no CSV intermediaries, no `birdnetlib` wrapper (see [Milestone v0.8.0](../development/milestones/milestone_0_8_0.md) for architectural rationale).
 
 ### Outputs
 
 *   **Database Rows:** Inserts classification results into the `detections` table (species label, confidence score, time range, common name).
+*   **Audio Clips:** Extracts short WAV clips (detection time range ± configurable padding) from processed recordings using `soundfile` and saves them to the BirdNET workspace (`birdnet/clips/`). The relative file path is stored in `detections.clip_path`.
 *   **Redis Events:** Publishes detection notifications (best-effort, fire-and-forget).
 
 ## 4. Operational Constraints & Rules
@@ -58,6 +59,7 @@
 | ----------------------------------- | -------------------------------------- | ----------------- |
 | `SILVASONIC_BIRDNET_PORT`           | Health endpoint port                   | `9500`            |
 | `${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z` | Processed recordings (read-only mount) | —                 |
+| `${SILVASONIC_WORKSPACE_PATH}/birdnet:z` | BirdNET workspace (clips, read-write)  | —                 |
 | `POSTGRES_HOST`, `SILVASONIC_DB_*`  | Database connection                    | via `.env`        |
 
 ### Dynamic Configuration (Database)
@@ -69,6 +71,10 @@ Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an *
 | `system`  | `latitude`             | `53.55` | Station latitude — restricts species list to region  |
 | `system`  | `longitude`            | `9.99`  | Station longitude — restricts species list to region |
 | `birdnet` | `confidence_threshold` | `0.25`  | Minimum confidence for species detection             |
+| `birdnet` | `clip_padding_seconds` | `3.0`   | Padding around detection window for clip extraction  |
+| `birdnet` | `overlap`              | `0.0`   | Overlap between analysis windows (0.0–3.0 seconds)   |
+| `birdnet` | `sensitivity`          | `1.0`   | Model sensitivity (0.5–1.5)                          |
+| `birdnet` | `threads`              | `1`     | Number of inference threads                          |
 
 **Update Mechanism (State Reconciliation):**
 1. User changes settings in Web UI.
@@ -78,9 +84,9 @@ Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an *
 
 ## 6. Technology Stack
 
-*   **ML Model:** BirdNET-Analyzer — TFLite-based avian species classifier.
-*   **Runtime:** TensorFlow Lite (`tflite-runtime`). This is the official and mandatory requirement for deployment on resource-constrained Edge devices like the Raspberry Pi 5 to drastically reduce RAM and CPU overhead compared to full TensorFlow.
-*   **Audio:** `soundfile`, `numpy` (spectrogram / segment extraction).
+*   **ML Model:** BirdNET TFLite model (~30 MB), loaded once at container startup via `tflite_runtime.Interpreter` (resident in memory for the container's lifetime). Oriented on BirdNET-Pi's native integration approach — no CLI subprocess, no `birdnetlib` wrapper.
+*   **Runtime:** `tflite-runtime` — mandatory for resource-constrained RPi 5 deployment. Explicit memory management (`del audio_chunk`, `gc.collect()`) prevents leaks during long-running inference loops.
+*   **Audio:** `soundfile` (WAV I/O, clip extraction), `numpy` (spectrogram processing, 3-second chunk splitting).
 
 ## 7. Open Questions & Future Ideas
 

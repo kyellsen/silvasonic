@@ -38,6 +38,7 @@
 ### Outputs
 
 *   **Database Rows:** Inserts classification results into the `detections` table (species label, confidence score, time range, common name).
+*   **Audio Clips:** Extracts short WAV clips (detection range ± padding) from raw recordings and saves them to the BatDetect workspace (`batdetect/clips/`). The relative file path is stored in `detections.clip_path`.
 *   **Redis Events:** Publishes detection notifications (best-effort, fire-and-forget).
 
 ## 4. Operational Constraints & Rules
@@ -65,6 +66,7 @@
 | ---------------------------------- | ------------------------------------ | ----------------- |
 | `SILVASONIC_BATDETECT_PORT`        | Health endpoint port                 | `9500`            |
 | `${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z` | Recorder workspace (read-only mount) | —                 |
+| `${SILVASONIC_WORKSPACE_PATH}/batdetect:z` | BatDetect workspace (clips, read-write) | —              |
 | `POSTGRES_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
 
 ### Dynamic Configuration (Database)

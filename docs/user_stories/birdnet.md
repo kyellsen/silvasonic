@@ -15,6 +15,7 @@
 
 - [ ] All indexed recordings are automatically analyzed — without manual triggering.
 - [ ] For each detected bird call, the species, the time in the audio, and a confidence value are stored.
+- [ ] For each detection, a short audio clip (WAV) is extracted and saved to the BirdNET workspace. The file path is stored in the database.
 - [ ] The analysis runs in the background and processes the backlog autonomously.
 - [ ] Already analyzed recordings are not processed again.
 
@@ -38,6 +39,7 @@
 - [ ] Each species has a detail page with description, image, and temporal activity history.
 - [ ] The list can be sorted by frequency, date, or confidence.
 - [ ] Only detections above the configured confidence threshold are displayed.
+- [ ] Each detection has a playable audio clip in the detail view (Wavesurfer.js player with spectrogram overlay).
 
 ### References
 

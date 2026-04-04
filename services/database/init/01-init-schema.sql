@@ -136,6 +136,7 @@ CREATE TABLE detections (
     confidence DOUBLE PRECISION NOT NULL,
     label TEXT NOT NULL,
     common_name TEXT,
+    clip_path TEXT,
     details JSONB NOT NULL,
     PRIMARY KEY (time, id),
     FOREIGN KEY(recording_id) REFERENCES recordings (id)
