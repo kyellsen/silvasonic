@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/ROADMAP/">
+        <link rel="canonical" href="https://docs.silvasonic.de/adr/0029-system-worker-orchestration/">
       
       
-        <link rel="prev" href="../VISION/">
-      
-      
-        <link rel="next" href="../arch/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Roadmap - Silvasonic</title>
+        <title>ADR-0029: System Worker Orchestration - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#silvasonic-roadmap" class="md-skip">
+        <a href="#adr-0029-system-worker-orchestration" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Roadmap
+              ADR-0029: System Worker Orchestration
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTS/" class="md-nav__link">
+      <a href="../../AGENTS/" class="md-nav__link">
         
   
   
@@ -280,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../VISION/" class="md-nav__link">
+      <a href="../../VISION/" class="md-nav__link">
         
   
   
@@ -304,37 +300,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Roadmap
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -350,59 +319,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#milestone-roadmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Milestone Roadmap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#detailed-implementation-plans" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detailed Implementation Plans
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -461,7 +377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
+      <a href="../../arch/" class="md-nav__link">
         
   
   
@@ -489,7 +405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/filesystem_governance/" class="md-nav__link">
+      <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -517,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/messaging_patterns/" class="md-nav__link">
+      <a href="../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -545,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/port_allocation/" class="md-nav__link">
+      <a href="../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -573,7 +489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/microphone_profiles/" class="md-nav__link">
+      <a href="../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -655,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/controller/" class="md-nav__link">
+      <a href="../../services/controller/" class="md-nav__link">
         
   
   
@@ -683,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/database/" class="md-nav__link">
+      <a href="../../services/database/" class="md-nav__link">
         
   
   
@@ -711,7 +627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/recorder/" class="md-nav__link">
+      <a href="../../services/recorder/" class="md-nav__link">
         
   
   
@@ -739,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/redis/" class="md-nav__link">
+      <a href="../../services/redis/" class="md-nav__link">
         
   
   
@@ -767,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_mock/" class="md-nav__link">
+      <a href="../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -795,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/processor/" class="md-nav__link">
+      <a href="../../services/processor/" class="md-nav__link">
         
   
   
@@ -823,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/gateway/" class="md-nav__link">
+      <a href="../../services/gateway/" class="md-nav__link">
         
   
   
@@ -851,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_interface/" class="md-nav__link">
+      <a href="../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -879,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_design_system/" class="md-nav__link">
+      <a href="../../arch/frontend_design_system/" class="md-nav__link">
         
   
   
@@ -907,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_features/" class="md-nav__link">
+      <a href="../../arch/frontend_features/" class="md-nav__link">
         
   
   
@@ -935,7 +851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/icecast/" class="md-nav__link">
+      <a href="../../services/icecast/" class="md-nav__link">
         
   
   
@@ -963,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/birdnet/" class="md-nav__link">
+      <a href="../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -991,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/weather/" class="md-nav__link">
+      <a href="../../services/weather/" class="md-nav__link">
         
   
   
@@ -1019,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/batdetect/" class="md-nav__link">
+      <a href="../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -1047,7 +963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/tailscale/" class="md-nav__link">
+      <a href="../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1129,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -1211,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1239,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0001-use-uv/" class="md-nav__link">
+      <a href="../0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1267,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1295,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0003-frontend-architecture/" class="md-nav__link">
+      <a href="../0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1323,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0004-use-podman/" class="md-nav__link">
+      <a href="../0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1351,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1379,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1407,7 +1323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1435,7 +1351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1463,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1491,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0010-naming-conventions/" class="md-nav__link">
+      <a href="../0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1519,7 +1435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1547,7 +1463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0012-use-pydantic/" class="md-nav__link">
+      <a href="../0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1575,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0013-tier2-container-management/" class="md-nav__link">
+      <a href="../0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1603,7 +1519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1631,7 +1547,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1659,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1687,7 +1603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0017-service-state-management/" class="md-nav__link">
+      <a href="../0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1715,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1743,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1771,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1799,7 +1715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0021-frontend-design-system/" class="md-nav__link">
+      <a href="../0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -1827,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0022-live-log-streaming/" class="md-nav__link">
+      <a href="../0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -1855,7 +1771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0023-configuration-management/" class="md-nav__link">
+      <a href="../0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -1883,7 +1799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -1965,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -1993,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -2021,7 +1937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -2049,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2077,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2105,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2133,7 +2049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2161,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2189,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2217,7 +2133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2245,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/_template/" class="md-nav__link">
+      <a href="../../development/milestones/_template/" class="md-nav__link">
         
   
   
@@ -2273,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/service_blueprint/" class="md-nav__link">
+      <a href="../../development/service_blueprint/" class="md-nav__link">
         
   
   
@@ -2301,7 +2217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../../development/testing/" class="md-nav__link">
         
   
   
@@ -2329,7 +2245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/release_checklist/" class="md-nav__link">
+      <a href="../../development/release_checklist/" class="md-nav__link">
         
   
   
@@ -2411,7 +2327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/controller/" class="md-nav__link">
+      <a href="../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2439,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/recorder/" class="md-nav__link">
+      <a href="../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2467,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2495,7 +2411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2523,7 +2439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/processor/" class="md-nav__link">
+      <a href="../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2551,7 +2467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/gateway/" class="md-nav__link">
+      <a href="../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2579,7 +2495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/icecast/" class="md-nav__link">
+      <a href="../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2607,7 +2523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/cloud_sync/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
@@ -2635,7 +2551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2670,7 +2586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hardware/" class="md-nav__link">
+      <a href="../../hardware/" class="md-nav__link">
         
   
   
@@ -2697,7 +2613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../glossary/" class="md-nav__link">
         
   
   
@@ -2744,10 +2660,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#milestone-roadmap" class="md-nav__link">
+  <a href="#status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Milestone Roadmap
+        Status
       
     </span>
   </a>
@@ -2755,10 +2671,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detailed-implementation-plans" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detailed Implementation Plans
+        Context
       
     </span>
   </a>
@@ -2766,10 +2682,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
+  <a href="#decision" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Also
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rationale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rationale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
       
     </span>
   </a>
@@ -2796,151 +2745,39 @@
   
 
 
-<h1 id="silvasonic-roadmap">Silvasonic — Roadmap<a class="headerlink" href="#silvasonic-roadmap" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Status:</strong> v0.7.0 — Gateway ✅</p>
-</blockquote>
-<hr />
-<h2 id="milestone-roadmap">Milestone Roadmap<a class="headerlink" href="#milestone-roadmap" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Version</th>
-<th>Milestone</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>v0.1.0</strong></td>
-<td>Requirements Engineering &amp; Specification — Complete specification of all features, tech stack, architecture, and service logic up to v1.0.0 (MVP) in <code>.md</code> files with clear roadmap. Repo structure, core pkg, DB, CI pipeline, ADRs, Podman as implementation foundation</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.2.0</strong></td>
-<td>Service Infrastructure — Redis container, <code>SilvaService</code> base class, <code>core.service</code>, <code>core.redis</code>, <code>core.heartbeat</code>. All services inherit unified lifecycle. Heartbeats go live (ADR-0019). Web-Mock dev UI</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.3.0</strong></td>
-<td>Tier 2 Container Management — Podman lifecycle, USB Detection, Profile Matching &amp; Auto-Enrollment, Config Seeding, Log Streaming (ADR-0022), Reconciliation Loop</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.4.0</strong></td>
-<td>Robust Audio Engine — FFmpeg Dual Stream (Raw <code>data/raw</code> + Processed <code>data/processed</code> 48kHz S16LE), Segment Promotion, Graceful Shutdown, Watchdog &amp; Auto-Recovery</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.0</strong></td>
-<td>Analysis &amp; Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.1</strong></td>
-<td>Architecture &amp; Stability Fixes — Core Data Integrity, USB Debouncing, Workspace mapping</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.2</strong></td>
-<td>Core Infrastructure Upgrade — Python 3.13 adoption and runtime typing simplification</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.3</strong></td>
-<td>Cloud Sync Preparatory Refactoring — Uploader wipe, storage_remotes DB drop, Test Suite Fixes</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.6.0</strong></td>
-<td>Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.7.0</strong></td>
-<td>Gateway (Caddy reverse proxy, HTTPS termination, internal routing)</td>
-<td>✅ Current</td>
-</tr>
-<tr>
-<td><strong>v0.7.1</strong></td>
-<td>DB-Viewer — Database inspector &amp; Data Export UI</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.8.0</strong></td>
-<td>BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)</td>
-<td>🔨 In Progress</td>
-</tr>
-<tr>
-<td>v0.9.0</td>
-<td>Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v0.10.0</td>
-<td>Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: <code>kyellsen/silvasonic.de</code>)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.0.0</td>
-<td>MVP — Production-ready field deployment, stabilization (Podman Quadlets, Ansible)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.0.0+</td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>v1.1.0</td>
-<td>Icecast — Live Opus audio stream from Recorder to Web-Interface</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.2.0</td>
-<td>Weather — Environmental data correlation</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.3.0</td>
-<td>BatDetect — On-device bat species classification</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.4.0</td>
-<td>Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Cloud-Sync extension, analytics-optimized)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.5.0</td>
-<td>Tailscale — Secure remote access, VPN mesh networking</td>
-<td>⏳ Planned</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="detailed-implementation-plans">Detailed Implementation Plans<a class="headerlink" href="#detailed-implementation-plans" title="Permanent link">&para;</a></h2>
-<p>For concrete, phase-level implementation tasks see:</p>
+<h1 id="adr-0029-system-worker-orchestration">ADR-0029: System Worker Orchestration<a class="headerlink" href="#adr-0029-system-worker-orchestration" title="Permanent link">&para;</a></h1>
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
+<p>Accepted</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>As the Silvasonic system expands with Tier 2 analysis containers (e.g., BirdNET, BatDetect, Weather), the Controller must orchestrate their lifecycle (starting and stopping). Originally, container orchestration was tightly coupled to hardware devices (<code>DeviceStateEvaluator</code>), which yields a <code>Tier2ServiceSpec</code> for each enrolled microphone. </p>
+<p>Unlike Recorders which map 1:1 to USB microphones, background analysis workers are singletons. They run exactly once per node and pull data asynchronously from the database (Worker Pull pattern, ADR-0018).
+If we hardcode singleton workers into the existing hardware evaluation loop, we violate the Single Responsibility Principle and risk a configuration error in a background worker crashing the evaluation loop, thereby halting audio recordings (Primary Directive: Data Capture Integrity).</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p>We will decouple Tier 2 orchestration into separate <strong>State Evaluators</strong>:
+1. <strong><code>DeviceStateEvaluator</code></strong>: Dedicated exclusively to mapping hardware devices to Recorder containers.
+2. <strong><code>SystemWorkerEvaluator</code></strong>: A new, generic evaluator that manages singleton system workers.</p>
+<p>To keep the <code>SystemWorkerEvaluator</code> universally extensible (KISS) and Configuration-Driven, we will introduce a static Python-based <strong>Worker Registry</strong> (<code>worker_registry.py</code>). This registry will hold plain dataclasses defining the operational footprint (<code>config_key</code>, <code>container_name</code>, <code>oom_score_adj</code>, <code>mem_limit</code>) for each supported background worker. </p>
+<p>The Controller's <code>ReconciliationLoop</code> will execute both evaluators sequentially, safely aggregating their target specs by isolating them with individual <code>try...except</code> blocks before dispatching to Podman.</p>
+<h2 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Architecture Extensibility (Open-Closed Principle):</strong> Adding <code>batdetect</code> later requires zero changes to the Controller's logic. A developer only needs to append a new <code>BackgroundWorker</code> definitions to the <code>SYSTEM_WORKERS</code> Python list.</li>
+<li><strong>Crash Isolation:</strong> If evaluating the <code>birdnet</code> database configuration yields a crash, catching it explicitly prevents the <code>recorder</code> specs from being lost. The <code>sync_state</code> engine still successfully keeps microphones recording.</li>
+<li><strong>Data Integrity:</strong> This strictly enforces the "Data Capture Integrity is paramount" directive by shielding the hardware capturing pipeline from backend AI worker failures.</li>
+<li><strong>Type-Safety:</strong> Using a static Python list in <code>worker_registry.py</code> provides full <code>mypy</code> type validation, preventing misspelled container flags without needing to parse or validate external JSON/YAML templates.</li>
+</ol>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_1_0.md">Milestone v0.1.0</a></strong> — Phases &amp; tasks for Requirements Engineering &amp; Specification</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_2_0.md">Milestone v0.2.0</a></strong> — Phases &amp; tasks for Service Infrastructure</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_3_0.md">Milestone v0.3.0</a></strong> — Phases &amp; tasks for Tier 2 Container Management</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_4_0.md">Milestone v0.4.0</a></strong> — Phases &amp; tasks for Audio Recording (Dual Stream)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_5_0.md">Milestone v0.5.0</a></strong> — Phases &amp; tasks for Analysis &amp; Backend Orchestration</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_6_0.md">Milestone v0.6.0</a></strong> — Phases &amp; tasks for Processor Cloud Sync (Upload Worker)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_0.md">Milestone v0.7.0</a></strong> — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_1.md">Milestone v0.7.1</a></strong> — DB-Viewer</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_0.md">Milestone v0.8.0</a></strong> — BirdNET (On-device Avian Inference)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md">Milestone v0.9.0</a></strong> — Web-Interface (Dashboard, Service Control, <code>system_services</code> Seeding)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md">Milestone v0.10.0</a></strong> — Marketing Landing Page (Astro) -&gt; <em><code>silvasonic.de</code> repo</em></li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md">Milestone v1.0.0</a></strong> — MVP Production Deployment (Quadlets, Ansible, Hardening)</li>
+<li><strong>Positive:</strong> Recorder orchestration is entirely shielded from analysis worker crashes.</li>
+<li><strong>Positive:</strong> Trivial scalability for future singleton containers.</li>
+<li><strong>Positive:</strong> Quality of Service Limits (oom_score_adj, mem_limit) for all background tasks are defined cleanly in one file.</li>
+<li><strong>Negative:</strong> Requires introducing a minor structural refactor (adding the registry and evaluator classes) to the Controller rather than a quick 2-line hardcoded hack.</li>
 </ul>
-<hr />
-<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a></strong> — Core philosophy, architecture, design principles</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/README.md">README.md</a></strong> — Project overview, quick start</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/index.md">docs/index.md</a></strong> — Full technical documentation</li>
+<li><a href="0017-state-reconciliation-pattern.md">ADR-0017: State Reconciliation Pattern</a></li>
+<li><a href="../0018-worker-pull-orchestration/">ADR-0018: Worker Pull Orchestration</a></li>
+<li><a href="../0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS</a></li>
+<li><a href="../../development/milestones/milestone_0_8_0/">Milestone v0.8.0 Phase 4</a></li>
 </ul>
 
 
@@ -2991,10 +2828,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

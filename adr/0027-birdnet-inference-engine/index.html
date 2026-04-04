@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/ROADMAP/">
+        <link rel="canonical" href="https://docs.silvasonic.de/adr/0027-birdnet-inference-engine/">
       
       
-        <link rel="prev" href="../VISION/">
-      
-      
-        <link rel="next" href="../arch/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Roadmap - Silvasonic</title>
+        <title>ADR-0027: BirdNET Inference Engine - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#silvasonic-roadmap" class="md-skip">
+        <a href="#adr-0027-birdnet-inference-engine" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Roadmap
+              ADR-0027: BirdNET Inference Engine
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTS/" class="md-nav__link">
+      <a href="../../AGENTS/" class="md-nav__link">
         
   
   
@@ -280,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../VISION/" class="md-nav__link">
+      <a href="../../VISION/" class="md-nav__link">
         
   
   
@@ -304,37 +300,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Roadmap
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -350,59 +319,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#milestone-roadmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Milestone Roadmap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#detailed-implementation-plans" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detailed Implementation Plans
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -461,7 +377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
+      <a href="../../arch/" class="md-nav__link">
         
   
   
@@ -489,7 +405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/filesystem_governance/" class="md-nav__link">
+      <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -517,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/messaging_patterns/" class="md-nav__link">
+      <a href="../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -545,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/port_allocation/" class="md-nav__link">
+      <a href="../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -573,7 +489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/microphone_profiles/" class="md-nav__link">
+      <a href="../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -655,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/controller/" class="md-nav__link">
+      <a href="../../services/controller/" class="md-nav__link">
         
   
   
@@ -683,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/database/" class="md-nav__link">
+      <a href="../../services/database/" class="md-nav__link">
         
   
   
@@ -711,7 +627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/recorder/" class="md-nav__link">
+      <a href="../../services/recorder/" class="md-nav__link">
         
   
   
@@ -739,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/redis/" class="md-nav__link">
+      <a href="../../services/redis/" class="md-nav__link">
         
   
   
@@ -767,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_mock/" class="md-nav__link">
+      <a href="../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -795,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/processor/" class="md-nav__link">
+      <a href="../../services/processor/" class="md-nav__link">
         
   
   
@@ -823,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/gateway/" class="md-nav__link">
+      <a href="../../services/gateway/" class="md-nav__link">
         
   
   
@@ -851,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_interface/" class="md-nav__link">
+      <a href="../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -879,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_design_system/" class="md-nav__link">
+      <a href="../../arch/frontend_design_system/" class="md-nav__link">
         
   
   
@@ -907,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_features/" class="md-nav__link">
+      <a href="../../arch/frontend_features/" class="md-nav__link">
         
   
   
@@ -935,7 +851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/icecast/" class="md-nav__link">
+      <a href="../../services/icecast/" class="md-nav__link">
         
   
   
@@ -963,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/birdnet/" class="md-nav__link">
+      <a href="../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -991,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/weather/" class="md-nav__link">
+      <a href="../../services/weather/" class="md-nav__link">
         
   
   
@@ -1019,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/batdetect/" class="md-nav__link">
+      <a href="../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -1047,7 +963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/tailscale/" class="md-nav__link">
+      <a href="../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1129,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -1211,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1239,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0001-use-uv/" class="md-nav__link">
+      <a href="../0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1267,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1295,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0003-frontend-architecture/" class="md-nav__link">
+      <a href="../0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1323,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0004-use-podman/" class="md-nav__link">
+      <a href="../0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1351,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1379,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1407,7 +1323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1435,7 +1351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1463,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1491,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0010-naming-conventions/" class="md-nav__link">
+      <a href="../0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1519,7 +1435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1547,7 +1463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0012-use-pydantic/" class="md-nav__link">
+      <a href="../0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1575,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0013-tier2-container-management/" class="md-nav__link">
+      <a href="../0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1603,7 +1519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1631,7 +1547,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1659,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1687,7 +1603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0017-service-state-management/" class="md-nav__link">
+      <a href="../0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1715,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1743,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1771,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1799,7 +1715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0021-frontend-design-system/" class="md-nav__link">
+      <a href="../0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -1827,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0022-live-log-streaming/" class="md-nav__link">
+      <a href="../0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -1855,7 +1771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0023-configuration-management/" class="md-nav__link">
+      <a href="../0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -1883,7 +1799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -1965,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -1993,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -2021,7 +1937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -2049,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2077,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2105,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2133,7 +2049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2161,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2189,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2217,7 +2133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2245,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/_template/" class="md-nav__link">
+      <a href="../../development/milestones/_template/" class="md-nav__link">
         
   
   
@@ -2273,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/service_blueprint/" class="md-nav__link">
+      <a href="../../development/service_blueprint/" class="md-nav__link">
         
   
   
@@ -2301,7 +2217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../../development/testing/" class="md-nav__link">
         
   
   
@@ -2329,7 +2245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/release_checklist/" class="md-nav__link">
+      <a href="../../development/release_checklist/" class="md-nav__link">
         
   
   
@@ -2411,7 +2327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/controller/" class="md-nav__link">
+      <a href="../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2439,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/recorder/" class="md-nav__link">
+      <a href="../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2467,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2495,7 +2411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2523,7 +2439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/processor/" class="md-nav__link">
+      <a href="../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2551,7 +2467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/gateway/" class="md-nav__link">
+      <a href="../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2579,7 +2495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/icecast/" class="md-nav__link">
+      <a href="../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2607,7 +2523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/cloud_sync/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
@@ -2635,7 +2551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2670,7 +2586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hardware/" class="md-nav__link">
+      <a href="../../hardware/" class="md-nav__link">
         
   
   
@@ -2697,7 +2613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../glossary/" class="md-nav__link">
         
   
   
@@ -2744,10 +2660,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#milestone-roadmap" class="md-nav__link">
+  <a href="#status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Milestone Roadmap
+        Status
       
     </span>
   </a>
@@ -2755,10 +2671,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detailed-implementation-plans" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detailed Implementation Plans
+        Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#spike-methodology-v3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spike Methodology (v3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-version-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Version Constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
       
     </span>
   </a>
@@ -2766,10 +2721,132 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
+  <a href="#rationale" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Also
+        Rationale
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rationale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benchmark-results-x86_64-python-311" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark Results (x86_64, Python 3.11)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmark Results (x86_64, Python 3.11)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macro-benchmark-spike-v3-per-10s-segment-3-windows-3s" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macro Benchmark — Spike v3 (per 10s segment, 3 windows × 3s)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#micro-benchmark-bottleneck-analysis-per-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Micro Benchmark — Bottleneck Analysis (per window)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#head-to-head-optimized-native-vs-birdnetlib-per-3-window-segment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Head-to-Head — Optimized Native vs birdnetlib (per 3-window segment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#functional-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functional Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-drivers-ordered-by-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Drivers (ordered by impact)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-code-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Code Surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-spike-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Spike Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
       
     </span>
   </a>
@@ -2796,151 +2873,176 @@
   
 
 
-<h1 id="silvasonic-roadmap">Silvasonic — Roadmap<a class="headerlink" href="#silvasonic-roadmap" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Status:</strong> v0.7.0 — Gateway ✅</p>
-</blockquote>
-<hr />
-<h2 id="milestone-roadmap">Milestone Roadmap<a class="headerlink" href="#milestone-roadmap" title="Permanent link">&para;</a></h2>
+<h1 id="adr-0027-birdnet-inference-engine">ADR-0027: BirdNET Inference Engine<a class="headerlink" href="#adr-0027-birdnet-inference-engine" title="Permanent link">&para;</a></h1>
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
+<p>Accepted</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>Milestone 0.8.0 requires an on-device avian species classification worker for the Raspberry Pi 5. We evaluated two approaches:
+1. <strong>Native <code>tflite_runtime</code></strong>: Raw TFLite model with ~60 lines of custom sigmoid, label mapping, meta-model location filtering, and 3s windowing logic.
+2. <strong><code>birdnetlib</code> (community wrapper)</strong>: Community-maintained Python package representing the <code>BirdNET-Analyzer</code> buffer logic for in-memory analysis.</p>
+<h3 id="spike-methodology-v3">Spike Methodology (v3)<a class="headerlink" href="#spike-methodology-v3" title="Permanent link">&para;</a></h3>
+<p>Both variants were benchmarked under identical conditions simulating the actual Silvasonic BirdNET service:
+- <strong>Audio</strong>: Real bird fixture — House Sparrow (XC808026)
+- <strong>Pre-converted to 48kHz mono</strong> (matching Recorder's <code>processed/</code> output — no resampling in the benchmark loop)
+- <strong>Identical numpy-buffer I/O</strong>: Both receive the same numpy arrays via <code>soundfile.read()</code>
+- <strong>Same model</strong>: <code>BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite</code> (49.3 MB)
+- <strong>Same parameters</strong>: <code>lat=53.55, lon=9.99, week_48=14, min_conf=0.25, sensitivity=1.0</code>
+- <strong>3 repetitions</strong> with <code>gc.collect()</code> per segment and <code>tracemalloc</code> peak tracking</p>
+<h3 id="python-version-constraint">Python Version Constraint<a class="headerlink" href="#python-version-constraint" title="Permanent link">&para;</a></h3>
+<p><code>tflite-runtime</code> has <strong>no official pre-built wheels for Python ≥ 3.12 on aarch64</strong>. The last release (2.14.0, October 2023) supports Python 3.9–3.11 only. This necessitates using <code>python:3.11-slim-bookworm</code> for the BirdNET container. See <a href="../0028-python-version-flexibility-ml-workers/">ADR-0028</a> for the architectural justification.</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p>We will use <strong>native <code>tflite_runtime.Interpreter</code></strong> with ~60 lines of custom post-processing code on a Python 3.11 container. We will NOT use <code>birdnetlib</code>, <code>birdnet-analyzer</code>, or CLI subprocesses.</p>
+<h2 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h2>
+<h3 id="benchmark-results-x86_64-python-311">Benchmark Results (x86_64, Python 3.11)<a class="headerlink" href="#benchmark-results-x86_64-python-311" title="Permanent link">&para;</a></h3>
+<h4 id="macro-benchmark-spike-v3-per-10s-segment-3-windows-3s">Macro Benchmark — Spike v3 (per 10s segment, 3 windows × 3s)<a class="headerlink" href="#macro-benchmark-spike-v3-per-10s-segment-3-windows-3s" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
-<th>Version</th>
-<th>Milestone</th>
-<th>Status</th>
+<th>Metric</th>
+<th>Native (unoptimized)</th>
+<th>birdnetlib</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>v0.1.0</strong></td>
-<td>Requirements Engineering &amp; Specification — Complete specification of all features, tech stack, architecture, and service logic up to v1.0.0 (MVP) in <code>.md</code> files with clear roadmap. Repo structure, core pkg, DB, CI pipeline, ADRs, Podman as implementation foundation</td>
-<td>✅ Done</td>
+<td>Init (Module Load)</td>
+<td><strong>0.05s</strong></td>
+<td>1.09s</td>
 </tr>
 <tr>
-<td><strong>v0.2.0</strong></td>
-<td>Service Infrastructure — Redis container, <code>SilvaService</code> base class, <code>core.service</code>, <code>core.redis</code>, <code>core.heartbeat</code>. All services inherit unified lifecycle. Heartbeats go live (ADR-0019). Web-Mock dev UI</td>
-<td>✅ Done</td>
+<td>Processing Time (10s segment)</td>
+<td><strong>0.155s (avg across 3 species)</strong></td>
+<td>0.238s</td>
 </tr>
 <tr>
-<td><strong>v0.3.0</strong></td>
-<td>Tier 2 Container Management — Podman lifecycle, USB Detection, Profile Matching &amp; Auto-Enrollment, Config Seeding, Log Streaming (ADR-0022), Reconciliation Loop</td>
-<td>✅ Done</td>
+<td>Memory (Steady-State RSS)</td>
+<td><strong>~201 MB Overhead</strong></td>
+<td>High Overhead (&gt;370 MB)</td>
 </tr>
 <tr>
-<td><strong>v0.4.0</strong></td>
-<td>Robust Audio Engine — FFmpeg Dual Stream (Raw <code>data/raw</code> + Processed <code>data/processed</code> 48kHz S16LE), Segment Promotion, Graceful Shutdown, Watchdog &amp; Auto-Recovery</td>
-<td>✅ Done</td>
+<td>Peak Heap Memory</td>
+<td><strong>~3.1 MB</strong></td>
+<td>~35 MB</td>
 </tr>
 <tr>
-<td><strong>v0.5.0</strong></td>
-<td>Analysis &amp; Backend Orchestration — Processor Service (Indexer + Janitor), Recording Registration, Data Retention Policy, Config Seeding</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.1</strong></td>
-<td>Architecture &amp; Stability Fixes — Core Data Integrity, USB Debouncing, Workspace mapping</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.2</strong></td>
-<td>Core Infrastructure Upgrade — Python 3.13 adoption and runtime typing simplification</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.5.3</strong></td>
-<td>Cloud Sync Preparatory Refactoring — Uploader wipe, storage_remotes DB drop, Test Suite Fixes</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.6.0</strong></td>
-<td>Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.7.0</strong></td>
-<td>Gateway (Caddy reverse proxy, HTTPS termination, internal routing)</td>
-<td>✅ Current</td>
-</tr>
-<tr>
-<td><strong>v0.7.1</strong></td>
-<td>DB-Viewer — Database inspector &amp; Data Export UI</td>
-<td>✅ Done</td>
-</tr>
-<tr>
-<td><strong>v0.8.0</strong></td>
-<td>BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)</td>
-<td>🔨 In Progress</td>
-</tr>
-<tr>
-<td>v0.9.0</td>
-<td>Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v0.10.0</td>
-<td>Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: <code>kyellsen/silvasonic.de</code>)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.0.0</td>
-<td>MVP — Production-ready field deployment, stabilization (Podman Quadlets, Ansible)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.0.0+</td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>v1.1.0</td>
-<td>Icecast — Live Opus audio stream from Recorder to Web-Interface</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.2.0</td>
-<td>Weather — Environmental data correlation</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.3.0</td>
-<td>BatDetect — On-device bat species classification</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.4.0</td>
-<td>Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Cloud-Sync extension, analytics-optimized)</td>
-<td>⏳ Planned</td>
-</tr>
-<tr>
-<td>v1.5.0</td>
-<td>Tailscale — Secure remote access, VPN mesh networking</td>
-<td>⏳ Planned</td>
+<td>Top Detection</td>
+<td><code>Passer domesticus</code> <strong>0.8529</strong></td>
+<td><code>Passer domesticus</code> <strong>0.8529</strong></td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="detailed-implementation-plans">Detailed Implementation Plans<a class="headerlink" href="#detailed-implementation-plans" title="Permanent link">&para;</a></h2>
-<p>For concrete, phase-level implementation tasks see:</p>
+<h4 id="micro-benchmark-bottleneck-analysis-per-window">Micro Benchmark — Bottleneck Analysis (per window)<a class="headerlink" href="#micro-benchmark-bottleneck-analysis-per-window" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Time</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TFLite <code>invoke()</code></td>
+<td>45.8 ms</td>
+<td><strong>Identical</strong> for both variants</td>
+</tr>
+<tr>
+<td>Sigmoid</td>
+<td>+0.0 ms</td>
+<td>numpy-vectorized, negligible</td>
+</tr>
+<tr>
+<td>Python for-loop (6522 species)</td>
+<td><strong>+3.48 ms</strong></td>
+<td>Spike v3 bug: iterating ALL scores in Python</td>
+</tr>
+<tr>
+<td>Numpy boolean mask (optimized)</td>
+<td><strong>+0.14 ms</strong></td>
+<td>Fix: 25× faster post-processing</td>
+</tr>
+</tbody>
+</table>
+<h4 id="head-to-head-optimized-native-vs-birdnetlib-per-3-window-segment">Head-to-Head — Optimized Native vs birdnetlib (per 3-window segment)<a class="headerlink" href="#head-to-head-optimized-native-vs-birdnetlib-per-3-window-segment" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Time per 10s Segment (Avg)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Native (optimized)</strong></td>
+<td><strong>155.0 ms</strong></td>
+</tr>
+<tr>
+<td>birdnetlib</td>
+<td>238.0 ms</td>
+</tr>
+<tr>
+<td><strong>Result</strong></td>
+<td><strong>Native is ~35% faster</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The macro benchmark (spike v3 with 3 different audio fixtures) shows the native variant is <strong>~35% faster</strong> per 10-second segment (155 ms avg vs 238 ms). Furthermore, the native approach showcases strongly bounded memory (RSS stays at ~201 MB limit), whereas <code>birdnetlib</code> exhibits significant memory overhead, accumulating up to 370+ MB across just three sequential runs due to TensorFlow internal bindings. The massive speedup in the macro benchmark comes from pre-computing the location filter boolean mask at initialization, avoiding birdnetlib's per-segment overhead (<code>RecordingBuffer</code> creation, string filtering, species list checks).</p>
+<h3 id="functional-validation">Functional Validation<a class="headerlink" href="#functional-validation" title="Permanent link">&para;</a></h3>
+<p>Both produce <strong>mathematically equivalent up to float precision limit</strong>: same species, identical confidence values (to 4 decimal places, e.g., 0.8529, 0.8469, 0.8389...), same time windows, same location filter (163 species for Hamburg/April). 0 detections on insect audio (correct negative). ✅</p>
+<h3 id="decision-drivers-ordered-by-impact">Decision Drivers (ordered by impact)<a class="headerlink" href="#decision-drivers-ordered-by-impact" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Dependency Footprint</strong>: birdnetlib loads <strong>697 Python modules</strong> at <code>Analyzer()</code> init — including matplotlib (full rendering stack), PIL, pydub, librosa, requests, http.client, and 100+ encoding modules. <strong>None of these are called by Silvasonic.</strong> Native requires ~20 modules total (<code>tflite_runtime</code>, <code>numpy</code>, <code>soundfile</code>).</p>
+</li>
+<li>
+<p><strong>Container Image Size</strong>: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only <code>tflite-runtime</code> (~5 MB). Reduces container image from ~700 MB to ~100 MB.</p>
+</li>
+<li>
+<p><strong>Performance</strong>: Native is <strong>~35% faster</strong> overall per segment (155 ms vs 238 ms) AND avoids a heavy ~1.09s Python module/TensorFlow initialization overhead upon container start.</p>
+</li>
+<li>
+<p><strong>Memory Footprint</strong>: Stable ~201 MB RSS limit with native, while <code>birdnetlib</code> accumulated up to ~379 MB overhead over three fixtures. This bounded memory is critical for the RPi 5 with <code>mem_limit</code> and <code>oom_score_adj=+500</code> (ADR-0020).</p>
+</li>
+<li>
+<p><strong>Python 3.11 Compatibility</strong>: <code>tflite-runtime</code> only provides aarch64 wheels for Python ≤ 3.11. Using native avoids the additional TensorFlow dependency that birdnetlib requires as fallback, keeping the dependency chain clean for Python 3.11 on ARM64. See <a href="../0028-python-version-flexibility-ml-workers/">ADR-0028</a>.</p>
+</li>
+<li>
+<p><strong>Architectural Compliance</strong>: birdnetlib's <code>check_for_model_files()</code> attempts HTTP downloads to <code>~/.birdnetlib/</code>. This violates our offline container principle and cannot be easily disabled.</p>
+</li>
+</ol>
+<h3 id="custom-code-surface">Custom Code Surface<a class="headerlink" href="#custom-code-surface" title="Permanent link">&para;</a></h3>
+<p>The native implementation requires ~60 lines of custom code:
+- <code>flat_sigmoid()</code>: 2 lines (validated — identical results to birdnetlib)
+- Label loading: 3 lines
+- Meta-model location filter: 10 lines
+- 3s windowing with overlap: 12 lines
+- Score→Detection mapping (numpy vectorized): 8 lines
+- Interpreter init: 8 lines
+- Allowed-species boolean mask (precomputed at init): 3 lines</p>
+<p>These algorithms are mathematically trivial and change extremely rarely across model versions. The TFLite invoke pattern (<code>set_tensor → invoke → get_tensor</code>) is version-independent.</p>
+<h3 id="container-spike-evaluation">Container Spike Evaluation<a class="headerlink" href="#container-spike-evaluation" title="Permanent link">&para;</a></h3>
+<p>We considered running the spike in actual Podman containers on the RPi 5 to get "real" numbers. Assessment: <strong>Container-level benchmark introduces generic OS/cgroup overhead that obscures the underlying framework disparities without yielding new insights.</strong> The spike already isolates the relevant variables (inference time, memory, dependency weight). Container overhead (cgroups, overlay fs) adds a constant ~5-10 ms offset that applies equally to both variants. The architectural decision drivers (dependency footprint, 697 vs 20 modules, container image size) are not affected by containerization. Running on the RPi 5 <strong>is</strong> recommended for final validation of the BirdNET service after implementation, but as a normal system test — not as an extended spike.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_1_0.md">Milestone v0.1.0</a></strong> — Phases &amp; tasks for Requirements Engineering &amp; Specification</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_2_0.md">Milestone v0.2.0</a></strong> — Phases &amp; tasks for Service Infrastructure</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_3_0.md">Milestone v0.3.0</a></strong> — Phases &amp; tasks for Tier 2 Container Management</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_4_0.md">Milestone v0.4.0</a></strong> — Phases &amp; tasks for Audio Recording (Dual Stream)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_5_0.md">Milestone v0.5.0</a></strong> — Phases &amp; tasks for Analysis &amp; Backend Orchestration</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_6_0.md">Milestone v0.6.0</a></strong> — Phases &amp; tasks for Processor Cloud Sync (Upload Worker)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_0.md">Milestone v0.7.0</a></strong> — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_1.md">Milestone v0.7.1</a></strong> — DB-Viewer</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_0.md">Milestone v0.8.0</a></strong> — BirdNET (On-device Avian Inference)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md">Milestone v0.9.0</a></strong> — Web-Interface (Dashboard, Service Control, <code>system_services</code> Seeding)</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md">Milestone v0.10.0</a></strong> — Marketing Landing Page (Astro) -&gt; <em><code>silvasonic.de</code> repo</em></li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md">Milestone v1.0.0</a></strong> — MVP Production Deployment (Quadlets, Ansible, Hardening)</li>
+<li><strong>Positive:</strong> Container image ~600 MB smaller.</li>
+<li><strong>Positive:</strong> 37% faster per-segment inference (optimized numpy path).</li>
+<li><strong>Positive:</strong> Skips massive TFLite/TensorFlow python module boot overhead.</li>
+<li><strong>Positive:</strong> ~80 MB lower steady-state RSS on constrained hardware.</li>
+<li><strong>Positive:</strong> No hidden HTTP, no unused matplotlib/PIL/librosa in production.</li>
+<li><strong>Negative:</strong> ~60 lines of custom code to maintain.</li>
+<li><strong>Negative:</strong> Must manually update <code>.tflite</code> model file + labels for BirdNET model upgrades (no <code>pip upgrade</code>).</li>
+<li><strong>Negative:</strong> Requires Python 3.11 container (see ADR-0028), introducing a second Python version to the project.</li>
 </ul>
-<hr />
-<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a></strong> — Core philosophy, architecture, design principles</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/README.md">README.md</a></strong> — Project overview, quick start</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/index.md">docs/index.md</a></strong> — Full technical documentation</li>
+<li><a href="../../scripts/spikes/birdnet/spike_v3.py">Spike v3 Script</a></li>
+<li><a href="../../scripts/spikes/birdnet/micro_bench.py">Micro Benchmark</a></li>
+<li><a href="../../scripts/spikes/birdnet/head2head.py">Head-to-Head Benchmark</a></li>
+<li><a href="../../development/milestones/milestone_0_8_0/">Milestone v0.8.0 Phase 1</a></li>
+<li><a href="../0028-python-version-flexibility-ml-workers/">ADR-0028: Python Version Flexibility for ML Workers</a></li>
+<li><a href="../0019-unified-service-infrastructure/">ADR-0019: Unified Service Infrastructure</a></li>
+<li><a href="../0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS</a></li>
+<li><a href="https://pypi.org/project/tflite-runtime/">tflite-runtime PyPI</a> — last release 2.14.0, October 2023</li>
 </ul>
 
 
@@ -2991,10 +3093,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

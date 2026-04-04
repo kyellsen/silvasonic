@@ -2527,15 +2527,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#us-b03-adapt-detection-to-location" class="md-nav__link">
+  <a href="#us-b03-adapt-detection-to-location-and-season" class="md-nav__link">
     <span class="md-ellipsis">
       
-        US-B03: Adapt detection to location 📍
+        US-B03: Adapt detection to location and season 📍📅
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="US-B03: Adapt detection to location 📍">
+    <nav class="md-nav" aria-label="US-B03: Adapt detection to location and season 📍📅">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3025,15 +3025,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#us-b03-adapt-detection-to-location" class="md-nav__link">
+  <a href="#us-b03-adapt-detection-to-location-and-season" class="md-nav__link">
     <span class="md-ellipsis">
       
-        US-B03: Adapt detection to location 📍
+        US-B03: Adapt detection to location and season 📍📅
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="US-B03: Adapt detection to location 📍">
+    <nav class="md-nav" aria-label="US-B03: Adapt detection to location and season 📍📅">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3217,6 +3217,7 @@
 <li>[ ] All indexed recordings are automatically analyzed — without manual triggering.</li>
 <li>[ ] For each detected bird call, the species, the time in the audio, and a confidence value are stored.</li>
 <li>[ ] For each detection, a short audio clip (WAV) is extracted and saved to the BirdNET workspace. The file path is stored in the database.</li>
+<li>[ ] The length of the extracted clip (pre- and post-roll padding) is globally configurable.</li>
 <li>[ ] The analysis runs in the background and processes the backlog autonomously.</li>
 <li>[ ] Already analyzed recordings are not processed again.</li>
 </ul>
@@ -3247,16 +3248,16 @@
 </ul>
 <hr />
 <p><a id="us-b03"></a></p>
-<h2 id="us-b03-adapt-detection-to-location">US-B03: Adapt detection to location 📍<a class="headerlink" href="#us-b03-adapt-detection-to-location" title="Permanent link">&para;</a></h2>
+<h2 id="us-b03-adapt-detection-to-location-and-season">US-B03: Adapt detection to location and season 📍📅<a class="headerlink" href="#us-b03-adapt-detection-to-location-and-season" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>As a researcher</strong>
 <strong>I want to</strong> be able to enter the location of my station (latitude, longitude),
-<strong>so that</strong> the bird species detection is restricted to regionally occurring species, yielding fewer false positives.</p>
+<strong>so that</strong> the bird species detection is restricted to regionally and seasonally occurring species (using the recording's date), yielding fewer false positives.</p>
 </blockquote>
 <h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Location coordinates are configurable in the system settings (web interface).</li>
-<li>[ ] BirdNET uses the coordinates to restrict the species model to the region.</li>
+<li>[ ] BirdNET uses the coordinates and the week of the year (derived automatically from the recording timestamp) to restrict the species model to the region and season.</li>
 <li>[ ] Changes to the coordinates are applied automatically (service is restarted if necessary).</li>
 <li>[ ] The default location is sensibly prefilled.</li>
 </ul>
@@ -3271,15 +3272,15 @@
 <h2 id="us-b04-adjust-detection-accuracy">US-B04: Adjust detection accuracy 🎚️<a class="headerlink" href="#us-b04-adjust-detection-accuracy" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>As a researcher</strong>
-<strong>I want to</strong> be able to adjust the confidence threshold for bird species detection,
-<strong>so that</strong> I receive either more individual records (lower threshold) or fewer false alarms (higher threshold) depending on my needs.</p>
+<strong>I want to</strong> be able to adjust the confidence threshold, sensitivity, and overlap for bird species detection,
+<strong>so that</strong> I receive either more individual records (e.g., lower threshold, higher sensitivity) or fewer false alarms depending on my needs.</p>
 </blockquote>
 <h3 id="acceptance-criteria_3">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_3" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] The confidence threshold is adjustable via the web interface (default: 25%).</li>
-<li>[ ] Detections below the threshold are not displayed in the species list.</li>
+<li>[ ] The confidence threshold, sensitivity, and overlap parameters are adjustable via the web interface.</li>
+<li>[ ] Detections below the confidence threshold are ignored.</li>
 <li>[ ] Changes are automatically applied — the service restarts if necessary.</li>
-<li>[ ] The current threshold is visible in the dashboard.</li>
+<li>[ ] The current threshold and configuration are visible in the dashboard.</li>
 </ul>
 <h3 id="references_3">References<a class="headerlink" href="#references_3" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3290,6 +3291,8 @@
 <blockquote>
 <p>[!NOTE]
 <strong>Recording Protection:</strong> This service must not impair the ongoing recording. Resource limits, QoS prioritization, and file isolation are managed centrally by the Controller (→ <a href="../controller/">US-C04</a>, <a href="../recorder/">US-R02</a>).</p>
+<p>[!NOTE]
+<strong>Data Retention:</strong> Handling the deletion of BirdNET clips when the original recording is purged by the Processor's Janitor is explicitly deferred to a future follow-up issue rather than being automatically handled in v0.8.0.</p>
 </blockquote>
 <hr />
 <p><a id="us-b05"></a></p>

@@ -137,6 +137,18 @@
          <lastmod>2026-04-04</lastmod>
     </url>
     <url>
+         <loc>https://docs.silvasonic.de/adr/0027-birdnet-inference-engine/</loc>
+         <lastmod>2026-04-04</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/adr/0028-python-version-flexibility-ml-workers/</loc>
+         <lastmod>2026-04-04</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.silvasonic.de/adr/0029-system-worker-orchestration/</loc>
+         <lastmod>2026-04-04</lastmod>
+    </url>
+    <url>
          <loc>https://docs.silvasonic.de/adr/_template/</loc>
          <lastmod>2026-04-04</lastmod>
     </url>

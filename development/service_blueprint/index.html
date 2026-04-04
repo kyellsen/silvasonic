@@ -3391,7 +3391,11 @@ update all services at once.</p>
 </blockquote>
 <h3 id="mandatory-rules">Mandatory Rules<a class="headerlink" href="#mandatory-rules" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Base image:</strong> <code>python:3.13-slim-bookworm</code> (no exceptions)</li>
+<li><strong>Base image:</strong> <code>python:3.13-slim-bookworm</code> (default for all services)</li>
+<li><strong>Exception:</strong> ML worker services (e.g., BirdNET) MAY use <code>python:3.11-slim-bookworm</code>
+    when hardware-specific ML libraries (e.g., <code>tflite-runtime</code> on aarch64) lack wheels for
+    Python ≥ 3.12. This exception <strong>requires</strong> a documented ADR. See
+    <a href="../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a>.</li>
 <li><strong>Build context:</strong> Always the repo root (<code>.</code>), never the service directory</li>
 <li><code>curl</code> is always required (healthcheck)</li>
 <li><code>packages/</code> is always copied (contains <code>silvasonic-core</code>)</li>
