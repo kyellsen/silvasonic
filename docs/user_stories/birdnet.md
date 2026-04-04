@@ -16,6 +16,7 @@
 - [ ] All indexed recordings are automatically analyzed — without manual triggering.
 - [ ] For each detected bird call, the species, the time in the audio, and a confidence value are stored.
 - [ ] For each detection, a short audio clip (WAV) is extracted and saved to the BirdNET workspace. The file path is stored in the database.
+- [ ] The length of the extracted clip (pre- and post-roll padding) is globally configurable.
 - [ ] The analysis runs in the background and processes the backlog autonomously.
 - [ ] Already analyzed recordings are not processed again.
 
@@ -48,16 +49,16 @@
 ---
 
 <a id="us-b03"></a>
-## US-B03: Adapt detection to location 📍
+## US-B03: Adapt detection to location and season 📍📅
 
 > **As a researcher**
 > **I want to** be able to enter the location of my station (latitude, longitude),
-> **so that** the bird species detection is restricted to regionally occurring species, yielding fewer false positives.
+> **so that** the bird species detection is restricted to regionally and seasonally occurring species (using the recording's date), yielding fewer false positives.
 
 ### Acceptance Criteria
 
 - [ ] Location coordinates are configurable in the system settings (web interface).
-- [ ] BirdNET uses the coordinates to restrict the species model to the region.
+- [ ] BirdNET uses the coordinates and the week of the year (derived automatically from the recording timestamp) to restrict the species model to the region and season.
 - [ ] Changes to the coordinates are applied automatically (service is restarted if necessary).
 - [ ] The default location is sensibly prefilled.
 
@@ -73,15 +74,15 @@
 ## US-B04: Adjust detection accuracy 🎚️
 
 > **As a researcher**
-> **I want to** be able to adjust the confidence threshold for bird species detection,
-> **so that** I receive either more individual records (lower threshold) or fewer false alarms (higher threshold) depending on my needs.
+> **I want to** be able to adjust the confidence threshold, sensitivity, and overlap for bird species detection,
+> **so that** I receive either more individual records (e.g., lower threshold, higher sensitivity) or fewer false alarms depending on my needs.
 
 ### Acceptance Criteria
 
-- [ ] The confidence threshold is adjustable via the web interface (default: 25%).
-- [ ] Detections below the threshold are not displayed in the species list.
+- [ ] The confidence threshold, sensitivity, and overlap parameters are adjustable via the web interface.
+- [ ] Detections below the confidence threshold are ignored.
 - [ ] Changes are automatically applied — the service restarts if necessary.
-- [ ] The current threshold is visible in the dashboard.
+- [ ] The current threshold and configuration are visible in the dashboard.
 
 ### References
 
@@ -92,6 +93,9 @@
 
 > [!NOTE]
 > **Recording Protection:** This service must not impair the ongoing recording. Resource limits, QoS prioritization, and file isolation are managed centrally by the Controller (→ [US-C04](./controller.md), [US-R02](./recorder.md)).
+
+> [!NOTE]
+> **Data Retention:** Handling the deletion of BirdNET clips when the original recording is purged by the Processor's Janitor is explicitly deferred to a future follow-up issue rather than being automatically handled in v0.8.0.
 
 ---
 
