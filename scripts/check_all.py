@@ -434,7 +434,7 @@ def _print_summary(
     print(
         f"  {Colors.WARNING}🎤 Hardware tests excluded from this pipeline.{Colors.ENDC}\n"
         f"  {Colors.WARNING}   Run manually with USB microphone connected:"
-        f" {Colors.BOLD}just test-hw{Colors.ENDC}\n"
+        f" {Colors.BOLD}just test-hw-all{Colors.ENDC}\n"
     )
 
 

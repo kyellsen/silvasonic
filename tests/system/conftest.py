@@ -1,7 +1,7 @@
-"""Shared fixtures for system and system_hw tests.
+"""Shared fixtures for system and system_hw_auto / system_hw_manual tests.
 
-Provides:
-- Testcontainers-based PostgreSQL and Redis (session-scoped).
+These fixtures manage Podman sockets, database containers, and isolated
+PostgreSQL and Redis (session-scoped).
 - Real ``SilvasonicPodmanClient`` connected to the host Podman socket.
 - ``ContainerManager`` with automatic cleanup of test containers.
 - Async SQLAlchemy session factory wired to the testcontainers DB.
@@ -15,7 +15,7 @@ import os
 import subprocess
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -92,11 +92,13 @@ def require_recorder_image() -> None:
 
 
 @pytest.fixture(scope="session")
-def hw_redis() -> Iterator[tuple[str, int, str]]:
-    """Ephemeral Redis on an isolated network for hardware E2E tests.
+def hw_redis() -> Generator[tuple[str, int, str]]:
+    """Isolated Redis testcontainer and Podman network for hardware tests.
 
-    Creates its own isolated Podman network with a unique name per test
-    session.  The Redis container gets alias ``silvasonic-redis`` so that
+    Crucial for safety: This ensures system_hw_auto tests cannot accidentally
+    (not just system_hw_auto) since conftest.py is imported by the entire
+    directory. Using a separate fixture prevents testcontainers from spawning
+    Redis multiple times if a test session doesn't need it.s`` so that
     Recorder containers can reach it at ``redis://silvasonic-redis:6379/0``
     within the isolated network.
 
@@ -261,7 +263,7 @@ _PROFILES_DIR = (
 class HwMicConfig:
     """Hardware mic configuration extracted from a profile YAML.
 
-    Used by system_hw tests to identify connected devices by USB VID/PID,
+    Used by system_hw_auto / system_hw_manual tests to identify connected devices by USB VID/PID,
     seed the correct profile into the test DB, and generate dynamic
     skip conditions and interactive prompts.
     """

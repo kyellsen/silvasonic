@@ -46,7 +46,7 @@ SECONDARY_MIC = typing.cast(HwMicConfig, _SECONDARY_MIC)
 log = structlog.get_logger()
 
 pytestmark = [
-    pytest.mark.system_hw,
+    pytest.mark.system_hw_manual,
 ]
 
 

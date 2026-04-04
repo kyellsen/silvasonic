@@ -19,7 +19,7 @@ the following are **mandatory** before tagging:
 - [ ] **Critical Path Verification** — All new or changed state transitions, database queries, failure recovery paths, and hardware interactions are explicitly guarded by appropriate tests. Boilerplate or framework glue may remain indirectly tested only if it has no meaningful standalone contract and the relevant behavior is covered at a higher tier.
 - [ ] **Smoke Tests** — Every service included in the release has a passing smoke test (`@pytest.mark.smoke`)
 - [ ] **`just check-all` passes** — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly
-- [ ] **Hardware Tests** _(recommended)_ — If USB microphone hardware is available, run `just test-hw` (`@pytest.mark.system_hw`). These tests validate real device detection, profile matching, and container spawning with physical hardware. Not mandatory, but strongly recommended before any release that touches device detection or Recorder spawning.
+- [ ] **Hardware Tests** _(recommended)_ — If USB microphone hardware is available, run `just test-hw-all` (`@pytest.mark.system_hw_auto` and `.system_hw_manual`). These tests validate real device detection, profile matching, and container spawning with physical hardware. Not mandatory, but strongly recommended before any release that touches device detection or Recorder spawning.
 
 > [!CAUTION]
 > A Feature Release **MUST NOT** be tagged if any of the above gates fails.
@@ -71,7 +71,7 @@ This includes:
 - **Containerfile Lint** — Hadolint + Compose YAML Validation
 
 > [!TIP]
-> If you have a USB microphone connected, also run `just test-hw` to validate
+> If you have a USB microphone connected, also run `just test-hw-all` to validate
 > hardware detection, profile matching, and Recorder spawning with real devices.
 > This is strongly recommended but not enforced by `just check-all`.
 

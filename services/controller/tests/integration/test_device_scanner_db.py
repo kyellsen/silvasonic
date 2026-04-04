@@ -51,7 +51,7 @@ class TestDeviceScannerHostRead:
             assert d.alsa_card_index >= 0
             assert d.alsa_device.startswith("hw:")
 
-    @pytest.mark.system_hw
+    @pytest.mark.system_hw_auto
     def test_scan_usb_devices_have_vendor_info(self) -> None:
         """USB-Audio devices should have vendor/product IDs (if sysfs is accessible)."""
         scanner = DeviceScanner()
@@ -110,7 +110,8 @@ class TestUpsertDeviceDB:
         assert row[2] == "pending"  # enrollment_status
         assert row[3] == "IntegrationTestMic"  # model
 
-    async def test_upsert_is_idempotent(
+    @pytest.mark.system_hw_auto
+    async def test_detects_real_hardware_primary_mic(
         self,
         postgres_container: PostgresContainer,
     ) -> None:

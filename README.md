@@ -120,7 +120,8 @@ Here are the most common daily commands:
 | `unit`        | Fast, isolated, mocked             | `just test-unit`    |
 | `integration` | External services (Testcontainers) | `just test-int`     |
 | `system`      | Full Podman lifecycle              | `just test-system`  |
-| `system_hw`   | Real USB hardware required         | `just test-hw`      |
+| `system_hw_auto` | Real USB hardware required         | `just test-hw`      |
+| `system_hw_manual`| Interactive USB hardware required  | `just test-hw-manual`|
 | `smoke`       | Quick health checks on images      | `just test-smoke`   |
 | `e2e`         | Browser tests (Playwright)         | `just test-e2e`     |
 

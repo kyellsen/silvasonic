@@ -96,9 +96,9 @@ The following structures already exist and MUST be reused or extended in-place:
 - [ ] Save results using the existing `Detection` ORM model — set `worker='birdnet'`, look up `common_name` from `Taxonomy` table via `(worker='birdnet', label)` PK.
 
 ### Testing (Phase 2)
-- [ ] **`unit`** — `services/birdnet/tests/unit/test_inference.py`: Test audio chunking logic (3-second splitting, overlap handling), timestamp offset calculation (`recording.time + start_offset → absolute time`), and result-to-detection mapping. Mock `tflite_runtime.Interpreter`.
+- [ ] **`unit`** — `services/birdnet/tests/unit/test_inference.py`: Level 1 & 2 tests. Create synthetic silence fixture (`numpy.zeros`) for basic smoke-testing. Use an own/CC-licensed 3-5s recording (e.g., UltraMic) for determinism regression testing (verify specific label detection, stable labels, confidence > 0.5 without float exactness). Run inference via real `tflite_runtime.Interpreter` (not mocked!). Skip via `@pytest.mark.skipif(not HAS_TFLITE)` if needed.
 - [ ] **`unit`** — `services/birdnet/tests/unit/test_worker.py`: Test graceful shutdown logic (`shutdown_event.is_set()` between chunks stops processing). Test that `analysis_state` JSONB is updated correctly (key `"birdnet"` set to `"done"`).
-- [ ] **`integration`** — `services/birdnet/tests/integration/test_worker_pull.py`: Using `testcontainers` (PostgreSQL), test the full Worker Pull cycle: insert test recordings → claim via `FOR UPDATE SKIP LOCKED` → verify `detections` rows have correct `recording_id`, `time`, `end_time`, `worker='birdnet'`, `label`, `confidence`. Verify `analysis_state` is updated.
+- [ ] **`integration`** — `services/birdnet/tests/integration/test_worker_pull.py`: Level 3. Using `testcontainers` (PostgreSQL) + the 3-5s fixture WAV, test the full Inference-to-DB contract. Insert recording → claim via `FOR UPDATE SKIP LOCKED` → infer real detections → verify `detections` rows have correct DB entries and `analysis_state` update.
 - [ ] **`integration`** — `services/birdnet/tests/integration/conftest.py`: Create service-specific conftest with `_CLEANUP_TABLES = ("detections", "recordings", "devices", "system_config")` in FK-safe order (per `testing.md` §10).
 
 ---
@@ -151,6 +151,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Testing (Phase 5)
 - [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder produces WAV → Indexer registers in `recordings` → BirdNET claims, analyzes, writes `detections` + clips → verify end-to-end data flow. Ensure no OOM or resource conflicts (BirdNET: `oom_score_adj=+500`, Recorder: `-999`).
+- [ ] **`system_hw_manual`** — `tests/system/test_hw_birdnet_pipeline.py`: Level 4 end-to-end acoustics test. Human plays bird sound (smartphone) near active UltraMic → system captures, indexer triggers, BirdNET detects. Include an interactive `input("Play bird sound... (or hit Enter to skip)")` so it can be skipped when testing offline/quietly.
 - [ ] **E2E:** Deferred to v0.9.0 (Web-Interface required).
 
 ---

@@ -98,9 +98,17 @@ test-smoke:
 test-system:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py system
 
-# 🎤 Hardware System Tests (echtes USB-Mikrofon erforderlich)
+# 🎤 Hardware System Tests (Automatisiert, ohne Input-Prompts)
 test-hw:
-    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_auto
+
+# 🔌 Interaktive Hardware System Tests (Manuelles Unplugging an der Konsole)
+test-hw-manual:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_manual
+
+# 🤖 Alle Hardware Tests (Automatisiert + Manuell kombiniert)
+test-hw-all:
+    @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_all
 
 # 🧪 Quick Dev Tests (Unit + Integration, ohne System/Smoke/E2E)
 test:

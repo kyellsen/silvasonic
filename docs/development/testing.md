@@ -13,13 +13,14 @@ Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests with
 | `unit`      | Fast, isolated tests without external dependencies   | None (mocks only)            | < 1s per test    | ✅ Stage 6      |
 | `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 7      |
 | `system`    | Full-stack lifecycle tests with real Podman           | Podman socket + built images | < 60s per test   | ✅ Stage 10     |
-| `system_hw` | Hardware-dependent system tests                      | Podman + real USB microphone | < 60s per test   | ❌ Never        |
+| `system_hw_auto` | Automated hardware-dependent system tests | Podman + real USB microphone | < 60s per test   | ❌ Never        |
+| `system_hw_manual` | Interactive hardware tests (requires manual input) | Podman + real USB microphone | < 60s per test   | ❌ Never        |
 | `smoke`     | Health checks against built containers               | Built images (testcontainers)| < 30s total      | ✅ Stage 11     |
 | `e2e`       | Browser tests via Playwright                         | Full stack + Playwright      | < 60s per test   | ✅ Stage 12     |
 
 > [!IMPORTANT]
-> `system_hw` tests are **never** included in CI or `just check-all`. They require real USB
-> microphone hardware and must be run manually via `just test-hw`.
+> `system_hw_auto` and `system_hw_manual` tests are **never** included in CI or `just check-all`. They require real USB
+> microphone hardware and must be run manually via `just test-hw` or `just test-hw-manual`.
 
 ---
 
@@ -40,13 +41,14 @@ tests/                # Cross-cutting tests only
     smoke/          # @pytest.mark.smoke — stack health checks
     integration/    # @pytest.mark.integration — multi-service
     system/         # @pytest.mark.system — full-stack lifecycle (Podman)
-                    # @pytest.mark.system_hw — hardware system tests
+                    # @pytest.mark.system_hw_auto — automated hardware tests
+                    # @pytest.mark.system_hw_manual — manual hardware tests
     e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.9.0+)
 ```
 
 > [!IMPORTANT]
 > A test file in `tests/unit/` **MUST** only contain `@pytest.mark.unit` tests. Mixing markers in a single directory is **FORBIDDEN**.
-> **Exception:** `tests/system/` contains both `@pytest.mark.system` and `@pytest.mark.system_hw` tests because they share Podman socket, DB, and hardware-config fixtures via a common `conftest.py`.
+> **Exception:** `tests/system/` contains `.system`, `.system_hw_auto` and `.system_hw_manual` tests because they share Podman socket, DB, and hardware-config fixtures via a common `conftest.py`.
 
 ---
 
@@ -58,7 +60,9 @@ tests/                # Cross-cutting tests only
 just test-unit       # Unit tests only (no external deps)
 just test-int        # Integration tests (Testcontainers)
 just test-system     # System lifecycle tests (Podman + built images, no HW)
-just test-hw         # Hardware system tests (requires real USB microphone)
+just test-hw         # Automated hardware tests (requires real USB microphone)
+just test-hw-manual  # Interactive hardware tests (requires manual unplug/replug)
+just test-hw-all     # All hardware tests (automated + manual)
 just test-smoke      # Smoke tests (built images via Testcontainers)
 just test-e2e        # End-to-end browser tests (Playwright)
 just test            # Quick dev: Unit + Integration
@@ -86,7 +90,7 @@ just check-all       # Full CI pipeline (12 stages):
 | Before push / PR       | `just check-all`   | Full 12-stage pipeline incl. build              |
 | Before release         | `just check-all`   | All automated gates (see Release Checklist)     |
 | Release test audit     | `just test-cov-all`| Combined coverage map for Changed-Path Audit    |
-| With USB mic connected | `just test-hw`     | Real hardware detection + spawning              |
+| With USB mic connected | `just test-hw-all` | Real hardware detection + spawning              |
 
 ---
 
@@ -114,14 +118,14 @@ just check-all       # Full CI pipeline (12 stages):
 - Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop, crash recovery.
 - **Fully isolated from production** — no shared network with `just start`.
 
-### Hardware System Tests (`@pytest.mark.system_hw`)
+### Hardware System Tests (`@pytest.mark.system_hw_auto` / `.system_hw_manual`)
 
 - Test device detection pipeline with **real USB microphone hardware**.
 - Each test session gets its own **isolated Podman network** (`silvasonic-hw-test-{id}`) via the `hw_redis` fixture.
 - Require a USB-Audio device connected (e.g., UltraMic 384K).
 - Skip automatically when no USB-Audio device is detected.
 - **Fully isolated from production** — can run while `just start` is active.
-- **Never** included in CI pipelines — run manually via `just test-hw`.
+- **Never** included in CI pipelines — run manually via `just test-hw` or `just test-hw-manual`.
 
 ### Smoke Tests
 
@@ -203,8 +207,8 @@ The `just check-all` command runs 12 stages in order:
 | 12    | E2E Tests          | Yes      | `@pytest.mark.e2e` (Playwright)                   |
 
 > [!NOTE]
-> `system_hw` tests are intentionally excluded from this pipeline.
-> Run `just test-hw` separately when hardware is available.
+> `system_hw_auto` and `system_hw_manual` tests are intentionally excluded from this pipeline.
+> Run `just test-hw` or `just test-hw-manual` separately when hardware is available.
 
 ---
 
@@ -246,7 +250,8 @@ Test names should describe the **expected behavior**, not the implementation det
 | `integration` | `testcontainers` | Random (auto) | Random | ✅ | ✅ |
 | `smoke` | `testcontainers` | `smoke_network` (random) | Random | ✅ | ✅ |
 | `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) | Random | ✅ | ✅ |
-| `system_hw` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | Random | ✅ | ✅ |
+| `system_hw_auto` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | Random | ✅ | ✅ |
+| `system_hw_manual` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | Random | ✅ | ✅ |
 | `just start` | Compose | `silvasonic-net` | Fixed | — | ✅ |
 
 ### All Combinations: ✅ Safe
@@ -258,6 +263,7 @@ Test names should describe the **expected behavior**, not the implementation det
 | `just test-smoke` | **anything** | `testcontainers`: own `smoke_network`, distinct aliases (`test-database`, `test-redis`) |
 | `just test-system` | **anything** | Per-test `silvasonic-test-{run_id}` network via `system_network` fixture |
 | `just test-hw` | **anything** | Per-session `silvasonic-hw-test-{id}` network via `hw_redis` fixture |
+| `just test-hw-manual` | **anything** | Per-session `silvasonic-hw-test-{id}` network via `hw_redis` fixture |
 | `just test-system` | `just start` | ✅ No shared network — test and prod are fully separated |
 | `just test-hw` | `just start` | ✅ No shared network — test and prod are fully separated |
 | `just stop` | **any test** | `stop.py` filters `owner=controller` (exact match); tests use `owner=controller-test-*` |

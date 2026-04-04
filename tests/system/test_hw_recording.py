@@ -69,7 +69,7 @@ from .conftest import (
 log = structlog.get_logger()
 
 pytestmark = [
-    pytest.mark.system_hw,
+    pytest.mark.system_hw_auto,
 ]
 
 
@@ -466,7 +466,7 @@ class TestFullHardwareLifecycle:
             },
             labels={
                 **spec.labels,
-                "io.silvasonic.test": "system_hw",
+                "io.silvasonic.test": "system_hw_auto",
                 "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
             },
             mounts=[

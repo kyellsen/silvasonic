@@ -128,14 +128,53 @@ def cmd_system() -> list[str]:
     ]
 
 
-def cmd_system_hw() -> list[str]:
-    """Build the pytest command for hardware system tests."""
+def cmd_system_hw_auto() -> list[str]:
+    """Build the pytest command for automated hardware system tests."""
     return [
         "uv",
         "run",
         "pytest",
         "-m",
-        "system_hw",
+        "system_hw_auto",
+        "-p",
+        "no:cov",
+        "--override-ini",
+        'addopts="--import-mode=importlib"',
+        "--override-ini",
+        "timeout=120",
+        "--tb=short",
+        "-v",
+    ]
+
+
+def cmd_system_hw_manual() -> list[str]:
+    """Build the pytest command for interactive hardware system tests."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "system_hw_manual",
+        "-s",  # Disable capture — interactive input() in hot-plug tests
+        "-p",
+        "no:cov",
+        "--override-ini",
+        'addopts="--import-mode=importlib"',
+        "--override-ini",
+        "timeout=120",
+        "--tb=short",
+        "-v",
+    ]
+
+
+def cmd_system_hw_all() -> list[str]:
+    """Build the pytest command for all hardware system tests."""
+    return [
+        "uv",
+        "run",
+        "pytest",
+        "-m",
+        "system_hw_auto or system_hw_manual",
         "-s",  # Disable capture — interactive input() in hot-plug tests
         "-p",
         "no:cov",
@@ -381,10 +420,22 @@ def _preflight_hw() -> None:
         sys.exit(1)
 
 
-def run_system_hw() -> int:
-    """Run hardware system tests. Returns exit code."""
+def run_system_hw_auto() -> int:
+    """Run automated hardware system tests. Returns exit code."""
     _preflight_hw()
-    return _pytest("System-HW", cmd_system_hw())
+    return _pytest("System-HW (Auto)", cmd_system_hw_auto())
+
+
+def run_system_hw_manual() -> int:
+    """Run interactive hardware system tests. Returns exit code."""
+    _preflight_hw()
+    return _pytest("System-HW (Manual)", cmd_system_hw_manual())
+
+
+def run_system_hw_all() -> int:
+    """Run all hardware system tests. Returns exit code."""
+    _preflight_hw()
+    return _pytest("System-HW (All)", cmd_system_hw_all())
 
 
 def run_e2e() -> int:
@@ -414,7 +465,9 @@ SUITES = {
     "integration": run_integration,
     "int": run_integration,
     "system": run_system,
-    "system_hw": run_system_hw,
+    "system_hw_auto": run_system_hw_auto,
+    "system_hw_manual": run_system_hw_manual,
+    "system_hw_all": run_system_hw_all,
     "smoke": run_smoke,
     "e2e": run_e2e,
     "test": run_test,

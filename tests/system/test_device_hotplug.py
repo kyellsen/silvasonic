@@ -49,7 +49,7 @@ from .conftest import (
 )
 
 pytestmark = [
-    pytest.mark.system_hw,
+    pytest.mark.system_hw_auto,
 ]
 
 
@@ -228,7 +228,7 @@ class TestHardwareSpawnCycle:
             environment=spec.environment,
             labels={
                 **spec.labels,
-                "io.silvasonic.test": "system_hw",
+                "io.silvasonic.test": "system_hw_auto",
                 "io.silvasonic.owner": f"controller-test-{TEST_RUN_ID}",
             },
             mounts=[

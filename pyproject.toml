@@ -172,7 +172,8 @@ markers = [
     "unit: fast, isolated tests without external dependencies.",
     "integration: requires external services (DB) to run.",
     "system: full-stack lifecycle tests requiring Podman socket and built images.",
-    "system_hw: hardware-dependent system tests (USB mic required, never in CI).",
+    "system_hw_auto: automated hardware-dependent system tests (real USB mic required, never in CI).",
+    "system_hw_manual: interactive hardware system tests (requires manual unplug/replug actions).",
     "e2e: browser tests via playwright running against a full stack.",
     "smoke: quick health checks on built images or deployments.",
 ]

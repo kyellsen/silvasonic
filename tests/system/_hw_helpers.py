@@ -1,4 +1,4 @@
-"""Shared hardware-detection helpers for system_hw tests.
+"""Shared hardware-detection helpers for system_hw_auto / system_hw_manual tests.
 
 Centralises USB-Audio detection, device scanning, and config-based
 filtering that was previously duplicated across test_device_hotplug.py,
