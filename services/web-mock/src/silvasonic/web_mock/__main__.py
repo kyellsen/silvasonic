@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -428,10 +429,14 @@ async def console_events(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":  # pragma: no cover
+    root_path = os.getenv("SILVASONIC_API_ROOT_PATH", "")
     uvicorn.run(
         "silvasonic.web_mock.__main__:app",
         host="0.0.0.0",
         port=WEB_MOCK_PORT,
         reload=False,
         log_level="info",
+        root_path=root_path,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
     )

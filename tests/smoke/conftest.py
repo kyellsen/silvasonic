@@ -235,3 +235,37 @@ def web_mock_container() -> Generator[DockerContainer]:
     wait_for_http(host, port)
     yield container
     container.stop()
+
+
+# ── DB-Viewer ─────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def db_viewer_container(
+    smoke_network: Network,
+    database_container: DockerContainer,
+) -> Generator[DockerContainer]:
+    """Start an isolated DB-Viewer container.
+
+    Function-scoped: fresh container per test.
+    Connects to the test database.
+    """
+    _require_image("silvasonic_db-viewer")
+    _ = database_container
+
+    container = (
+        DockerContainer("silvasonic_db-viewer")
+        .with_exposed_ports(8002)
+        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("POSTGRES_USER", "silvasonic")
+        .with_env("POSTGRES_PASSWORD", "silvasonic")
+        .with_env("POSTGRES_DB", "silvasonic")
+        .with_env("POSTGRES_PORT", "5432")
+        .with_network(smoke_network)
+    )
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(8002))
+    wait_for_http(host, port)
+    yield container
+    container.stop()

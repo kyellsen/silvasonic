@@ -1,0 +1,13 @@
+{
+    "private": true,
+    "description": "Tailwind CSS build tooling for silvasonic-db-viewer.",
+    "scripts": {
+        "css:build": "tailwindcss -i ./src/silvasonic/db_viewer/static/css/input.css -o ./src/silvasonic/db_viewer/static/css/output.css --minify",
+        "css:watch": "tailwindcss -i ./src/silvasonic/db_viewer/static/css/input.css -o ./src/silvasonic/db_viewer/static/css/output.css --watch"
+    },
+    "devDependencies": {
+        "@tailwindcss/cli": "^4.0.0",
+        "tailwindcss": "^4.0.0",
+        "daisyui": "^5.0.0"
+    }
+}

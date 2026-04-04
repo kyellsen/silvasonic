@@ -79,10 +79,11 @@ silvasonic/
 | -------------- | ---- | ---------------------------------------------------------------------------------------- | ---------- |
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
-| **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Partial  |
+| **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Running  |
 | **processor**  | 1    | Data ingestion, metadata indexing, and retention management (Janitor)                    | ✅ Running  |
 | **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to Web-Interface) | ✅ Running  |
-| **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Partial  |
+| **db-viewer**  | 1    | Dev Admin UI — Read-only database inspector (toggle via `COMPOSE_PROFILES=db-viewer`)    | ✅ Running  |
+| **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Running  |
 
 > For the full target architecture (13 services across two tiers) see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For version milestones see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.
 

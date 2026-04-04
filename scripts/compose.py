@@ -48,7 +48,17 @@ def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
         )
         compose_files.extend(["-f", "compose.override.yml"])
 
-    cmd = [binary, *compose_files, *args]
+    # Determine DB-Viewer enabled status
+    env_db_viewer = os.environ.get("SILVASONIC_DB_VIEWER_RUN")
+    env_file_db_viewer = load_env_value("SILVASONIC_DB_VIEWER_RUN")
+    # Default to True unless explicitly set to false
+    db_viewer_run = (env_db_viewer or env_file_db_viewer or "true").lower() in ("true", "1", "yes")
+
+    profiles = []
+    if db_viewer_run:
+        profiles.extend(["--profile", "db-viewer"])
+
+    cmd = [binary, *compose_files, *profiles, *args]
 
     if quiet:
         subprocess.run(

@@ -64,6 +64,14 @@ class TestServiceHealth:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_db_viewer_healthy(self, db_viewer_container: DockerContainer) -> None:
+        """DB-Viewer root (index) returns 200 HTML response."""
+        host = db_viewer_container.get_container_host_ip()
+        port = int(db_viewer_container.get_exposed_port(8002))
+        resp = httpx.get(f"http://{host}:{port}/", timeout=5.0)
+        assert resp.status_code == 200
+        assert "html" in resp.headers.get("content-type", "").lower()
+
 
 def _poll_redis_key(redis_client: Redis, key: str, timeout: float = 30.0) -> dict[str, Any]:
     """Poll Redis for a key until it exists or timeout. Returns parsed JSON."""

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="silvadark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silvasonic DB Viewer</title>
+    
+    <!-- Local CSS (Tailwind + DaisyUI) -->
+    <link href="{{ root_path }}/static/css/output.css" rel="stylesheet">
+    
+    <!-- Local JS -->
+    <script src="{{ root_path }}/static/js/htmx.min.js"></script>
+    
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'silvadark' ? 'silvalight' : 'silvadark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('db_viewer_theme', newTheme);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('db_viewer_theme') || 'silvadark';
+            document.documentElement.setAttribute('data-theme', saved);
+        });
+    </script>
+</head>
+<body class="bg-base-200 text-base-content font-sans antialiased flex flex-col h-screen overflow-hidden">
+    <!-- Navbar (Fixed Top, spans full width) -->
+    <header class="w-full navbar bg-base-100 border-b border-base-300 shrink-0 pr-4 lg:pr-8 gap-4 flex-wrap z-20">
+        <div class="flex-none">
+            <label for="my-drawer-2" class="btn btn-square btn-ghost cursor-pointer text-base-content">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </label>
+        </div>
+        <div class="flex-1 min-w-0">
+            <a href="{{ root_path }}/" class="font-bold text-xl px-2 truncate hover:text-primary transition-colors inline-block">Silvasonic DB Viewer</a>
+        </div>
+        
+        <div class="flex-none flex items-center gap-4 flex-wrap justify-end">
+            <!-- Polling Interval Form -->
+            {% if active_table %}
+            <form method="get" action="{{ root_path }}/" class="flex flex-row items-center gap-2 bg-base-200 p-1 px-3 rounded-box shadow-sm border border-base-300">
+                <input type="hidden" name="active_table" value="{{ active_table }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_order" value="{{ sort_order }}">
+                <span class="text-sm font-semibold opacity-70 whitespace-nowrap">Rows:</span>
+                <input type="number" name="limit" value="{{ limit }}" min="1" max="1000" class="input input-sm input-bordered w-24 text-center">
+                <span class="text-sm font-semibold opacity-70 whitespace-nowrap">Refresh (sec):</span>
+                <input type="number" name="interval" value="{{ interval }}" min="0" max="60" class="input input-sm input-bordered w-20 text-center">
+                <button type="submit" class="btn btn-sm btn-primary">OK</button>
+            </form>
+            {% endif %}
+
+            <button onclick="toggleTheme()" class="btn btn-circle btn-sm btn-ghost" title="Toggle Theme">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+            </button>
+
+            <!-- Export Buttons -->
+            {% if active_table %}
+            <div class="join">
+                <button class="btn btn-sm join-item pointer-events-none opacity-50 font-normal hidden sm:inline-flex">Export:</button>
+                <a href="{{ root_path }}/export/{{ active_table }}?fmt=csv" class="btn btn-sm btn-outline join-item">CSV</a>
+                <a href="{{ root_path }}/export/{{ active_table }}?fmt=json" class="btn btn-sm btn-outline join-item">JSON</a>
+                <a href="{{ root_path }}/export/{{ active_table }}?fmt=parquet" class="btn btn-sm btn-outline join-item">Parquet</a>
+            </div>
+
+            <!-- Live Badge -->
+            {% if interval > 0 %}
+            <div class="badge badge-success gap-2">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+                </span>
+                Live
+            </div>
+            {% else %}
+            <div class="badge badge-ghost gap-2">
+                Paused
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Body Container -->
+    <div class="flex flex-1 min-h-0 w-full overflow-hidden relative">
+        <input id="my-drawer-2" type="checkbox" class="peer hidden" checked />
+        
+        <!-- Sidebar -->
+        <aside class="w-0 peer-checked:w-72 md:peer-checked:w-80 lg:peer-checked:w-72 bg-base-100 transition-[width] duration-300 ease-in-out border-r border-base-300 shrink-0 overflow-hidden flex flex-col z-10">
+            <div class="w-72 md:w-80 lg:w-72 h-full flex flex-col overflow-y-auto">
+                <ul class="menu p-4 w-full flex-1 text-base-content flex flex-col flex-nowrap">
+
+                    {% block sidebar_menu %}{% endblock %}
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content (Page Content) -->
+        <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 bg-base-200 overflow-hidden w-full">
+            <!-- Page Content -->
+            <main class="w-full flex-1 min-h-0 flex-col p-4 md:p-6 flex">
+                {% block content %}{% endblock %}
+            </main>
+        </div> 
+    </div>
+
+    <!-- IDE Status Bar -->
+    <footer class="w-full bg-base-300 border-t border-base-content/10 flex flex-none items-center justify-between px-4 py-2.5 text-sm font-mono shrink-0 overflow-hidden">
+        <div class="flex items-center gap-4">
+            <span class="font-bold opacity-80">{{ app_title }}</span>
+            <span class="opacity-60">v{{ app_version }}</span>
+        </div>
+    </footer>
+</body>
+</html>

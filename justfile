@@ -43,6 +43,10 @@ restart:
     @{{ BOOTSTRAP_PYTHON }} scripts/stop.py --keep-tier2
     @{{ BOOTSTRAP_PYTHON }} scripts/start.py
 
+# 🔄 Startet einen bestimmten Service neu (z.B. just rs api)
+rs service:
+    @{{ BOOTSTRAP_PYTHON }} -c 'import sys; sys.path.insert(0, "./scripts"); from compose import compose; compose("restart", "{{service}}")'
+
 # 📜 Zeigt die aggregierten Logs aller Services an
 logs:
     @{{ BOOTSTRAP_PYTHON }} scripts/logs.py
@@ -137,7 +141,7 @@ prune:
 # 📚 Startet den lokalen MkDocs Server inkl. Live-Reload
 docs:
     @echo "Starting docs server on http://localhost:8085..."
-    @uv run mkdocs serve -a localhost:8085 --open
+    @uv run mkdocs serve -a 0.0.0.0:8085 --open
 
 # 📦 Baut die statische Dokumentation (Output: site/)
 docs-build:

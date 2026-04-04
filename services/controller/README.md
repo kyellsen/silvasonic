@@ -1,6 +1,6 @@
 # silvasonic-controller
 
-> **Status:** Partial (since v0.3.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
+> **Status:** Implemented (since v0.3.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 9100
 >
 > 📋 **User Stories:** [controller.md](../../docs/user_stories/controller.md)
 

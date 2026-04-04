@@ -12,6 +12,7 @@ import time
 from common import (
     ensure_initialized,
     fmt_duration,
+    load_env_value,
     print_header,
     print_step,
     print_success,
@@ -19,7 +20,7 @@ from common import (
 )
 from compose import compose
 
-# Default services (no profile needed)
+# Default services
 SERVICES = ["database", "controller", "processor", "web-mock"]
 
 # Managed-profile services (require --profile managed to be visible)
@@ -55,7 +56,18 @@ def main() -> None:
     timings: list[tuple[str, float]] = []
     total_start = time.monotonic()
 
-    for service in SERVICES:
+    # Add db-viewer to SERVICES if enabled
+    import os
+
+    env_db_viewer = os.environ.get("SILVASONIC_DB_VIEWER_RUN")
+    env_file_db_viewer = load_env_value("SILVASONIC_DB_VIEWER_RUN")
+    db_viewer_run = (env_db_viewer or env_file_db_viewer or "true").lower() in ("true", "1", "yes")
+
+    build_services = list(SERVICES)
+    if db_viewer_run:
+        build_services.append("db-viewer")
+
+    for service in build_services:
         print_step(f"Building {service}...")
         start = time.monotonic()
         compose("build", service)

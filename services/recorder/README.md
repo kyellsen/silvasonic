@@ -1,6 +1,6 @@
 # silvasonic-recorder
 
-> **Status:** Partial (since v0.2.0) · **Tier:** 2 (Application, Managed by Controller) · **Port:** 9500
+> **Status:** Implemented (since v0.4.0) · **Tier:** 2 (Application, Managed by Controller) · **Port:** 9500
 
 **AS-IS:** The Recorder is the most critical service in the Silvasonic stack. It captures audio from USB microphones and writes segmented WAV files to local NVMe storage. Multiple Recorder instances may run concurrently, each managed by the Controller.
 **Target:** Implements the Dual Stream Architecture (Raw + Processed), with Triple Stream (+ Live Opus) 🔮 Future (v1.1.0).

@@ -10,6 +10,7 @@ dependencies = [
     "silvasonic-processor",
     "silvasonic-recorder",
     "silvasonic-web-mock",
+    "silvasonic-db-viewer",
 ]
 
 [tool.uv.workspace]
@@ -35,6 +36,7 @@ silvasonic-controller = { workspace = true }
 silvasonic-processor = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-web-mock = { workspace = true }
+silvasonic-db-viewer = { workspace = true }
 silvasonic-test-utils = { workspace = true }
 
 
@@ -124,7 +126,7 @@ python_version = "3.13"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src"
+mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src"
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]

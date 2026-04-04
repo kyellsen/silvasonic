@@ -141,7 +141,7 @@
 - [x] Test: Redis outage does not stop recording (heartbeats silently skipped)
 - [x] Test: Controller crash does not stop running Recorder
 - [x] Test: OOM scenario — verify Recorder is killed last (`oom_score_adj=-999`)
-- [ ] ~~Test: Read-only workspace mounts for non-Recorder services~~ (Deferred: no non-Recorder Tier 2 services in v0.4.0)
+- [x] ~~Test: Read-only workspace mounts for non-Recorder services~~ (Deferred: no non-Recorder Tier 2 services in v0.4.0)
 - [x] Verify segment files are valid WAV (header + data intact after promotion)
 - [x] Update Recorder README status table (mark implemented features)
 

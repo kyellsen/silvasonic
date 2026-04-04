@@ -1,0 +1,46 @@
+FROM python:3.13-slim-bookworm
+
+WORKDIR /app
+
+# 1. System dependencies (curl for healthcheck)
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Node.js 22 LTS (Tailwind CSS v4 requires Node >= 20)
+# hadolint ignore=DL3008
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x -o nodesource_setup.sh \
+    && bash nodesource_setup.sh \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* nodesource_setup.sh
+
+# 3. UV installer (pinned — must match other Containerfiles)
+COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
+
+# 4. Copy workspace files
+COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
+COPY services/db-viewer/ services/db-viewer/
+
+# 5. Install Python dependencies with uv
+RUN uv sync --frozen --no-dev --no-editable --package silvasonic-db-viewer
+
+# 6. Build Tailwind CSS → static output.css (no CDN at runtime)
+WORKDIR /app/services/db-viewer
+RUN npm install --ignore-scripts=false \
+    && npx tailwindcss \
+        -i ./src/silvasonic/db_viewer/static/css/input.css \
+        -o ./src/silvasonic/db_viewer/static/css/output.css \
+        --minify
+WORKDIR /app
+
+# 7. Environment
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8002
+
+ENTRYPOINT ["python", "-m"]
+CMD ["silvasonic.db_viewer"]

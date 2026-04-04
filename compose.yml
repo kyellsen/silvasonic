@@ -194,6 +194,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+      SILVASONIC_API_ROOT_PATH: /web-mock
     ports:
       - "${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
     depends_on:
@@ -205,6 +206,34 @@ services:
       - silvasonic-net
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8001/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- DB-Viewer (Tier 1 Dev UI — v0.7.1) ---
+  # Minimal read-only database viewer for development.
+  db-viewer:
+    container_name: silvasonic-db-viewer
+    profiles: ["db-viewer"]
+    build:
+      context: .
+      dockerfile: services/db-viewer/Containerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+      SILVASONIC_API_ROOT_PATH: /db-viewer
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/" ]
       interval: 10s
       timeout: 5s
       retries: 5
