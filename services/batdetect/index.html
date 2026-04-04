@@ -3078,6 +3078,7 @@ Instead, strictly follow the rules in <code>docs/STRUCTURE.md</code> for Service
 <h3 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Database Rows:</strong> Inserts classification results into the <code>detections</code> table (species label, confidence score, time range, common name).</li>
+<li><strong>Audio Clips:</strong> Extracts short WAV clips (detection range ± padding) from raw recordings and saves them to the BatDetect workspace (<code>batdetect/clips/</code>). The relative file path is stored in <code>detections.clip_path</code>.</li>
 <li><strong>Redis Events:</strong> Publishes detection notifications (best-effort, fire-and-forget).</li>
 </ul>
 <h2 id="4-operational-constraints-rules">4. Operational Constraints &amp; Rules<a class="headerlink" href="#4-operational-constraints-rules" title="Permanent link">&para;</a></h2>
@@ -3147,6 +3148,11 @@ BatDetect is an <strong>expendable</strong> analysis worker. If the system is un
 <tr>
 <td><code>${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z</code></td>
 <td>Recorder workspace (read-only mount)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>${SILVASONIC_WORKSPACE_PATH}/batdetect:z</code></td>
+<td>BatDetect workspace (clips, read-write)</td>
 <td>—</td>
 </tr>
 <tr>

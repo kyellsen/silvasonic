@@ -3201,6 +3201,16 @@
 <li>Must contain <code>data/processed</code> inside the mic folder.</li>
 </ul>
 </li>
+<li>
+<p><strong><code>birdnet/</code></strong>:</p>
+<ul>
+<li>Owned by the BirdNET analysis worker (Tier 2).</li>
+<li>Contains <code>clips/</code> — short audio excerpts of detections, extracted from processed recordings.</li>
+<li>Naming convention: <code>{recording_id}_{start_ms}_{end_ms}_{label}.wav</code></li>
+<li>Internal structure is created by the BirdNET service at startup.</li>
+<li>The Web-Interface (v0.9.0) mounts this directory as <code>:ro</code> for media serving.</li>
+</ul>
+</li>
 </ul>
 <blockquote>
 <p><strong>NOTE:</strong> <code>database</code> uses a <strong>Named Volume</strong> and does not reside in the user-accessible Workspace to prevent permission errors and accidental corruption.</p>

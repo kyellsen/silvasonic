@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/AGENTS/">
+        <link rel="canonical" href="https://docs.silvasonic.de/development/issues/008-clip-cleanup-janitor/">
       
       
-        <link rel="prev" href="..">
-      
-      
-        <link rel="next" href="../VISION/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Agents - Silvasonic</title>
+        <title>[TASK] 008: Janitor Clip Cleanup for Analysis Workers - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agentsmd" class="md-skip">
+        <a href="#task-008-janitor-clip-cleanup-for-analysis-workers" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agents
+              [TASK] 008: Janitor Clip Cleanup for Analysis Workers
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -250,37 +246,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Agents
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../AGENTS/" class="md-nav__link">
         
   
   
@@ -296,125 +265,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-core-directive-data-capture-integrity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Core Directive: Data Capture Integrity
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-language-domain-policy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Language &amp; Domain Policy
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-naming-conventions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Naming Conventions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-documentation-filesystem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Documentation &amp; Filesystem
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-libraries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Libraries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-testing-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Testing Rules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-environment-variable-naming" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Environment Variable Naming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-data-contracts-spec-driven-development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Data Contracts (Spec-Driven Development)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -426,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../VISION/" class="md-nav__link">
+      <a href="../../../VISION/" class="md-nav__link">
         
   
   
@@ -453,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ROADMAP/" class="md-nav__link">
+      <a href="../../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -527,7 +377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
+      <a href="../../../arch/" class="md-nav__link">
         
   
   
@@ -555,7 +405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/filesystem_governance/" class="md-nav__link">
+      <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -583,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/messaging_patterns/" class="md-nav__link">
+      <a href="../../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -611,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/port_allocation/" class="md-nav__link">
+      <a href="../../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -639,7 +489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/microphone_profiles/" class="md-nav__link">
+      <a href="../../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -721,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/controller/" class="md-nav__link">
+      <a href="../../../services/controller/" class="md-nav__link">
         
   
   
@@ -749,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/database/" class="md-nav__link">
+      <a href="../../../services/database/" class="md-nav__link">
         
   
   
@@ -777,7 +627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/recorder/" class="md-nav__link">
+      <a href="../../../services/recorder/" class="md-nav__link">
         
   
   
@@ -805,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/redis/" class="md-nav__link">
+      <a href="../../../services/redis/" class="md-nav__link">
         
   
   
@@ -833,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_mock/" class="md-nav__link">
+      <a href="../../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -861,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/processor/" class="md-nav__link">
+      <a href="../../../services/processor/" class="md-nav__link">
         
   
   
@@ -889,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/gateway/" class="md-nav__link">
+      <a href="../../../services/gateway/" class="md-nav__link">
         
   
   
@@ -917,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_interface/" class="md-nav__link">
+      <a href="../../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -945,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_design_system/" class="md-nav__link">
+      <a href="../../../arch/frontend_design_system/" class="md-nav__link">
         
   
   
@@ -973,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_features/" class="md-nav__link">
+      <a href="../../../arch/frontend_features/" class="md-nav__link">
         
   
   
@@ -1001,7 +851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/icecast/" class="md-nav__link">
+      <a href="../../../services/icecast/" class="md-nav__link">
         
   
   
@@ -1029,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/birdnet/" class="md-nav__link">
+      <a href="../../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -1057,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/weather/" class="md-nav__link">
+      <a href="../../../services/weather/" class="md-nav__link">
         
   
   
@@ -1085,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/batdetect/" class="md-nav__link">
+      <a href="../../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -1113,7 +963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/tailscale/" class="md-nav__link">
+      <a href="../../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1195,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../../deployment/" class="md-nav__link">
         
   
   
@@ -1277,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
+      <a href="../../../adr/" class="md-nav__link">
         
   
   
@@ -1305,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0001-use-uv/" class="md-nav__link">
+      <a href="../../../adr/0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1333,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../../../adr/0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1361,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0003-frontend-architecture/" class="md-nav__link">
+      <a href="../../../adr/0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1389,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0004-use-podman/" class="md-nav__link">
+      <a href="../../../adr/0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1417,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../../../adr/0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1445,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../../../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1473,7 +1323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../../../adr/0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1501,7 +1351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../../../adr/0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1529,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../../../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1557,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0010-naming-conventions/" class="md-nav__link">
+      <a href="../../../adr/0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1585,7 +1435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../../../adr/0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1613,7 +1463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0012-use-pydantic/" class="md-nav__link">
+      <a href="../../../adr/0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1641,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0013-tier2-container-management/" class="md-nav__link">
+      <a href="../../../adr/0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1669,7 +1519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../../../adr/0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1697,7 +1547,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../../../adr/0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1725,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../../../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1753,7 +1603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0017-service-state-management/" class="md-nav__link">
+      <a href="../../../adr/0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1781,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../../../adr/0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1809,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../../../adr/0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1837,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../../../adr/0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1865,7 +1715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0021-frontend-design-system/" class="md-nav__link">
+      <a href="../../../adr/0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -1893,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0022-live-log-streaming/" class="md-nav__link">
+      <a href="../../../adr/0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -1921,7 +1771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0023-configuration-management/" class="md-nav__link">
+      <a href="../../../adr/0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -1949,7 +1799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../../../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -2031,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -2059,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -2087,7 +1937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -2115,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2143,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2171,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2199,7 +2049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2227,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2255,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2283,7 +2133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../milestones/milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2311,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/_template/" class="md-nav__link">
+      <a href="../../milestones/_template/" class="md-nav__link">
         
   
   
@@ -2339,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/service_blueprint/" class="md-nav__link">
+      <a href="../../service_blueprint/" class="md-nav__link">
         
   
   
@@ -2367,7 +2217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../../testing/" class="md-nav__link">
         
   
   
@@ -2395,7 +2245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/release_checklist/" class="md-nav__link">
+      <a href="../../release_checklist/" class="md-nav__link">
         
   
   
@@ -2477,7 +2327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/controller/" class="md-nav__link">
+      <a href="../../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2505,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/recorder/" class="md-nav__link">
+      <a href="../../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2533,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2561,7 +2411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2589,7 +2439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/processor/" class="md-nav__link">
+      <a href="../../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2617,7 +2467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/gateway/" class="md-nav__link">
+      <a href="../../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2645,7 +2495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/icecast/" class="md-nav__link">
+      <a href="../../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2673,7 +2523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/cloud_sync/" class="md-nav__link">
+      <a href="../../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
@@ -2701,7 +2551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2736,7 +2586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hardware/" class="md-nav__link">
+      <a href="../../../hardware/" class="md-nav__link">
         
   
   
@@ -2763,7 +2613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../../glossary/" class="md-nav__link">
         
   
   
@@ -2810,10 +2660,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-core-directive-data-capture-integrity" class="md-nav__link">
+  <a href="#1-description" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Core Directive: Data Capture Integrity
+        1. Description
       
     </span>
   </a>
@@ -2821,10 +2671,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-language-domain-policy" class="md-nav__link">
+  <a href="#2-context-root-cause-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Language &amp; Domain Policy
+        2. Context &amp; Root Cause Analysis
       
     </span>
   </a>
@@ -2832,10 +2682,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-naming-conventions" class="md-nav__link">
+  <a href="#3-impact-consequences" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Naming Conventions
+        3. Impact / Consequences
       
     </span>
   </a>
@@ -2843,10 +2693,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-documentation-filesystem" class="md-nav__link">
+  <a href="#4-steps-to-reproduce" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Documentation &amp; Filesystem
+        4. Steps to Reproduce
       
     </span>
   </a>
@@ -2854,10 +2704,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-libraries" class="md-nav__link">
+  <a href="#5-expected-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Libraries
+        5. Expected Behavior
       
     </span>
   </a>
@@ -2865,10 +2715,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-testing-rules" class="md-nav__link">
+  <a href="#6-proposed-solution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Testing Rules
+        6. Proposed Solution
       
     </span>
   </a>
@@ -2876,32 +2726,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-environment-variable-naming" class="md-nav__link">
+  <a href="#7-relevant-documentation-links" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Environment Variable Naming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-data-contracts-spec-driven-development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Data Contracts (Spec-Driven Development)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
+        7. Relevant Documentation Links
       
     </span>
   </a>
@@ -2928,176 +2756,57 @@
   
 
 
-<h1 id="agentsmd">AGENTS.md<a class="headerlink" href="#agentsmd" title="Permanent link">&para;</a></h1>
+<h1 id="task-008-janitor-clip-cleanup-for-analysis-workers">[TASK] 008: Janitor Clip Cleanup for Analysis Workers<a class="headerlink" href="#task-008-janitor-clip-cleanup-for-analysis-workers" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>CRITICAL BUG WORKAROUND (VS Code Shell Integration):</strong>
-You suffer from a known VS Code shell integration bug where reading stdout directly from the terminal hangs indefinitely.</p>
-<p><strong>RULE:</strong> Whenever you run a terminal command, you <strong>MUST</strong> pipe the output to a unique named file in <code>/tmp</code> (including a datetime stamp) and then read that file to get the results.</p>
-<p><strong>Example:</strong> <code>ls -la &gt; /tmp/out_20241025_120000.txt</code> (then read <code>/tmp/out_20241025_120000.txt</code>)</p>
-<p><strong>AUTHORITY:</strong> This document is the <strong>single source of truth</strong> for all AI agents working on this repository. <code>CLAUDE.md</code>, <code>.gemini/</code>, <code>.cursorrules</code> etc. are supplementary redirects that point here — never the reverse.</p>
+<p><strong>Status:</strong> <code>open</code></p>
+<p><strong>Priority:</strong> 4 (not blocking v0.8.0, but required before production use)</p>
+<p><strong>Labels:</strong> <code>enhancement</code>, <code>tech-debt</code></p>
+<p><strong>Service(s) Affected:</strong> <code>processor</code> (Janitor)</p>
 </blockquote>
-<p>👤 <strong>Human?</strong> Read <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/README.md">README.md</a></strong> for overview, <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a></strong> for vision/architecture, and <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md">ROADMAP.md</a></strong> for the milestone roadmap.</p>
-<h2 id="1-core-directive-data-capture-integrity">1. Core Directive: Data Capture Integrity<a class="headerlink" href="#1-core-directive-data-capture-integrity" title="Permanent link">&para;</a></h2>
-<p>Silvasonic is a robust, autonomous bioacoustic monitoring device (Raspberry Pi 5 + NVMe).
-*   <strong>Primary Directive:</strong> Silvasonic is a recording station, not just an analytics cluster. <strong>Data Capture Integrity</strong> is paramount.
-*   <strong>CRITICAL RULE:</strong> Any operation that risks the continuity of Sound Recording is <strong>FORBIDDEN</strong>.
-*   <strong>Resource Limits &amp; QoS:</strong> You <strong>MUST</strong> specify memory, CPU limits, and <code>oom_score_adj</code> for every Tier 2 container. The Recorder is the most protected service, while analysis workers are expendable. See <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0020-resource-limits-qos.md">ADR-0020</a></strong>.
-*   <strong>Container Runtime:</strong> Containers run as root inside (no <code>USER</code> directive). Podman rootless maps container-root to the host user automatically. See <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0004-use-podman.md">ADR-0004</a></strong> and <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0007-rootless-os-compliance.md">ADR-0007</a></strong>.
-*   <strong>Services Architecture:</strong> <strong>Tier 1 (Infrastructure)</strong> and <strong>Tier 2 (Application)</strong>. All Tier 2 containers are <strong>IMMUTABLE</strong>, configured dynamically by the Controller. The Recorder has <strong>NO database access</strong>. See <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0013-tier2-container-management.md">ADR-0013</a></strong> and <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a></strong>.</p>
-<h2 id="2-language-domain-policy">2. Language &amp; Domain Policy<a class="headerlink" href="#2-language-domain-policy" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Repository Content:</strong> <strong>ENGLISH ONLY</strong> (Code, Docs, Commits, Configs).</li>
-<li><strong>Chat Output:</strong> <strong>GERMAN ONLY</strong> (Interaction with User).</li>
-<li><strong>Localization (i18n):</strong> Backend delivers <code>JSONB</code> dictionaries (e.g. <code>{"en": "Blackbird", "de": "Amsel"}</code>). Frontend resolves at runtime. Hardcoding UI strings is <strong>FORBIDDEN</strong>.</li>
-<li><strong>Domain Language:</strong> Strict adherence to <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/glossary.md">Glossary</a></strong>.</li>
-</ul>
-<h2 id="3-naming-conventions">3. Naming Conventions<a class="headerlink" href="#3-naming-conventions" title="Permanent link">&para;</a></h2>
-<p>Full details: <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0010-naming-conventions.md">ADR-0010</a></strong>.
-*   <strong>PyPI Package:</strong> <code>silvasonic-&lt;service&gt;</code> · <strong>Python Import:</strong> <code>silvasonic.&lt;service&gt;</code>
-*   <strong>Compose Service:</strong> <code>&lt;service&gt;</code> · <strong>Container Name:</strong> <code>silvasonic-&lt;service&gt;</code></p>
-<h2 id="4-documentation-filesystem">4. Documentation &amp; Filesystem<a class="headerlink" href="#4-documentation-filesystem" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Document</th>
-<th>Role</th>
-<th>Location</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>README.md</code></td>
-<td>AS-IS state + quickstart</td>
-<td>Root</td>
-</tr>
-<tr>
-<td><code>VISION.md</code></td>
-<td>TO-BE vision + architecture</td>
-<td>Root</td>
-</tr>
-<tr>
-<td><code>ROADMAP.md</code></td>
-<td>Milestone roadmap</td>
-<td>Root</td>
-</tr>
-<tr>
-<td><code>AGENTS.md</code></td>
-<td>Agent rules (this file, SoT)</td>
-<td>Root</td>
-</tr>
-<tr>
-<td><code>services/&lt;svc&gt;/README.md</code></td>
-<td>Implemented/partial service (SoT)</td>
-<td><code>services/&lt;svc&gt;/</code></td>
-</tr>
-<tr>
-<td><code>docs/services/&lt;svc&gt;.md</code></td>
-<td>Planned service spec</td>
-<td><code>docs/services/</code></td>
-</tr>
-<tr>
-<td><code>docs/adr/</code></td>
-<td>Architecture Decision Records</td>
-<td><code>docs/adr/</code></td>
-</tr>
-<tr>
-<td><code>docs/arch/</code></td>
-<td>Architecture Patterns &amp; Specs</td>
-<td><code>docs/arch/</code></td>
-</tr>
-<tr>
-<td><code>docs/index.md</code></td>
-<td>Entry point for all docs</td>
-<td><code>docs/</code></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Rules:</strong>
-- Every doc must label sections <strong>AS-IS</strong> or <strong>TO-BE</strong>. Service docs need a <code>Status:</code> line (<code>implemented</code> | <code>partial</code> | <code>planned</code>).
-- No content duplication — link instead of copying.
-- When a service moves to implementation: create <code>services/&lt;svc&gt;/README.md</code>, convert <code>docs/services/&lt;svc&gt;.md</code> to link-stub.
-- Bind Mounts with <code>:z</code>. Named Volumes <strong>ONLY</strong> for <code>database</code>.
-- Temporary artifacts → <code>.tmp/</code> (git-ignored).
-- ⚠️ New root files/dirs → register in <code>.keep</code> or <code>just clear</code> deletes them.</p>
-<h2 id="5-libraries">5. Libraries<a class="headerlink" href="#5-libraries" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Domain</th>
-<th>Use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Config</td>
-<td><code>pydantic</code> V2, <code>pyYAML</code> (<code>safe_load</code> only)</td>
-</tr>
-<tr>
-<td>Logging</td>
-<td><code>structlog</code> (JSON) / <code>rich</code> (dev)</td>
-</tr>
-<tr>
-<td>DB</td>
-<td><code>sqlalchemy</code> 2.0+ async, <code>asyncpg</code></td>
-</tr>
-<tr>
-<td>Redis</td>
-<td><code>redis-py</code> async (ADR-0019)</td>
-</tr>
-<tr>
-<td>System</td>
-<td><code>psutil</code> (process + host resource monitoring, ADR-0019)</td>
-</tr>
-<tr>
-<td>Web</td>
-<td><code>fastapi</code>, <code>jinja2</code>, <code>htmx</code>, <code>alpine.js</code> (ADR-0003)</td>
-</tr>
-<tr>
-<td>Frontend</td>
-<td><code>tailwindcss</code>, <code>daisyui</code> (v5), <code>echarts</code>, <code>wavesurfer.js</code> (v7) (ADR-0021)</td>
-</tr>
-<tr>
-<td>Data</td>
-<td><code>numpy</code>, <code>polars</code> (<strong>no</strong> <code>pandas</code>)</td>
-</tr>
-<tr>
-<td>Audio</td>
-<td><code>ffmpeg</code> (capture &amp; resample — ADR-0024), <code>soundfile</code> (analysis services only)</td>
-</tr>
-<tr>
-<td>Test</td>
-<td><code>pytest</code>, <code>pytest-xdist</code>, <code>playwright</code>, <code>testcontainers</code>, <code>polyfactory</code></td>
-</tr>
-<tr>
-<td>Tools</td>
-<td><code>uv</code>, <code>hatchling</code>, <code>ruff</code>, <code>mypy</code>, <code>pre-commit</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="6-testing-rules">6. Testing Rules<a class="headerlink" href="#6-testing-rules" title="Permanent link">&para;</a></h2>
-<ol>
-<li><strong>Explicit Markers:</strong> Every test MUST have <code>@pytest.mark.unit</code>, <code>.integration</code>, <code>.system</code>, <code>.system_hw_auto</code>, <code>.system_hw_manual</code>, <code>.e2e</code>, or <code>.smoke</code>.</li>
-<li><strong>Directory Structure:</strong> Tests in <code>tests/unit/</code>, <code>tests/integration/</code>, etc. matching their marker.</li>
-<li><strong>Location:</strong> Service-specific tests inside the service package. Only cross-cutting tests in root <code>tests/</code>.</li>
-<li><strong>Hardware Tests:</strong> <code>@pytest.mark.system_hw_auto</code> / <code>.system_hw_manual</code> tests require real USB microphone hardware and are <strong>never</strong> run in CI or <code>just check-all</code>. Run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</li>
-</ol>
-<h2 id="7-environment-variable-naming">7. Environment Variable Naming<a class="headerlink" href="#7-environment-variable-naming" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Prefix Rule:</strong> Every project variable <strong>MUST</strong> use <code>SILVASONIC_</code> prefix (e.g. <code>SILVASONIC_DB_PORT</code>).</li>
-<li><strong>Exceptions:</strong> Third-party standards keep their names: <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, <code>POSTGRES_DB</code>, <code>DOCKER_HOST</code>.</li>
-</ul>
-<h2 id="8-data-contracts-spec-driven-development">8. Data Contracts (Spec-Driven Development)<a class="headerlink" href="#8-data-contracts-spec-driven-development" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Single Source of Truth:</strong> All shared data structures, event payloads, and configurations <strong>MUST</strong> use the central Pydantic schemas located in <code>packages/core/src/silvasonic/core/schemas/</code> or <code>config_schemas.py</code>.</li>
-<li><strong>No Duplication:</strong> <strong>Never</strong> hardcode or duplicate these payloads inside individual Tier 2 services. Before writing code that exchanges data between services, check the core schemas first.</li>
-</ul>
 <hr />
-<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<h2 id="1-description">1. Description<a class="headerlink" href="#1-description" title="Permanent link">&para;</a></h2>
+<p>When the Janitor deletes old recordings from <code>data/processed/</code> (based on retention thresholds), the corresponding audio clips extracted by analysis workers (BirdNET, BatDetect) remain orphaned on disk in their respective workspace directories (<code>birdnet/clips/</code>, <code>batdetect/clips/</code>).</p>
+<p>These orphaned clips will accumulate indefinitely and waste NVMe storage.</p>
+<h2 id="2-context-root-cause-analysis">2. Context &amp; Root Cause Analysis<a class="headerlink" href="#2-context-root-cause-analysis" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/README.md">README.md</a></strong> — Project overview, quick start</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/VISION.md">VISION.md</a></strong> — Vision, architecture, design principles</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md">ROADMAP.md</a></strong> — Milestone roadmap</li>
-<li><strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/index.md">docs/index.md</a></strong> — Full technical documentation</li>
+<li><strong>Component:</strong> <code>Janitor</code> (in <code>services/processor/src/silvasonic/processor/janitor.py</code>)</li>
+<li><strong>Mechanism:</strong> The Janitor currently deletes recordings based on <code>local_deleted</code> flag and age thresholds. It has no awareness of the <code>detections.clip_path</code> column or the analysis worker workspace directories.</li>
+</ul>
+<p>The <code>clip_path</code> column was introduced in v0.8.0 (BirdNET milestone) to store relative paths to detection audio clips. The clips are stored in per-worker workspace directories (e.g., <code>birdnet/clips/42_9000_12000_Turdus_merula.wav</code>).</p>
+<h2 id="3-impact-consequences">3. Impact / Consequences<a class="headerlink" href="#3-impact-consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Data Capture Integrity:</strong> No impact — this is a storage issue only.</li>
+<li><strong>System Stability:</strong> No immediate risk. Long-term NVMe fill-up could trigger the Janitor's own warning thresholds.</li>
+<li><strong>Hardware Wear:</strong> Minimal — clips are small (~50–200 KB each), but accumulation over months is significant.</li>
+</ul>
+<h2 id="4-steps-to-reproduce">4. Steps to Reproduce<a class="headerlink" href="#4-steps-to-reproduce" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Run BirdNET analysis on a set of recordings (v0.8.0+).</li>
+<li>Wait for the Janitor to delete old recordings past the retention threshold.</li>
+<li>Observe that <code>birdnet/clips/</code> still contains WAV files for deleted recordings.</li>
+</ol>
+<h2 id="5-expected-behavior">5. Expected Behavior<a class="headerlink" href="#5-expected-behavior" title="Permanent link">&para;</a></h2>
+<p>When the Janitor marks a recording as <code>local_deleted=true</code> and removes its audio files, it should also:
+1. Query <code>detections.clip_path</code> for all detections referencing the deleted <code>recording_id</code>.
+2. Delete the corresponding clip files from the analysis worker workspaces.
+3. Set <code>detections.clip_path = NULL</code> for the affected rows (or leave as-is if the path is just a reference).</p>
+<h2 id="6-proposed-solution">6. Proposed Solution<a class="headerlink" href="#6-proposed-solution" title="Permanent link">&para;</a></h2>
+<p>Extend the Janitor's deletion logic:</p>
+<ol>
+<li><strong>Before deleting a recording's audio files</strong>, query all related detections:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">clip_path</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">detections</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">recording_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">:</span><span class="n">id</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">clip_path</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+</code></pre></div></li>
+<li><strong>Delete each clip file</strong> from the corresponding workspace directory.</li>
+<li><strong>Optionally</strong> null out the <code>clip_path</code> column to reflect the deletion.</li>
+</ol>
+<p>The Janitor already has read-write access to the workspace. It would need an additional <code>:z</code> mount for <code>birdnet/</code> and <code>batdetect/</code> (or a shared parent mount).</p>
+<p><strong>Alternative:</strong> A separate cleanup cron job that finds clips with no matching <code>recording_id</code> (orphan detection). Simpler but less immediate.</p>
+<h2 id="7-relevant-documentation-links">7. Relevant Documentation Links<a class="headerlink" href="#7-relevant-documentation-links" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../../adr/0009-zero-trust-data-sharing/">ADR-0009: Zero-Trust Data Sharing</a> — Consumer Principle (read-only mounts exception for Janitor?)</li>
+<li><a href="../../../adr/0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS</a> — Storage budgets</li>
+<li><a href="../../milestones/milestone_0_8_0/">Milestone v0.8.0</a> — BirdNET (introduced <code>clip_path</code>)</li>
+<li><a href="../../../arch/filesystem_governance/">Filesystem Governance §2</a> — BirdNET workspace structure</li>
 </ul>
 
 
@@ -3148,10 +2857,10 @@ You suffer from a known VS Code shell integration bug where reading stdout direc
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

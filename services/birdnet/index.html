@@ -3070,11 +3070,12 @@ Instead, strictly follow the rules in <code>docs/STRUCTURE.md</code> for Service
 </ul>
 <h3 id="processing">Processing<a class="headerlink" href="#processing" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Inference:</strong> Runs BirdNET-Analyzer on 3-second audio segments, producing species predictions with confidence scores.</li>
+<li><strong>Inference:</strong> Loads the BirdNET TFLite model once at startup via <code>tflite_runtime.Interpreter</code> (resident in memory for the container's lifetime). Splits processed recordings into 3-second audio windows using <code>soundfile</code>/<code>numpy</code> and runs inference per chunk. Detections are native Python objects — no CLI subprocess, no CSV intermediaries, no <code>birdnetlib</code> wrapper (see <a href="../../development/milestones/milestone_0_8_0/">Milestone v0.8.0</a> for architectural rationale).</li>
 </ul>
 <h3 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Database Rows:</strong> Inserts classification results into the <code>detections</code> table (species label, confidence score, time range, common name).</li>
+<li><strong>Audio Clips:</strong> Extracts short WAV clips (detection time range ± configurable padding) from processed recordings using <code>soundfile</code> and saves them to the BirdNET workspace (<code>birdnet/clips/</code>). The relative file path is stored in <code>detections.clip_path</code>.</li>
 <li><strong>Redis Events:</strong> Publishes detection notifications (best-effort, fire-and-forget).</li>
 </ul>
 <h2 id="4-operational-constraints-rules">4. Operational Constraints &amp; Rules<a class="headerlink" href="#4-operational-constraints-rules" title="Permanent link">&para;</a></h2>
@@ -3141,6 +3142,11 @@ BirdNET is an <strong>expendable</strong> analysis worker. If the system is unde
 <td>—</td>
 </tr>
 <tr>
+<td><code>${SILVASONIC_WORKSPACE_PATH}/birdnet:z</code></td>
+<td>BirdNET workspace (clips, read-write)</td>
+<td>—</td>
+</tr>
+<tr>
 <td><code>POSTGRES_HOST</code>, <code>SILVASONIC_DB_*</code></td>
 <td>Database connection</td>
 <td>via <code>.env</code></td>
@@ -3177,6 +3183,30 @@ BirdNET is an <strong>expendable</strong> analysis worker. If the system is unde
 <td><code>0.25</code></td>
 <td>Minimum confidence for species detection</td>
 </tr>
+<tr>
+<td><code>birdnet</code></td>
+<td><code>clip_padding_seconds</code></td>
+<td><code>3.0</code></td>
+<td>Padding around detection window for clip extraction</td>
+</tr>
+<tr>
+<td><code>birdnet</code></td>
+<td><code>overlap</code></td>
+<td><code>0.0</code></td>
+<td>Overlap between analysis windows (0.0–3.0 seconds)</td>
+</tr>
+<tr>
+<td><code>birdnet</code></td>
+<td><code>sensitivity</code></td>
+<td><code>1.0</code></td>
+<td>Model sensitivity (0.5–1.5)</td>
+</tr>
+<tr>
+<td><code>birdnet</code></td>
+<td><code>threads</code></td>
+<td><code>1</code></td>
+<td>Number of inference threads</td>
+</tr>
 </tbody>
 </table>
 <p><strong>Update Mechanism (State Reconciliation):</strong>
@@ -3186,9 +3216,9 @@ BirdNET is an <strong>expendable</strong> analysis worker. If the system is unde
 4. BirdNET reads the new settings from the database upon startup.</p>
 <h2 id="6-technology-stack">6. Technology Stack<a class="headerlink" href="#6-technology-stack" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>ML Model:</strong> BirdNET-Analyzer — TFLite-based avian species classifier.</li>
-<li><strong>Runtime:</strong> TensorFlow Lite (<code>tflite-runtime</code>). This is the official and mandatory requirement for deployment on resource-constrained Edge devices like the Raspberry Pi 5 to drastically reduce RAM and CPU overhead compared to full TensorFlow.</li>
-<li><strong>Audio:</strong> <code>soundfile</code>, <code>numpy</code> (spectrogram / segment extraction).</li>
+<li><strong>ML Model:</strong> BirdNET TFLite model (~30 MB), loaded once at container startup via <code>tflite_runtime.Interpreter</code> (resident in memory for the container's lifetime). Oriented on BirdNET-Pi's native integration approach — no CLI subprocess, no <code>birdnetlib</code> wrapper.</li>
+<li><strong>Runtime:</strong> <code>tflite-runtime</code> — mandatory for resource-constrained RPi 5 deployment. Explicit memory management (<code>del audio_chunk</code>, <code>gc.collect()</code>) prevents leaks during long-running inference loops.</li>
+<li><strong>Audio:</strong> <code>soundfile</code> (WAV I/O, clip extraction), <code>numpy</code> (spectrogram processing, 3-second chunk splitting).</li>
 </ul>
 <h2 id="7-open-questions-future-ideas">7. Open Questions &amp; Future Ideas<a class="headerlink" href="#7-open-questions-future-ideas" title="Permanent link">&para;</a></h2>
 <ul>

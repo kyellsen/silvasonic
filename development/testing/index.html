@@ -2400,10 +2400,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hardware-system-tests-pytestmarksystem_hw" class="md-nav__link">
+  <a href="#hardware-system-tests-pytestmarksystem_hw_auto-system_hw_manual" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware System Tests (@pytest.mark.system_hw)
+        Hardware System Tests (@pytest.mark.system_hw_auto / .system_hw_manual)
       
     </span>
   </a>
@@ -3179,10 +3179,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hardware-system-tests-pytestmarksystem_hw" class="md-nav__link">
+  <a href="#hardware-system-tests-pytestmarksystem_hw_auto-system_hw_manual" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware System Tests (@pytest.mark.system_hw)
+        Hardware System Tests (@pytest.mark.system_hw_auto / .system_hw_manual)
       
     </span>
   </a>
@@ -3470,8 +3470,15 @@
 <td>✅ Stage 10</td>
 </tr>
 <tr>
-<td><code>system_hw</code></td>
-<td>Hardware-dependent system tests</td>
+<td><code>system_hw_auto</code></td>
+<td>Automated hardware-dependent system tests</td>
+<td>Podman + real USB microphone</td>
+<td>&lt; 60s per test</td>
+<td>❌ Never</td>
+</tr>
+<tr>
+<td><code>system_hw_manual</code></td>
+<td>Interactive hardware tests (requires manual input)</td>
 <td>Podman + real USB microphone</td>
 <td>&lt; 60s per test</td>
 <td>❌ Never</td>
@@ -3494,8 +3501,8 @@
 </table>
 <blockquote>
 <p>[!IMPORTANT]
-<code>system_hw</code> tests are <strong>never</strong> included in CI or <code>just check-all</code>. They require real USB
-microphone hardware and must be run manually via <code>just test-hw</code>.</p>
+<code>system_hw_auto</code> and <code>system_hw_manual</code> tests are <strong>never</strong> included in CI or <code>just check-all</code>. They require real USB
+microphone hardware and must be run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</p>
 </blockquote>
 <hr />
 <h2 id="2-directory-structure">2. Directory Structure<a class="headerlink" href="#2-directory-structure" title="Permanent link">&para;</a></h2>
@@ -3512,13 +3519,14 @@ microphone hardware and must be run manually via <code>just test-hw</code>.</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    smoke/          # @pytest.mark.smoke — stack health checks
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    integration/    # @pytest.mark.integration — multi-service
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    system/         # @pytest.mark.system — full-stack lifecycle (Podman)
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                    # @pytest.mark.system_hw — hardware system tests
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.9.0+)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                    # @pytest.mark.system_hw_auto — automated hardware tests
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                    # @pytest.mark.system_hw_manual — manual hardware tests
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    e2e/            # @pytest.mark.e2e — browser tests (Playwright, v0.9.0+)
 </code></pre></div>
 <blockquote>
 <p>[!IMPORTANT]
 A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code>@pytest.mark.unit</code> tests. Mixing markers in a single directory is <strong>FORBIDDEN</strong>.
-<strong>Exception:</strong> <code>tests/system/</code> contains both <code>@pytest.mark.system</code> and <code>@pytest.mark.system_hw</code> tests because they share Podman socket, DB, and hardware-config fixtures via a common <code>conftest.py</code>.</p>
+<strong>Exception:</strong> <code>tests/system/</code> contains <code>.system</code>, <code>.system_hw_auto</code> and <code>.system_hw_manual</code> tests because they share Podman socket, DB, and hardware-config fixtures via a common <code>conftest.py</code>.</p>
 </blockquote>
 <hr />
 <h2 id="3-running-tests">3. Running Tests<a class="headerlink" href="#3-running-tests" title="Permanent link">&para;</a></h2>
@@ -3526,12 +3534,14 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>just<span class="w"> </span>test-unit<span class="w">       </span><span class="c1"># Unit tests only (no external deps)</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>just<span class="w"> </span>test-int<span class="w">        </span><span class="c1"># Integration tests (Testcontainers)</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>just<span class="w"> </span>test-system<span class="w">     </span><span class="c1"># System lifecycle tests (Podman + built images, no HW)</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>just<span class="w"> </span>test-hw<span class="w">         </span><span class="c1"># Hardware system tests (requires real USB microphone)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>just<span class="w"> </span>test-smoke<span class="w">      </span><span class="c1"># Smoke tests (built images via Testcontainers)</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>just<span class="w"> </span>test-e2e<span class="w">        </span><span class="c1"># End-to-end browser tests (Playwright)</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>just<span class="w"> </span><span class="nb">test</span><span class="w">            </span><span class="c1"># Quick dev: Unit + Integration</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>just<span class="w"> </span>test-all<span class="w">        </span><span class="c1"># All tests except hardware (Unit+Int+System+Smoke+E2E)</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>just<span class="w"> </span>test-cov-all<span class="w">    </span><span class="c1"># Combined coverage map (Unit+Int+System+Smoke+E2E)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>just<span class="w"> </span>test-hw<span class="w">         </span><span class="c1"># Automated hardware tests (requires real USB microphone)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>just<span class="w"> </span>test-hw-manual<span class="w">  </span><span class="c1"># Interactive hardware tests (requires manual unplug/replug)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>just<span class="w"> </span>test-hw-all<span class="w">     </span><span class="c1"># All hardware tests (automated + manual)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>just<span class="w"> </span>test-smoke<span class="w">      </span><span class="c1"># Smoke tests (built images via Testcontainers)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>just<span class="w"> </span>test-e2e<span class="w">        </span><span class="c1"># End-to-end browser tests (Playwright)</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>just<span class="w"> </span><span class="nb">test</span><span class="w">            </span><span class="c1"># Quick dev: Unit + Integration</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>just<span class="w"> </span>test-all<span class="w">        </span><span class="c1"># All tests except hardware (Unit+Int+System+Smoke+E2E)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>just<span class="w"> </span>test-cov-all<span class="w">    </span><span class="c1"># Combined coverage map (Unit+Int+System+Smoke+E2E)</span>
 </code></pre></div>
 <h3 id="quality-gates">Quality Gates<a class="headerlink" href="#quality-gates" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>just<span class="w"> </span>check<span class="w">           </span><span class="c1"># Fast dev check (4 stages):</span>
@@ -3582,7 +3592,7 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 </tr>
 <tr>
 <td>With USB mic connected</td>
-<td><code>just test-hw</code></td>
+<td><code>just test-hw-all</code></td>
 <td>Real hardware detection + spawning</td>
 </tr>
 </tbody>
@@ -3611,14 +3621,14 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 <li>Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop, crash recovery.</li>
 <li><strong>Fully isolated from production</strong> — no shared network with <code>just start</code>.</li>
 </ul>
-<h3 id="hardware-system-tests-pytestmarksystem_hw">Hardware System Tests (<code>@pytest.mark.system_hw</code>)<a class="headerlink" href="#hardware-system-tests-pytestmarksystem_hw" title="Permanent link">&para;</a></h3>
+<h3 id="hardware-system-tests-pytestmarksystem_hw_auto-system_hw_manual">Hardware System Tests (<code>@pytest.mark.system_hw_auto</code> / <code>.system_hw_manual</code>)<a class="headerlink" href="#hardware-system-tests-pytestmarksystem_hw_auto-system_hw_manual" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Test device detection pipeline with <strong>real USB microphone hardware</strong>.</li>
 <li>Each test session gets its own <strong>isolated Podman network</strong> (<code>silvasonic-hw-test-{id}</code>) via the <code>hw_redis</code> fixture.</li>
 <li>Require a USB-Audio device connected (e.g., UltraMic 384K).</li>
 <li>Skip automatically when no USB-Audio device is detected.</li>
 <li><strong>Fully isolated from production</strong> — can run while <code>just start</code> is active.</li>
-<li><strong>Never</strong> included in CI pipelines — run manually via <code>just test-hw</code>.</li>
+<li><strong>Never</strong> included in CI pipelines — run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</li>
 </ul>
 <h3 id="smoke-tests">Smoke Tests<a class="headerlink" href="#smoke-tests" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3762,8 +3772,8 @@ This section defines the qualitative boundaries for tests. It is especially crit
 </table>
 <blockquote>
 <p>[!NOTE]
-<code>system_hw</code> tests are intentionally excluded from this pipeline.
-Run <code>just test-hw</code> separately when hardware is available.</p>
+<code>system_hw_auto</code> and <code>system_hw_manual</code> tests are intentionally excluded from this pipeline.
+Run <code>just test-hw</code> or <code>just test-hw-manual</code> separately when hardware is available.</p>
 </blockquote>
 <hr />
 <h2 id="7-test-infrastructure">7. Test Infrastructure<a class="headerlink" href="#7-test-infrastructure" title="Permanent link">&para;</a></h2>
@@ -3883,7 +3893,15 @@ Run <code>just test-hw</code> separately when hardware is available.</p>
 <td>✅</td>
 </tr>
 <tr>
-<td><code>system_hw</code></td>
+<td><code>system_hw_auto</code></td>
+<td>Podman CLI</td>
+<td><code>silvasonic-hw-test-{session_id}</code> (per session)</td>
+<td>Random</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>system_hw_manual</code></td>
 <td>Podman CLI</td>
 <td><code>silvasonic-hw-test-{session_id}</code> (per session)</td>
 <td>Random</td>
@@ -3932,6 +3950,11 @@ Run <code>just test-hw</code> separately when hardware is available.</p>
 </tr>
 <tr>
 <td><code>just test-hw</code></td>
+<td><strong>anything</strong></td>
+<td>Per-session <code>silvasonic-hw-test-{id}</code> network via <code>hw_redis</code> fixture</td>
+</tr>
+<tr>
+<td><code>just test-hw-manual</code></td>
 <td><strong>anything</strong></td>
 <td>Per-session <code>silvasonic-hw-test-{id}</code> network via <code>hw_redis</code> fixture</td>
 </tr>

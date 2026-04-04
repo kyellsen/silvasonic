@@ -3485,7 +3485,7 @@ Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uplo
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>just<span class="w"> </span>test-unit<span class="w">     </span><span class="c1"># Fast, mocked, parallel (4 workers)</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>just<span class="w"> </span>test-int<span class="w">      </span><span class="c1"># Integration (Testcontainers, needs Podman)</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>just<span class="w"> </span>test-system<span class="w">   </span><span class="c1"># System lifecycle (real Podman + built images, no HW)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>just<span class="w"> </span>test-hw<span class="w">       </span><span class="c1"># Hardware system tests (real USB mic required)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>just<span class="w"> </span>test-hw-all<span class="w">   </span><span class="c1"># Hardware system tests (real USB mic required)</span>
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>just<span class="w"> </span>test-smoke<span class="w">    </span><span class="c1"># Against running stack (just start first)</span>
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>just<span class="w"> </span>test-all<span class="w">      </span><span class="c1"># All tests except hardware (Unit+Int+System+Smoke+E2E)</span>
 </code></pre></div>
