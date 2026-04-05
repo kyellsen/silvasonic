@@ -89,7 +89,7 @@ Runtime-tunable settings stored in the `system_config` table under key `batdetec
 
 ## 6. Technology Stack
 
-*   **ML Model:** BatDetect2 ([github.com/macaodha/batdetect2](https://github.com/macaodha/batdetect2)) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.11+, PyTorch 2 compatible. Finetuning for Central European species planned.
+*   **ML Model:** BatDetect2 ([github.com/macaodha/batdetect2](https://github.com/macaodha/batdetect2)) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.13, PyTorch 2 compatible. Finetuning for Central European species planned.
 *   **Runtime:** PyTorch 2 — full framework required (no TFLite variant available). This is the primary reason for the high resource requirements.
 *   **Audio:** `soundfile`, `numpy` (ultrasonic spectrogram generation)
 

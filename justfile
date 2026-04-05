@@ -19,6 +19,7 @@ default:
     @just --list
 
 # 🛠️  Initialisiert das Projekt (uv sync, hooks, workspace)
+alias i := init
 init:
     @{{ BOOTSTRAP_PYTHON }} scripts/init.py
 
@@ -27,6 +28,7 @@ init:
 # ==============================================================================
 
 # 🔨 Baut die Container-Images
+alias b := build
 build:
     @{{ BOOTSTRAP_PYTHON }} scripts/build.py
 

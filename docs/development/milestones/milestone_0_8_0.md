@@ -29,15 +29,15 @@ The BirdNET service is an immutable Tier 2 container responsible for performing 
 ### Architecture Decision: Completed ✅
 
 > [!NOTE]
-> **Spike complete.** Native `tflite_runtime` is the chosen inference engine.
-> See [ADR-0027](../../adr/0027-birdnet-inference-engine.md) and [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md).
+> **Spike complete.** Native `ai-edge-litert` is the chosen inference engine on pure Python 3.13.
+> See [ADR-0027](../../adr/0027-birdnet-inference-engine.md).
 
 #### Key Findings (Spike v3)
 - **Native is ~35% faster** per 10s segment (155 ms avg vs 238 ms)
 - **Initialization:** Native has much lower measured initialization overhead.
 - **Memory Footprint:** Native stays flat at ~201 MB RSS. `birdnetlib` exhibits higher RSS growth across sequential runs.
 - **Identical results:** Native produces identical outputs on the evaluated fixtures.
-- **Container:** `python:3.11-slim-bookworm` required (tflite-runtime lacks aarch64 wheels for Python ≥ 3.12)
+- **Container:** `python:3.13-slim-bookworm` (standardized baseline, `ai-edge-litert` provides cp313 wheels)
 - **Custom code surface:** ~60 lines (sigmoid, labels, meta-model, windowing, numpy mask filtering)
 
 
@@ -68,7 +68,7 @@ The following structures already exist and MUST be reused or extended in-place:
 - [x] Create a temporary script in `scripts/spikes/birdnet/` testing 10-second audio chunks, processing multiple chunks in succession.
 - [x] Benchmark memory footprint AND initialization time of `birdnetlib` (community wrapper) vs. bare-metal `tflite_runtime.Interpreter`.
 - [x] Optimize post-processing: use numpy boolean mask instead of Python for-loop over all 6,522 species scores (25× faster).
-- [x] Document findings in [ADR-0027](../../adr/0027-birdnet-inference-engine.md) (Inference Engine) and [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md) (Python 3.11 for ML Workers).
+- [x] Document findings in [ADR-0027](../../adr/0027-birdnet-inference-engine.md) (Inference Engine).
 
 #### Implementation Insights from Spike (for Phase 3)
 - **Pre-compute `allowed_mask`** at init: `np.array([label in allowed_species for label in labels], dtype=bool)` — avoids 6,522-element Python loop per window
@@ -92,7 +92,7 @@ The following structures already exist and MUST be reused or extended in-place:
 - [ ] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
 - [ ] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
 - [ ] **Add** `birdnet` entry to `scripts/workspace_dirs.txt`.
-- [ ] Create `Containerfile` with `python:3.11-slim-bookworm` base image (per [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md)) including `tflite-runtime`, `numpy`, `soundfile` dependencies.
+- [ ] Create `Containerfile` with standard `python:3.13-slim-bookworm` base image including `ai-edge-litert`, `numpy`, `soundfile` dependencies.
 - [ ] Initialize `SilvaService` base class. Read `system_config` on startup for `BirdnetSettings`, `SystemSettings` (latitude, longitude) — use `SystemConfig` model.
 
 ### Testing (Phase 2)

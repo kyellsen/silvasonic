@@ -95,17 +95,19 @@ All commands are run via **[just](https://github.com/casey/just)**. Use `just --
 
 Here are the most common daily commands:
 
-| Command           | Description                                                    |
-| ----------------- | -------------------------------------------------------------- |
-| `just init`       | Initialize project (uv sync, pre-commit hooks, workspace)      |
-| `just build`      | Build all container images                                     |
-| `just start`      | Start all services                                             |
-| `just stop`       | Stop all services                                              |
-| `just logs`       | Show aggregated service logs                                   |
-| `just status`     | Show service status                                            |
-| `just ci`  | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
-| `just docs`       | Start MkDocs live server (`localhost:8085`)                    |
-| `just nuke`       | Full reset (delete containers, volumes, `.venv`, and images)   |
+| Command                 | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `just init` (`i`)       | Initialize project (uv sync, pre-commit hooks, workspace)      |
+| `just build` (`b`)      | Build all container images                                     |
+| `just start`            | Start all services                                             |
+| `just stop`             | Stop all services                                              |
+| `just logs`             | Show aggregated service logs                                   |
+| `just status`           | Show service status                                            |
+| `just check` (`c`)      | Static analysis & unit tests (fast check)                      |
+| `just verify` (`v`)     | Code quality & integration tests                               |
+| `just ci`               | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
+| `just docs`             | Start MkDocs live server (`localhost:8085`)                    |
+| `just nuke`             | Full reset (delete containers, volumes, `.venv`, and images)   |
 
 > **🧪 Testing:** For the full list of specific test commands (e.g., `just test-unit`, `just test-e2e`), see the **[Testing](#testing)** section below.
 

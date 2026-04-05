@@ -81,6 +81,8 @@ If any check fails: **Fix → Commit → Re-run `just ci`**.
 
 ## 3. Commit & Tag
 
+> **🚨 AI DIRECTIVE:** AI Agents **MUST NEVER** execute `git commit`, `git tag`, or `git push` autonomously. Agents must strictly format these commands in a copy-pasteable script block for the Human user to execute.
+
 ### Final Commit
 
 Ensure all changes are committed:

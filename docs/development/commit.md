@@ -4,20 +4,6 @@
 
 This document outlines the standard for creating Git commit messages in the Silvasonic repository. Our approach leans heavily on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) to automate versioning and provide a highly readable `git log`.
 
-## Core AI Directive
-
-When the User asks you to "create a commit message" or "generate a commit", you MUST follow these specific steps:
-
-1. **Read the Changes**: 
-   Since you suffer from a VS Code terminal bug, you must manually capture the diffs via temporary files.
-   Run: `git status > /tmp/git_status.txt && git diff > /tmp/git_diff.txt`
-   Read these files using your file tools to understand what files precisely are staged or modified.
-2. **Analyze and Draft**: 
-   Draft a commit message fitting the standard below. Focus on *what* was changed and *why*, rather than restating the diff line-by-line. Group changes logically (e.g., Bug Fix, Testing, Optimizations).
-3. **Format Output**: 
-   Provide the commit message directly in your chat output inside a markdown code block so the User can easily copy/paste it into the terminal. Do not clutter the terminal with other formatting.
-
----
 
 ## 1. Commit Message Structure
 
