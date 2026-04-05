@@ -17,7 +17,7 @@ sysfs-based USB detection (Phase 4).
 
 import asyncio
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
@@ -183,12 +183,12 @@ class ControllerService(SilvaService):
             **summary,
         )
 
-    async def _monitor_database(self) -> NoReturn:
+    async def _monitor_database(self) -> None:
         """Periodically check database connectivity and update health status.
 
         Logs state changes (connected ↔ disconnected) individually.
         """
-        while True:
+        while not self._shutdown_event.is_set():
             is_connected = await check_database_connection()
             self.health.update_status(
                 "database", is_connected, "Connected" if is_connected else "Connection failed"
@@ -235,7 +235,7 @@ class ControllerService(SilvaService):
         except Exception:
             self.health.update_status("podman", False, "Socket unreachable")
 
-        while True:
+        while not self._shutdown_event.is_set():
             is_alive = await asyncio.to_thread(self._podman_client.ping)
             self.health.update_status(
                 "podman",

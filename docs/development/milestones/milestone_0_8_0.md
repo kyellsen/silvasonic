@@ -47,7 +47,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 | Structure | Location | Status | Action for v0.8.0 |
 |---|---|---|---|
-| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `enabled`, `clip_padding_seconds`, `overlap`, `sensitivity`, `threads`, `processing_order` |
+| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `clip_padding_seconds`, `overlap`, `sensitivity`, `threads`, `processing_order` (lifecycle toggle `enabled` is in `managed_services`, NOT here) |
 | `defaults.yml` (birdnet section) | `services/controller/config/defaults.yml:75-80` | Has `confidence_threshold` only | **Extend** with new fields to match schema |
 | `Detection` ORM model | `packages/core/src/silvasonic/core/database/models/detections.py` | Missing `clip_path` column | **Add** `clip_path: Mapped[str \| None]` to match DDL |
 | `Recording` ORM model | `packages/core/src/silvasonic/core/database/models/recordings.py` | Complete — has `analysis_state` JSONB | ✅ Reuse as-is (read-only from BirdNET) |
@@ -87,7 +87,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [ ] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
-- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`enabled: bool = True`, `clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`).
+- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
 - [ ] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
 - [ ] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
 - [ ] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
@@ -122,20 +122,20 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ## Phase 4: Controller System Config Orchestration (Commit 4)
 
-**Goal:** Provide execution capabilities in the Controller for the BirdNET worker based on the `system_config` table.
-**Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop this background worker.
+**Goal:** Provide execution capabilities in the Controller for the BirdNET worker based on the `managed_services` table (ADR-0029).
+**Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop this background worker. Lifecycle orchestration reads from `managed_services`, NOT from `system_config` JSONB.
 
 ### Tasks
 - [ ] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=512m`, `oom_score_adj=500`).
-- [ ] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that iterates through the registry and matches against the `system_config` dictionary for `enabled = True`.
+- [ ] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that queries the `managed_services` table for `enabled = True` rows and matches them against the registry to build `Tier2ServiceSpec` objects.
 - [ ] Refactor `_reconcile_once` in the `ReconciliationLoop` to securely invoke both `DeviceStateEvaluator` and `SystemWorkerEvaluator`. Isolate each with `try...except` blocks to prevent worker configuration mismatches from halting active `recorder` container execution.
-- [ ] Make sure `system_config["birdnet"].enabled` controls the desired runtime state for the BirdNET singleton worker.
+- [ ] Implement `ManagedServiceSeeder`: On Controller startup, seed `managed_services` rows (`INSERT ON CONFLICT DO NOTHING`) for each worker in the registry (start: `birdnet`, `enabled=True`).
 
 ### Testing (Phase 4)
 - [ ] **`unit`** — Add unit tests for `Reconciler._reconcile_once` to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.
-- [ ] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `system_config` and maps the payload to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
+- [ ] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `managed_services` and maps enabled rows to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
 - [ ] **`system`** — Add `tests/system/test_singleton_worker_lifecycle.py`: Validate full `ReconciliationLoop` state transitions. Ensure changing `enabled` in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.
-- [ ] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since the `birdnet` config is `enabled=True` by default, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
+- [ ] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since BirdNET is `enabled=True` by default in `managed_services`, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
 
 ---
 
@@ -195,7 +195,7 @@ The following structures already exist and MUST be reused or extended in-place:
 **Goal:** Formalize the release strictly according to `release_checklist.md`.
 
 ### Tasks
-- [ ] **Release Decision:** Decide if the `system_config["birdnet"].enabled` seeder value should be switched to `True` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
+- [ ] **Release Decision:** Verify that the `managed_services` seed for `birdnet` has `enabled=True` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
 - [ ] Ensure branch is clean and `just ci` finishes successfully.
 - [ ] Update `__version__` in `packages/core/src/silvasonic/core/__init__.py`.
 - [ ] Update version in the root `pyproject.toml`.

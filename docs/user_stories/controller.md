@@ -76,7 +76,7 @@
 ### Acceptance Criteria
 
 - [x] The Controller reacts to change signals and immediately reads the desired state from the database.
-- [x] Desired state from `system_services` and `devices` is correctly evaluated.
+- [x] Desired state from `managed_services` (Tier-2 singletons) and `devices` (Recorders) is correctly evaluated.
 - [x] Services are started or stopped based on the `enabled` flag.
 - [x] On configuration change: stop service and restart with new settings.
 - [x] If a signal is lost (e.g., Controller restart), the reconciliation timer catches the change as a fallback.

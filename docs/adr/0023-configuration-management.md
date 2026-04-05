@@ -33,7 +33,7 @@ The existing `system_config` table (key TEXT, value JSONB) stores all applicatio
 | `system`    | `SystemSettings`    | All services (latitude, longitude, station name, resource limits, auto_enrollment) |
 | `processor` | `ProcessorSettings` | Processor (Janitor thresholds, Indexer intervals)                                  |
 | `cloud_sync` | `CloudSyncSettings` | Processor Cloud-Sync-Worker (enabled flag, polling, bandwidth, schedule, remote target) |
-| `birdnet`   | `BirdnetSettings`   | BirdNET (confidence threshold)                                                     |
+| `birdnet`   | `BirdnetSettings`   | BirdNET runtime settings (confidence threshold, overlap, sensitivity). Lifecycle toggle (`enabled`) is managed separately in `managed_services` table (ADR-0029). |
 
 Each key maps to a Pydantic `BaseModel` that defines field types and default values. Services read their settings **once on startup** (Immutable Container pattern, ADR-0019). The Web-Interface writes changes to `system_config`, then triggers a `silvasonic:nudge` so the Controller restarts the affected service.
 
@@ -110,6 +110,9 @@ All configuration blobs are parsed and validated via Pydantic `BaseModel` classe
 | User passwords                | `users` table           | Different structure, RBAC-ready    |
 | Cloud storage credentials     | `system_config` key `"cloud_sync"` | Fernet-encrypted (`enc:` prefix) in `CloudSyncSettings.remote_config` (v0.6.0) |
 | Encryption key                | `.env`                  | `SILVASONIC_ENCRYPTION_KEY` — Fernet key for cloud credential encryption |
+
+> [!IMPORTANT]
+> **Lifecycle toggles** (`enabled: bool`) for Controller-managed Tier-2 containers (BirdNET, BatDetect, Weather) belong in the `managed_services` table, **NOT** in `system_config`. The `system_config` table stores exclusively domain/business settings. See [ADR-0029](0029-system-worker-orchestration.md).
 
 ## 3. Options Considered
 

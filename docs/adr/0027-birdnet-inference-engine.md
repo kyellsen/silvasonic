@@ -98,9 +98,9 @@ We considered running the spike in actual Podman containers on the RPi 5 to get 
 - **Negative:** Must manually update `.tflite` model file + labels for BirdNET model upgrades (no `pip upgrade`).
 
 ## References
-- [Spike v3 Script](../../scripts/spikes/birdnet/spike_v3.py)
-- [Micro Benchmark](../../scripts/spikes/birdnet/micro_bench.py)
-- [Head-to-Head Benchmark](../../scripts/spikes/birdnet/head2head.py)
+- [Spike v3 Script](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/spike_v3.py)
+- [Micro Benchmark](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/micro_bench.py)
+- [Head-to-Head Benchmark](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/head2head.py)
 - [Milestone v0.8.0 Phase 1](../development/milestones/milestone_0_8_0.md)
 - [ADR-0019: Unified Service Infrastructure](0019-unified-service-infrastructure.md)
 - [ADR-0020: Resource Limits & QoS](0020-resource-limits-qos.md)

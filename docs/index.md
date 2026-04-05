@@ -11,7 +11,7 @@
 
 ## Architecture
 
-- [Architecture Overview](arch/README.md)
+- Architecture Overview
 - [Filesystem Governance](arch/filesystem_governance.md)
 - [Messaging Patterns & Protocols](arch/messaging_patterns.md)
 - [Port Allocation](arch/port_allocation.md)
@@ -31,7 +31,7 @@
 
 ## ADRs
 
-- [Architecture Decision Records](adr/README.md)
+- Architecture Decision Records
 
 ## Development
 

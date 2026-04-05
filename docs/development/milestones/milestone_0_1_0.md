@@ -49,7 +49,7 @@
   - Live log streaming (0022)
   - Configuration management (0023)
 
-> **Note:** ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the [ADR index](../../adr/README.md) for the complete list.
+> **Note:** ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the [ADR index](../../index.md#adrs) for the complete list.
 
 ---
 
@@ -61,7 +61,7 @@
 
 - [x] Create `packages/core/` with `silvasonic.core` namespace
 - [x] Implement database schema (`silvasonic.core.models`):
-  - `devices`, `microphone_profiles`, `system_config`, `system_services`, `users` tables
+  - `devices`, `microphone_profiles`, `system_config`, `managed_services`, `users` tables
 - [x] Implement Pydantic schemas (`silvasonic.core.schemas`)
 - [x] Implement shared settings module (`silvasonic.core.settings`)
 - [x] Implement health server (`silvasonic.core.health`)

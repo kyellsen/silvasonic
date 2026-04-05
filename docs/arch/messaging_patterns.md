@@ -39,7 +39,7 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 | Dimension                  | Storage                                    | Written By                        | Read By       |
 | -------------------------- | ------------------------------------------ | --------------------------------- | ------------- |
-| **Desired State** (config) | `system_services` table (DB)               | Admin / Web-Interface             | Controller    |
+| **Desired State** (config) | `managed_services` table (DB)              | Admin / Web-Interface             | Controller    |
 | **Actual State** (runtime) | Redis: `SET` with TTL + `PUBLISH` (see §3) | Each service (via `SilvaService`) | Web-Interface |
 
 ---

@@ -45,7 +45,7 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.7.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_0.md)** — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)
 - **[Milestone v0.7.1](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_1.md)** — DB-Viewer
 - **[Milestone v0.8.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_0.md)** — BirdNET (On-device Avian Inference)
-- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
+- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `managed_services` Seeding)
 - **[Milestone v0.10.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md)** — Marketing Landing Page (Astro) -> *`silvasonic.de` repo*
 - **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 

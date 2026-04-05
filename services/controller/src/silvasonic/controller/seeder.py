@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import bcrypt
 import structlog
@@ -22,7 +22,7 @@ from silvasonic.core.config_schemas import (
     SystemSettings,
 )
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import SystemConfig, User
+from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
 from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -366,8 +366,32 @@ class CloudSyncSeeder:
             )
 
 
+class ManagedServiceSeeder:
+    """Seed ``managed_services`` with Tier-2 singleton workers (ADR-0029).
+
+    Only Tier-2 containers orchestrated by the Controller belong here.
+    Tier-1 services (processor, controller) are managed externally via
+    Compose and MUST NOT be seeded.
+    """
+
+    # Extend this list when adding new Tier-2 singletons (e.g. batdetect, weather).
+    _TIER2_SINGLETONS: ClassVar[list[tuple[str, bool]]] = [
+        ("birdnet", True),
+    ]
+
+    async def seed(self, session: AsyncSession) -> None:
+        """Insert default managed_services rows (ON CONFLICT DO NOTHING)."""
+        for name, enabled in self._TIER2_SINGLETONS:
+            existing = await session.get(ManagedService, name)
+            if existing is None:
+                session.add(ManagedService(name=name, enabled=enabled))
+                log.info("seeder.managed_service.inserted", name=name, enabled=enabled)
+            else:
+                log.debug("seeder.managed_service.skipped", name=name)
+
+
 async def run_all_seeders(session: AsyncSession) -> None:
-    """Run all seeders in order: config → cloud_sync → profiles → auth (idempotent)."""
+    """Run all seeders (idempotent): config, cloud_sync, managed_services, profiles, auth."""
     log.info("seeder.start")
 
     # Load defaults.yml once, share across seeders
@@ -379,6 +403,7 @@ async def run_all_seeders(session: AsyncSession) -> None:
     # causing a duplicate-key IntegrityError on commit (Data Capture Integrity).
     await session.flush()
     await CloudSyncSeeder().seed(session)
+    await ManagedServiceSeeder().seed(session)
     await ProfileBootstrapper().seed(session)
     await AuthSeeder().seed(session, defaults=defaults)
 

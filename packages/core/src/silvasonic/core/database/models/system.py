@@ -46,6 +46,22 @@ class SystemConfig(Base):
     )
 
 
+class ManagedService(Base):
+    """Registry for Tier-2 containers managed by the Controller (ADR-0029).
+
+    Stores lifecycle orchestration toggles only. Domain/business settings
+    (thresholds, intervals) remain in ``system_config`` (ADR-0023).
+    """
+
+    __tablename__ = "managed_services"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+
 class User(Base):
     """Authentication credentials (ADR-0023)."""
 

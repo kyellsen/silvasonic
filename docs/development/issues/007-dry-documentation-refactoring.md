@@ -111,4 +111,3 @@ Execute **after** the Uploader→Processor refactoring is fully complete (Phase 
 - [AGENTS.md §4](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md) — Current documentation rules
 - [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md) — Tier tables with status
 - [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md) — Milestone SoT
-- [DRY Review Analysis](/home/kyellsen/.gemini/antigravity/brain/00d4dca7-6463-4a14-9230-38fafc2cd1e2/dry_review.md) — Full critical review of the original proposal

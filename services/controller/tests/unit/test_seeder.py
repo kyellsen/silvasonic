@@ -624,7 +624,7 @@ class TestRunAllSeeders:
     """Tests for the run_all_seeders orchestration function."""
 
     async def test_calls_all_seeders_and_commits(self, tmp_path: Path) -> None:
-        """run_all_seeders executes all 3 seeders and commits."""
+        """run_all_seeders executes all 5 seeders and commits."""
         session = AsyncMock(add=MagicMock())
         session.get = AsyncMock(return_value=None)
 
@@ -645,10 +645,15 @@ class TestRunAllSeeders:
                 "silvasonic.controller.seeder.AuthSeeder.seed",
                 new_callable=AsyncMock,
             ) as auth_seed,
+            patch(
+                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                new_callable=AsyncMock,
+            ) as managed_seed,
         ):
             await run_all_seeders(session)
 
             config_seed.assert_called_once()
+            managed_seed.assert_called_once_with(session)
             profile_seed.assert_called_once_with(session)
             auth_seed.assert_called_once()
             session.commit.assert_called_once()
@@ -686,6 +691,10 @@ class TestRunAllSeeders:
                 "silvasonic.controller.seeder.CloudSyncSeeder.seed",
                 new_callable=AsyncMock,
                 side_effect=_track_cloud,
+            ),
+            patch(
+                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                new_callable=AsyncMock,
             ),
             patch(
                 "silvasonic.controller.seeder.ProfileBootstrapper.seed",

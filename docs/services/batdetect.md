@@ -71,7 +71,7 @@
 
 ### Dynamic Configuration (Database)
 
-Runtime-tunable settings stored in the `system_config` table under key `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup.
+Runtime-tunable settings stored in the `system_config` table under key `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup. The container lifecycle toggle (`enabled`) is managed via the `managed_services` table (ADR-0029), not via `system_config`.
 
 | Setting                | Default  | Description                                                  |
 | :--------------------- | :------- | :----------------------------------------------------------- |
