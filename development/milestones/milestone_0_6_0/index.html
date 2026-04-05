@@ -4137,7 +4137,7 @@
 </ul>
 <h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>Phase is complete when <code>just check-all</code> passes (including Processor image build).</p>
+<p>Phase is complete when <code>just ci</code> passes (including Processor image build).</p>
 </blockquote>
 <h4 id="system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem">System Tests (<code>tests/system/test_processor_lifecycle.py</code>) — <code>@pytest.mark.system</code><a class="headerlink" href="#system-tests-testssystemtest_processor_lifecyclepy-pytestmarksystem" title="Permanent link">&para;</a></h4>
 <table>
@@ -4188,7 +4188,7 @@
 <li><code>packages/core/src/silvasonic/core/__init__.py</code></li>
 <li><code>pyproject.toml</code> (root)</li>
 <li><code>README.md</code> Line 5</li>
-<li>[x] <code>just check-all</code> passes (full pipeline including Processor image rebuild with rclone)</li>
+<li>[x] <code>just ci</code> passes (full pipeline including Processor image rebuild with rclone)</li>
 <li>[x] <code>just test-hw</code> passes (recommended — no regressions)</li>
 <li>[x] Commit + annotated tag + push:
   <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>-A

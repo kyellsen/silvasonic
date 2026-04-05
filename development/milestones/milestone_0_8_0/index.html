@@ -2394,15 +2394,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-6-audio-clip-extraction-stretch-goal-commit-6" class="md-nav__link">
+  <a href="#phase-6-audio-clip-extraction-commit-6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)
+        Phase 6: Audio Clip Extraction (Commit 6)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)">
+    <nav class="md-nav" aria-label="Phase 6: Audio Clip Extraction (Commit 6)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3388,15 +3388,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-6-audio-clip-extraction-stretch-goal-commit-6" class="md-nav__link">
+  <a href="#phase-6-audio-clip-extraction-commit-6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)
+        Phase 6: Audio Clip Extraction (Commit 6)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)">
+    <nav class="md-nav" aria-label="Phase 6: Audio Clip Extraction (Commit 6)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3587,7 +3587,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <td><code>BirdnetSettings</code> Pydantic schema</td>
 <td><code>packages/core/src/silvasonic/core/config_schemas.py:82</code></td>
 <td>Has <code>confidence_threshold</code> only</td>
-<td><strong>Extend</strong> with <code>enabled</code>, <code>clip_padding_seconds</code>, <code>overlap</code>, <code>sensitivity</code>, <code>threads</code></td>
+<td><strong>Extend</strong> with <code>enabled</code>, <code>clip_padding_seconds</code>, <code>overlap</code>, <code>sensitivity</code>, <code>threads</code>, <code>processing_order</code></td>
 </tr>
 <tr>
 <td><code>defaults.yml</code> (birdnet section)</td>
@@ -3671,9 +3671,10 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <h3 id="tasks_1">Tasks<a class="headerlink" href="#tasks_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Scaffold <code>services/birdnet/</code> (directories, <code>pyproject.toml</code>, <code>.env</code> mapping).</li>
-<li>[ ] <strong>Extend</strong> existing <code>BirdnetSettings</code> in <code>packages/core/src/silvasonic/core/config_schemas.py</code> with new fields (<code>enabled: bool = True</code>, <code>clip_padding_seconds: float = 3.0</code>, <code>overlap: float = 0.0</code>, <code>sensitivity: float = 1.0</code>, <code>threads: int = 1</code>).</li>
+<li>[ ] <strong>Extend</strong> existing <code>BirdnetSettings</code> in <code>packages/core/src/silvasonic/core/config_schemas.py</code> with new fields (<code>enabled: bool = True</code>, <code>clip_padding_seconds: float = 3.0</code>, <code>overlap: float = 0.0</code>, <code>sensitivity: float = 1.0</code>, <code>threads: int = 1</code>, <code>processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"</code>).</li>
 <li>[ ] <strong>Extend</strong> existing <code>birdnet</code> section in <code>services/controller/config/defaults.yml</code> to match the updated schema.</li>
 <li>[ ] <strong>Add</strong> <code>clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)</code> to the existing <code>Detection</code> model (<code>packages/core/src/silvasonic/core/database/models/detections.py</code>).</li>
+<li>[ ] <strong>Create</strong> a new Pydantic schema <code>BirdnetDetectionDetails</code> in <code>packages/core/src/silvasonic/core/schemas/detections.py</code> to enforce the data contract for the JSONB <code>details</code> field (must include <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filter_active</code>, <code>lat</code>, <code>lon</code>, <code>week</code>).</li>
 <li>[ ] <strong>Add</strong> <code>birdnet</code> entry to <code>scripts/workspace_dirs.txt</code>.</li>
 <li>[ ] Create <code>Containerfile</code> with <code>python:3.11-slim-bookworm</code> base image (per <a href="../../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a>) including <code>tflite-runtime</code>, <code>numpy</code>, <code>soundfile</code> dependencies.</li>
 <li>[ ] Initialize <code>SilvaService</code> base class. Read <code>system_config</code> on startup for <code>BirdnetSettings</code>, <code>SystemSettings</code> (latitude, longitude) — use <code>SystemConfig</code> model.</li>
@@ -3689,11 +3690,11 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <strong>User Stories:</strong> US-B01 (Automatic detection), US-B03 (Location logic), US-B04 (Confidence threshold).</p>
 <h3 id="tasks_2">Tasks<a class="headerlink" href="#tasks_2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Implement Worker Pull pattern (<code>SELECT ... FOR UPDATE SKIP LOCKED</code> on <code>recordings</code>). Update <code>recordings.analysis_state</code> JSONB with <code>{"birdnet": "done"}</code> after processing.</li>
+<li>[ ] Implement Worker Pull pattern (<code>SELECT ... FOR UPDATE SKIP LOCKED</code> on <code>recordings</code>). Respect dynamic <code>processing_order</code> setting for <code>ORDER BY time</code> ASC/DESC. Update <code>recordings.analysis_state</code> JSONB with <code>{"birdnet": "done"}</code> after processing.</li>
 <li>[ ] Implement the inference engine logic determined by the Phase 1 Spike.</li>
 <li>[ ] Map DB runtime config (latitude, longitude from <code>SystemSettings</code>; <code>min_conf</code>, <code>sensitivity</code>, <code>overlap</code> from <code>BirdnetSettings</code>) to inference parameters. Derive <code>week</code> automatically.</li>
 <li>[ ] Implement explicit memory management: e.g. <code>del audio_chunk</code> after inference, periodic <code>gc.collect()</code>.</li>
-<li>[ ] Save results using the existing <code>Detection</code> ORM model — set <code>worker='birdnet'</code>. Use the raw English string provided by the model for <code>label</code> and <code>common_name</code> temporarily.</li>
+<li>[ ] Save results using the existing <code>Detection</code> ORM model — set <code>worker='birdnet'</code>. Use the raw English string provided by the model for <code>label</code> and <code>common_name</code> temporarily. <strong>Must populate <code>details</code> JSONB</strong> with inference context (e.g., <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filtered</code>).</li>
 </ul>
 <h3 id="testing-phase-3">Testing (Phase 3)<a class="headerlink" href="#testing-phase-3" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3731,13 +3732,13 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <h3 id="testing-phase-5">Testing (Phase 5)<a class="headerlink" href="#testing-phase-5" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_heartbeat.py</code>: Assert that <code>get_extra_meta()</code> returns valid backlog payloads.</li>
+<li>[ ] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_backlog_metrics.py</code>: Verify the backlog counting query against a real Testcontainers database.</li>
 <li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_lifecycle.py</code>: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.</li>
 <li>[ ] <strong><code>smoke</code></strong> — <code>tests/smoke/test_health.py</code>: Extend with <code>test_birdnet_heartbeat_in_redis</code>.</li>
 </ul>
 <hr />
-<h2 id="phase-6-audio-clip-extraction-stretch-goal-commit-6">Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)<a class="headerlink" href="#phase-6-audio-clip-extraction-stretch-goal-commit-6" title="Permanent link">&para;</a></h2>
+<h2 id="phase-6-audio-clip-extraction-commit-6">Phase 6: Audio Clip Extraction (Commit 6)<a class="headerlink" href="#phase-6-audio-clip-extraction-commit-6" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Extract and persist short audio clips for each detection.
-<strong>Priority:</strong> Low / Stretch. Build this ONLY after Phases 1–5 are completely stable and running successfully in the pipeline.
 <strong>User Stories:</strong> US-B01 (clip storage), US-B02 (playback preparation).</p>
 <h3 id="tasks_5">Tasks<a class="headerlink" href="#tasks_5" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3753,7 +3754,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <hr />
 <h2 id="phase-7-final-system-audit-documentation-commit-7">Phase 7: Final System Audit &amp; Documentation (Commit 7)<a class="headerlink" href="#phase-7-final-system-audit-documentation-commit-7" title="Permanent link">&para;</a></h2>
 <p><strong>Goal:</strong> Polish the system, verify system behavior, and finalize docs.
-<strong>User Stories:</strong> All US-Bxx verified via DB-Viewer (v0.7.1).</p>
+<strong>User Stories:</strong> Core backend implementations (US-B01, US-B03, US-B04, US-B07 logic) verified via DB-Viewer. UI-dependent stories (US-B02, US-B05, US-B06) deferred to v0.9.0 web interface.</p>
 <h3 id="tasks_6">Tasks<a class="headerlink" href="#tasks_6" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Verify <code>check-all</code> passes (lint, mypy, all tests up to smoke/system).</li>
@@ -3762,7 +3763,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 </ul>
 <h3 id="testing-phase-7">Testing (Phase 7)<a class="headerlink" href="#testing-phase-7" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_pipeline.py</code>: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes <code>detections</code> (and clips, if Stretch Goal is implemented).</li>
+<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_pipeline.py</code>: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes <code>detections</code> and extracts clips.</li>
 <li>[ ] <strong><code>system_hw_manual</code></strong> — <code>tests/system/test_hw_birdnet_pipeline.py</code>: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via <code>enabled=true</code> system config setting.</li>
 </ul>
 <hr />
@@ -3771,7 +3772,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <h3 id="tasks_7">Tasks<a class="headerlink" href="#tasks_7" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] <strong>Release Decision:</strong> Decide if the <code>system_config["birdnet"].enabled</code> seeder value should be switched to <code>True</code> by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.</li>
-<li>[ ] Ensure branch is clean and <code>just check-all</code> finishes successfully.</li>
+<li>[ ] Ensure branch is clean and <code>just ci</code> finishes successfully.</li>
 <li>[ ] Update <code>__version__</code> in <code>packages/core/src/silvasonic/core/__init__.py</code>.</li>
 <li>[ ] Update version in the root <code>pyproject.toml</code>.</li>
 <li>[ ] Update version status in <code>ROADMAP.md</code> and the root <code>README.md</code>.</li>

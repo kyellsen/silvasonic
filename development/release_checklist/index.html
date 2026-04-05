@@ -2992,18 +2992,18 @@ the following are <strong>mandatory</strong> before tagging:</p>
 <li>[ ] <strong>No New Test Anti-Patterns in Changed Scope</strong> — Tests added or modified for this release have been reviewed against <code>testing.md</code>. Mock-heavy verification, call-chain mirroring, and coverage-driven bloat were not introduced in the changed scope. Existing legacy anti-patterns outside the release scope were documented but do not require unrelated refactoring before release.</li>
 <li>[ ] <strong>Critical Path Verification</strong> — All new or changed state transitions, database queries, failure recovery paths, and hardware interactions are explicitly guarded by appropriate tests. Boilerplate or framework glue may remain indirectly tested only if it has no meaningful standalone contract and the relevant behavior is covered at a higher tier.</li>
 <li>[ ] <strong>Smoke Tests</strong> — Every service included in the release has a passing smoke test (<code>@pytest.mark.smoke</code>)</li>
-<li>[ ] <strong><code>just check-all</code> passes</strong> — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly</li>
+<li>[ ] <strong><code>just ci</code> passes</strong> — Full CI pipeline (lint, type-check, all test tiers, container build, compose validation) runs cleanly</li>
 <li>[ ] <strong>Hardware Tests</strong> <em>(recommended)</em> — If USB microphone hardware is available, run <code>just test-hw-all</code> (<code>@pytest.mark.system_hw_auto</code> and <code>.system_hw_manual</code>). These tests validate real device detection, profile matching, and container spawning with physical hardware. Not mandatory, but strongly recommended before any release that touches device detection or Recorder spawning.</li>
 </ul>
 <blockquote>
 <p>[!CAUTION]
 A Feature Release <strong>MUST NOT</strong> be tagged if any of the above gates fails.
-Fix all issues first, then re-run <code>just check-all</code> until clean.</p>
+Fix all issues first, then re-run <code>just ci</code> until clean.</p>
 </blockquote>
 <h3 id="patch-release-bug-fix-stabilization-xyz-where-z-0">Patch Release (Bug-Fix / Stabilization: <code>X.Y.Z</code> where <code>Z &gt; 0</code>)<a class="headerlink" href="#patch-release-bug-fix-stabilization-xyz-where-z-0" title="Permanent link">&para;</a></h3>
 <p>Bug fixes only. Pre-v1.0.0, internal behavior changes or architecture refactorings that enforce system stability and core directives (like data integrity) without introducing new user-facing features are permitted to maintain a clean baseline.</p>
 <ul>
-<li>[ ] <strong><code>just check-all</code> passes</strong></li>
+<li>[ ] <strong><code>just ci</code> passes</strong></li>
 <li>[ ] <strong>Regression test</strong> for the fixed bug (recommended, ideally mandatory)</li>
 </ul>
 <hr />
@@ -3062,7 +3062,7 @@ After bumping the versions in <code>pyproject.toml</code> and <code>__init__.py<
 <hr />
 <h2 id="2-run-all-checks">2. Run All Checks<a class="headerlink" href="#2-run-all-checks" title="Permanent link">&para;</a></h2>
 <p>All checks <strong>must pass</strong> before tagging:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>just<span class="w"> </span>check-all
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>just<span class="w"> </span>ci
 </code></pre></div>
 <p>This includes:</p>
 <ul>
@@ -3077,9 +3077,9 @@ After bumping the versions in <code>pyproject.toml</code> and <code>__init__.py<
 <p>[!TIP]
 If you have a USB microphone connected, also run <code>just test-hw-all</code> to validate
 hardware detection, profile matching, and Recorder spawning with real devices.
-This is strongly recommended but not enforced by <code>just check-all</code>.</p>
+This is strongly recommended but not enforced by <code>just ci</code>.</p>
 </blockquote>
-<p>If any check fails: <strong>Fix → Commit → Re-run <code>just check-all</code></strong>.</p>
+<p>If any check fails: <strong>Fix → Commit → Re-run <code>just ci</code></strong>.</p>
 <hr />
 <h2 id="3-commit-tag">3. Commit &amp; Tag<a class="headerlink" href="#3-commit-tag" title="Permanent link">&para;</a></h2>
 <h3 id="final-commit">Final Commit<a class="headerlink" href="#final-commit" title="Permanent link">&para;</a></h3>

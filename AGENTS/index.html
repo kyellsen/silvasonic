@@ -3079,7 +3079,7 @@ You suffer from a known VS Code shell integration bug where reading stdout direc
 <li><strong>Explicit Markers:</strong> Every test MUST have <code>@pytest.mark.unit</code>, <code>.integration</code>, <code>.system</code>, <code>.system_hw_auto</code>, <code>.system_hw_manual</code>, <code>.e2e</code>, or <code>.smoke</code>.</li>
 <li><strong>Directory Structure:</strong> Tests in <code>tests/unit/</code>, <code>tests/integration/</code>, etc. matching their marker.</li>
 <li><strong>Location:</strong> Service-specific tests inside the service package. Only cross-cutting tests in root <code>tests/</code>.</li>
-<li><strong>Hardware Tests:</strong> <code>@pytest.mark.system_hw_auto</code> / <code>.system_hw_manual</code> tests require real USB microphone hardware and are <strong>never</strong> run in CI or <code>just check-all</code>. Run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</li>
+<li><strong>Hardware Tests:</strong> <code>@pytest.mark.system_hw_auto</code> / <code>.system_hw_manual</code> tests require real USB microphone hardware and are <strong>never</strong> run in CI or <code>just ci</code>. Run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</li>
 </ol>
 <h2 id="7-environment-variable-naming">7. Environment Variable Naming<a class="headerlink" href="#7-environment-variable-naming" title="Permanent link">&para;</a></h2>
 <ul>

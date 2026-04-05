@@ -2499,10 +2499,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-check-all-pipeline-stages" class="md-nav__link">
+  <a href="#6-ci-pipeline-stages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. check-all Pipeline Stages
+        6. ci Pipeline Stages
       
     </span>
   </a>
@@ -3278,10 +3278,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-check-all-pipeline-stages" class="md-nav__link">
+  <a href="#6-ci-pipeline-stages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. check-all Pipeline Stages
+        6. ci Pipeline Stages
       
     </span>
   </a>
@@ -3501,7 +3501,7 @@
 </table>
 <blockquote>
 <p>[!IMPORTANT]
-<code>system_hw_auto</code> and <code>system_hw_manual</code> tests are <strong>never</strong> included in CI or <code>just check-all</code>. They require real USB
+<code>system_hw_auto</code> and <code>system_hw_manual</code> tests are <strong>never</strong> included in CI or <code>just ci</code>. They require real USB
 microphone hardware and must be run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</p>
 </blockquote>
 <hr />
@@ -3544,11 +3544,13 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>just<span class="w"> </span>test-cov-all<span class="w">    </span><span class="c1"># Combined coverage map (Unit+Int+System+Smoke+E2E)</span>
 </code></pre></div>
 <h3 id="quality-gates">Quality Gates<a class="headerlink" href="#quality-gates" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>just<span class="w"> </span>check<span class="w">           </span><span class="c1"># Fast dev check (4 stages):</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>just<span class="w"> </span>c<span class="w">               </span><span class="c1"># Fast dev check (&lt; 10s):</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">                     </span><span class="c1">#   Lock + Ruff + Mypy + Unit Tests</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>just<span class="w"> </span>check-all<span class="w">       </span><span class="c1"># Full CI pipeline (12 stages):</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">                     </span><span class="c1">#   Lock → Audit → Lint → Type → Unit → Int</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">                     </span><span class="c1">#   → Containerfile → Build → System → Smoke → E2E</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>just<span class="w"> </span>v<span class="w">               </span><span class="c1"># Verify for push (~ 35s):</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">                     </span><span class="c1">#   Fast Check + DB-Integration Tests</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>just<span class="w"> </span>ci<span class="w">              </span><span class="c1"># Full CI pipeline (&gt; 4m):</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">                     </span><span class="c1">#   Lock → Audit → Lint → Type → Unit → Int</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">                     </span><span class="c1">#   → Containerfile → Build → System → Smoke → E2E</span>
 </code></pre></div>
 <h3 id="when-to-run-what">When to Run What<a class="headerlink" href="#when-to-run-what" title="Permanent link">&para;</a></h3>
 <table>
@@ -3567,8 +3569,13 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 </tr>
 <tr>
 <td>Before every commit</td>
-<td><code>just check</code></td>
+<td><code>just c</code></td>
 <td>Lint, types, unit tests (no containers)</td>
+</tr>
+<tr>
+<td>Before push / PR</td>
+<td><code>just v</code></td>
+<td>Code Quality + Integration Tests</td>
 </tr>
 <tr>
 <td>Thorough test run</td>
@@ -3576,13 +3583,13 @@ A test file in <code>tests/unit/</code> <strong>MUST</strong> only contain <code
 <td>All test suites except hardware</td>
 </tr>
 <tr>
-<td>Before push / PR</td>
-<td><code>just check-all</code></td>
+<td>Verify Full CI</td>
+<td><code>just ci</code></td>
 <td>Full 12-stage pipeline incl. build</td>
 </tr>
 <tr>
 <td>Before release</td>
-<td><code>just check-all</code></td>
+<td><code>just ci</code></td>
 <td>All automated gates (see Release Checklist)</td>
 </tr>
 <tr>
@@ -3684,8 +3691,8 @@ This section defines the qualitative boundaries for tests. It is especially crit
 <li><strong>Document Intent:</strong> New tests must clearly state (via naming or docstrings) the specific behavior or regression they are safeguarding.</li>
 </ul>
 <hr />
-<h2 id="6-check-all-pipeline-stages">6. <code>check-all</code> Pipeline Stages<a class="headerlink" href="#6-check-all-pipeline-stages" title="Permanent link">&para;</a></h2>
-<p>The <code>just check-all</code> command runs 12 stages in order:</p>
+<h2 id="6-ci-pipeline-stages">6. <code>ci</code> Pipeline Stages<a class="headerlink" href="#6-ci-pipeline-stages" title="Permanent link">&para;</a></h2>
+<p>The <code>just ci</code> command runs 12 stages in order:</p>
 <table>
 <thead>
 <tr>
