@@ -14,6 +14,7 @@ import yaml
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
+    ManagedServiceSeeder,
     ProfileBootstrapper,
     _find_service_root,
     _get_config_dir,
@@ -611,6 +612,42 @@ system:
         session = AsyncMock(add=MagicMock())
 
         await seeder.seed(session)
+        session.add.assert_not_called()
+
+
+# ===================================================================
+# ManagedServiceSeeder
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestManagedServiceSeeder:
+    """Tests for the Tier-2 singleton orchestration seeder."""
+
+    async def test_seed_inserts_missing_services(self) -> None:
+        """Seeder inserts row when service is not in the DB."""
+        seeder = ManagedServiceSeeder()
+        session = AsyncMock(add=MagicMock())
+        session.get = AsyncMock(return_value=None)
+
+        await seeder.seed(session)
+
+        # verify session.add was called for 'birdnet'
+        session.add.assert_called()
+        added_service = session.add.call_args[0][0]
+        assert added_service.name == "birdnet"
+        assert added_service.enabled is True
+
+    async def test_seed_skips_existing_services(self) -> None:
+        """Seeder does not overwrite existing user-modified rows."""
+        seeder = ManagedServiceSeeder()
+        session = AsyncMock(add=MagicMock())
+        # mock that service already exists
+        session.get = AsyncMock(return_value=MagicMock())
+
+        await seeder.seed(session)
+
+        # verify session.add was NOT called
         session.add.assert_not_called()
 
 

@@ -252,10 +252,14 @@ class TestGetExtraMeta:
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestControllerLoadConfig:
-    """Tests for the load_config() hook (DB seeding)."""
+    """Service contract: load_config() bootstraps DB state and detects hardware.
+
+    These tests verify the decoupling between seeding and device scanning
+    (Data Capture Integrity — AGENTS.md §1).
+    """
 
     async def test_load_config_calls_seeders(self) -> None:
-        """load_config() runs all seeders and calls scan_and_sync_devices."""
+        """Contract: load_config() seeds factory defaults and triggers device scan."""
         svc = _make_bare_service()
         svc._reconciliation_loop.scan_and_sync_devices = AsyncMock(return_value=0)
 
@@ -372,7 +376,7 @@ class TestControllerServiceRun:
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestEmitStatusSummary:
-    """Tests for the _emit_status_summary method."""
+    """Service contract: periodic status summaries include container state and stats."""
 
     async def test_summary_logs_container_names(self) -> None:
         """_emit_status_summary logs container names and stats."""

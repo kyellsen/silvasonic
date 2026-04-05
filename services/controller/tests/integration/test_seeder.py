@@ -15,6 +15,7 @@ import pytest
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
+    ManagedServiceSeeder,
     ProfileBootstrapper,
 )
 from silvasonic.test_utils.helpers import build_postgres_url
@@ -237,9 +238,10 @@ class TestRunAllSeedersIntegration:
             await ConfigSeeder(defaults_path=yml).seed(session)
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await AuthSeeder(defaults_path=yml).seed(session)
+            await ManagedServiceSeeder().seed(session)
             await session.commit()
 
-        # Verify all three tables have data
+        # Verify all tables have data
         async with session_factory() as session:
             config_count = (
                 await session.execute(text("SELECT count(*) FROM system_config"))
@@ -248,12 +250,16 @@ class TestRunAllSeedersIntegration:
                 await session.execute(text("SELECT count(*) FROM microphone_profiles"))
             ).scalar_one()
             user_count = (await session.execute(text("SELECT count(*) FROM users"))).scalar_one()
+            managed_count = (
+                await session.execute(text("SELECT count(*) FROM managed_services"))
+            ).scalar_one()
 
         await engine.dispose()
 
         assert config_count >= 1, "system_config should have at least 1 row"
         assert profile_count >= 1, "microphone_profiles should have at least 1 row"
         assert user_count >= 1, "users should have at least 1 row"
+        assert managed_count >= 1, "managed_services should have at least 1 row"
 
 
 @pytest.mark.integration

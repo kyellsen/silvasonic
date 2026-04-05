@@ -25,6 +25,7 @@ _CLEANUP_TABLES = (
     "devices",
     "microphone_profiles",
     "system_config",
+    "managed_services",
 )
 
 

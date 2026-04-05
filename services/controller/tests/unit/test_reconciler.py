@@ -162,8 +162,13 @@ class TestReconciliationLoop:
         loop.trigger()
         assert loop._trigger_event.is_set()
 
-    async def test_reconcile_once_calls_evaluate_and_reconcile(self) -> None:
-        """_reconcile_once() queries DB, lists containers, and reconciles."""
+    async def test_reconcile_once_passes_desired_and_actual_to_sync(self) -> None:
+        """Contract: _reconcile_once feeds evaluated specs and running containers to sync_state.
+
+        This is the core reconciliation contract (ADR-0017):
+        desired state (from DB evaluation) + actual state (from Podman)
+        → sync_state(desired, actual) to converge the system.
+        """
         mgr = MagicMock()
         mgr.list_managed.return_value = [{"name": "existing"}]
         mock_spec = _make_spec()
@@ -187,10 +192,11 @@ class TestReconciliationLoop:
 
             await loop._reconcile_once()
 
+        # Core contract: sync_state receives desired specs and actual containers
         mgr.sync_state.assert_called_once()
-        args = mgr.sync_state.call_args[0]
-        assert args[0] == [mock_spec]
-        assert args[1] == [{"name": "existing"}]
+        desired, actual = mgr.sync_state.call_args[0]
+        assert desired == [mock_spec]
+        assert actual == [{"name": "existing"}]
 
     async def test_reconcile_once_with_scanner_calls_rescan(self) -> None:
         """_reconcile_once() calls _rescan_hardware when scanner is present."""
