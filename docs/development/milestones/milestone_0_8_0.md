@@ -34,9 +34,9 @@ The BirdNET service is an immutable Tier 2 container responsible for performing 
 
 #### Key Findings (Spike v3)
 - **Native is ~35% faster** per 10s segment (155 ms avg vs 238 ms)
-- **>20× faster cold start** (0.05s vs 1.09s)
-- **Flat vs Leaky Memory:** Native stays flat at ~201 MB RSS. `birdnetlib` leaks memory, swelling beyond ~370 MB running sequentially.
-- **Identical results** to birdnetlib (Passer domesticus 0.8529 confidence, bit-identical)
+- **Initialization:** Native has much lower measured initialization overhead.
+- **Memory Footprint:** Native stays flat at ~201 MB RSS. `birdnetlib` exhibits higher RSS growth across sequential runs.
+- **Identical results:** Native produces identical outputs on the evaluated fixtures.
 - **Container:** `python:3.11-slim-bookworm` required (tflite-runtime lacks aarch64 wheels for Python ≥ 3.12)
 - **Custom code surface:** ~60 lines (sigmoid, labels, meta-model, windowing, numpy mask filtering)
 
@@ -66,7 +66,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [x] Create a temporary script in `scripts/spikes/birdnet/` testing 10-second audio chunks, processing multiple chunks in succession.
-- [x] Benchmark memory footprint AND initialization time of the official `BirdNET-Analyzer` Python package vs. bare-metal `tflite_runtime.Interpreter`.
+- [x] Benchmark memory footprint AND initialization time of `birdnetlib` (community wrapper) vs. bare-metal `tflite_runtime.Interpreter`.
 - [x] Optimize post-processing: use numpy boolean mask instead of Python for-loop over all 6,522 species scores (25× faster).
 - [x] Document findings in [ADR-0027](../../adr/0027-birdnet-inference-engine.md) (Inference Engine) and [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md) (Python 3.11 for ML Workers).
 
@@ -115,7 +115,7 @@ The following structures already exist and MUST be reused or extended in-place:
 ### Testing (Phase 3)
 - [ ] **`unit`** — `services/birdnet/tests/unit/test_worker.py`: Test graceful shutdown logic (`shutdown_event.is_set()` between chunks stops processing).
 - [ ] **`integration`** — `services/birdnet/tests/integration/test_worker_pull.py`: Level 3. Using `testcontainers` and a synthetic recording, claim via `FOR UPDATE SKIP LOCKED`, mock the inference engine, and verify `detections` rows and `analysis_state` updates.
-- [ ] **`system`** — `tests/system/test_birdnet_real_inference.py`: Run real inference via the chosen Engine against a 3-5s test WAV fixture to ensure actual classifications work without mocking.
+- [ ] **`system`** — `tests/system/test_birdnet_real_inference.py`: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.
 
 ---
 
@@ -125,14 +125,16 @@ The following structures already exist and MUST be reused or extended in-place:
 **Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop this background worker.
 
 ### Tasks
-- [ ] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=300m`, `oom_score_adj=500`).
+- [ ] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=512m`, `oom_score_adj=500`).
 - [ ] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that iterates through the registry and matches against the `system_config` dictionary for `enabled = True`.
 - [ ] Refactor `_reconcile_once` in the `ReconciliationLoop` to securely invoke both `DeviceStateEvaluator` and `SystemWorkerEvaluator`. Isolate each with `try...except` blocks to prevent worker configuration mismatches from halting active `recorder` container execution.
-- [ ] Make sure `birdnet` is seeded in the `system_config` table.
+- [ ] Make sure `system_config["birdnet"].enabled` controls the desired runtime state for the BirdNET singleton worker.
 
 ### Testing (Phase 4)
-- [ ] **`unit`** — Add unit tests for the newly decoupled `SystemWorkerEvaluator`.
-- [ ] **`unit`** — Ensure `Reconciler._reconcile_once` safely catches simulated exceptions from the worker evaluator while remaining capable of yielding hardware specs.
+- [ ] **`unit`** — Add unit tests for `Reconciler._reconcile_once` to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.
+- [ ] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `system_config` and maps the payload to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
+- [ ] **`system`** — Add `tests/system/test_singleton_worker_lifecycle.py`: Validate full `ReconciliationLoop` state transitions. Ensure changing `enabled` in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.
+- [ ] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since the `birdnet` config is `enabled=True` by default, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
 
 ---
 
@@ -190,7 +192,7 @@ The following structures already exist and MUST be reused or extended in-place:
 **Goal:** Formalize the release strictly according to `release_checklist.md`.
 
 ### Tasks
-- [ ] **Release Decision:** Decide if the `birdnet` system_config seeder should be switched to `enabled=true` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
+- [ ] **Release Decision:** Decide if the `system_config["birdnet"].enabled` seeder value should be switched to `True` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
 - [ ] Ensure branch is clean and `just check-all` finishes successfully.
 - [ ] Update `__version__` in `packages/core/src/silvasonic/core/__init__.py`.
 - [ ] Update version in the root `pyproject.toml`.

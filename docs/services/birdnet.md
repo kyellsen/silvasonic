@@ -64,10 +64,11 @@
 
 ### Dynamic Configuration (Database)
 
-Runtime-tunable settings stored in the `system_config` table (ADR-0023). As an **Immutable Container** (ADR-0019), BirdNET reads these settings *once* on startup.
+Runtime-tunable settings stored in the `system_config` table (ADR-0023). Following the Singleton-Worker State Convention (ADR-0029), BirdNET reads these settings *once* on startup, and the Controller uses the `enabled` field to orchestrate the container.
 
 | Key       | Setting                | Default | Description                                          |
 | --------- | ---------------------- | ------- | ---------------------------------------------------- |
+| `birdnet` | `enabled`              | `True`  | Master Controller toggle for the container lifecycle |
 | `system`  | `latitude`             | `53.55` | Station latitude — restricts species list to region  |
 | `system`  | `longitude`            | `9.99`  | Station longitude — restricts species list to region |
 | `birdnet` | `confidence_threshold` | `0.25`  | Minimum confidence for species detection             |

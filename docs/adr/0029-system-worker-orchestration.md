@@ -14,7 +14,12 @@ We will decouple Tier 2 orchestration into separate **State Evaluators**:
 1. **`DeviceStateEvaluator`**: Dedicated exclusively to mapping hardware devices to Recorder containers.
 2. **`SystemWorkerEvaluator`**: A new, generic evaluator that manages singleton system workers.
 
-To keep the `SystemWorkerEvaluator` universally extensible (KISS) and Configuration-Driven, we will introduce a static Python-based **Worker Registry** (`worker_registry.py`). This registry will hold plain dataclasses defining the operational footprint (`config_key`, `container_name`, `oom_score_adj`, `mem_limit`) for each supported background worker. 
+To keep the `SystemWorkerEvaluator` universally extensible (KISS) and Configuration-Driven, we establish the following **Singleton-Worker State Convention**:
+- Each singleton worker (e.g. `birdnet`, `batdetect`) possesses an isolated, dedicated Pydantic configuration namespace within the `system_config` JSONB table.
+- This namespace must hold both its runtime business logic (e.g., `confidence_threshold`) AND its orchestration toggle (`enabled: bool`).
+- The generic `SystemWorkerEvaluator` purely matches this `enabled` property to execute the container lifecycle, enforcing a single source of truth and deprecating legacy relational toggle tables (e.g. `system_services`).
+
+To configure the container specs, we introduce a static Python-based **Worker Registry** (`worker_registry.py`). This registry will hold plain dataclasses defining the operational footprint (`config_key`, `container_name`, `oom_score_adj`, `mem_limit`) for each supported background worker. 
 
 The Controller's `ReconciliationLoop` will execute both evaluators sequentially, safely aggregating their target specs by isolating them with individual `try...except` blocks before dispatching to Podman.
 
