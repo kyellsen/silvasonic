@@ -212,7 +212,7 @@ class TestRecorderSettings:
 class TestMonitorRecording:
     """Tests for the _monitor_recording coroutine."""
 
-    async def test_recording_active(self, bare_service: "RecorderService") -> None:
+    def test_recording_active(self, bare_service: "RecorderService") -> None:
         """Reports healthy when pipeline is active."""
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = True
@@ -220,39 +220,23 @@ class TestMonitorRecording:
         mock_pipeline.stderr_errors = []
         bare_service._pipeline = mock_pipeline
 
-        with (
-            patch(
-                "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
-            ),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await bare_service._monitor_recording()
+        bare_service._monitor_recording_once()
 
         status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is True
         assert "Recording active" in status["components"]["recording"]["details"]
 
-    async def test_recording_not_initialized(self, bare_service: "RecorderService") -> None:
+    def test_recording_not_initialized(self, bare_service: "RecorderService") -> None:
         """Reports unhealthy when pipeline is None."""
         bare_service._pipeline = None
 
-        with (
-            patch(
-                "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
-            ),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await bare_service._monitor_recording()
+        bare_service._monitor_recording_once()
 
         status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is False
         assert "Pipeline not initialized" in status["components"]["recording"]["details"]
 
-    async def test_recording_ffmpeg_exited(self, bare_service: "RecorderService") -> None:
+    def test_recording_ffmpeg_exited(self, bare_service: "RecorderService") -> None:
         """Reports unhealthy when FFmpeg process exited unexpectedly."""
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = False
@@ -260,15 +244,7 @@ class TestMonitorRecording:
         mock_pipeline.stderr_errors = ["[alsa] overrun"]
         bare_service._pipeline = mock_pipeline
 
-        with (
-            patch(
-                "silvasonic.recorder.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
-            ),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await bare_service._monitor_recording()
+        bare_service._monitor_recording_once()
 
         status = bare_service.health.get_status()
         assert status["components"]["recording"]["healthy"] is False
@@ -302,9 +278,8 @@ class TestRecorderServiceRun:
             patch("silvasonic.recorder.__main__.RecordingWatchdog", return_value=mock_watchdog),
             patch("silvasonic.recorder.__main__.ensure_workspace"),
         ):
-            # Configure watchdog.watch to set shutdown after a short delay
+            # Configure watchdog.watch to immediately set shutdown
             async def fake_watch(event: asyncio.Event) -> None:
-                await asyncio.sleep(0.1)
                 event.set()
 
             mock_watchdog.watch.side_effect = fake_watch
