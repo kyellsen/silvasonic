@@ -137,3 +137,20 @@
 
 - [Controller User Stories — US-C03: Control services via web interface](./controller.md)
 - [ADR-0017: Service State Management](../adr/0017-service-state-management.md)
+
+---
+
+<a id="us-b07"></a>
+## US-B07: Prioritize analysis backlog order 🔀
+
+> **As a user or researcher**
+> **I want to** be able to define via the web interface whether BirdNET should process the oldest or the newest recordings in the backlog first,
+> **so that** I can prioritize either a continuous chronological analysis (oldest first) or receive immediate live results of the most recent captures (newest first).
+
+### Acceptance Criteria
+
+- [ ] The processing order ("Oldest first" vs "Newest first") is adjustable via the web interface.
+- [ ] This setting is technically modeled as a literal field (`processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`) in the `BirdnetSettings` Pydantic schema, ensuring the web interface can automatically render a dropdown.
+- [ ] The BirdNET worker dynamically alters its database pull query (`ORDER BY time ASC` vs `DESC`) based on the active setting.
+- [ ] Changes to the processing order are applied immediately or upon the next worker cycle.
+

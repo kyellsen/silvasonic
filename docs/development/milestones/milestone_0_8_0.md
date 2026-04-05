@@ -47,7 +47,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 | Structure | Location | Status | Action for v0.8.0 |
 |---|---|---|---|
-| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `enabled`, `clip_padding_seconds`, `overlap`, `sensitivity`, `threads` |
+| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `enabled`, `clip_padding_seconds`, `overlap`, `sensitivity`, `threads`, `processing_order` |
 | `defaults.yml` (birdnet section) | `services/controller/config/defaults.yml:75-80` | Has `confidence_threshold` only | **Extend** with new fields to match schema |
 | `Detection` ORM model | `packages/core/src/silvasonic/core/database/models/detections.py` | Missing `clip_path` column | **Add** `clip_path: Mapped[str \| None]` to match DDL |
 | `Recording` ORM model | `packages/core/src/silvasonic/core/database/models/recordings.py` | Complete — has `analysis_state` JSONB | ✅ Reuse as-is (read-only from BirdNET) |
@@ -87,9 +87,10 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [ ] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
-- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`enabled: bool = True`, `clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`).
+- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`enabled: bool = True`, `clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`).
 - [ ] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
 - [ ] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
+- [ ] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
 - [ ] **Add** `birdnet` entry to `scripts/workspace_dirs.txt`.
 - [ ] Create `Containerfile` with `python:3.11-slim-bookworm` base image (per [ADR-0028](../../adr/0028-python-version-flexibility-ml-workers.md)) including `tflite-runtime`, `numpy`, `soundfile` dependencies.
 - [ ] Initialize `SilvaService` base class. Read `system_config` on startup for `BirdnetSettings`, `SystemSettings` (latitude, longitude) — use `SystemConfig` model.
@@ -106,11 +107,11 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** US-B01 (Automatic detection), US-B03 (Location logic), US-B04 (Confidence threshold).
 
 ### Tasks
-- [ ] Implement Worker Pull pattern (`SELECT ... FOR UPDATE SKIP LOCKED` on `recordings`). Update `recordings.analysis_state` JSONB with `{"birdnet": "done"}` after processing.
+- [ ] Implement Worker Pull pattern (`SELECT ... FOR UPDATE SKIP LOCKED` on `recordings`). Respect dynamic `processing_order` setting for `ORDER BY time` ASC/DESC. Update `recordings.analysis_state` JSONB with `{"birdnet": "done"}` after processing.
 - [ ] Implement the inference engine logic determined by the Phase 1 Spike.
 - [ ] Map DB runtime config (latitude, longitude from `SystemSettings`; `min_conf`, `sensitivity`, `overlap` from `BirdnetSettings`) to inference parameters. Derive `week` automatically.
 - [ ] Implement explicit memory management: e.g. `del audio_chunk` after inference, periodic `gc.collect()`.
-- [ ] Save results using the existing `Detection` ORM model — set `worker='birdnet'`. Use the raw English string provided by the model for `label` and `common_name` temporarily.
+- [ ] Save results using the existing `Detection` ORM model — set `worker='birdnet'`. Use the raw English string provided by the model for `label` and `common_name` temporarily. **Must populate `details` JSONB** with inference context (e.g., `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filtered`).
 
 ### Testing (Phase 3)
 - [ ] **`unit`** — `services/birdnet/tests/unit/test_worker.py`: Test graceful shutdown logic (`shutdown_event.is_set()` between chunks stops processing).
@@ -154,10 +155,9 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ---
 
-## Phase 6: Audio Clip Extraction (Stretch Goal) (Commit 6)
+## Phase 6: Audio Clip Extraction (Commit 6)
 
 **Goal:** Extract and persist short audio clips for each detection.
-**Priority:** Low / Stretch. Build this ONLY after Phases 1–5 are completely stable and running successfully in the pipeline.
 **User Stories:** US-B01 (clip storage), US-B02 (playback preparation).
 
 ### Tasks
@@ -182,7 +182,7 @@ The following structures already exist and MUST be reused or extended in-place:
 - [ ] **Add** `"detections"` to `_CLEANUP_TABLES` in `tests/integration/conftest.py`.
 
 ### Testing (Phase 7)
-- [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` (and clips, if Stretch Goal is implemented).
+- [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` and extracts clips.
 - [ ] **`system_hw_manual`** — `tests/system/test_hw_birdnet_pipeline.py`: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via `enabled=true` system config setting.
 
 ---
