@@ -31,7 +31,7 @@ from silvasonic.controller.reconciler import ReconciliationLoop
 from silvasonic.controller.seeder import run_all_seeders
 from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.check import check_database_connection
-from silvasonic.core.database.session import get_session
+from silvasonic.core.database.session import get_session_factory
 from silvasonic.core.resources import HostResourceCollector
 from silvasonic.core.service import SilvaService
 
@@ -103,10 +103,11 @@ class ControllerService(SilvaService):
         """
         # Step 1: Seed factory defaults (best-effort)
         try:
-            async with get_session() as session:
-                await run_all_seeders(session)
-        except Exception as exc:
-            log.error("controller.seeding_failed", error=str(exc))
+            failed = await run_all_seeders(get_session_factory())
+            if failed:
+                log.warning("controller.seeding_partial", failed=failed)
+        except Exception:
+            log.exception("controller.seeding_failed")
 
         # Step 2: Initial device scan (MUST run even if seeding failed)
         try:

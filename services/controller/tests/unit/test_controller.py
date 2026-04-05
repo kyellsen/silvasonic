@@ -265,20 +265,17 @@ class TestControllerLoadConfig:
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ) as mock_factory,
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
+                return_value=[],
             ) as mock_seeders,
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             await svc.load_config()
 
-        mock_seeders.assert_awaited_once_with(mock_ctx)
+        mock_seeders.assert_awaited_once_with(mock_factory.return_value)
         svc._reconciliation_loop.scan_and_sync_devices.assert_awaited_once()
 
     async def test_scan_runs_even_if_seeding_fails(self) -> None:
@@ -292,18 +289,14 @@ class TestControllerLoadConfig:
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ),
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("IntegrityError: duplicate key"),
             ),
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             # Must NOT raise — load_config catches the seeder error
             await svc.load_config()
 
@@ -319,17 +312,14 @@ class TestControllerLoadConfig:
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ),
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
+                return_value=[],
             ),
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             # Must NOT raise
             await svc.load_config()
 

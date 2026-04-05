@@ -660,63 +660,86 @@ class TestManagedServiceSeeder:
 class TestRunAllSeeders:
     """Tests for the run_all_seeders orchestration function."""
 
-    async def test_calls_all_seeders_and_commits(self, tmp_path: Path) -> None:
-        """run_all_seeders executes all 5 seeders and commits."""
-        session = AsyncMock(add=MagicMock())
-        session.get = AsyncMock(return_value=None)
+    @staticmethod
+    def _make_session_factory() -> tuple[MagicMock, list[AsyncMock]]:
+        """Create a mock session factory that returns fresh mock sessions.
 
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=result_mock)
+        Returns (factory_mock, sessions_list) so tests can inspect
+        per-seeder commit/rollback calls.
+        """
+        sessions: list[AsyncMock] = []
+
+        def _new_session() -> AsyncMock:
+            s = AsyncMock(add=MagicMock())
+            s.get = AsyncMock(return_value=None)
+            result_mock = MagicMock()
+            result_mock.scalar_one_or_none.return_value = None
+            s.execute = AsyncMock(return_value=result_mock)
+            sessions.append(s)
+            return s
+
+        factory = MagicMock()
+        factory.return_value.__aenter__ = AsyncMock(side_effect=_new_session)
+        factory.return_value.__aexit__ = AsyncMock(return_value=False)
+        return factory, sessions
+
+    async def test_run_all_seeders_happy_path(self) -> None:
+        """Happy path: all seeders succeed → empty list, 5 commits."""
+        factory, sessions = self._make_session_factory()
 
         with (
             patch(
                 "silvasonic.controller.seeder.ConfigSeeder.seed",
                 new_callable=AsyncMock,
-            ) as config_seed,
+            ),
             patch(
                 "silvasonic.controller.seeder.ProfileBootstrapper.seed",
                 new_callable=AsyncMock,
-            ) as profile_seed,
-            patch(
-                "silvasonic.controller.seeder.AuthSeeder.seed",
-                new_callable=AsyncMock,
-            ) as auth_seed,
+            ),
             patch(
                 "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
                 new_callable=AsyncMock,
-            ) as managed_seed,
+            ),
+            patch(
+                "silvasonic.controller.seeder.CloudSyncSeeder.seed",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "silvasonic.controller.seeder.AuthSeeder.seed",
+                new_callable=AsyncMock,
+            ),
         ):
-            await run_all_seeders(session)
+            result = await run_all_seeders(factory)
 
-            config_seed.assert_called_once()
-            managed_seed.assert_called_once_with(session)
-            profile_seed.assert_called_once_with(session)
-            auth_seed.assert_called_once()
-            session.commit.assert_called_once()
+        assert result == [], "All seeders succeeded → no failures"
+        assert len(sessions) == 5, "Each seeder gets its own session"
+        for i, s in enumerate(sessions):
+            s.commit.assert_awaited_once(), f"Session {i} must commit exactly once"
 
-    async def test_flushes_between_config_and_cloud_sync(self) -> None:
-        """session.flush() is called between ConfigSeeder and CloudSyncSeeder.
+    async def test_run_all_seeders_executes_in_declared_order(self) -> None:
+        """Seeder execution order is a design constraint (Data Capture Integrity).
 
-        Prevents the duplicate-key batch INSERT bug where both seeders
-        add a ``cloud_sync`` key to the pending session without an
-        intermediate flush (Data Capture Integrity regression guard).
+        ConfigSeeder and ProfileBootstrapper MUST run first because
+        ProfileMatcher depends on system.auto_enrollment and profiles
+        during the Initial Device Scan immediately after seeding.
         """
+        factory, _sessions = self._make_session_factory()
         call_order: list[str] = []
 
-        session = AsyncMock(add=MagicMock())
-        session.get = AsyncMock(return_value=None)
-        session.flush = AsyncMock(side_effect=lambda: call_order.append("flush"))
+        def _track_config(*a: object, **kw: object) -> None:
+            call_order.append("config")
 
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        session.execute = AsyncMock(return_value=result_mock)
+        def _track_profiles(*a: object, **kw: object) -> None:
+            call_order.append("profiles")
 
-        async def _track_config(*a: object, **kw: object) -> None:
-            call_order.append("config_seed")
+        def _track_managed(*a: object, **kw: object) -> None:
+            call_order.append("managed_services")
 
-        async def _track_cloud(*a: object, **kw: object) -> None:
-            call_order.append("cloud_sync_seed")
+        def _track_cloud(*a: object, **kw: object) -> None:
+            call_order.append("cloud_sync")
+
+        def _track_auth(*a: object, **kw: object) -> None:
+            call_order.append("auth")
 
         with (
             patch(
@@ -725,16 +748,60 @@ class TestRunAllSeeders:
                 side_effect=_track_config,
             ),
             patch(
+                "silvasonic.controller.seeder.ProfileBootstrapper.seed",
+                new_callable=AsyncMock,
+                side_effect=_track_profiles,
+            ),
+            patch(
+                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                new_callable=AsyncMock,
+                side_effect=_track_managed,
+            ),
+            patch(
                 "silvasonic.controller.seeder.CloudSyncSeeder.seed",
                 new_callable=AsyncMock,
                 side_effect=_track_cloud,
+            ),
+            patch(
+                "silvasonic.controller.seeder.AuthSeeder.seed",
+                new_callable=AsyncMock,
+                side_effect=_track_auth,
+            ),
+        ):
+            await run_all_seeders(factory)
+
+        assert call_order == [
+            "config",
+            "profiles",
+            "managed_services",
+            "cloud_sync",
+            "auth",
+        ]
+
+    async def test_single_seeder_failure_does_not_block_others(self) -> None:
+        """Failure isolation: a crashed seeder must not block remaining seeders.
+
+        The failed seeder's name appears in the returned list,
+        its session is rolled back, and others commit normally.
+        """
+        factory, sessions = self._make_session_factory()
+
+        with (
+            patch(
+                "silvasonic.controller.seeder.ConfigSeeder.seed",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "silvasonic.controller.seeder.ProfileBootstrapper.seed",
+                new_callable=AsyncMock,
             ),
             patch(
                 "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
                 new_callable=AsyncMock,
             ),
             patch(
-                "silvasonic.controller.seeder.ProfileBootstrapper.seed",
+                "silvasonic.controller.seeder.CloudSyncSeeder.seed",
                 new_callable=AsyncMock,
             ),
             patch(
@@ -742,11 +809,18 @@ class TestRunAllSeeders:
                 new_callable=AsyncMock,
             ),
         ):
-            await run_all_seeders(session)
+            result = await run_all_seeders(factory)
 
-        # Verify ordering: config → flush → cloud_sync
-        assert call_order.index("config_seed") < call_order.index("flush")
-        assert call_order.index("flush") < call_order.index("cloud_sync_seed")
+        assert result == ["config"], "Only the failed seeder should be in the list"
+        assert len(sessions) == 5, "All 5 seeders attempted (each gets a session)"
+
+        # First session (config) should have been rolled back
+        sessions[0].rollback.assert_awaited_once()
+        sessions[0].commit.assert_not_awaited()
+
+        # Remaining 4 sessions should have committed
+        for s in sessions[1:]:
+            s.commit.assert_awaited_once()
 
 
 # ===================================================================

@@ -72,6 +72,10 @@ fix *args:
 lint:
     @{{ BOOTSTRAP_PYTHON }} scripts/lint.py
 
+# 📈 Prints the repository Lines of Code statistics
+linestats:
+    @{{ BOOTSTRAP_PYTHON }} scripts/linestats.py
+
 # 🔍 Nur statische Analyse & Unit Tests -> < 10s
 alias c := check
 check *targets:

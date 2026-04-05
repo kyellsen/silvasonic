@@ -1,6 +1,9 @@
 """Startup seeders for Controller — idempotent DB bootstrapping (ADR-0023).
 
-ConfigSeeder, ProfileBootstrapper, AuthSeeder run in sequence on startup.
+Seeder execution order (recorder-critical first):
+    ConfigSeeder → ProfileBootstrapper → ManagedServiceSeeder → CloudSyncSeeder → AuthSeeder
+
+Each seeder runs in its own transaction (per-seeder commit/rollback).
 All use INSERT ON CONFLICT DO NOTHING — existing user values are never overwritten.
 """
 
@@ -8,7 +11,7 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 
 import bcrypt
 import structlog
@@ -25,7 +28,7 @@ from silvasonic.core.database.models.profiles import MicrophoneProfile as MicPro
 from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
 from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 log = structlog.get_logger()
 
@@ -68,20 +71,48 @@ def _load_defaults(path: Path) -> dict[str, Any] | None:
     return raw
 
 
+# ---------------------------------------------------------------------------
+# Seeder protocol (static typing only — no runtime_checkable)
+# ---------------------------------------------------------------------------
+
+
+class Seeder(Protocol):
+    """Uniform interface for startup seeders (static typing via mypy)."""
+
+    name: str
+
+    async def seed(self, session: AsyncSession) -> None:
+        """Seed initial configuration state into the database."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Individual seeders
+# ---------------------------------------------------------------------------
+
+
 class ConfigSeeder:
     """Seed ``system_config`` with factory defaults (ADR-0023)."""
 
-    def __init__(self, defaults_path: Path | None = None) -> None:
-        """Initialize with path to defaults YAML file."""
-        self._defaults_path = defaults_path
+    name = "config"
 
-    async def seed(
+    def __init__(
         self,
-        session: AsyncSession,
-        *,
+        defaults_path: Path | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize with path to defaults YAML file.
+
+        Args:
+            defaults_path: Path to defaults.yml (lazy-loaded when *defaults* is ``None``).
+            defaults: Pre-loaded defaults dict.  Takes precedence over *defaults_path*.
+        """
+        self._defaults_path = defaults_path
+        self._defaults = defaults
+
+    async def seed(self, session: AsyncSession) -> None:
         """Load ``defaults.yml`` and insert missing keys into ``system_config``."""
+        defaults = self._defaults
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
             defaults = _load_defaults(defaults_path)
@@ -126,6 +157,8 @@ class ConfigSeeder:
 
 class ProfileBootstrapper:
     """Seed ``microphone_profiles`` from YAML profile files (ADR-0016)."""
+
+    name = "profiles"
 
     def __init__(self, profiles_dir: Path | None = None) -> None:
         """Initialize with path to profiles directory."""
@@ -201,17 +234,25 @@ class ProfileBootstrapper:
 class AuthSeeder:
     """Seed default admin user with bcrypt-hashed password (ADR-0023)."""
 
-    def __init__(self, defaults_path: Path | None = None) -> None:
-        """Initialize with path to defaults YAML file."""
-        self._defaults_path = defaults_path
+    name = "auth"
 
-    async def seed(
+    def __init__(
         self,
-        session: AsyncSession,
-        *,
+        defaults_path: Path | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize with path to defaults YAML file.
+
+        Args:
+            defaults_path: Path to defaults.yml (lazy-loaded when *defaults* is ``None``).
+            defaults: Pre-loaded defaults dict.  Takes precedence over *defaults_path*.
+        """
+        self._defaults_path = defaults_path
+        self._defaults = defaults
+
+    async def seed(self, session: AsyncSession) -> None:
         """Create default admin user if not exists."""
+        defaults = self._defaults
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
             defaults = _load_defaults(defaults_path)
@@ -265,6 +306,8 @@ class CloudSyncSeeder:
     DB values.  If env vars are absent, the seeder does nothing (existing
     DB values are preserved for Web-UI configuration).
     """
+
+    name = "cloud_sync"
 
     _ENV_VARS = (
         "SILVASONIC_CLOUD_REMOTE_TYPE",
@@ -374,6 +417,8 @@ class ManagedServiceSeeder:
     Compose and MUST NOT be seeded.
     """
 
+    name = "managed_services"
+
     # Extend this list when adding new Tier-2 singletons (e.g. batdetect, weather).
     _TIER2_SINGLETONS: ClassVar[list[tuple[str, bool]]] = [
         ("birdnet", True),
@@ -390,22 +435,46 @@ class ManagedServiceSeeder:
                 log.debug("seeder.managed_service.skipped", name=name)
 
 
-async def run_all_seeders(session: AsyncSession) -> None:
-    """Run all seeders (idempotent): config, cloud_sync, managed_services, profiles, auth."""
-    log.info("seeder.start")
+async def run_all_seeders(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> list[str]:
+    """Run all seeders with per-seeder transaction isolation.
 
-    # Load defaults.yml once, share across seeders
+    Returns list of failed seeder names (empty on full success).
+
+    Seeder order: recorder-critical first, then infrastructure, then optional.
+    ConfigSeeder and ProfileBootstrapper MUST run first because
+    ``ProfileMatcher`` reads ``system.auto_enrollment`` and profiles
+    during the Initial Device Scan that follows immediately after seeding.
+    """
     defaults = _load_defaults(_get_defaults_yml())
 
-    await ConfigSeeder().seed(session, defaults=defaults)
-    # Flush ConfigSeeder INSERTs so CloudSyncSeeder sees them via session.get().
-    # Without this, both seeders add a "cloud_sync" key to the pending batch,
-    # causing a duplicate-key IntegrityError on commit (Data Capture Integrity).
-    await session.flush()
-    await CloudSyncSeeder().seed(session)
-    await ManagedServiceSeeder().seed(session)
-    await ProfileBootstrapper().seed(session)
-    await AuthSeeder().seed(session, defaults=defaults)
+    # Order: recorder-critical first, then infrastructure, then optional.
+    seeders: list[Seeder] = [
+        ConfigSeeder(defaults=defaults),
+        ProfileBootstrapper(),
+        ManagedServiceSeeder(),
+        CloudSyncSeeder(),
+        AuthSeeder(defaults=defaults),
+    ]
 
-    await session.commit()
-    log.info("seeder.complete")
+    log.info("seeder.start", count=len(seeders))
+    failed: list[str] = []
+
+    for seeder in seeders:
+        async with session_factory() as session:
+            try:
+                await seeder.seed(session)
+                await session.commit()
+                log.info("seeder.completed", seeder=seeder.name)
+            except Exception:
+                await session.rollback()
+                log.exception("seeder.failed", seeder=seeder.name)
+                failed.append(seeder.name)
+
+    if failed:
+        log.warning("seeder.partial_failure", failed=failed)
+    else:
+        log.info("seeder.all_complete")
+
+    return failed
