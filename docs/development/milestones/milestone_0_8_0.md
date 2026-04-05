@@ -150,6 +150,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Testing (Phase 5)
 - [ ] **`unit`** — `services/birdnet/tests/unit/test_heartbeat.py`: Assert that `get_extra_meta()` returns valid backlog payloads.
+- [ ] **`integration`** — `services/birdnet/tests/integration/test_backlog_metrics.py`: Verify the backlog counting query against a real Testcontainers database.
 - [ ] **`system`** — `tests/system/test_birdnet_lifecycle.py`: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.
 - [ ] **`smoke`** — `tests/smoke/test_health.py`: Extend with `test_birdnet_heartbeat_in_redis`.
 

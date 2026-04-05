@@ -28,9 +28,9 @@ jobs:
 
       - name: Install system tools
         run: |
-          # ffmpeg (recorder integration tests)
+          # ffmpeg (recorder) & rclone (processor integration tests)
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg rclone
           # podman-compose ≥1.5.0 (apt ships 1.0.6 which lacks --profile and --quiet)
           pip install podman-compose
           # just (command runner)
