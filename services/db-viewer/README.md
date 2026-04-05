@@ -47,9 +47,13 @@
 
 ## 5. Configuration & Environment
 
-| Variable / Mount | Description       | Default / Example |
-| ---------------- | ----------------- | ----------------- |
-| `SILVASONIC_...` | Standard Tier 1 config | ...               |
+| Variable / Mount           | Description                                    | Default / Example  |
+| -------------------------- | ---------------------------------------------- | ------------------ |
+| `POSTGRES_HOST`            | Database hostname                              | `database`         |
+| `POSTGRES_USER`            | Database user                                  | `silvasonic`       |
+| `POSTGRES_PASSWORD`        | Database password                              | `silvasonic`       |
+| `POSTGRES_DB`              | Target database name                           | `silvasonic`       |
+| `SILVASONIC_API_ROOT_PATH` | Path prefix for reverse proxy routing (FastAPI)| `/db-viewer`       |
 
 *(Controlled via `COMPOSE_PROFILES=db-viewer` in `.env`)*
 
