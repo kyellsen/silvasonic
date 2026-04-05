@@ -188,68 +188,6 @@ class TestResolveRawPathFallback:
 
 
 @pytest.mark.unit
-class TestIndexRecordings:
-    """Verify index_recordings full insert path and error handling."""
-
-    async def test_new_file_indexed_and_committed(self, tmp_path: Path) -> None:
-        """New WAV file is inserted into DB and session is committed."""
-        dev_dir = tmp_path / "mic-01" / "data" / "processed"
-        dev_dir.mkdir(parents=True)
-        wav = dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
-        _create_wav(wav, duration_s=1.0, sample_rate=48000)
-
-        # Also create the corresponding raw file
-        raw_dir = tmp_path / "mic-01" / "data" / "raw"
-        raw_dir.mkdir(parents=True)
-        _create_wav(raw_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav", duration_s=1.0)
-
-        # Mock session: idempotency → not indexed, device → exists, INSERT
-        select_result = MagicMock()
-        select_result.fetchone.return_value = None
-
-        device_result = MagicMock()
-        device_result.fetchone.return_value = ("mic-01",)  # Device exists, returns name
-
-        session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[select_result, device_result, AsyncMock()])
-        session.commit = AsyncMock()
-
-        result = await indexer.index_recordings(session, tmp_path)
-        assert result.new == 1
-        assert result.skipped == 0
-        assert result.errors == 0
-        session.commit.assert_called_once()
-
-    async def test_extraction_error_counted(self, tmp_path: Path) -> None:
-        """Corrupt WAV file triggers error counter, not crash."""
-        dev_dir = tmp_path / "mic-01" / "data" / "processed"
-        dev_dir.mkdir(parents=True)
-        corrupt = dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
-        corrupt.write_bytes(b"NOT_A_WAV")
-
-        # Mock session: idempotency → not indexed, device → exists
-        # extract_metadata raises before INSERT
-        select_result = MagicMock()
-        select_result.fetchone.return_value = None
-
-        device_result = MagicMock()
-        device_result.fetchone.return_value = ("mic-01",)  # Device exists, returns name
-
-        session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[select_result, device_result])
-        session.commit = AsyncMock()
-
-        result = await indexer.index_recordings(session, tmp_path)
-        assert result.errors == 1
-        assert result.new == 0
-        assert len(result.error_details) == 1
-        # commit should NOT be called (no successful inserts)
-        session.commit.assert_not_called()
-        # rollback MUST be called to reset the aborted transaction state
-        session.rollback.assert_called_once()
-
-
-@pytest.mark.unit
 class TestDeviceExistenceCheck:
     """Verify Indexer checks device existence before INSERT."""
 

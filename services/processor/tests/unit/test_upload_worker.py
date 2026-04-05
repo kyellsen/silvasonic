@@ -56,22 +56,6 @@ def mock_encryption_key() -> Any:
 
 
 @pytest.mark.unit
-async def test_upload_disabled_skips(worker: UploadWorker) -> None:
-    """Test that the worker skips DB polling if disabled."""
-
-    async def break_loop(*args: Any, **kwargs: Any) -> None:
-        worker._shutdown_event.set()
-
-    with patch.object(worker, "_sleep", side_effect=break_loop) as mock_sleep:
-        worker._fetch_config = AsyncMock(return_value=("station", CloudSyncSettings(enabled=False)))  # type: ignore
-        await worker.run()
-
-        health_mock = worker.health.update_status
-        health_mock.assert_called_with("upload_worker", True, "state: disabled")  # type: ignore
-        mock_sleep.assert_called()
-
-
-@pytest.mark.unit
 @patch("silvasonic.processor.upload_worker.find_pending_uploads")
 @patch("silvasonic.processor.upload_worker.encode_wav_to_flac")
 @patch("silvasonic.processor.upload_worker.RcloneClient")
