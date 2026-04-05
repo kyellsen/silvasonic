@@ -16,16 +16,11 @@ before moving on to the test stages.
 
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
-from common import (
-    Colors,
-    ensure_initialized,
-    print_error,
-    print_header,
-    print_step,
-    print_success,
-)
+from common import ensure_initialized
+from pipeline import run_pipeline
 from test import cmd_unit
 
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
@@ -41,25 +36,51 @@ NON_CRITICAL_STAGES: set[str] = {"Lock-File Check"}
 ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Mypy"}
 
 
-def _run(label: str, cmd: list[str]) -> bool:
-    """Run a command, print a header, and return True on success."""
-    print_header(label)
-    print_step(f"{' '.join(cmd)}")
+def make_cmd_runner(cmd: list[str]) -> Callable[[], None]:
+    """Create a runner function for simple subprocess commands."""
+
+    def runner() -> None:
+        result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+        if result.returncode != 0:
+            sys.exit(result.returncode)
+
+    return runner
+
+
+def _run_pytest_stage(cmd_func: Callable[[], list[str]], label: str) -> int:
+    """Run a pytest command, parse JUnit XML for skipped tests, return skip count."""
+    import xml.etree.ElementTree as ET
+
+    xml_path = PROJECT_ROOT / f".tmp/junit_{label.strip().replace(' ', '_').lower()}.xml"
+    xml_path.parent.mkdir(exist_ok=True)
+    if xml_path.exists():
+        xml_path.unlink()
+
+    cmd = [*cmd_func(), f"--junitxml={xml_path}"]
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
-    if result.returncode == 0:
-        print_success(f"{label} passed.")
-    else:
-        print_error(f"{label} FAILED (exit {result.returncode}).")
-    return result.returncode == 0
+
+    if result.returncode not in (0, 5):
+        sys.exit(result.returncode)
+
+    skipped = 0
+    if xml_path.exists():
+        try:
+            tree = ET.parse(xml_path)
+            testsuite = tree.getroot()
+            if testsuite.tag == "testsuites" and len(testsuite) > 0:
+                testsuite = testsuite[0]
+            skipped = int(testsuite.attrib.get("skipped", 0))
+        except Exception:
+            pass
+
+    return skipped
 
 
-def main() -> dict[str, bool | None]:
+def main() -> None:
     """Run lock-check, ruff, mypy, and unit tests sequentially.
 
     Non-critical stages (Lock-File Check) may fail without aborting
     the pipeline.  Critical stages abort on first failure.
-
-    Returns a dict of {check_name: passed/failed/skipped} for use by ci.py.
     """
     ensure_initialized()
 
@@ -68,65 +89,31 @@ def main() -> dict[str, bool | None]:
     if not targets:
         targets = ["."]
 
-    all_stages: list[tuple[str, list[str]]] = [
-        ("Lock-File Check", ["uv", "lock", "--check"]),
-        ("Ruff Lint", ["uv", "run", "ruff", "check", *targets]),
-        ("Mypy", ["uv", "run", "mypy", *targets]),
-        ("Unit Tests", cmd_unit()),
+    all_stages: list[tuple[str, Callable[[], None | int]]] = [
+        ("Lock-File Check", make_cmd_runner(["uv", "lock", "--check"])),
+        ("Ruff Lint", make_cmd_runner(["uv", "run", "ruff", "check", *targets])),
+        ("Mypy", make_cmd_runner(["uv", "run", "mypy", *targets])),
+        ("Unit Tests", lambda: _run_pytest_stage(cmd_unit, "Unit Tests")),
     ]
 
     if is_verify:
         from test import cmd_integration
 
-        all_stages.append(("Integration Tests", cmd_integration()))
+        all_stages.append(
+            (
+                "Integration Tests",
+                lambda: _run_pytest_stage(cmd_integration, "Integration Tests"),
+            )
+        )
 
-    results: dict[str, bool | None] = {}
+    passed = run_pipeline(
+        all_stages=all_stages,
+        non_critical_stages=NON_CRITICAL_STAGES,
+        always_run_stages=ALWAYS_RUN_STAGES,
+    )
 
-    # ── Run stages with always-run group support ─────────────────────────
-    always_run_failed = False
-    for i, (label, cmd) in enumerate(all_stages):
-        passed = _run(label, cmd)
-        results[label] = passed
-
-        if not passed:
-            if label in ALWAYS_RUN_STAGES:
-                # Record failure but keep going so sibling stages run.
-                always_run_failed = True
-            elif label not in NON_CRITICAL_STAGES:
-                # Hard abort for other critical stages.
-                for skip_label, _ in all_stages[i + 1 :]:
-                    results[skip_label] = None
-                break
-
-        # After leaving the always-run group, abort if any member failed.
-        if (
-            label in ALWAYS_RUN_STAGES
-            and always_run_failed
-            and (i + 1 >= len(all_stages) or all_stages[i + 1][0] not in ALWAYS_RUN_STAGES)
-        ):
-            for skip_label, _ in all_stages[i + 1 :]:
-                results[skip_label] = None
-            break
-
-    # ── Summary ───────────────────────────────────────────────────────────────
-    print_header("Summary")
-    all_ok = True
-    for name, result in results.items():
-        if result is None:
-            print(f"   {Colors.WARNING}⏭️  {name} (skipped){Colors.ENDC}")
-        elif result:
-            print(f"   {Colors.OKGREEN}✅ {name}{Colors.ENDC}")
-        else:
-            print(f"   {Colors.FAIL}❌ {name}{Colors.ENDC}")
-            all_ok = False
-
-    if all_ok and all(v is not None for v in results.values()):
-        print(f"\n{Colors.OKGREEN}{Colors.BOLD}🎉 All checks passed!{Colors.ENDC}")
-    else:
-        print_error("Some checks failed. Please fix the issues above.")
+    if not passed:
         sys.exit(1)
-
-    return results
 
 
 if __name__ == "__main__":

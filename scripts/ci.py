@@ -25,70 +25,14 @@ start/stop the real compose stack.
 import shutil
 import subprocess
 import sys
-import time
 from collections.abc import Callable
 from pathlib import Path
 
-from common import Colors, ensure_initialized, fmt_duration, print_error, print_success
+from common import Colors, ensure_initialized
 from test import cmd_e2e, cmd_integration, cmd_smoke, cmd_system, cmd_unit
 
 # ── Project root = parent of scripts/ ─────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-# Total number of stages in the pipeline
-TOTAL_STAGES = 12
-
-# Result type: (label, passed_or_none, elapsed, critical, skipped_count)
-StageResult = tuple[str, bool | None, float, bool, int]
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _stage_header(num: int, label: str) -> None:
-    """Print a prominent stage header with progress indicator."""
-    progress = f"[{num}/{TOTAL_STAGES}]"
-    print(f"\n{Colors.HEADER}{Colors.BOLD}")
-    print(f"{'═' * 60}")
-    print(f"  {progress}  {label}")
-    print(f"{'═' * 60}{Colors.ENDC}")
-
-
-def _run_stage(
-    num: int,
-    label: str,
-    func: Callable[[], None | int],
-    *,
-    critical: bool = True,
-) -> StageResult:
-    """Run a pipeline stage, measure time, catch failures.
-
-    Returns (label, passed, elapsed_seconds, critical, skipped_count).
-    """
-    _stage_header(num, label)
-    start = time.monotonic()
-    skipped_count = 0
-    try:
-        res = func()
-        if isinstance(res, int):
-            skipped_count = res
-        elapsed = time.monotonic() - start
-        warn_msg = f" ({skipped_count} skipped)" if skipped_count > 0 else ""
-        print_success(f"{label}{warn_msg} — {fmt_duration(elapsed)}")
-        return label, True, elapsed, critical, skipped_count
-    except SystemExit as e:
-        elapsed = time.monotonic() - start
-        if e.code == 0 or e.code is None:
-            warn_msg = f" ({skipped_count} skipped)" if skipped_count > 0 else ""
-            print_success(f"{label}{warn_msg} — {fmt_duration(elapsed)}")
-            return label, True, elapsed, critical, skipped_count
-        print_error(f"{label} FAILED (exit {e.code}) — {fmt_duration(elapsed)}")
-        return label, False, elapsed, critical, skipped_count
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        print_error(f"{label} FAILED — {e} — {fmt_duration(elapsed)}")
-        return label, False, elapsed, critical, skipped_count
-
 
 # Stages that may fail without aborting the pipeline.
 # Their result is still shown in the summary and affects the exit code.
@@ -272,170 +216,39 @@ def main() -> None:
     """Run the full CI pipeline with unified summary."""
     ensure_initialized()
 
-    pipeline_start = time.monotonic()
-
-    stages: list[StageResult] = []
-
-    def record(label: str, num: int, func: Callable[[], None | int]) -> bool:
-        """Run a stage and record the result. Returns True if passed."""
-        critical = label not in NON_CRITICAL_STAGES
-        result = _run_stage(num, label, func, critical=critical)
-        stages.append(result)
-        return result[1] is True
-
-    # ── All stages in order (each builds on the previous) ───────────────
-    all_stages: list[tuple[str, int, Callable[[], None | int]]] = [
-        ("Lock-File Check", 1, _stage_lock_check),
-        ("Dep Audit", 2, _stage_dep_audit),
-        ("Containerfile Lint", 3, _stage_containerfile_lint),
-        ("Ruff Lint", 4, _stage_ruff),
-        ("Mypy", 5, _stage_mypy),
-        ("Unit Tests", 6, _stage_unit_tests),
-        ("Integration Tests", 7, _stage_integration_tests),
-        ("Clear", 8, _stage_clear),
-        ("Build Images", 9, _stage_build),
-        ("System Tests", 10, _stage_system_tests),
-        ("Smoke Tests", 11, _stage_smoke_tests),
-        ("E2E Tests", 12, _stage_e2e_tests),
+    all_stages: list[tuple[str, Callable[[], None | int]]] = [
+        ("Lock-File Check", _stage_lock_check),
+        ("Dep Audit", _stage_dep_audit),
+        ("Containerfile Lint", _stage_containerfile_lint),
+        ("Ruff Lint", _stage_ruff),
+        ("Mypy", _stage_mypy),
+        ("Unit Tests", _stage_unit_tests),
+        ("Integration Tests", _stage_integration_tests),
+        ("Clear", _stage_clear),
+        ("Build Images", _stage_build),
+        ("System Tests", _stage_system_tests),
+        ("Smoke Tests", _stage_smoke_tests),
+        ("E2E Tests", _stage_e2e_tests),
     ]
 
-    # ── Run stages with always-run group support ──────────────────────
-    always_run_failed = False
-    for idx, stage_entry in enumerate(all_stages):
-        label: str = stage_entry[0]
-        num: int = stage_entry[1]
-        func: Callable[[], None | int] = stage_entry[2]
-        if label in SKIPPED_BY_DEFAULT:
-            _stage_header(num, label)
-            print(f"  ⏩  {label} skipped by default (SKIPPED_BY_DEFAULT).")
-            stages.append((label, None, 0.0, True, 0))
-            continue
-        passed = record(label, num, func)
-        if not passed:
-            if label in ALWAYS_RUN_STAGES:
-                # Record failure but keep going so sibling stages run.
-                always_run_failed = True
-            elif label not in NON_CRITICAL_STAGES:
-                # Hard abort for other critical stages.
-                for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
-                    stages.append((skip_label, None, 0.0, True, 0))
-                break
+    from pipeline import run_pipeline
 
-        # After leaving the always-run group, abort if any member failed.
-        if (
-            label in ALWAYS_RUN_STAGES
-            and always_run_failed
-            and (idx + 1 >= len(all_stages) or all_stages[idx + 1][0] not in ALWAYS_RUN_STAGES)
-        ):
-            for skip_label, _skip_num, _ in all_stages[idx + 1 :]:
-                stages.append((skip_label, None, 0.0, True, 0))
-            break
-
-    # ── Final Summary ─────────────────────────────────────────────────────
-    pipeline_elapsed = time.monotonic() - pipeline_start
-    _print_summary(stages, pipeline_elapsed)
-
-    # Exit with error only if a CRITICAL stage failed.
-    # Non-critical stages (e.g. Dep Audit) are reported but do not block.
-    if any(passed is False and critical for _, passed, _, critical, _ in stages):
-        sys.exit(1)
-
-
-def _print_summary(
-    stages: list[StageResult],
-    total_elapsed: float,
-) -> None:
-    """Print the final unified summary with colored pass/fail indicators and timing bars."""
-    bar_width = 20
-
-    print(f"\n\n{Colors.BOLD}")
-    print(f"{'═' * 60}")
-    print("  📋  FULL PIPELINE SUMMARY")
-    print(f"{'═' * 60}{Colors.ENDC}")
-
-    passed_count = 0
-    failed_count = 0
-    warned_count = 0
-    skipped_count_total = 0
-
-    # Find max elapsed for bar normalization (longest stage = full bar)
-    max_elapsed = max((e for _, p, e, _c, _s in stages if p is not None), default=1.0) or 1.0
-    max_label = max(len(label) for label, _, _, _, _ in stages)
-    max_pad = max_label + 12
-
-    for label, passed, elapsed, critical, tests_skipped in stages:
-        if passed is None:
-            icon = f"{Colors.WARNING}⏭️  SKIP{Colors.ENDC}"
-            skipped_count_total += 1
-            bar_str = f"  {'·' * bar_width}"
-            time_str = ""
-            label_display = label
-        elif passed:
-            if tests_skipped > 0:
-                icon = f"{Colors.WARNING}⚠️  WARN{Colors.ENDC}"
-                warned_count += 1
-                label_display = f"{label} ({tests_skipped} skips)"
-            else:
-                icon = f"{Colors.OKGREEN}✅ PASS{Colors.ENDC}"
-                passed_count += 1
-                label_display = label
-
-            filled = int(min(elapsed / max_elapsed, 1.0) * bar_width)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            color = Colors.WARNING if tests_skipped > 0 else Colors.OKGREEN
-            bar_str = f"  {color}{bar}{Colors.ENDC}"
-            time_str = f"  {fmt_duration(elapsed)}"
-        elif not critical:
-            # Non-critical failure → warning (does not affect exit code).
-            icon = f"{Colors.WARNING}⚠️  WARN{Colors.ENDC}"
-            warned_count += 1
-            label_display = label
-            filled = int(min(elapsed / max_elapsed, 1.0) * bar_width)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            bar_str = f"  {Colors.WARNING}{bar}{Colors.ENDC}"
-            time_str = f"  {fmt_duration(elapsed)}"
-        else:
-            icon = f"{Colors.FAIL}❌ FAIL{Colors.ENDC}"
-            failed_count += 1
-            label_display = label
-            filled = int(min(elapsed / max_elapsed, 1.0) * bar_width)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            bar_str = f"  {Colors.FAIL}{bar}{Colors.ENDC}"
-            time_str = f"  {fmt_duration(elapsed)}"
-
-        print(f"  {icon}  {label_display:<{max_pad}}{bar_str}{time_str}")
-
-    total_label = f"{'TOTAL':<{max_pad + 10}}"
-    total_bar = "─" * bar_width
-    total_time = f"{Colors.BOLD}{fmt_duration(total_elapsed)}{Colors.ENDC}"
-    print(f"\n  {total_label}{total_bar}  {total_time}")
-
-    if failed_count == 0 and warned_count == 0 and skipped_count_total == 0:
-        print(
-            f"\n  {Colors.OKGREEN}{Colors.BOLD}🎉 All {TOTAL_STAGES} stages passed!{Colors.ENDC}\n"
-        )
-    elif failed_count > 0:
-        print(f"\n  {Colors.FAIL}{Colors.BOLD}💥 {failed_count} stage(s) failed!{Colors.ENDC}\n")
-    elif warned_count > 0 and skipped_count_total == 0:
-        print(
-            f"\n  {Colors.OKGREEN}{Colors.BOLD}"
-            f"✅ Pipeline passed"
-            f"{Colors.ENDC}"
-            f" {Colors.WARNING}({warned_count} non-critical warning(s)){Colors.ENDC}\n"
-        )
-    else:
-        print(
-            f"\n  {Colors.WARNING}{Colors.BOLD}"
-            f"⚠️  {skipped_count_total} stage(s) skipped due to earlier failures."
-            f"{Colors.ENDC}\n"
-        )
-
-    # Always remind about manual hardware tests
-    print(
+    footer_msg = (
         f"  {Colors.WARNING}🎤 Hardware tests excluded from this pipeline.{Colors.ENDC}\n"
         f"  {Colors.WARNING}   Run manually with USB microphone connected:"
-        f" {Colors.BOLD}just test-hw-all{Colors.ENDC}\n"
+        f" {Colors.BOLD}just test-hw-all{Colors.ENDC}"
     )
+
+    passed = run_pipeline(
+        all_stages=all_stages,
+        non_critical_stages=NON_CRITICAL_STAGES,
+        always_run_stages=ALWAYS_RUN_STAGES,
+        skipped_by_default=SKIPPED_BY_DEFAULT,
+        footer_msg=footer_msg,
+    )
+
+    if not passed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

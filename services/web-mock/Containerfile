@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Node.js 22 LTS (Tailwind CSS v4 requires Node >= 20)
+# 2. Node.js 24 LTS (Tailwind CSS v4 requires Node >= 20)
 # hadolint ignore=DL3008
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x -o nodesource_setup.sh \
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh \
     && bash nodesource_setup.sh \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* nodesource_setup.sh

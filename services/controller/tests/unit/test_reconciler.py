@@ -676,39 +676,21 @@ class TestReconciliationLoopStats:
 
     async def test_reconcile_cycle_records_stats(self) -> None:
         """Successful reconciliation cycle records in stats."""
-        import asyncio
-
         from silvasonic.controller.controller_stats import ControllerStats
 
         mgr = MagicMock()
-        mgr.list_managed.return_value = []
-        mgr.sync_state = MagicMock()
-
         loop = ReconciliationLoop(mgr, interval=0.01)
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         loop.set_stats(stats)
 
-        call_count = 0
+        with patch.object(loop, "_reconcile_once", new_callable=AsyncMock):
+            await loop._run_cycle_once()
+            await loop._run_cycle_once()
 
-        async def mock_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 3:
-                raise asyncio.CancelledError
-
-        with (
-            patch.object(loop, "_reconcile_once", side_effect=mock_reconcile),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await loop.run()
-
-        # 2 successful cycles before cancel on 3rd
         assert stats._total_reconcile_cycles == 2
 
     async def test_reconcile_error_records_stats(self) -> None:
         """Failed reconciliation cycle records error in stats."""
-        import asyncio
-
         from silvasonic.controller.controller_stats import ControllerStats
 
         mgr = MagicMock()
@@ -716,20 +698,11 @@ class TestReconciliationLoopStats:
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         loop.set_stats(stats)
 
-        call_count = 0
-
         async def failing_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                raise asyncio.CancelledError
             raise RuntimeError("DB down")
 
-        with (
-            patch.object(loop, "_reconcile_once", side_effect=failing_reconcile),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await loop.run()
+        with patch.object(loop, "_reconcile_once", side_effect=failing_reconcile):
+            await loop._run_cycle_once()
 
         assert stats._total_reconcile_errors == 1
 

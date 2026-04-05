@@ -146,6 +146,23 @@ class ReconciliationLoop:
         """Trigger an immediate reconciliation cycle (called by NudgeSubscriber)."""
         self._trigger_event.set()
 
+    async def _run_cycle_once(self) -> None:
+        """Execute exactly one reconciliation cycle and record stats.
+
+        This method encapsulates a single execution of the reconcile logic and
+        the bookkeeping of success/error statistics. It ensures that the stats
+        contracts can be tested in isolation from the infinite run loop and
+        its timeout mechanics.
+        """
+        try:
+            await self._reconcile_once()
+            if self._stats is not None:
+                self._stats.record_reconcile_cycle()
+        except Exception:
+            log.exception("reconciler.cycle_failed")
+            if self._stats is not None:
+                self._stats.record_reconcile_error()
+
     async def run(self) -> NoReturn:
         """Run the reconciliation loop until cancelled.
 
@@ -156,14 +173,7 @@ class ReconciliationLoop:
         4. Reconcile: start missing, stop orphaned.
         """
         while True:
-            try:
-                await self._reconcile_once()
-                if self._stats is not None:
-                    self._stats.record_reconcile_cycle()
-            except Exception:
-                log.exception("reconciler.cycle_failed")
-                if self._stats is not None:
-                    self._stats.record_reconcile_error()
+            await self._run_cycle_once()
 
             # Wait for interval OR immediate trigger
             try:
