@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
+from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +241,8 @@ def build_recorder_spec(
     workspace_dir = generate_workspace_name(profile.slug, device)
     container_name = generate_recorder_container_name(workspace_dir)
 
+    runtime_payload = RecorderRuntimeConfig.model_validate(profile.config)
+
     spec = Tier2ServiceSpec(
         image=env.RECORDER_IMAGE,
         name=container_name,
@@ -247,7 +250,7 @@ def build_recorder_spec(
         environment={
             "SILVASONIC_RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
             "SILVASONIC_RECORDER_PROFILE_SLUG": profile.slug,
-            "SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(profile.config),
+            "SILVASONIC_RECORDER_CONFIG_JSON": runtime_payload.model_dump_json(),
             "SILVASONIC_REDIS_URL": env.REDIS_URL,
             "SILVASONIC_INSTANCE_ID": device_id,
             # Force PortAudio to use raw ALSA (not PulseAudio/PipeWire).

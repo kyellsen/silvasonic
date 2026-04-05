@@ -113,7 +113,11 @@ class TestBuildRecorderSpec:
         # CONFIG_JSON contains the full profile config (ADR-0016, Option C)
         assert "SILVASONIC_RECORDER_CONFIG_JSON" in spec.environment
         parsed = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
-        assert parsed == {"audio": {"sample_rate": 384000, "channels": 1}}
+        assert parsed["audio"]["sample_rate"] == 384000
+        assert parsed["audio"]["channels"] == 1
+        assert parsed["audio"]["format"] == "S16LE"
+        assert "processing" in parsed
+        assert "stream" in parsed
         assert spec.labels["io.silvasonic.service"] == "recorder"
         # device_id label still uses stable_device_id (DB primary key)
         assert spec.labels["io.silvasonic.device_id"] == "0869-0389-00000000034F"

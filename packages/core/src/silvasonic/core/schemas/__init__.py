@@ -14,6 +14,7 @@ from .devices import (
     ProcessingConfig,
     StreamConfig,
 )
+from .recorder import RecorderRuntimeConfig
 
 __all__ = [
     "AudioConfig",
@@ -21,6 +22,7 @@ __all__ = [
     "DriveConfig",
     "MicrophoneProfile",
     "ProcessingConfig",
+    "RecorderRuntimeConfig",
     "S3Config",
     "SFTPConfig",
     "StreamConfig",

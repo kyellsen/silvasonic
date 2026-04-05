@@ -163,7 +163,7 @@ class TestRecorderSettings:
             assert settings.RECORDER_HEALTH_POLL_INTERVAL_S == 10.0
 
     def test_parse_injected_config_valid(self) -> None:
-        """parse_injected_config() returns InjectedRecorderConfig for valid JSON."""
+        """parse_injected_config() returns RecorderRuntimeConfig for valid JSON."""
         config = {
             "audio": {
                 "sample_rate": 384000,
