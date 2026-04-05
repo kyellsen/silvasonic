@@ -5,7 +5,7 @@ Lock → Audit → Containerfile → Lint → Type → Unit → Int → Clear �
 Dep Audit runs pip-audit to check for known vulnerabilities in dependencies.
 
 Usage:
-    python3 scripts/check_all.py
+    python3 scripts/ci.py
 
 Orchestrates 12 stages in order and prints a unified final summary
 with colored pass/fail indicators.

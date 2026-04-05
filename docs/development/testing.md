@@ -19,7 +19,7 @@ Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests with
 | `e2e`       | Browser tests via Playwright                         | Full stack + Playwright      | < 60s per test   | ✅ Stage 12     |
 
 > [!IMPORTANT]
-> `system_hw_auto` and `system_hw_manual` tests are **never** included in CI or `just check-all`. They require real USB
+> `system_hw_auto` and `system_hw_manual` tests are **never** included in CI or `just ci`. They require real USB
 > microphone hardware and must be run manually via `just test-hw` or `just test-hw-manual`.
 
 ---
@@ -73,9 +73,11 @@ just test-cov-all    # Combined coverage map (Unit+Int+System+Smoke+E2E)
 ### Quality Gates
 
 ```bash
-just check           # Fast dev check (4 stages):
+just c               # Fast dev check (< 10s):
                      #   Lock + Ruff + Mypy + Unit Tests
-just check-all       # Full CI pipeline (12 stages):
+just v               # Verify for push (~ 35s):
+                     #   Fast Check + DB-Integration Tests
+just ci              # Full CI pipeline (> 4m):
                      #   Lock → Audit → Lint → Type → Unit → Int
                      #   → Containerfile → Build → System → Smoke → E2E
 ```
@@ -85,10 +87,11 @@ just check-all       # Full CI pipeline (12 stages):
 | Situation              | Command            | What it covers                                  |
 | ---------------------- | ------------------ | ----------------------------------------------- |
 | During development     | `just test`        | Unit + Integration (quick feedback)             |
-| Before every commit    | `just check`       | Lint, types, unit tests (no containers)         |
+| Before every commit    | `just c`           | Lint, types, unit tests (no containers)         |
+| Before push / PR       | `just v`           | Code Quality + Integration Tests                |
 | Thorough test run      | `just test-all`    | All test suites except hardware                 |
-| Before push / PR       | `just check-all`   | Full 12-stage pipeline incl. build              |
-| Before release         | `just check-all`   | All automated gates (see Release Checklist)     |
+| Verify Full CI         | `just ci`          | Full 12-stage pipeline incl. build              |
+| Before release         | `just ci`          | All automated gates (see Release Checklist)     |
 | Release test audit     | `just test-cov-all`| Combined coverage map for Changed-Path Audit    |
 | With USB mic connected | `just test-hw-all` | Real hardware detection + spawning              |
 
@@ -187,9 +190,9 @@ Particularly for AI-generated tests, distinguish carefully between fixing and de
 
 ---
 
-## 6. `check-all` Pipeline Stages
+## 6. `ci` Pipeline Stages
 
-The `just check-all` command runs 12 stages in order:
+The `just ci` command runs 12 stages in order:
 
 | Stage | Name               | Critical | Description                                      |
 | ----- | ------------------ | -------- | ------------------------------------------------ |

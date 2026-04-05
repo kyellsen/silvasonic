@@ -343,4 +343,4 @@ Use this checklist when adding a new service:
 - [ ] `docs/arch/port_allocation.md` updated (§6)
 - [ ] Unit tests at 100% coverage (§7)
 - [ ] `just check` passes (lint + type + tests)
-- [ ] `just check-all` passes (full CI pipeline incl. build + smoke)
+- [ ] `just ci` passes (full CI pipeline incl. build + smoke)

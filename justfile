@@ -63,20 +63,26 @@ reset: clean init build start
 # ==============================================================================
 
 # 🔧 Führt Auto-Fixer aus (Ruff Format, Lint Fixes)
-fix:
-    @{{ BOOTSTRAP_PYTHON }} scripts/fix.py
+fix *args:
+    @{{ BOOTSTRAP_PYTHON }} scripts/fix.py {{args}}
 
 # 🔍 Nur Ruff Lint (Read-Only, kein Auto-Fix)
 lint:
     @{{ BOOTSTRAP_PYTHON }} scripts/lint.py
 
-# 🔍 Code Quality: Lock, Ruff, Mypy, Unit Tests (Fast, keine Container)
-check:
-    @{{ BOOTSTRAP_PYTHON }} scripts/check.py
+# 🔍 Nur statische Analyse & Unit Tests -> < 10s
+alias c := check
+check *targets:
+    @{{ BOOTSTRAP_PYTHON }} scripts/check.py {{targets}}
+
+# 🕵️ Verify (Code Quality + Integration Tests) -> ~35s
+alias v := verify
+verify *targets:
+    @{{ BOOTSTRAP_PYTHON }} scripts/check.py --verify {{targets}}
 
 # 🧬 Full CI Pipeline: Lint → Type → Unit → Int → Containerfile → Build → System → Smoke → E2E
-check-all:
-    @{{ BOOTSTRAP_PYTHON }} scripts/check_all.py
+ci:
+    @{{ BOOTSTRAP_PYTHON }} scripts/ci.py
 
 # ==============================================================================
 # TESTING

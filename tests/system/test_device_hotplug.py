@@ -3,7 +3,7 @@
 Tests the full device detection pipeline with real hardware:
 ``/proc/asound/cards`` + ``sysfs`` → DeviceScanner → ProfileMatcher → DB.
 
-These tests are **never** included in CI or ``just check-all``.
+These tests are **never** included in CI or ``just ci``.
 Run manually with:
 
     just test-hw

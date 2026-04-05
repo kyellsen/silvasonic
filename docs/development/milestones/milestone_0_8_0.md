@@ -175,7 +175,7 @@ The following structures already exist and MUST be reused or extended in-place:
 ## Phase 7: Final System Audit & Documentation (Commit 7)
 
 **Goal:** Polish the system, verify system behavior, and finalize docs.
-**User Stories:** All US-Bxx verified via DB-Viewer (v0.7.1).
+**User Stories:** Core backend implementations (US-B01, US-B03, US-B04, US-B07 logic) verified via DB-Viewer. UI-dependent stories (US-B02, US-B05, US-B06) deferred to v0.9.0 web interface.
 
 ### Tasks
 - [ ] Verify `check-all` passes (lint, mypy, all tests up to smoke/system).
@@ -194,7 +194,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [ ] **Release Decision:** Decide if the `system_config["birdnet"].enabled` seeder value should be switched to `True` by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.
-- [ ] Ensure branch is clean and `just check-all` finishes successfully.
+- [ ] Ensure branch is clean and `just ci` finishes successfully.
 - [ ] Update `__version__` in `packages/core/src/silvasonic/core/__init__.py`.
 - [ ] Update version in the root `pyproject.toml`.
 - [ ] Update version status in `ROADMAP.md` and the root `README.md`.

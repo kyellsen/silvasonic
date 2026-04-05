@@ -1,6 +1,6 @@
 # BirdNET Service
 
-> **Status:** in-progress · **Tier:** 2 · **Instances:** Single
+> **Status:** partial · **Tier:** 2 · **Instances:** Single
 
 > [!WARNING]
 > **Docs-as-Code Trap:**

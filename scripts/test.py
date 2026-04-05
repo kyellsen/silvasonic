@@ -3,7 +3,7 @@
 
 Single source of truth for pytest commands — used by both the justfile
 targets (just test-unit, just test-int, …) and the CI pipeline scripts
-(check.py, check_all.py).
+(check.py, ci.py).
 
 Usage:
     python3 scripts/test.py unit          # fast mocked tests
@@ -263,7 +263,7 @@ def cmd_cov_all() -> list[str]:
     ]
 
 
-# ── Public API for check.py / check_all.py ──────────────────────────────────
+# ── Public API for check.py / ci.py ──────────────────────────────────
 
 
 def run_unit() -> int:

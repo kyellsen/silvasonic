@@ -5,7 +5,7 @@ Tests the full recording pipeline with real audio hardware:
 - Live audio capture via FFmpegPipeline → WAV file verification
 - Full lifecycle: Plug → Scan → DB → Container with /dev/snd → WAV output
 
-These tests are **never** included in CI or ``just check-all``.
+These tests are **never** included in CI or ``just ci``.
 Run manually with:
 
     just test-hw

@@ -103,7 +103,7 @@ Here are the most common daily commands:
 | `just stop`       | Stop all services                                              |
 | `just logs`       | Show aggregated service logs                                   |
 | `just status`     | Show service status                                            |
-| `just check-all`  | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
+| `just ci`  | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
 | `just docs`       | Start MkDocs live server (`localhost:8085`)                    |
 | `just nuke`       | Full reset (delete containers, volumes, `.venv`, and images)   |
 

@@ -94,7 +94,7 @@
 
 - [x] Set up `pytest` with marker-based test organization (`unit`, `integration`, `e2e`, `smoke`)
 - [x] Create test directory structure: `tests/unit/`, `tests/integration/`, `tests/smoke/`
-- [x] Implement `justfile` recipes for test execution (`just test`, `just check-all`)
+- [x] Implement `justfile` recipes for test execution (`just test`, `just ci`)
 - [x] Set up Podman Compose for integration testing
 - [x] Write initial smoke tests for container health
 

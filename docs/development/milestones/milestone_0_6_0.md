@@ -311,7 +311,7 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 ### Acceptance Criteria
 
-> Phase is complete when `just check-all` passes (including Processor image build).
+> Phase is complete when `just ci` passes (including Processor image build).
 
 #### System Tests (`tests/system/test_processor_lifecycle.py`) — `@pytest.mark.system`
 
@@ -345,7 +345,7 @@ The `path_builder` module is the **only component** that knows about the remote 
   - `packages/core/src/silvasonic/core/__init__.py`
   - `pyproject.toml` (root)
   - `README.md` Line 5
-- [x] `just check-all` passes (full pipeline including Processor image rebuild with rclone)
+- [x] `just ci` passes (full pipeline including Processor image rebuild with rclone)
 - [x] `just test-hw` passes (recommended — no regressions)
 - [x] Commit + annotated tag + push:
   ```bash

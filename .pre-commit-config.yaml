@@ -2,15 +2,15 @@
 repos:
   - repo: local
     hooks:
-      # 1. FIX: Formatierung & Autofix (Läuft vor Commit & Push)
+      # 1. FIX: Formatierung & Autofix (Läuft nur auf Git-Index)
       - id: fix-local
         name: Fix (Format & Lint)
         entry: just fix
         language: system
-        pass_filenames: false
-        always_run: true
+        pass_filenames: true
+        types_or: [python, pyi]
         verbose: true
-        stages: [pre-commit, pre-push]
+        stages: [pre-commit]
 
       # 2. CHECK: Fast Check (Lint, Types, Unit Tests) - Runs on Commit
       - id: check-local
@@ -22,10 +22,10 @@ repos:
         verbose: true
         stages: [pre-commit]
 
-      # 3. FULL CHECK: Full CI Pipeline (Build, Clean) - Runs on Push
-      - id: check-all-local
-        name: Full Check (Build, Run)
-        entry: just check-all
+      # 3. VERIFY: Full Lokal-Check inkl. DB-Integration - Runs on Push
+      - id: verify-local
+        name: Verify (Lint, Types, Unit, Int)
+        entry: just v
         language: system
         pass_filenames: false
         always_run: true

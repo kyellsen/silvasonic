@@ -59,16 +59,26 @@ def main() -> dict[str, bool | None]:
     Non-critical stages (Lock-File Check) may fail without aborting
     the pipeline.  Critical stages abort on first failure.
 
-    Returns a dict of {check_name: passed/failed/skipped} for use by check_all.py.
+    Returns a dict of {check_name: passed/failed/skipped} for use by ci.py.
     """
     ensure_initialized()
 
+    is_verify = "--verify" in sys.argv
+    targets: list[str] = [arg for arg in sys.argv[1:] if arg != "--verify"]
+    if not targets:
+        targets = ["."]
+
     all_stages: list[tuple[str, list[str]]] = [
         ("Lock-File Check", ["uv", "lock", "--check"]),
-        ("Ruff Lint", ["uv", "run", "ruff", "check", "."]),
-        ("Mypy", ["uv", "run", "mypy", "."]),
+        ("Ruff Lint", ["uv", "run", "ruff", "check", *targets]),
+        ("Mypy", ["uv", "run", "mypy", *targets]),
         ("Unit Tests", cmd_unit()),
     ]
+
+    if is_verify:
+        from test import cmd_integration
+
+        all_stages.append(("Integration Tests", cmd_integration()))
 
     results: dict[str, bool | None] = {}
 

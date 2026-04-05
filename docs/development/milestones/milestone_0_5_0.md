@@ -298,7 +298,7 @@
 - [x] Verify heartbeat payload contains Processor-specific metrics (indexer + janitor status)
 - [x] Update Processor `README.md` with implemented features and status
 - [x] Update `ROADMAP.md`: mark v0.5.0 as `🔨 In Progress`
-- [x] `just check-all` passes (full CI pipeline)
+- [x] `just ci` passes (full CI pipeline)
 
 ### Tests
 

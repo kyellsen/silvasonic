@@ -2,13 +2,13 @@ name: Silvasonic CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   # Scale down parallel workers for 2-vCPU GitHub Runner
@@ -17,8 +17,8 @@ env:
   SILVASONIC_SYSTEM_WORKERS: "2"
 
 jobs:
-  check-all:
-    name: Full Pipeline (check-all)
+  ci:
+    name: Full Pipeline (ci)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -96,4 +96,10 @@ jobs:
         run: just init
 
       - name: Run Full Pipeline
-        run: just check-all
+        run: just ci
+
+      - name: Auto-Merge to Main (Fast-Forward)
+        if: github.ref == 'refs/heads/dev' && success()
+        run: |
+          echo "Pipeline successful on dev! Fast-forwarding main to current commit..."
+          git push origin HEAD:main
