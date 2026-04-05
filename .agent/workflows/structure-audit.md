@@ -14,5 +14,5 @@ description: Perform a strict documentation structure audit for a specific scope
    - Content bounds (e.g., Does the service README list implementation details, database columns, or API routes? If yes, that's a violation.)
    - Template compliance (Does the document contain the mandatory headers defined in its respective `_template.md`?)
    - DRY violations (Is documentation duplicated instead of linked?)
-7. Create an artifact (e.g., `structure_audit_report_<target>.md`) summarizing your findings in German. List concrete examples and map them exactly to the rules in `STRUCTURE.md`.
+7. Present your findings directly in your chat response using markdown, or create an artifact. **CRITICAL:** Do NOT write any physical `.md` files (like `structure_audit_report_<target>.md`) to the repository folder or its subdirectories! The audit report must live only in your temporary memory (as a standard chat response, an explicit UI artifact, or a file in `/tmp/`) so it does not clutter the git repository.
 8. Ask the user if they'd like you to start refactoring the documentation based on the audit results.

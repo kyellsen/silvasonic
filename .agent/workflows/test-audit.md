@@ -12,5 +12,5 @@ description: Perform a strict architectural audit of test code for a specific se
    - Test Quality Anti-Patterns (e.g., Existence/Import Tests, Trivial Equality, Call-Chain Mirroring, Mock-Heavy Verification).
    - "Delete vs. Refactor" recommendations.
    - Layer-specific rule violations (e.g., I/O in unit tests, or mocking the DB in integration tests).
-7. Create an artifact (e.g., `audit_report_<target>.md`) summarizing your findings in German. List concrete examples from the code and map them exactly to the rules in `testing.md` they violate or adhere to.
+7. Present your findings directly in your chat response using markdown, or create an artifact. **CRITICAL:** Do NOT write any physical `.md` files (like `audit_report_<target>.md`) to the repository folder or its subdirectories! The audit report must live only in your temporary memory (as a standard chat response, an explicit UI artifact, or a file in `/tmp/`) so it does not clutter the git repository.
 8. Ask the user if they'd like you to start refactoring based on the audit results.
