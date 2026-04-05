@@ -2756,7 +2756,11 @@ If we hardcode singleton workers into the existing hardware evaluation loop, we 
 <p>We will decouple Tier 2 orchestration into separate <strong>State Evaluators</strong>:
 1. <strong><code>DeviceStateEvaluator</code></strong>: Dedicated exclusively to mapping hardware devices to Recorder containers.
 2. <strong><code>SystemWorkerEvaluator</code></strong>: A new, generic evaluator that manages singleton system workers.</p>
-<p>To keep the <code>SystemWorkerEvaluator</code> universally extensible (KISS) and Configuration-Driven, we will introduce a static Python-based <strong>Worker Registry</strong> (<code>worker_registry.py</code>). This registry will hold plain dataclasses defining the operational footprint (<code>config_key</code>, <code>container_name</code>, <code>oom_score_adj</code>, <code>mem_limit</code>) for each supported background worker. </p>
+<p>To keep the <code>SystemWorkerEvaluator</code> universally extensible (KISS) and Configuration-Driven, we establish the following <strong>Singleton-Worker State Convention</strong>:
+- Each singleton worker (e.g. <code>birdnet</code>, <code>batdetect</code>) possesses an isolated, dedicated Pydantic configuration namespace within the <code>system_config</code> JSONB table.
+- This namespace must hold both its runtime business logic (e.g., <code>confidence_threshold</code>) AND its orchestration toggle (<code>enabled: bool</code>).
+- The generic <code>SystemWorkerEvaluator</code> purely matches this <code>enabled</code> property to execute the container lifecycle, enforcing a single source of truth and deprecating legacy relational toggle tables (e.g. <code>system_services</code>).</p>
+<p>To configure the container specs, we introduce a static Python-based <strong>Worker Registry</strong> (<code>worker_registry.py</code>). This registry will hold plain dataclasses defining the operational footprint (<code>config_key</code>, <code>container_name</code>, <code>oom_score_adj</code>, <code>mem_limit</code>) for each supported background worker. </p>
 <p>The Controller's <code>ReconciliationLoop</code> will execute both evaluators sequentially, safely aggregating their target specs by isolating them with individual <code>try...except</code> blocks before dispatching to Podman.</p>
 <h2 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h2>
 <ol>

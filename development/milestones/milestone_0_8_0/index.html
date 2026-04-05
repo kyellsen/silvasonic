@@ -3565,9 +3565,9 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <h4 id="key-findings-spike-v3">Key Findings (Spike v3)<a class="headerlink" href="#key-findings-spike-v3" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong>Native is ~35% faster</strong> per 10s segment (155 ms avg vs 238 ms)</li>
-<li><strong>&gt;20× faster cold start</strong> (0.05s vs 1.09s)</li>
-<li><strong>Flat vs Leaky Memory:</strong> Native stays flat at ~201 MB RSS. <code>birdnetlib</code> leaks memory, swelling beyond ~370 MB running sequentially.</li>
-<li><strong>Identical results</strong> to birdnetlib (Passer domesticus 0.8529 confidence, bit-identical)</li>
+<li><strong>Initialization:</strong> Native has much lower measured initialization overhead.</li>
+<li><strong>Memory Footprint:</strong> Native stays flat at ~201 MB RSS. <code>birdnetlib</code> exhibits higher RSS growth across sequential runs.</li>
+<li><strong>Identical results:</strong> Native produces identical outputs on the evaluated fixtures.</li>
 <li><strong>Container:</strong> <code>python:3.11-slim-bookworm</code> required (tflite-runtime lacks aarch64 wheels for Python ≥ 3.12)</li>
 <li><strong>Custom code surface:</strong> ~60 lines (sigmoid, labels, meta-model, windowing, numpy mask filtering)</li>
 </ul>
@@ -3651,7 +3651,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <h3 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[x] Create a temporary script in <code>scripts/spikes/birdnet/</code> testing 10-second audio chunks, processing multiple chunks in succession.</li>
-<li>[x] Benchmark memory footprint AND initialization time of the official <code>BirdNET-Analyzer</code> Python package vs. bare-metal <code>tflite_runtime.Interpreter</code>.</li>
+<li>[x] Benchmark memory footprint AND initialization time of <code>birdnetlib</code> (community wrapper) vs. bare-metal <code>tflite_runtime.Interpreter</code>.</li>
 <li>[x] Optimize post-processing: use numpy boolean mask instead of Python for-loop over all 6,522 species scores (25× faster).</li>
 <li>[x] Document findings in <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> (Inference Engine) and <a href="../../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a> (Python 3.11 for ML Workers).</li>
 </ul>
@@ -3699,7 +3699,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <ul>
 <li>[ ] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_worker.py</code>: Test graceful shutdown logic (<code>shutdown_event.is_set()</code> between chunks stops processing).</li>
 <li>[ ] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_worker_pull.py</code>: Level 3. Using <code>testcontainers</code> and a synthetic recording, claim via <code>FOR UPDATE SKIP LOCKED</code>, mock the inference engine, and verify <code>detections</code> rows and <code>analysis_state</code> updates.</li>
-<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_real_inference.py</code>: Run real inference via the chosen Engine against a 3-5s test WAV fixture to ensure actual classifications work without mocking.</li>
+<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_real_inference.py</code>: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.</li>
 </ul>
 <hr />
 <h2 id="phase-4-controller-system-config-orchestration-commit-4">Phase 4: Controller System Config Orchestration (Commit 4)<a class="headerlink" href="#phase-4-controller-system-config-orchestration-commit-4" title="Permanent link">&para;</a></h2>
@@ -3707,15 +3707,17 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <strong>Context:</strong> The BirdNET service is now standalone viable. We must extend the Controller's <code>Reconciler</code> to start/stop this background worker.</p>
 <h3 id="tasks_3">Tasks<a class="headerlink" href="#tasks_3" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Create <code>worker_registry.py</code> with a robust statically typed array <code>SYSTEM_WORKERS</code> containing a <code>BackgroundWorker</code> dataclass configured for <code>"birdnet"</code> (incl. <code>mem_limit=300m</code>, <code>oom_score_adj=500</code>).</li>
+<li>[ ] Create <code>worker_registry.py</code> with a robust statically typed array <code>SYSTEM_WORKERS</code> containing a <code>BackgroundWorker</code> dataclass configured for <code>"birdnet"</code> (incl. <code>mem_limit=512m</code>, <code>oom_score_adj=500</code>).</li>
 <li>[ ] Create <code>worker_evaluator.py</code> containing a generic <code>SystemWorkerEvaluator</code> that iterates through the registry and matches against the <code>system_config</code> dictionary for <code>enabled = True</code>.</li>
 <li>[ ] Refactor <code>_reconcile_once</code> in the <code>ReconciliationLoop</code> to securely invoke both <code>DeviceStateEvaluator</code> and <code>SystemWorkerEvaluator</code>. Isolate each with <code>try...except</code> blocks to prevent worker configuration mismatches from halting active <code>recorder</code> container execution.</li>
-<li>[ ] Make sure <code>birdnet</code> is seeded in the <code>system_config</code> table.</li>
+<li>[ ] Make sure <code>system_config["birdnet"].enabled</code> controls the desired runtime state for the BirdNET singleton worker.</li>
 </ul>
 <h3 id="testing-phase-4">Testing (Phase 4)<a class="headerlink" href="#testing-phase-4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — Add unit tests for the newly decoupled <code>SystemWorkerEvaluator</code>.</li>
-<li>[ ] <strong><code>unit</code></strong> — Ensure <code>Reconciler._reconcile_once</code> safely catches simulated exceptions from the worker evaluator while remaining capable of yielding hardware specs.</li>
+<li>[ ] <strong><code>unit</code></strong> — Add unit tests for <code>Reconciler._reconcile_once</code> to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.</li>
+<li>[ ] <strong><code>integration</code></strong> — Add <code>tests/integration/test_system_worker_evaluator.py</code>: Instantiate <code>SystemWorkerEvaluator</code> against a real PostgreSQL testcontainer. Verify it correctly queries <code>system_config</code> and maps the payload to <code>Tier2ServiceSpec</code>, excluding <code>enabled=False</code> workers (Rule: Mocking DB in integration tests is FORBIDDEN).</li>
+<li>[ ] <strong><code>system</code></strong> — Add <code>tests/system/test_singleton_worker_lifecycle.py</code>: Validate full <code>ReconciliationLoop</code> state transitions. Ensure changing <code>enabled</code> in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.</li>
+<li>[ ] <strong><code>system</code> (Regression)</strong> — Audit existing system tests (<code>test_controller_lifecycle.py</code>, <code>test_crash_recovery.py</code>). Since the <code>birdnet</code> config is <code>enabled=True</code> by default, existing tests asserting <code>len(containers) == 1</code> will fail. You must disable background workers in the test seeder or update the container tracking assertions.</li>
 </ul>
 <hr />
 <h2 id="phase-5-service-status-lifecycle-integration-commit-5">Phase 5: Service Status &amp; Lifecycle Integration (Commit 5)<a class="headerlink" href="#phase-5-service-status-lifecycle-integration-commit-5" title="Permanent link">&para;</a></h2>
@@ -3768,7 +3770,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <p><strong>Goal:</strong> Formalize the release strictly according to <code>release_checklist.md</code>.</p>
 <h3 id="tasks_7">Tasks<a class="headerlink" href="#tasks_7" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong>Release Decision:</strong> Decide if the <code>birdnet</code> system_config seeder should be switched to <code>enabled=true</code> by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.</li>
+<li>[ ] <strong>Release Decision:</strong> Decide if the <code>system_config["birdnet"].enabled</code> seeder value should be switched to <code>True</code> by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.</li>
 <li>[ ] Ensure branch is clean and <code>just check-all</code> finishes successfully.</li>
 <li>[ ] Update <code>__version__</code> in <code>packages/core/src/silvasonic/core/__init__.py</code>.</li>
 <li>[ ] Update version in the root <code>pyproject.toml</code>.</li>
