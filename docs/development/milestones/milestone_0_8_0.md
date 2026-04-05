@@ -180,6 +180,8 @@ The following structures already exist and MUST be reused or extended in-place:
 ### Tasks
 - [ ] Verify `check-all` passes (lint, mypy, all tests up to smoke/system).
 - [ ] Create `services/birdnet/README.md` using `services/_template_readme.md` boilerplate and convert `docs/services/birdnet.md` to a link-stub (per `STRUCTURE.md` §4).
+- [ ] Update `docs/glossary.md` with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).
+- [ ] Update `docs/index.md` to reflect the newly integrated BirdNET service and documentation structure.
 - [ ] **Add** `"detections"` to `_CLEANUP_TABLES` in `tests/integration/conftest.py`.
 
 ### Testing (Phase 7)

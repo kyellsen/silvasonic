@@ -43,14 +43,14 @@ A Service README is explicitly limited to the structured headers defined in **`s
 
 - **`docs/arch/*.md`**: System-wide architecture patterns that span multiple services (e.g., filesystem governance, port allocation).
 - **`docs/user_stories/*.md`**: The **Who** and **What**. Focus on clear functional descriptions. Technical specifications (e.g., database fields, Redis keys, system paths) may be included in Acceptance Criteria *only* if necessary for exactness, but always prefer expressing the core requirement without them if possible.
-- **`docs/adr/*.md`**: ADRs are immutable historical records of Past Decisions. Never update an accepted ADR to match new code. If an architectural path changes, create a new ADR and update the old one *only* to change its status to `Superseded by ADR-XXX`.
+- **`docs/adr/*.md`**: ADRs are generally historical records of Past Decisions. If a major architectural path changes, prefer creating a new ADR and setting the old one to `Superseded by ADR-XXX`. However, completely deleting obsolete ADRs or making minor retroactive context updates is permissible in special cases to avoid repository bloat.
 - **`docs/hardware.md`**: Central configuration or technical context that cuts across multiple domains.
 - **`docs/deployment/*.md`**: Deployment processes, rollout strategies, and infrastructure guides.
 
 ## 6. Working Documents & Development (`docs/development/`)
 
 - **`docs/development/*.md`**: Global development guidelines (e.g., `testing.md`, `commit.md`, `service_blueprint.md`).
-- **`docs/development/milestones/*.md`**: Granular sprint planning chunks tracking active work. **Rule:** Once a milestone is completed, it becomes an immutable historical snapshot (like an ADR). Never update old milestones to reflect new refactoring realities.
+- **`docs/development/milestones/*.md`**: Granular sprint planning chunks tracking active work. **Rule:** Completed milestones generally serve as historical snapshots. However, they are not rigidly immutable; it is permissible and encouraged to apply minor retroactive updates (e.g., renaming a `just` command or fixing broken links) to prevent confusing discrepancies.
 - **`docs/development/issues/*.md`**: Tracking specific bugs or temporary architectural investigations.
 - Scrap ideas or obsolete refactoring notes **MUST** go to the git-ignored `.tmp/` directory or be deleted. Do not bloat the repository with dead notes.
 

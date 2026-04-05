@@ -8,7 +8,7 @@
 
 Every test function **MUST** have exactly one marker (AGENTS.md §6). Tests without a marker will be rejected in code review.
 
-| Marker      | Description                                          | External Deps                | Typical Duration | In `check-all` |
+| Marker      | Description                                          | External Deps                | Typical Duration | In `just ci`   |
 | ----------- | ---------------------------------------------------- | ---------------------------- | ---------------- | -------------- |
 | `unit`      | Fast, isolated tests without external dependencies   | None (mocks only)            | < 1s per test    | ✅ Stage 6      |
 | `integration` | Tests with external services (DB, Redis)           | Testcontainers / Compose     | < 30s per test   | ✅ Stage 7      |
