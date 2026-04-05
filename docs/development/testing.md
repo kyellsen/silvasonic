@@ -208,7 +208,21 @@ The `just ci` command runs these stages in order:
 
 ---
 
-## 7. Naming Conventions
+## 7. Test Infrastructure
+
+| Tool | Purpose |
+| --- | --- |
+| `pytest` | Test runner |
+| `pytest-xdist` | Parallel test execution (`-n` workers) — see §10 |
+| `testcontainers` | Disposable PostgreSQL + Redis for integration tests |
+| `polyfactory` | Pydantic model factories for test data generation |
+| `playwright` | Browser automation for E2E tests |
+| `pytest-timeout` | Global timeout per test (default: 120s) |
+| `pytest-asyncio` | Async test support (auto mode) |
+
+---
+
+## 8. Naming Conventions
 
 | Element | Convention | Example |
 | --- | --- | --- |
@@ -220,7 +234,7 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ---
 
-## 8. Parallel Execution & Isolation
+## 9. Parallel Execution & Isolation
 
 **Every test level is fully isolated.** All combinations can run in parallel — with each other and with `just start` (production stack).
 
@@ -246,7 +260,7 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ---
 
-## 9. Parallel Workers & DB Cleanup
+## 10. Parallel Workers & DB Cleanup
 
 Worker counts and their environment variable overrides are defined in [`scripts/test.py`](https://github.com/kyellsen/silvasonic/blob/main/scripts/test.py) — the **single source of truth**. Do **not** duplicate the defaults here.
 
