@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 MODEL_SR = 48000
 WINDOW_SECS = 3.0
 WINDOW_SAMPLES = int(WINDOW_SECS * MODEL_SR)
+_DB_RETRY_SLEEP_S = 5.0
 
 MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
@@ -254,73 +255,85 @@ class BirdNETService(SilvaService):
 
         while not self._shutdown_event.is_set():
             self.health.touch()
-            self.health.update_status("birdnet", True, "polling")
 
-            # Worker Pull ORM
-            async with get_session() as session:
-                # Ascending / Descending processing order
-                sort_col = Recording.time.asc()
-                if self.birdnet_config.processing_order == "newest_first":
-                    sort_col = Recording.time.desc()
+            try:
+                self.health.update_status("birdnet", True, "polling")
 
-                # SELECT FOR UPDATE SKIP LOCKED
-                stmt = (
-                    select(Recording)
-                    .where(Recording.local_deleted.is_(False))
-                    .where(~Recording.analysis_state.has_key("birdnet"))
-                )
-                stmt = stmt.order_by(sort_col).limit(1).with_for_update(skip_locked=True)
+                # Worker Pull ORM
+                async with get_session() as session:
+                    # Ascending / Descending processing order
+                    sort_col = Recording.time.asc()
+                    if self.birdnet_config.processing_order == "newest_first":
+                        sort_col = Recording.time.desc()
 
-                result = await session.execute(stmt)
-                recording = result.scalar_one_or_none()
-
-                if recording is None:
-                    # No work found, sleep
-                    await asyncio.sleep(2.0)
-                    continue
-
-                # Check file existence — DB stores relative paths, prefix with recordings_dir
-                audio_path = self.recordings_dir / (recording.file_processed or recording.file_raw)
-                if not audio_path.exists():
-                    logger.error(f"File missing for processing: {audio_path}")
-                    # Mark as failed in DB to prevent infinite loop
-                    recording.analysis_state = {"birdnet": "failed_file_missing"}
-                    await session.commit()
-                    continue
-
-                # Process
-                self.health.update_status("birdnet", True, f"analyzing {recording.id}")
-                start_time = time.perf_counter()
-
-                try:
-                    detections = await self._process_recording(
-                        recording,
-                        audio_path,
-                        interpreter,
-                        labels,
-                        allowed_mask,
-                        loc_filter_active,
+                    # SELECT FOR UPDATE SKIP LOCKED
+                    stmt = (
+                        select(Recording)
+                        .where(Recording.local_deleted.is_(False))
+                        .where(~Recording.analysis_state.has_key("birdnet"))
                     )
+                    stmt = stmt.order_by(sort_col).limit(1).with_for_update(skip_locked=True)
 
-                    if detections:
-                        session.add_all(detections)
+                    result = await session.execute(stmt)
+                    recording = result.scalar_one_or_none()
 
-                    # Update analysis state using direct mutation / JSON merging
-                    # We copy the dictionary and update it to ensure SQLAlchemy notices the mutation
-                    new_state = dict(recording.analysis_state)
-                    new_state["birdnet"] = "done"
-                    recording.analysis_state = new_state
+                    if recording is None:
+                        # No work found, sleep
+                        await asyncio.sleep(2.0)
+                        continue
 
-                    await session.commit()
-                    elapsed = time.perf_counter() - start_time
-                    logger.info(f"Done: {recording.id} in {elapsed:.2f}s ({len(detections)} hits)")
+                    # Check file existence — DB stores relative paths, prefix with recordings_dir
+                    rel_path = recording.file_processed or recording.file_raw
+                    audio_path = self.recordings_dir / rel_path
+                    if not audio_path.exists():
+                        logger.error(f"File missing for processing: {audio_path}")
+                        # Mark as failed in DB to prevent infinite loop
+                        recording.analysis_state = {"birdnet": "failed_file_missing"}
+                        await session.commit()
+                        continue
 
-                except Exception as e:
-                    logger.error(f"Inference failure on recording {recording.id}: {e}")
-                    await session.rollback()
+                    # Process
+                    self.health.update_status("birdnet", True, f"analyzing {recording.id}")
+                    start_time = time.perf_counter()
 
-                    # Store crash log in state
-                    new_state = dict(recording.analysis_state)
-                    new_state["birdnet"] = f"crashed: {str(e)[:50]}"
-                    recording.analysis_state = new_state
-                    await session.commit()
+                    try:
+                        detections = await self._process_recording(
+                            recording,
+                            audio_path,
+                            interpreter,
+                            labels,
+                            allowed_mask,
+                            loc_filter_active,
+                        )
+
+                        if detections:
+                            session.add_all(detections)
+
+                        # Update analysis state using direct mutation / JSON merging
+                        # Copy the dict and update to ensure SQLAlchemy notices the mutation
+                        new_state = dict(recording.analysis_state)
+                        new_state["birdnet"] = "done"
+                        recording.analysis_state = new_state
+
+                        await session.commit()
+                        elapsed = time.perf_counter() - start_time
+                        logger.info(
+                            f"Done: {recording.id} in {elapsed:.2f}s ({len(detections)} hits)"
+                        )
+
+                    except Exception as e:
+                        logger.error(f"Inference failure on recording {recording.id}: {e}")
+                        await session.rollback()
+
+                        # Store crash log in state
+                        new_state = dict(recording.analysis_state)
+                        new_state["birdnet"] = f"crashed: {str(e)[:50]}"
+                        recording.analysis_state = new_state
+                        await session.commit()
+
+            except Exception as exc:
+                # Soft-fail transient DB errors or post-rollback persistence failures (ADR-0030)
+                logger.warning("birdnet.db_cycle_failed", exc_info=exc)
+                self.health.update_status("birdnet", False, "database_unavailable")
+                await asyncio.sleep(_DB_RETRY_SLEEP_S)
+                continue

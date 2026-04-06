@@ -91,7 +91,19 @@ class MyService(SilvaService):
         self.health.update_status("main", True, "running")
 
         while not self._shutdown_event.is_set():
-            # Your domain logic here
+            self.health.touch()
+            
+            try:
+                # Cyclic Transient I/O Guard (ADR-0030)
+                # Your DB / Network / Filesystem domain logic here
+                pass
+            except Exception as exc:
+                # Log error and soft-fail to avoid fatal crashes from transient outages
+                # E.g. logger.warning("service.db_cycle_failed", error=str(exc))
+                self.health.update_status("main", False, "database_unavailable")
+                await asyncio.sleep(5.0)  # Use a backoff constant like _DB_RETRY_SLEEP_S
+                continue
+
             await asyncio.sleep(1)
 
     def get_extra_meta(self) -> dict[str, Any]:
