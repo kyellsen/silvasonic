@@ -29,8 +29,8 @@ init:
 
 # 🔨 Baut die Container-Images
 alias b := build
-build:
-    @{{ BOOTSTRAP_PYTHON }} scripts/build.py
+build *services:
+    @{{ BOOTSTRAP_PYTHON }} scripts/build.py {{services}}
 
 # 🚀 Startet die Silvasonic Services
 start:

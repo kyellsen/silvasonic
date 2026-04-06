@@ -97,7 +97,7 @@ class TestWatchdogHealthy:
     async def test_no_restart_when_pipeline_healthy(self) -> None:
         """Watchdog exits cleanly via shutdown_event without restarting."""
         pipeline = _make_pipeline(segments_promoted=5)
-        watchdog = RecordingWatchdog(pipeline, max_restarts=5)
+        watchdog = RecordingWatchdog(pipeline, max_restarts=5, check_interval_s=0.0025)
 
         shutdown = asyncio.Event()
 

@@ -287,7 +287,7 @@ class TestProcessorLifecycle:
             )
 
             # Wait for Processor to publish logs
-            time.sleep(12)
+            time.sleep(18)
 
             logs = podman_logs(processor_name)
 

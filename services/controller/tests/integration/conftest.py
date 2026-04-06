@@ -19,6 +19,7 @@ from testcontainers.postgres import PostgresContainer
 
 # Tables deleted in FK-safe order (children before parents).
 _CLEANUP_TABLES = (
+    "detections",
     "recordings",
     "devices",
     "microphone_profiles",
@@ -55,5 +56,26 @@ async def _clean_db_tables(postgres_container: PostgresContainer) -> AsyncIterat
     tests running on the same xdist worker with a shared session-scoped
     database cannot interfere with each other.
     """
-    yield
-    await _delete_all(postgres_container)
+    import os
+
+    from silvasonic.core.database.session import override_engine, reset_engine
+    from silvasonic.test_utils.helpers import build_postgres_url
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    # Set env vars for legacy code
+    os.environ["SILVASONIC_DB_HOST"] = postgres_container.get_container_host_ip()
+    os.environ["SILVASONIC_DB_PORT"] = str(postgres_container.get_exposed_port(5432))
+    os.environ["SILVASONIC_DB_USER"] = "silvasonic"
+    os.environ["SILVASONIC_DB_PASS"] = "silvasonic"
+    os.environ["SILVASONIC_DB_NAME"] = "silvasonic_test"
+
+    # Override engine globally for all code running in this test worker
+    engine = create_async_engine(build_postgres_url(postgres_container))
+    override_engine(engine)
+
+    try:
+        yield
+    finally:
+        reset_engine()
+        await engine.dispose()
+        await _delete_all(postgres_container)

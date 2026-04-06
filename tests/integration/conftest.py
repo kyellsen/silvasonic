@@ -19,6 +19,7 @@ from testcontainers.postgres import PostgresContainer
 
 # Tables deleted in FK-safe order (children before parents).
 _CLEANUP_TABLES = (
+    "detections",
     "recordings",
     "devices",
     "microphone_profiles",

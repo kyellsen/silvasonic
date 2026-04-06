@@ -210,6 +210,6 @@ The following structures already exist and MUST be reused or extended in-place:
 | Item                   | Target Version |
 | ---------------------- | -------------- |
 | Real Web-Interface UI  | v0.9.0         |
-| Taxonomy Metadata Init | v0.9.0         |
+| Taxonomy Metadata Init (i18n) | v0.9.0 (Download [BirdNET-Pi l18n files](https://github.com/Nachtzuster/BirdNET-Pi/tree/main/model/l18n) as seeders. Note: CC BY-NC-SA 4.0 license!) |
 | Push-based Orchestration| Rejected (ADR-0018) |
 | Janitor: Clip cleanup  | Follow-up ([Issue](../issues/008-clip-cleanup-janitor.md)) |
