@@ -10,6 +10,8 @@ from __future__ import annotations
 import time
 
 import structlog
+from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
+from silvasonic.core.two_phase import TwoPhaseWindow
 
 log = structlog.get_logger()
 
@@ -18,7 +20,9 @@ class UploadStats:
     """Tracks upload progress and limits log spam during steady state."""
 
     def __init__(
-        self, startup_duration_s: float = 300.0, summary_interval_s: float = 300.0
+        self,
+        startup_duration_s: float = DEFAULT_LOG_STARTUP_S,
+        summary_interval_s: float = DEFAULT_LOG_SUMMARY_INTERVAL_S,
     ) -> None:
         """Initialize the stats tracker.
 
@@ -26,9 +30,10 @@ class UploadStats:
             startup_duration_s: How long individual uploads are logged.
             summary_interval_s: How often summary is printed in steady state.
         """
-        self._start_time = time.monotonic()
-        self._startup_duration_s = startup_duration_s
-        self._summary_interval_s = summary_interval_s
+        self._window = TwoPhaseWindow(
+            startup_duration_s=startup_duration_s,
+            summary_interval_s=summary_interval_s,
+        )
 
         self.total_pending = 0
         self.uploaded_count = 0
@@ -36,7 +41,6 @@ class UploadStats:
         self.bytes_transferred = 0
         self.last_upload_at: float | None = None
 
-        self._last_summary_time = self._start_time
         self._last_summary_uploaded = 0
         self._last_summary_failed = 0
         self._last_summary_bytes = 0
@@ -44,7 +48,7 @@ class UploadStats:
     @property
     def _is_startup_phase(self) -> bool:
         """Return True if still in the initial verbose startup phase."""
-        return time.monotonic() - self._start_time < self._startup_duration_s
+        return self._window.is_startup_phase
 
     def update_pending(self, count: int) -> None:
         """Update the known number of pending uploads."""
@@ -76,38 +80,47 @@ class UploadStats:
 
     def _maybe_emit_summary(self) -> None:
         """Emit a periodic summary log if in steady state."""
-        now = time.monotonic()
-        if now - self._last_summary_time >= self._summary_interval_s:
-            # We don't emit if nothing happened
-            diff_success = self.uploaded_count - self._last_summary_uploaded
-            diff_fail = self.failed_count - self._last_summary_failed
+        if self._window.consume_startup_transition():
+            log.info(
+                "upload_worker.startup_phase_complete",
+                startup_duration_s=self._window._startup_duration_s,
+                summary_interval_s=self._window._summary_interval_s,
+            )
 
-            if diff_success > 0 or diff_fail > 0:
-                mb_transferred = (self.bytes_transferred - self._last_summary_bytes) / (1024 * 1024)
+        if not self._window.is_summary_due():
+            return
 
-                log.info(
-                    "upload_worker.summary",
-                    uploaded_recent=diff_success,
-                    failed_recent=diff_fail,
-                    mb_transferred=round(mb_transferred, 2),
-                    total_uploaded=self.uploaded_count,
-                    total_failed=self.failed_count,
-                    total_pending=self.total_pending,
-                )
+        elapsed = self._window.mark_summary_emitted()
 
-            self._last_summary_time = now
-            self._last_summary_uploaded = self.uploaded_count
-            self._last_summary_failed = self.failed_count
-            self._last_summary_bytes = self.bytes_transferred
+        # We don't emit if nothing happened
+        diff_success = self.uploaded_count - self._last_summary_uploaded
+        diff_fail = self.failed_count - self._last_summary_failed
+
+        if diff_success > 0 or diff_fail > 0:
+            mb_transferred = (self.bytes_transferred - self._last_summary_bytes) / (1024 * 1024)
+
+            log.info(
+                "upload_worker.summary",
+                interval_s=round(elapsed, 1),
+                uploaded_recent=diff_success,
+                failed_recent=diff_fail,
+                mb_transferred=round(mb_transferred, 2),
+                total_uploaded=self.uploaded_count,
+                total_failed=self.failed_count,
+                total_pending=self.total_pending,
+            )
+
+        self._last_summary_uploaded = self.uploaded_count
+        self._last_summary_failed = self.failed_count
+        self._last_summary_bytes = self.bytes_transferred
 
     def emit_final_summary(self) -> None:
         """Emit the lifetime summary before shutdown."""
-        running_time_s = time.monotonic() - self._start_time
         mb_total = self.bytes_transferred / (1024 * 1024)
 
         log.info(
             "upload_worker.shutdown",
-            uptime_s=round(running_time_s, 1),
+            uptime_s=round(self._window.uptime_s, 1),
             total_uploaded=self.uploaded_count,
             total_failed=self.failed_count,
             total_mb_transferred=round(mb_total, 2),

@@ -14,7 +14,7 @@ shutdown.
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from silvasonic.core.config_schemas import ProcessorSettings
@@ -23,6 +23,10 @@ from silvasonic.core.service import SilvaService
 from silvasonic.processor import indexer, janitor, reconciliation
 from silvasonic.processor.janitor import RetentionMode
 from silvasonic.processor.settings import ProcessorEnvSettings
+
+if TYPE_CHECKING:
+    from silvasonic.processor.modules.indexer_stats import IndexerStats
+    from silvasonic.processor.modules.janitor_stats import JanitorStats
 
 log = structlog.get_logger()
 
@@ -59,6 +63,7 @@ class ProcessorService(SilvaService):
         # Janitor metrics (reported in heartbeat)
         self._disk_usage_percent: float = 0.0
         self._janitor_mode: str = RetentionMode.IDLE.value
+        self._cloud_sync_fallback: bool = False
         self._files_deleted_total: int = 0
         self._janitor_counter: int = 0
         self._janitor_every_n: int = 1
@@ -128,12 +133,12 @@ class ProcessorService(SilvaService):
             log.exception("processor.reconciliation_failed")
             self.health.update_status("indexer", False, "reconciliation_failed")
 
-    async def _run_indexer_cycle(self, errored_files: set[str]) -> None:
+    async def _run_indexer_cycle(self, errored_files: set[str], stats: "IndexerStats") -> None:
         """Run one cycle of the Indexer."""
         try:
             async with get_session() as session:
                 result = await indexer.index_recordings(
-                    session, self._recordings_dir, errored_files=errored_files
+                    session, self._recordings_dir, errored_files=errored_files, stats=stats
                 )
             if result.new > 0:
                 self._total_indexed += result.new
@@ -154,15 +159,18 @@ class ProcessorService(SilvaService):
             log.exception("processor.indexer_error")
             self.health.update_status("indexer", False, "error")
 
-    async def _run_janitor_cycle(self) -> None:
+    async def _run_janitor_cycle(self, stats: "JanitorStats") -> None:
         """Run one cycle of the Janitor, respecting the n-cycle interval."""
         self._janitor_counter += 1
         if self._janitor_counter >= self._janitor_every_n:
             self._janitor_counter = 0
             try:
-                jr = await janitor.run_cleanup_safe(self._recordings_dir, self._settings)
+                jr = await janitor.run_cleanup_safe(
+                    self._recordings_dir, self._settings, stats=stats
+                )
                 self._disk_usage_percent = jr.disk_usage_percent
                 self._janitor_mode = jr.mode.value
+                self._cloud_sync_fallback = jr.cloud_sync_fallback
                 self._files_deleted_total += jr.files_deleted
                 healthy = jr.errors == 0
                 detail = f"{jr.mode.value} - deleted {jr.files_deleted}"
@@ -181,10 +189,20 @@ class ProcessorService(SilvaService):
         self.health.update_status("processor", True, "running")
 
         # Initialize Upload Worker
+        from silvasonic.processor.modules.indexer_stats import IndexerStats
+        from silvasonic.processor.modules.janitor_stats import JanitorStats
         from silvasonic.processor.modules.upload_stats import UploadStats
         from silvasonic.processor.upload_worker import UploadWorker
 
         upload_stats = UploadStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._indexer_stats = IndexerStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._janitor_stats = JanitorStats(
             startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
             summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
         )
@@ -225,13 +243,23 @@ class ProcessorService(SilvaService):
 
         while not self._shutdown_event.is_set():
             # --- Indexer (every cycle) ---
-            await self._run_indexer_cycle(errored_files)
+            await self._run_indexer_cycle(errored_files, self._indexer_stats)
+            self._indexer_stats.maybe_emit_summary()
 
             # --- Janitor (every N cycles) ---
-            await self._run_janitor_cycle()
+            await self._run_janitor_cycle(self._janitor_stats)
+            self._janitor_stats.maybe_emit_summary(
+                mode=self._janitor_mode,
+                disk_usage_percent=self._disk_usage_percent,
+                cloud_sync_fallback=self._cloud_sync_fallback,
+            )
 
             self.health.touch()
             await asyncio.sleep(self._settings.indexer_poll_interval)
+
+        # Emit final shutdown summaries
+        self._indexer_stats.emit_final_summary()
+        self._janitor_stats.emit_final_summary()
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 
 import asyncio
 import gc
-import logging
 import os
 import re
 import time
@@ -10,7 +9,9 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf  # type: ignore[import-untyped]
+import structlog
 from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
+from silvasonic.birdnet.birdnet_stats import BirdnetStats
 from silvasonic.core.config_schemas import BirdnetSettings, SystemSettings
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
@@ -19,7 +20,7 @@ from silvasonic.core.schemas.detections import BirdnetDetectionDetails
 from silvasonic.core.service import SilvaService
 from sqlalchemy import select
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 # Constants
 MODEL_SR = 48000
@@ -74,6 +75,9 @@ class BirdNETService(SilvaService):
         self.model_version = _derive_model_version(MODEL_PATH.name)
         self.recordings_dir = Path(env_settings.RECORDINGS_DIR)
 
+        # Initialize Two-Phase Logging stats
+        self.stats = BirdnetStats()
+
     async def load_config(self) -> None:
         """Load runtime configuration from the database."""
         from silvasonic.core.database.models.system import SystemConfig
@@ -118,9 +122,12 @@ class BirdNETService(SilvaService):
                 # Threshold >= 0.03 according to spike finding
                 loc_filter = meta_interp.get_tensor(meta_out)[0]
                 allowed_mask = loc_filter >= 0.03
-                logger.info(f"Location filter active. {np.sum(allowed_mask)} species allowed.")
+                log.info(
+                    "birdnet.location_filter_active",
+                    species_allowed=int(np.sum(allowed_mask)),
+                )
             except Exception as e:
-                logger.warning(f"Failed to apply location filter: {e}")
+                log.warning("birdnet.location_filter_failed", error=str(e))
                 loc_filter_active = False
 
         return allowed_mask, loc_filter_active
@@ -144,7 +151,12 @@ class BirdNETService(SilvaService):
         def _load() -> np.ndarray:
             audio, sr = sf.read(str(audio_path), dtype="float32")
             if sr != MODEL_SR:
-                logger.warning(f"Resampling skipped. File {audio_path} is {sr}Hz, not {MODEL_SR}Hz")
+                log.warning(
+                    "birdnet.resampling_skipped",
+                    file=str(audio_path),
+                    actual_sr=sr,
+                    expected_sr=MODEL_SR,
+                )
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
             return audio  # type: ignore[no-any-return]
@@ -245,7 +257,7 @@ class BirdNETService(SilvaService):
             allowed_mask, loc_filter_active = self._get_allowed_species_mask(labels)
 
         except Exception as e:
-            logger.error(f"Failed to initialize AI Edge LiteRT natively: {e}")
+            log.error("birdnet.init_failed", error=str(e))
             self.health.update_status("birdnet", False, str(e))
             await asyncio.sleep(5)
             # Crash fast
@@ -255,6 +267,7 @@ class BirdNETService(SilvaService):
 
         while not self._shutdown_event.is_set():
             self.health.touch()
+            self.stats.maybe_emit_summary()
 
             try:
                 self.health.update_status("birdnet", True, "polling")
@@ -286,7 +299,7 @@ class BirdNETService(SilvaService):
                     rel_path = recording.file_processed or recording.file_raw
                     audio_path = self.recordings_dir / rel_path
                     if not audio_path.exists():
-                        logger.error(f"File missing for processing: {audio_path}")
+                        log.error("birdnet.file_missing", path=str(audio_path))
                         # Mark as failed in DB to prevent infinite loop
                         recording.analysis_state = {"birdnet": "failed_file_missing"}
                         await session.commit()
@@ -317,12 +330,10 @@ class BirdNETService(SilvaService):
 
                         await session.commit()
                         elapsed = time.perf_counter() - start_time
-                        logger.info(
-                            f"Done: {recording.id} in {elapsed:.2f}s ({len(detections)} hits)"
-                        )
+                        self.stats.record_analyzed(recording.id, elapsed, len(detections))
 
                     except Exception as e:
-                        logger.error(f"Inference failure on recording {recording.id}: {e}")
+                        self.stats.record_error(recording.id, e)
                         await session.rollback()
 
                         # Store crash log in state
@@ -333,7 +344,10 @@ class BirdNETService(SilvaService):
 
             except Exception as exc:
                 # Soft-fail transient DB errors or post-rollback persistence failures (ADR-0030)
-                logger.warning("birdnet.db_cycle_failed", exc_info=exc)
+                log.warning("birdnet.db_cycle_failed", error=str(exc))
                 self.health.update_status("birdnet", False, "database_unavailable")
                 await asyncio.sleep(self.env_settings.DB_RETRY_INTERVAL_S)
                 continue
+
+        # Emit final summary on shutdown
+        self.stats.emit_final_summary()

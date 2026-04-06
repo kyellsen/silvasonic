@@ -20,15 +20,12 @@ Design:
 from __future__ import annotations
 
 import threading
-import time
 
 import structlog
+from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
+from silvasonic.core.two_phase import TwoPhaseWindow
 
 log = structlog.get_logger()
-
-# Default phase thresholds (overridable via envvars)
-DEFAULT_STARTUP_DURATION_S: float = 300.0  # 5 minutes
-DEFAULT_SUMMARY_INTERVAL_S: float = 300.0  # 5 minutes
 
 
 class RecordingStats:
@@ -45,14 +42,15 @@ class RecordingStats:
     def __init__(
         self,
         *,
-        startup_duration_s: float = DEFAULT_STARTUP_DURATION_S,
-        summary_interval_s: float = DEFAULT_SUMMARY_INTERVAL_S,
+        startup_duration_s: float = DEFAULT_LOG_STARTUP_S,
+        summary_interval_s: float = DEFAULT_LOG_SUMMARY_INTERVAL_S,
     ) -> None:
         """Initialize the stats tracker."""
         self._lock = threading.Lock()
-        self._start_time = time.monotonic()
-        self._startup_duration_s = startup_duration_s
-        self._summary_interval_s = summary_interval_s
+        self._window = TwoPhaseWindow(
+            startup_duration_s=startup_duration_s,
+            summary_interval_s=summary_interval_s,
+        )
 
         # Lifetime counters
         self._total_promoted: int = 0
@@ -63,7 +61,6 @@ class RecordingStats:
         self._interval_promoted: int = 0
         self._interval_bytes: int = 0
         self._interval_errors: int = 0
-        self._last_summary_time: float = self._start_time
 
         # File-size tracking (per interval, reset each summary)
         self._interval_size_min: int | None = None
@@ -74,13 +71,10 @@ class RecordingStats:
         self._stream_promoted: dict[str, int] = {}
         self._stream_bytes: dict[str, int] = {}
 
-        # Phase transition flag (logged once)
-        self._startup_ended_logged = False
-
     @property
     def in_startup_phase(self) -> bool:
         """Return ``True`` if still in the detailed startup phase."""
-        return (time.monotonic() - self._start_time) < self._startup_duration_s
+        return self._window.is_startup_phase
 
     def record_promotion(
         self,
@@ -152,30 +146,27 @@ class RecordingStats:
 
     def _check_phase_transition(self) -> None:
         """Log once when transitioning from startup to steady state."""
-        if self._startup_ended_logged:
-            return
+        if self._window.consume_startup_transition():
+            with self._lock:
+                total = self._total_promoted
+                errors = self._total_errors
 
-        self._startup_ended_logged = True
-        with self._lock:
-            total = self._total_promoted
-            errors = self._total_errors
-
-        log.info(
-            "recording.startup_phase_complete",
-            startup_duration_s=self._startup_duration_s,
-            total_promoted=total,
-            total_errors=errors,
-            summary_interval_s=self._summary_interval_s,
-        )
+            log.info(
+                "recording.startup_phase_complete",
+                startup_duration_s=self._window._startup_duration_s,
+                total_promoted=total,
+                total_errors=errors,
+                summary_interval_s=self._window._summary_interval_s,
+            )
 
     def _maybe_emit_summary(self) -> None:
         """Emit a summary log if the interval has elapsed."""
-        now = time.monotonic()
-        with self._lock:
-            elapsed = now - self._last_summary_time
-            if elapsed < self._summary_interval_s:
-                return
+        if not self._window.is_summary_due():
+            return
 
+        elapsed = self._window.mark_summary_emitted()
+
+        with self._lock:
             # Snapshot and reset interval counters
             interval_promoted = self._interval_promoted
             interval_bytes = self._interval_bytes
@@ -187,7 +178,7 @@ class RecordingStats:
             total_bytes = self._total_bytes
             total_errors = self._total_errors
             streams = dict(self._stream_promoted)
-            uptime_s = round(now - self._start_time, 0)
+            uptime_s = round(self._window.uptime_s, 0)
 
             # Reset interval counters
             self._interval_promoted = 0
@@ -196,7 +187,6 @@ class RecordingStats:
             self._interval_size_min = None
             self._interval_size_max = 0
             self._interval_size_sum = 0
-            self._last_summary_time = now
 
         # Compute derived metrics outside lock
         interval_s = round(elapsed, 1)
@@ -224,12 +214,11 @@ class RecordingStats:
 
         Always logged — provides the definitive session statistics.
         """
-        now = time.monotonic()
         with self._lock:
             total_promoted = self._total_promoted
             total_bytes = self._total_bytes
             total_errors = self._total_errors
-            uptime_s = round(now - self._start_time, 0)
+            uptime_s = round(self._window.uptime_s, 0)
             streams = dict(self._stream_promoted)
             stream_bytes = dict(self._stream_bytes)
 

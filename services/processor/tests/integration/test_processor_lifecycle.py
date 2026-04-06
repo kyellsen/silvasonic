@@ -7,6 +7,7 @@ the infinite `run()` loop do not crash when interacting with a real database.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from silvasonic.core.database.session import _get_engine, _get_session_factory
@@ -45,12 +46,12 @@ class TestProcessorLifecycle:
 
         # Test phase 3: Indexer runs cleanly
         errored_files: set[str] = set()
-        await service._run_indexer_cycle(errored_files)
+        await service._run_indexer_cycle(errored_files, MagicMock())
 
         # Test phase 4: Janitor runs cleanly
         service._janitor_counter = 1
         service._janitor_every_n = 1
-        await service._run_janitor_cycle()
+        await service._run_janitor_cycle(MagicMock())
 
         # Verify heartbeat metrics are correctly accessible
         meta = service.get_extra_meta()

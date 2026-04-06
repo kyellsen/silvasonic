@@ -30,6 +30,7 @@ from pathlib import Path
 
 import structlog
 from silvasonic.core.config_schemas import ProcessorSettings
+from silvasonic.processor.modules.janitor_stats import JanitorStats
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -272,6 +273,7 @@ async def run_cleanup(
     session: AsyncSession,
     recordings_dir: Path,
     settings: ProcessorSettings,
+    stats: JanitorStats | None = None,
 ) -> JanitorResult:
     """Execute one Janitor cleanup cycle.
 
@@ -284,9 +286,10 @@ async def run_cleanup(
     ``mtime``-based blind cleanup.
 
     Args:
-        session: Active async DB session.
-        recordings_dir: Root of the Recorder workspace.
-        settings: Processor settings with thresholds and batch size.
+        session: Database session
+        recordings_dir: Root directory for recordings
+        settings: Active ProcessorSettings with intervals and batch sizes
+        stats: Two-Phase Logging stats object.
 
     Returns:
         JanitorResult with mode, deletions, and error counts.
@@ -330,21 +333,32 @@ async def run_cleanup(
             delete_files(recordings_dir, file_raw, file_processed)
             await soft_delete(session, rec_id)
             result.files_deleted += 1
-            log.info(
-                "janitor.deleted",
-                recording_id=rec_id,
-                file_processed=file_processed,
-                mode=mode.value,
-                cloud_sync_fallback=result.cloud_sync_fallback,
-            )
+            if stats:
+                stats.record_deleted(
+                    recording_id=rec_id,
+                    file_processed=file_processed,
+                    mode=mode.value,
+                    cloud_sync_fallback=result.cloud_sync_fallback,
+                )
+            else:
+                log.info(
+                    "janitor.deleted",
+                    recording_id=rec_id,
+                    file_processed=file_processed,
+                    mode=mode.value,
+                    cloud_sync_fallback=result.cloud_sync_fallback,
+                )
         except Exception:
             result.errors += 1
-            result.error_details.append(file_processed)
-            log.exception(
-                "janitor.delete_error",
-                recording_id=rec_id,
-                file_processed=file_processed,
-            )
+            result.error_details.append(file_processed if file_processed else "")
+            if stats:
+                stats.record_error(rec_id, file_processed)
+            else:
+                log.exception(
+                    "janitor.delete_error",
+                    recording_id=rec_id,
+                    file_processed=file_processed,
+                )
 
     if result.files_deleted > 0:
         await session.commit()
@@ -364,6 +378,7 @@ async def run_cleanup(
 async def run_cleanup_safe(
     recordings_dir: Path,
     settings: ProcessorSettings,
+    stats: JanitorStats | None = None,
 ) -> JanitorResult:
     """Top-level entry point with DB-failure protection.
 
@@ -373,8 +388,9 @@ async def run_cleanup_safe(
     to be skipped (no data loss risk).
 
     Args:
-        recordings_dir: Root of the Recorder workspace.
-        settings: Processor settings.
+        recordings_dir: Root directory path
+        settings: Active configuration
+        stats: Two-Phase Logging stats object.
 
     Returns:
         JanitorResult.
@@ -389,7 +405,7 @@ async def run_cleanup_safe(
 
     try:
         async with get_session() as session:
-            return await run_cleanup(session, recordings_dir, settings)
+            return await run_cleanup(session, recordings_dir, settings, stats=stats)
     except Exception:
         if mode == RetentionMode.PANIC:
             log.critical(

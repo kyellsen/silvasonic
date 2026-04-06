@@ -225,7 +225,7 @@ class TestProcessorCycles:
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            await svc._run_indexer_cycle(errored_files)
+            await svc._run_indexer_cycle(errored_files, MagicMock())
 
         assert svc._total_indexed == 3
         status = svc.health.get_status()
@@ -245,7 +245,7 @@ class TestProcessorCycles:
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            await svc._run_indexer_cycle(errored_files)
+            await svc._run_indexer_cycle(errored_files, MagicMock())
 
         assert "err1" in errored_files
         status = svc.health.get_status()
@@ -265,7 +265,7 @@ class TestProcessorCycles:
                 errors=0,
             ),
         ):
-            await svc._run_janitor_cycle()
+            await svc._run_janitor_cycle(MagicMock())
 
         assert svc._disk_usage_percent == 45.5
         assert svc._files_deleted_total == 2
@@ -281,7 +281,7 @@ class TestProcessorCycles:
             new_callable=AsyncMock,
             side_effect=RuntimeError,
         ):
-            await svc._run_janitor_cycle()
+            await svc._run_janitor_cycle(MagicMock())
 
         status = svc.health.get_status()
         assert status["components"]["janitor"]["healthy"] is False
