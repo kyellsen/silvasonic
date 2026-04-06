@@ -17,7 +17,9 @@ log = structlog.get_logger()
 class UploadStats:
     """Tracks upload progress and limits log spam during steady state."""
 
-    def __init__(self, startup_duration_s: int = 300, summary_interval_s: int = 300) -> None:
+    def __init__(
+        self, startup_duration_s: float = 300.0, summary_interval_s: float = 300.0
+    ) -> None:
         """Initialize the stats tracker.
 
         Args:

@@ -40,16 +40,16 @@ class ProcessorService(SilvaService):
 
     def __init__(self) -> None:
         """Initialize with settings from environment."""
-        cfg = ProcessorEnvSettings()
-        self.service_port = cfg.PROCESSOR_PORT
+        self._env_config = ProcessorEnvSettings()
+        self.service_port = self._env_config.PROCESSOR_PORT
         super().__init__(
             instance_id="processor",
-            redis_url=cfg.REDIS_URL,
-            heartbeat_interval=cfg.HEARTBEAT_INTERVAL_S,
+            redis_url=self._env_config.REDIS_URL,
+            heartbeat_interval=self._env_config.HEARTBEAT_INTERVAL_S,
         )
         # Runtime config from DB — loaded in load_config(), defaults until then
         self._settings = ProcessorSettings()
-        self._recordings_dir = Path(cfg.RECORDINGS_DIR)
+        self._recordings_dir = Path(self._env_config.RECORDINGS_DIR)
 
         # Indexer metrics (reported in heartbeat)
         self._total_indexed: int = 0
@@ -181,9 +181,16 @@ class ProcessorService(SilvaService):
         self.health.update_status("processor", True, "running")
 
         # Initialize Upload Worker
+        from silvasonic.processor.modules.upload_stats import UploadStats
         from silvasonic.processor.upload_worker import UploadWorker
 
-        self._upload_worker = UploadWorker(get_session, self.health, self._recordings_dir)
+        upload_stats = UploadStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._upload_worker = UploadWorker(
+            get_session, self.health, self._recordings_dir, stats=upload_stats
+        )
 
         # --- Phase 1: Reconciliation Audit (once on startup) ---
         await self._run_reconciliation_audit_once()

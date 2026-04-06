@@ -114,9 +114,8 @@ class TestBirdNETResilience:
         ):
             await mock_service.run()
 
-        from silvasonic.birdnet.service import _DB_RETRY_SLEEP_S
-
-        mock_sleep.assert_called_with(_DB_RETRY_SLEEP_S)
+        expected_sleep = mock_service.env_settings.DB_RETRY_INTERVAL_S
+        mock_sleep.assert_called_with(expected_sleep)
 
     @pytest.mark.asyncio
     async def test_health_transient_degradation(self, mock_service: BirdNETService) -> None:
@@ -187,8 +186,7 @@ class TestBirdNETResilience:
         ):
             await mock_service.run()
 
-        from silvasonic.birdnet.service import _DB_RETRY_SLEEP_S
-
-        mock_sleep.assert_called_with(_DB_RETRY_SLEEP_S)
+        expected_sleep = mock_service.env_settings.DB_RETRY_INTERVAL_S
+        mock_sleep.assert_called_with(expected_sleep)
         assert mock_service.health._components["birdnet"]["healthy"] is False
         assert mock_service.health._components["birdnet"]["details"] == "database_unavailable"

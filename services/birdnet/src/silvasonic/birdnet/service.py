@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 MODEL_SR = 48000
 WINDOW_SECS = 3.0
 WINDOW_SAMPLES = int(WINDOW_SECS * MODEL_SR)
-_DB_RETRY_SLEEP_S = 5.0
 
 MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
@@ -69,6 +68,7 @@ class BirdNETService(SilvaService):
             redis_url=env_settings.REDIS_URL,
             heartbeat_interval=env_settings.HEARTBEAT_INTERVAL_S,
         )
+        self.env_settings = env_settings
         self.birdnet_config: BirdnetSettings | None = None
         self.system_config: SystemSettings | None = None
         self.model_version = _derive_model_version(MODEL_PATH.name)
@@ -279,7 +279,7 @@ class BirdNETService(SilvaService):
 
                     if recording is None:
                         # No work found, sleep
-                        await asyncio.sleep(2.0)
+                        await asyncio.sleep(self.env_settings.POLLING_INTERVAL_S)
                         continue
 
                     # Check file existence — DB stores relative paths, prefix with recordings_dir
@@ -335,5 +335,5 @@ class BirdNETService(SilvaService):
                 # Soft-fail transient DB errors or post-rollback persistence failures (ADR-0030)
                 logger.warning("birdnet.db_cycle_failed", exc_info=exc)
                 self.health.update_status("birdnet", False, "database_unavailable")
-                await asyncio.sleep(_DB_RETRY_SLEEP_S)
+                await asyncio.sleep(self.env_settings.DB_RETRY_INTERVAL_S)
                 continue
