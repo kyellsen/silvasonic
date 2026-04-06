@@ -31,5 +31,6 @@ class Detection(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     label: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     common_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     details: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

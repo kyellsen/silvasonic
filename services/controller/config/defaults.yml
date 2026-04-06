@@ -79,3 +79,13 @@ birdnet:
   # Lower = more detections (but more false positives).
   # Higher = fewer detections (but higher accuracy).
   confidence_threshold: 0.25
+  # Padding around detection window for clip extraction
+  clip_padding_seconds: 3.0
+  # Overlap between analysis windows (0.0-3.0 seconds)
+  overlap: 0.0
+  # Model sensitivity (0.5-1.5)
+  sensitivity: 1.0
+  # Number of inference threads
+  threads: 1
+  # Processing order for backlog (oldest_first or newest_first)
+  processing_order: "oldest_first"

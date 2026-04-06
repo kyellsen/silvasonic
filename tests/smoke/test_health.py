@@ -56,6 +56,14 @@ class TestServiceHealth:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_birdnet_healthy(self, birdnet_container: DockerContainer) -> None:
+        """BirdNET /healthy returns 200 with status ok."""
+        host = birdnet_container.get_container_host_ip()
+        port = int(birdnet_container.get_exposed_port(9500))
+        resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
     def test_web_mock_healthy(self, web_mock_container: DockerContainer) -> None:
         """Web-Mock /healthy returns 200 with status ok."""
         host = web_mock_container.get_container_host_ip()

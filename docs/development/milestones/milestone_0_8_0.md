@@ -86,18 +86,18 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** Preparation for US-B01, US-B03, US-B04.
 
 ### Tasks
-- [ ] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
-- [ ] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
-- [ ] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
-- [ ] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
-- [ ] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
-- [ ] **Add** `birdnet` entry to `scripts/workspace_dirs.txt`.
-- [ ] Create `Containerfile` with standard `python:3.13-slim-bookworm` base image including `ai-edge-litert`, `numpy`, `soundfile` dependencies.
-- [ ] Initialize `SilvaService` base class. Read `system_config` on startup for `BirdnetSettings`, `SystemSettings` (latitude, longitude) — use `SystemConfig` model.
+- [x] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
+- [x] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
+- [x] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
+- [x] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
+- [x] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
+- [x] **Add** `birdnet` entry to `scripts/workspace_dirs.txt`.
+- [x] Create `Containerfile` with standard `python:3.13-slim-bookworm` base image including `ai-edge-litert`, `numpy`, `soundfile` dependencies.
+- [x] Initialize `SilvaService` base class. Read `system_config` on startup for `BirdnetSettings`, `SystemSettings` (latitude, longitude) — use `SystemConfig` model.
 
 ### Testing (Phase 2)
-- [ ] **`unit`** — `packages/core/tests/unit/test_service.py`: **Extend** existing `test_birdnet_settings_defaults`.
-- [ ] **`smoke`** — `tests/smoke/conftest.py` + `test_health.py`: Add `birdnet_container` fixture and `test_birdnet_healthy` smoke test.
+- [x] **`unit`** — `packages/core/tests/unit/test_service.py`: **Extend** existing `test_birdnet_settings_defaults`.
+- [x] **`smoke`** — `tests/smoke/conftest.py` + `test_health.py`: Add `birdnet_container` fixture and `test_birdnet_healthy` smoke test.
 
 ---
 

@@ -10,6 +10,7 @@ from silvasonic.core.schemas.cloud_sync import (
     WebDAVConfig,
     validate_rclone_config,
 )
+from silvasonic.core.schemas.detections import BirdnetDetectionDetails
 from silvasonic.core.schemas.devices import (
     AudioConfig,
     MicrophoneProfile,
@@ -204,3 +205,50 @@ class TestValidateRcloneConfig:
         """Invalid data for a known type raises ValidationError."""
         with pytest.raises(ValidationError):
             validate_rclone_config("s3", {"invalid_field": "val"})
+
+
+# ---------------------------------------------------------------------------
+# Worker Contracts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestBirdnetDetectionDetails:
+    """Tests for BirdnetDetectionDetails schema."""
+
+    def test_valid_detection(self) -> None:
+        """A fully complete detection payload parses properly."""
+        payload = {
+            "model_version": "v2.4",
+            "sensitivity": 1.0,
+            "overlap": 0.0,
+            "confidence_threshold": 0.5,
+            "location_filter_active": True,
+            "lat": 51.5,
+            "lon": 10.5,
+            "week": 22,
+        }
+        det = BirdnetDetectionDetails.model_validate(payload)
+        assert det.model_version == "v2.4"
+        assert det.lat == 51.5
+        assert det.lon == 10.5
+        assert det.week == 22
+
+    def test_missing_required_fields_raises(self) -> None:
+        """Missing required fields raises ValidationError."""
+        with pytest.raises(ValidationError):
+            BirdnetDetectionDetails.model_validate({"model_version": "v2.4"})
+
+    def test_optional_defaults(self) -> None:
+        """Optional fields gracefully default to None."""
+        payload = {
+            "model_version": "v2.4",
+            "sensitivity": 1.0,
+            "overlap": 0.0,
+            "confidence_threshold": 0.5,
+            "location_filter_active": False,
+        }
+        det = BirdnetDetectionDetails.model_validate(payload)
+        assert det.lat is None
+        assert det.lon is None
+        assert det.week is None

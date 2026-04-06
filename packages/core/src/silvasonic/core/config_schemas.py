@@ -9,7 +9,7 @@ Order: cross-cutting (system, auth) first, then by roadmap milestone
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -86,3 +86,8 @@ class BirdnetSettings(BaseModel):
     """
 
     confidence_threshold: float = 0.25
+    clip_padding_seconds: float = 3.0
+    overlap: float = 0.0
+    sensitivity: float = 1.0
+    threads: int = 1
+    processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"

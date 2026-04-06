@@ -220,6 +220,37 @@ def recorder_container(
 
 
 @pytest.fixture()
+def birdnet_container(
+    smoke_network: Network,
+    database_container: DockerContainer,
+    redis_container_smoke: DockerContainer,
+) -> Generator[DockerContainer]:
+    """Start an isolated BirdNET container connected to test database and Redis."""
+    _require_image("silvasonic_birdnet")
+    _ = database_container
+    _ = redis_container_smoke
+
+    container = (
+        DockerContainer("silvasonic_birdnet")
+        .with_exposed_ports(9500)
+        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("POSTGRES_USER", "silvasonic")
+        .with_env("POSTGRES_PASSWORD", "silvasonic")
+        .with_env("POSTGRES_DB", "silvasonic")
+        .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_network(smoke_network)
+        .with_kwargs(tmpfs={"/app/workspace": "rw"})
+    )
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(9500))
+    wait_for_http(host, port)
+    yield container
+    container.stop()
+
+
+@pytest.fixture()
 def web_mock_container() -> Generator[DockerContainer]:
     """Start an isolated Web-Mock container.
 

@@ -24,7 +24,7 @@ from compose import compose
 SERVICES = ["database", "controller", "processor", "web-mock"]
 
 # Managed-profile services (require --profile managed to be visible)
-MANAGED_SERVICES = ["recorder"]
+MANAGED_SERVICES = ["recorder", "birdnet"]
 
 
 def _check_dangling_images() -> None:

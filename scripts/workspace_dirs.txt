@@ -12,3 +12,6 @@ processor
 
 # --- Recorder ---
 recorder
+
+# --- BirdNET ---
+birdnet

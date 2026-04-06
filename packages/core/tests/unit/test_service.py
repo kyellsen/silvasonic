@@ -394,6 +394,11 @@ class TestConfigSchemas:
         """BirdnetSettings has correct defaults."""
         s = BirdnetSettings()
         assert s.confidence_threshold == 0.25
+        assert s.clip_padding_seconds == 3.0
+        assert s.overlap == 0.0
+        assert s.sensitivity == 1.0
+        assert s.threads == 1
+        assert s.processing_order == "oldest_first"
 
     def test_processor_settings_defaults(self) -> None:
         """ProcessorSettings has correct defaults."""
