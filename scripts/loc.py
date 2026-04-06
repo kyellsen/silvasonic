@@ -248,9 +248,7 @@ def main() -> None:
     analysis_text = (
         f"[bold]Insights:[/bold]\n"
         f"• Ratio Test-Code : Prod-Code = [bold green]{test_ratio:.1f}%[/bold green]\n"
-        f"• Ratio Docs : Prod-Code = [bold yellow]{docs_ratio:.1f}%[/bold yellow]\n\n"
-        "Interpretation: The high test ratio reflects established testing standards.\n"
-        "The high documentation density reflects our _Spec-Driven Architecture_ approach."
+        f"• Ratio Docs : Prod-Code = [bold green]{docs_ratio:.1f}%[/bold green]\n"
     )
 
     console.print()
@@ -266,7 +264,7 @@ def main() -> None:
     # Export to JSON
     tmp_dir = project_root / ".tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    export_path = tmp_dir / "linestats.json"
+    export_path = tmp_dir / "loc.json"
 
     export_data = {
         "global_stats": global_stats,

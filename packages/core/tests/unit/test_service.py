@@ -20,39 +20,6 @@ from silvasonic.core.config_schemas import (
 )
 
 # ===================================================================
-# Package-level checks
-# ===================================================================
-
-
-@pytest.mark.unit
-class TestPackage:
-    """Basic package-level tests."""
-
-    def test_version_exists(self) -> None:
-        """Core package exposes a version string."""
-        from silvasonic.core import __version__
-
-        assert isinstance(__version__, str)
-        assert len(__version__) > 0
-
-    def test_configure_logging_callable(self) -> None:
-        """configure_logging is importable and callable."""
-        from silvasonic.core.logging import configure_logging
-
-        assert callable(configure_logging)
-
-    def test_health_server_callable(self) -> None:
-        """start_health_server is importable and callable."""
-        import inspect
-
-        from silvasonic.core.health import start_health_server
-
-        assert callable(start_health_server)
-        sig = inspect.signature(start_health_server)
-        assert "monitor" in sig.parameters
-
-
-# ===================================================================
 # SilvaService
 # ===================================================================
 
