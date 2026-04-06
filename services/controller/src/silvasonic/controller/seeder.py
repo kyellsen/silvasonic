@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import Any, ClassVar, Protocol
+from typing import Any, Protocol
 
 import bcrypt
 import structlog
 import yaml
 from pydantic import ValidationError
+from silvasonic.controller.worker_registry import SYSTEM_WORKERS
 from silvasonic.core.config_schemas import (
     AuthDefaults,
     BirdnetSettings,
@@ -419,14 +420,13 @@ class ManagedServiceSeeder:
 
     name = "managed_services"
 
-    # Extend this list when adding new Tier-2 singletons (e.g. batdetect, weather).
-    _TIER2_SINGLETONS: ClassVar[list[tuple[str, bool]]] = [
-        ("birdnet", True),
-    ]
-
     async def seed(self, session: AsyncSession) -> None:
         """Insert default managed_services rows (ON CONFLICT DO NOTHING)."""
-        for name, enabled in self._TIER2_SINGLETONS:
+        for worker in SYSTEM_WORKERS:
+            name = worker.name
+            # Default to enabled for all registered workers
+            enabled = True
+
             existing = await session.get(ManagedService, name)
             if existing is None:
                 session.add(ManagedService(name=name, enabled=enabled))

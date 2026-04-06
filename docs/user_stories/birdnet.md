@@ -172,4 +172,4 @@
 
 ### References
 
-- [AGENTS.md (Language & Domain Policy)](../../AGENTS.md)
+- [AGENTS.md (Language & Domain Policy)](../AGENTS.md)
