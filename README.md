@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.7.0 — Gateway ✅
+> **Status:** v0.7.1 — DB-Viewer & System Stabilization ✅
 
 ---
 
