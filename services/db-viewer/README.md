@@ -49,7 +49,7 @@
 
 | Variable / Mount           | Description                                    | Default / Example  |
 | -------------------------- | ---------------------------------------------- | ------------------ |
-| `POSTGRES_HOST`            | Database hostname                              | `database`         |
+| `SILVASONIC_DB_HOST`            | Database hostname                              | `database`         |
 | `POSTGRES_USER`            | Database user                                  | `silvasonic`       |
 | `POSTGRES_PASSWORD`        | Database password                              | `silvasonic`       |
 | `POSTGRES_DB`              | Target database name                           | `silvasonic`       |

@@ -333,7 +333,7 @@ def build_worker_spec(
     environment = {
         "SILVASONIC_INSTANCE_ID": worker.name,
         "SILVASONIC_REDIS_URL": env.REDIS_URL,
-        "POSTGRES_HOST": "database",
+        "SILVASONIC_DB_HOST": "database",
         "POSTGRES_USER": "silvasonic",
         "POSTGRES_PASSWORD": "silvasonic",
         "POSTGRES_DB": "silvasonic",

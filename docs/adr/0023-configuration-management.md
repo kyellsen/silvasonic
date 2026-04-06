@@ -20,7 +20,7 @@ Without a clear strategy, configuration is scattered across `.env`, hardcoded Py
 
 | Tier                     | Storage                       | Examples                                                                 | Set By                    | Runtime Changeable?                       |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------ | ------------------------- | ----------------------------------------- |
-| **Infrastructure**       | `.env` file                   | `SILVASONIC_WORKSPACE_PATH`, `POSTGRES_HOST`, `SILVASONIC_PODMAN_SOCKET` | Admin (SSH / Ansible)     | No — requires container rebuild/restart   |
+| **Infrastructure**       | `.env` file                   | `SILVASONIC_WORKSPACE_PATH`, `SILVASONIC_DB_HOST`, `SILVASONIC_PODMAN_SOCKET` | Admin (SSH / Ansible)     | No — requires container rebuild/restart   |
 | **Application Settings** | `system_config` table (JSONB) | `latitude`, `max_recorders`, `confidence_threshold`, `bandwidth_limit`   | YAML Seed → Web-Interface | Yes — via State Reconciliation (ADR-0017) |
 | **Authentication**       | `users` table                 | `username`, `password_hash`                                              | YAML Seed → Web-Interface | Yes — Frontend settings page              |
 

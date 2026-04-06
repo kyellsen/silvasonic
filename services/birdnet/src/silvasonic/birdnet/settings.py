@@ -15,3 +15,6 @@ class BirdnetEnvSettings(BaseSettings):
     INSTANCE_ID: str = "default"
     REDIS_URL: str = "redis://localhost:6379/0"
     HEARTBEAT_INTERVAL_S: float = DEFAULT_HEARTBEAT_INTERVAL_S
+
+    # Path to Recorder workspace (mounted read-only from Controller)
+    RECORDINGS_DIR: str = "/data/recorder"

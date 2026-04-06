@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 
 import asyncpg  # type: ignore[import-untyped]
 import pytest
@@ -35,36 +34,36 @@ async def _delete_all(container: PostgresContainer) -> None:
         await conn.close()
 
 
-@pytest.fixture(autouse=True, scope="session")
-def setup_test_engine(postgres_container: PostgresContainer) -> Iterator[None]:
-    """Inject testcontainer database into the engine singleton for all tests."""
-    import os
+@pytest.fixture(autouse=True)
+async def _clean_db_tables(postgres_container: PostgresContainer) -> AsyncIterator[None]:
+    """Reset application tables after each test for parallel safety.
 
-    # Still patch environ in case any code reads directly from DatabaseSettings
-    os.environ["SILVASONIC_DB_HOST"] = str(postgres_container.get_container_host_ip())
-    os.environ["SILVASONIC_DB_PORT"] = str(postgres_container.get_exposed_port(5432))
-    os.environ["SILVASONIC_DB_USER"] = str(postgres_container.username)
-    os.environ["SILVASONIC_DB_PASS"] = str(postgres_container.password)
-    os.environ["SILVASONIC_DB_NAME"] = str(postgres_container.dbname)
+    Runs **after** every integration test in this directory. Deletes
+    rows from all known application tables in FK-safe order so that
+    tests running on the same xdist worker with a shared session-scoped
+    database cannot interfere with each other.
+    """
+    import os
 
     from silvasonic.core.database.session import override_engine, reset_engine
     from silvasonic.test_utils.helpers import build_postgres_url
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    url = build_postgres_url(postgres_container)
-    engine = create_async_engine(url, future=True)
+    # Set env vars for database settings
+    os.environ["SILVASONIC_DB_HOST"] = postgres_container.get_container_host_ip()
+    os.environ["SILVASONIC_DB_PORT"] = str(postgres_container.get_exposed_port(5432))
+    os.environ["POSTGRES_USER"] = postgres_container.username
+    os.environ["POSTGRES_PASSWORD"] = postgres_container.password
+    os.environ["POSTGRES_DB"] = postgres_container.dbname
+
+    # Override engine globally for all code running in this test worker
+    engine = create_async_engine(build_postgres_url(postgres_container))
     override_engine(engine)
 
-    yield
-
-    reset_engine()
-    # Note: no need to dispose engine here as pytest will tear down anyway.
-
-
-@pytest.fixture(autouse=True)
-def _clean_db_tables(
-    postgres_container: PostgresContainer, setup_test_engine: None
-) -> Iterator[None]:
-    """Reset application tables after each test."""
-    yield
-    asyncio.get_event_loop().run_until_complete(_delete_all(postgres_container))
+    try:
+        await _delete_all(postgres_container)
+        yield
+    finally:
+        reset_engine()
+        await engine.dispose()
+        await _delete_all(postgres_container)

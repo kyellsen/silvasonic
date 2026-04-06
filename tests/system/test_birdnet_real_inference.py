@@ -1,11 +1,15 @@
 """System testing for BirdNET inference explicitly running real ai-edge-litert."""
 
 import os
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from silvasonic.birdnet.service import BirdNETService
+
+# Default image name as built by podman-compose / just build
+_BIRDNET_IMAGE = "localhost/silvasonic_birdnet:latest"
 
 
 @pytest.fixture
@@ -14,9 +18,65 @@ def fixtures_dir() -> Path:
     return Path(__file__).parent.parent / "fixtures" / "audio"
 
 
+@pytest.fixture(scope="session")
+def birdnet_model_dir() -> Path:
+    """Ensure BirdNET models are available, extracting from container image if needed.
+
+    On CI the models only exist inside the previously built container image.
+    This fixture copies them to a host-local directory via ``podman cp`` so
+    that the pytest process can access them directly.
+    """
+    model_dir = Path(
+        os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/tmp/birdnet_models"),
+    )
+    sentinel = model_dir / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
+
+    if sentinel.exists():
+        return model_dir
+
+    # Models missing on host — extract from the built container image.
+    model_dir.mkdir(parents=True, exist_ok=True)
+    image = os.environ.get("SILVASONIC_BIRDNET_IMAGE", _BIRDNET_IMAGE)
+    container = f"tmp_model_extract_{os.getpid()}"
+
+    try:
+        # Clean up any leftover container from a previous aborted run
+        subprocess.run(
+            ["podman", "rm", "-f", "--ignore", container],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["podman", "create", "--name", container, image],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["podman", "cp", f"{container}:/app/models/.", str(model_dir)],
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        pytest.skip(
+            f"Cannot extract BirdNET models from image '{image}': {exc}. "
+            "Run 'just build birdnet' first.",
+        )
+    finally:
+        subprocess.run(
+            ["podman", "rm", "-f", container],
+            capture_output=True,
+        )
+
+    if not sentinel.exists():
+        pytest.skip(f"Model extraction succeeded but {sentinel} is missing.")
+
+    return model_dir
+
+
 @pytest.mark.system
 @pytest.mark.asyncio
-async def test_native_tflite_inference(fixtures_dir: Path) -> None:
+async def test_native_tflite_inference(
+    fixtures_dir: Path,
+    birdnet_model_dir: Path,
+) -> None:
     """Test actual TFLite inference using the real models against an explicit fixture.
 
     Validates that the ai-edge-litert bindings work correctly with our exact numpy slicing
@@ -38,14 +98,11 @@ async def test_native_tflite_inference(fixtures_dir: Path) -> None:
     # Hamburg defaults for testing location filtering
     worker.system_config = SystemSettings(latitude=53.55, longitude=9.99)
 
-    # 2. Ensure models downloaded
-    model_dir = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
-    if not model_dir.exists():
-        model_dir = Path("/tmp/birdnet_models")
-    assert model_dir.exists(), f"Models absent from {model_dir}. Run download script."
+    # 2. Use models provided by the birdnet_model_dir fixture
+    model_dir = birdnet_model_dir
     model_path = model_dir / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
     assert model_path.exists(), "TFLite Model missing."
-    meta_model_path = model_dir / "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16.tflite"
+    meta_model_path = model_dir / "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
     labels_file = model_dir / "BirdNET_GLOBAL_6K_V2.4_Labels.txt"
 
     with open(labels_file) as f:

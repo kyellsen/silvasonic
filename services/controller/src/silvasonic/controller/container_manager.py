@@ -109,9 +109,12 @@ class ContainerManager:
     def _build_run_kwargs(spec: Tier2ServiceSpec) -> dict[str, object]:
         """Build ``podman.containers.run()`` kwargs from a Tier2ServiceSpec."""
         # Use 'volumes' instead of 'mounts' to pass SELinux/rootless ownership relabeling ('z')
+        # podman-py API translates 'ro,z' strictly as a single invalid option to the backend.
+        # For read_only mounts, the host directory should already be labeled appropriately
+        # by the producer container ('z'), so 'ro' alone is sufficient and avoids the 500 error.
         volumes = {}
         for m in spec.mounts:
-            mode = "ro,z" if m.read_only else "z"
+            mode = "ro" if m.read_only else "z"
             volumes[m.source] = {"bind": m.target, "mode": mode}
 
         kwargs: dict[str, object] = {

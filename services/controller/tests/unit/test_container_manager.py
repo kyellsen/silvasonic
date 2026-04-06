@@ -503,7 +503,13 @@ class TestContainerManager:
 
     def test_build_run_kwargs_structure(self) -> None:
         """_build_run_kwargs() builds correct kwargs dict from spec."""
-        spec = _make_spec(name="silvasonic-recorder-test")
+        spec = _make_spec(
+            name="silvasonic-recorder-test",
+            mounts=[
+                MountSpec(source="/host/ro", target="/cont/ro", read_only=True),
+                MountSpec(source="/host/rw", target="/cont/rw", read_only=False),
+            ],
+        )
         kwargs = ContainerManager._build_run_kwargs(spec)
 
         assert kwargs["image"] == spec.image
@@ -516,6 +522,13 @@ class TestContainerManager:
         assert kwargs["cpu_quota"] == int(spec.cpu_limit * 100_000)
         assert isinstance(kwargs["restart_policy"], dict)
         assert kwargs["restart_policy"]["Name"] == "on-failure"
+
+        # Verify parsed volumes directly
+        assert "volumes" in kwargs
+        vols = kwargs["volumes"]
+        assert isinstance(vols, dict)
+        assert vols["/host/ro"] == {"bind": "/cont/ro", "mode": "ro"}
+        assert vols["/host/rw"] == {"bind": "/cont/rw", "mode": "z"}
 
     def test_get_not_found_returns_none(self) -> None:
         """get() returns None silently when container does not exist."""

@@ -212,7 +212,7 @@ Add a new service block following the established pattern:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
     ports:
       - "${SILVASONIC_<NAME>_PORT:-<PORT>}:<PORT>"
     depends_on:

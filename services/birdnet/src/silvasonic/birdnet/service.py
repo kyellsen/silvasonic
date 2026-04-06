@@ -28,7 +28,7 @@ WINDOW_SAMPLES = int(WINDOW_SECS * MODEL_SR)
 
 MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
-META_MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_MData_Model_FP16.tflite"
+META_MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
 LABELS_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Labels.txt"
 
 
@@ -71,6 +71,7 @@ class BirdNETService(SilvaService):
         self.birdnet_config: BirdnetSettings | None = None
         self.system_config: SystemSettings | None = None
         self.model_version = _derive_model_version(MODEL_PATH.name)
+        self.recordings_dir = Path(env_settings.RECORDINGS_DIR)
 
     async def load_config(self) -> None:
         """Load runtime configuration from the database."""
@@ -278,8 +279,8 @@ class BirdNETService(SilvaService):
                     await asyncio.sleep(2.0)
                     continue
 
-                # Check file existence
-                audio_path = Path(recording.file_processed or recording.file_raw)
+                # Check file existence — DB stores relative paths, prefix with recordings_dir
+                audio_path = self.recordings_dir / (recording.file_processed or recording.file_raw)
                 if not audio_path.exists():
                     logger.error(f"File missing for processing: {audio_path}")
                     # Mark as failed in DB to prevent infinite loop

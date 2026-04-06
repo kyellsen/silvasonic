@@ -67,7 +67,7 @@
 | `SILVASONIC_BATDETECT_PORT`        | Health endpoint port                 | `9500`            |
 | `${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z` | Recorder workspace (read-only mount) | —                 |
 | `${SILVASONIC_WORKSPACE_PATH}/batdetect:z` | BatDetect workspace (clips, read-write) | —              |
-| `POSTGRES_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
+| `SILVASONIC_DB_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
 
 ### Dynamic Configuration (Database)
 

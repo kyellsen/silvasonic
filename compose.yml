@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       SILVASONIC_CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
       SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
@@ -97,7 +97,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
       - "${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
@@ -210,7 +210,7 @@ services:
     env_file: .env
     environment:
       SILVASONIC_REDIS_URL: redis://redis:6379/0
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
@@ -242,7 +242,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
