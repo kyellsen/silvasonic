@@ -5,42 +5,20 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import asyncpg  # type: ignore[import-untyped]
 import httpx
 import pytest
 from silvasonic.core.database import get_db
 from silvasonic.db_viewer.__main__ import app
-from silvasonic.test_utils.helpers import build_postgres_url
+from silvasonic.test_utils.helpers import build_postgres_url, clean_database
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
-
-_CLEANUP_TABLES = (
-    "recordings",
-    "devices",
-    "microphone_profiles",
-    "users",
-    "system_config",
-)
-
-
-async def _delete_all(container: PostgresContainer) -> None:
-    host = container.get_container_host_ip()
-    port = int(container.get_exposed_port(5432))
-    conn = await asyncpg.connect(
-        host=host, port=port, user="silvasonic", password="silvasonic", database="silvasonic_test"
-    )
-    try:
-        for table in _CLEANUP_TABLES:
-            await conn.execute(f"DELETE FROM {table}")
-    finally:
-        await conn.close()
 
 
 @pytest.fixture(autouse=True)
 async def _clean_db_tables(postgres_container: PostgresContainer) -> AsyncGenerator[None]:
     """Reset application tables after each test for parallel safety."""
     yield
-    await _delete_all(postgres_container)
+    await clean_database(postgres_container)
 
 
 @pytest.mark.integration

@@ -62,6 +62,7 @@ silvasonic/
 ├── services/            # Container service definitions & Containerfiles
 │   ├── database/        # TimescaleDB / PostgreSQL
 │   ├── controller/      # Hardware/Container manager
+│   ├── gateway/         # Caddy reverse proxy, HTTPS termination & routing
 │   ├── processor/       # Data ingestion, indexing & retention (Janitor)
 │   ├── recorder/        # Audio capture (FFmpeg, Dual Stream)
 │   └── web-mock/        # Dev UI shell (FastAPI + Jinja2 + HTMX)
@@ -80,6 +81,7 @@ silvasonic/
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
 | **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Running  |
+| **gateway**    | 1    | Caddy reverse proxy — HTTPS termination and internal routing                             | ✅ Running  |
 | **processor**  | 1    | Data ingestion, metadata indexing, and retention management (Janitor)                    | ✅ Running  |
 | **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to Web-Interface) | ✅ Running  |
 | **db-viewer**  | 1    | Dev Data UI — Database inspector & analytical data export tool (toggle via `COMPOSE_PROFILES=db-viewer`) | ✅ Running  |

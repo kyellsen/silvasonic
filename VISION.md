@@ -46,7 +46,7 @@
 | **controller**  | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical        | ✅ AS-IS   |
 | **web-interface** | Local management console. In production: full management console. Dev predecessor: `web-mock` (v0.2.0)                          | Life Support / Optional | ✅ AS-IS ¹  |
 | **db-viewer**     | Developer UI. Database inspector for debugging, table monitoring, and data export (CSV/JSON/Parquet). Requires `COMPOSE_PROFILES=db-viewer`. | Optional                | ✅ AS-IS    |
-| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                   | Critical        | ⏳ Planned |
+| **gateway**    | Caddy Reverse Proxy handling HTTPS and authentication                                                   | Critical        | ✅ AS-IS   |
 | **processor**   | Data Ingestion, Indexing, Janitor, and Cloud-Sync-Worker . Immutable — config at startup, restart to reconfigure. Clean-up logic is critical for survival | Critical        | ✅ AS-IS   |
 | **icecast**    | Streaming server. Receives live Opus audio from Recorder instances and serves it via HTTP to Web-Interface and clients                   | Life Support / Optional | ⏳ Planned |
 | **tailscale**   | Provides secure, zero-config remote access and VPN mesh networking                                             | Life Support / Optional | ⏳ Planned |

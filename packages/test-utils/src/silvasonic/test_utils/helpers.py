@@ -117,3 +117,42 @@ def wait_for_log(
         time.sleep(poll_interval)
     msg = f"Log message '{message}' not found within {timeout}s"
     raise TimeoutError(msg)
+
+
+async def clean_database(container: PostgresContainer) -> None:
+    """Connect via asyncpg and dynamically TRUNCATE all public tables.
+
+    Queries ``pg_tables`` for all tables in the ``public`` schema (excluding
+    TimescaleDB internals like ``_timescale%``) and truncates them using
+    ``RESTART IDENTITY CASCADE``.
+
+    This ensures complete data removal between tests in a parallel-safe way
+    (when tests share a container per xdist worker) without the need to
+    maintain hardcoded tables lists or manage foreign-key constraints.
+
+    Args:
+        container: A running ``PostgresContainer`` instance.
+    """
+    import asyncpg  # type: ignore[import-untyped]
+
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(5432))
+    conn = await asyncpg.connect(
+        host=host,
+        port=port,
+        user="silvasonic",
+        password="silvasonic",
+        database="silvasonic_test",
+    )
+    try:
+        rows = await conn.fetch(
+            "SELECT tablename FROM pg_tables "
+            "WHERE schemaname = 'public' AND tablename NOT LIKE '\\_timescale%'"
+        )
+        tables = [f'"{row["tablename"]}"' for row in rows]
+        if tables:
+            # A single TRUNCATE with CASCADE is faster and handles FK dependencies
+            query = f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE"
+            await conn.execute(query)
+    finally:
+        await conn.close()

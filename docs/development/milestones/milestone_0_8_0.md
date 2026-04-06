@@ -53,7 +53,7 @@ The following structures already exist and MUST be reused or extended in-place:
 | `Recording` ORM model | `packages/core/src/silvasonic/core/database/models/recordings.py` | Complete — has `analysis_state` JSONB | ✅ Reuse as-is (read-only from BirdNET) |
 | Seeder (`schema_map`) | `services/controller/src/silvasonic/controller/seeder.py:97` | Already maps `"birdnet": BirdnetSettings` | ✅ No change needed (picks up schema extension automatically) |
 | `workspace_dirs.txt` | `scripts/workspace_dirs.txt` | Missing `birdnet` | **Add** `birdnet` entry |
-| `_CLEANUP_TABLES` | `tests/integration/conftest.py:21-27` | Missing `detections` | **Add** `detections` before `recordings` (FK order) |
+| `_CLEANUP_TABLES` | `tests/integration/conftest.py` | Removed | **Replaced** with dynamic `clean_database` from `test-utils` |
 | Existing `BirdnetSettings` unit test | `packages/core/tests/unit/test_service.py:426-429` | Only checks `confidence_threshold` | **Extend** to verify new fields and defaults |
 | `ix_recordings_analysis_pending` index | `01-init-schema.sql:119-121` | Complete — partial index on `local_deleted=false` | ✅ Worker Pull query uses this |
 | Global Test Fixtures | `tests/fixtures/audio/` | Three files (Robin, Blackbird, Sparrow) pre-processed to exact 10s, 48kHz mono | ✅ Use for all BirdNET system/integration tests to simulate `Recorder` `processed/` output |
@@ -88,6 +88,7 @@ The following structures already exist and MUST be reused or extended in-place:
 ### Tasks
 - [x] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
 - [x] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
+- [x] **Create** generic DB-fallback and polling configuration via `BirdnetEnvSettings` (`SILVASONIC_POLLING_INTERVAL_S`, `SILVASONIC_DB_RETRY_INTERVAL_S`) according to the centralized worker resilience pattern (ADR-0030).
 - [x] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
 - [x] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).
 - [x] **Create** a new Pydantic schema `BirdnetDetectionDetails` in `packages/core/src/silvasonic/core/schemas/detections.py` to enforce the data contract for the JSONB `details` field (must include `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filter_active`, `lat`, `lon`, `week`).
@@ -107,16 +108,18 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** US-B01 (Automatic detection), US-B03 (Location logic), US-B04 (Confidence threshold).
 
 ### Tasks
-- [ ] Implement Worker Pull pattern (`SELECT ... FOR UPDATE SKIP LOCKED` on `recordings`). Respect dynamic `processing_order` setting for `ORDER BY time` ASC/DESC. Update `recordings.analysis_state` JSONB with `{"birdnet": "done"}` after processing.
-- [ ] Implement the inference engine logic determined by the Phase 1 Spike.
-- [ ] Map DB runtime config (latitude, longitude from `SystemSettings`; `min_conf`, `sensitivity`, `overlap` from `BirdnetSettings`) to inference parameters. Derive `week` automatically.
-- [ ] Implement explicit memory management: e.g. `del audio_chunk` after inference, periodic `gc.collect()`.
-- [ ] Save results using the existing `Detection` ORM model — set `worker='birdnet'`. Use the raw English string provided by the model for `label` and `common_name` temporarily. **Must populate `details` JSONB** with inference context (e.g., `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filtered`).
+- [x] Implement Worker Pull pattern (`SELECT ... FOR UPDATE SKIP LOCKED` on `recordings`). Respect dynamic `processing_order` setting for `ORDER BY time` ASC/DESC. Update `recordings.analysis_state` JSONB with `{"birdnet": "done"}` after processing.
+- [x] Implement centralized Exception catching around the Worker Pull loop to sleep for `DB_RETRY_INTERVAL_S` on transient database issues (ADR-0030).
+- [x] Implement the inference engine logic determined by the Phase 1 Spike.
+- [x] Map DB runtime config (latitude, longitude from `SystemSettings`; `min_conf`, `sensitivity`, `overlap` from `BirdnetSettings`) to inference parameters. Derive `week` automatically.
+- [x] Implement explicit memory management: e.g. `del audio_chunk` after inference, periodic `gc.collect()`.
+- [x] Implement strictly standard multi-phase logging via `BirdnetStats` and `TwoPhaseWindow` class.
+- [x] Save results using the existing `Detection` ORM model — set `worker='birdnet'`. Use the raw English string provided by the model for `label` and `common_name` temporarily. **Must populate `details` JSONB** with inference context (e.g., `model_version`, `sensitivity`, `overlap`, `confidence_threshold`, `location_filtered`).
 
 ### Testing (Phase 3)
-- [ ] **`unit`** — `services/birdnet/tests/unit/test_worker.py`: Test graceful shutdown logic (`shutdown_event.is_set()` between chunks stops processing).
-- [ ] **`integration`** — `services/birdnet/tests/integration/test_worker_pull.py`: Level 3. Using `testcontainers` and a synthetic recording, claim via `FOR UPDATE SKIP LOCKED`, mock the inference engine, and verify `detections` rows and `analysis_state` updates.
-- [ ] **`system`** — `tests/system/test_birdnet_real_inference.py`: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.
+- [x] **`unit`** — `services/birdnet/tests/unit/test_worker.py`: Test graceful shutdown logic (`shutdown_event.is_set()` between chunks stops processing).
+- [x] **`integration`** — `services/birdnet/tests/integration/test_worker_pull.py`: Level 3. Using `testcontainers` and a synthetic recording, claim via `FOR UPDATE SKIP LOCKED`, mock the inference engine, and verify `detections` rows and `analysis_state` updates.
+- [x] **`system`** — `tests/system/test_birdnet_real_inference.py`: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.
 
 ---
 
@@ -134,7 +137,7 @@ The following structures already exist and MUST be reused or extended in-place:
 ### Testing (Phase 4)
 - [ ] **`unit`** — Add unit tests for `Reconciler._reconcile_once` to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.
 - [ ] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `managed_services` and maps enabled rows to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
-- [ ] **`system`** — Add `tests/system/test_singleton_worker_lifecycle.py`: Validate full `ReconciliationLoop` state transitions. Ensure changing `enabled` in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.
+- [x] **`system`** — Add `tests/system/test_singleton_worker_lifecycle.py`: Validate full `ReconciliationLoop` state transitions. Ensure changing `enabled` in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.
 - [ ] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since BirdNET is `enabled=True` by default in `managed_services`, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
 
 ---
@@ -182,7 +185,7 @@ The following structures already exist and MUST be reused or extended in-place:
 - [ ] Create `services/birdnet/README.md` using `services/_template_readme.md` boilerplate and convert `docs/services/birdnet.md` to a link-stub (per `STRUCTURE.md` §4).
 - [ ] Update `docs/glossary.md` with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).
 - [ ] Update `docs/index.md` to reflect the newly integrated BirdNET service and documentation structure.
-- [ ] **Add** `"detections"` to `_CLEANUP_TABLES` in `tests/integration/conftest.py`.
+- [x] **Add** `"detections"` to `_CLEANUP_TABLES` in `tests/integration/conftest.py`. (Resolved dynamically via `clean_database`)
 
 ### Testing (Phase 7)
 - [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` and extracts clips.

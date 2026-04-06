@@ -273,14 +273,9 @@ Override example: `SILVASONIC_INTEGRATION_WORKERS=8 just test-int`
 
 ### Integration Test DB Cleanup
 
-With `pytest-xdist`, each worker gets its own session-scoped `postgres_container` (via `testcontainers`). An **autouse** `_clean_db_tables` fixture deletes all application rows between tests in FK-safe order.
+With `pytest-xdist`, each worker gets its own session-scoped `postgres_container` (via `testcontainers`). An **autouse** `_clean_db_tables` fixture calls a centralized `clean_database` helper from `silvasonic-test-utils`.
 
-> [!IMPORTANT]
-> When adding new tables to the database schema, you **MUST** add them to the `_CLEANUP_TABLES`
-> tuple in each `conftest.py` below, respecting FK order (children before parents):
-> - `services/processor/tests/integration/conftest.py`
-> - `services/controller/tests/integration/conftest.py`
-> - `tests/integration/conftest.py`
+This helper dynamically queries the database for all application tables and truncates them using `RESTART IDENTITY CASCADE`. This automatically respects foreign key relationships and entirely removes the need to manually maintain cleanup lists when adding new tables to the schema.
 
 ---
 
