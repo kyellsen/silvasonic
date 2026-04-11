@@ -383,34 +383,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../filesystem_governance/" class="md-nav__link">
         
   
@@ -1305,34 +1277,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3042,7 +2986,7 @@ The interactive path is <strong>best-effort</strong>. If Redis is unavailable, t
 <tbody>
 <tr>
 <td><strong>Desired State</strong> (config)</td>
-<td><code>system_services</code> table (DB)</td>
+<td><code>managed_services</code> table (DB)</td>
 <td>Admin / Web-Interface</td>
 <td>Controller</td>
 </tr>
@@ -3153,7 +3097,7 @@ The interactive path is <strong>best-effort</strong>. If Redis is unavailable, t
 <p>The nudge is a simple wake-up signal — not a command. If the nudge is lost (Controller restarting), the reconciliation timer catches up. The DB desired state is never lost.</p>
 <blockquote>
 <p>[!NOTE]
-Immutable services (Recorder, Workers, Processor) do not process runtime commands. To change their configuration, the Controller stops and restarts them with updated environment variables.</p>
+Recorder services are fully immutable — configuration changes require a container restart via the Controller. Background workers (BirdNET, Processor) support runtime tuning of domain parameters via DB Snapshot Refresh at safe loop boundaries — see <a href="../lifecycle-configuration/">Lifecycle &amp; Configuration</a> and <a href="../../adr/0031-runtime-tuning-snapshot-refresh/">ADR-0031</a>.</p>
 </blockquote>
 <hr />
 <h2 id="7-communication-flow-overview">7. Communication Flow Overview<a class="headerlink" href="#7-communication-flow-overview" title="Permanent link">&para;</a></h2>
@@ -3181,7 +3125,9 @@ Immutable services (Recorder, Workers, Processor) do not process runtime command
 <li><a href="../../adr/0019-unified-service-infrastructure/">ADR-0019: Unified Service Infrastructure</a></li>
 <li><a href="../../adr/0022-live-log-streaming/">ADR-0022: Live Log Streaming</a></li>
 <li><a href="../../adr/0013-tier2-container-management/">ADR-0013: Tier 2 Container Management</a></li>
+<li><a href="../../adr/0031-runtime-tuning-snapshot-refresh/">ADR-0031: Runtime Tuning via DB Snapshot Refresh</a></li>
 <li><a href="../../adr/0011-audio-recording-strategy/">ADR-0011: Audio Recording Strategy</a></li>
+<li><a href="../lifecycle-configuration/">Lifecycle &amp; Configuration</a></li>
 <li><a href="../filesystem_governance/">Filesystem Governance</a></li>
 </ul>
 

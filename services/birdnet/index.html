@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1327,34 +1299,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3147,14 +3091,14 @@ BirdNET is an <strong>expendable</strong> analysis worker. If the system is unde
 <td>—</td>
 </tr>
 <tr>
-<td><code>POSTGRES_HOST</code>, <code>SILVASONIC_DB_*</code></td>
+<td><code>SILVASONIC_DB_HOST</code>, <code>SILVASONIC_DB_*</code></td>
 <td>Database connection</td>
 <td>via <code>.env</code></td>
 </tr>
 </tbody>
 </table>
 <h3 id="dynamic-configuration-database">Dynamic Configuration (Database)<a class="headerlink" href="#dynamic-configuration-database" title="Permanent link">&para;</a></h3>
-<p>Runtime-tunable settings stored in the <code>system_config</code> table (ADR-0023). Following the Singleton-Worker State Convention (ADR-0029), BirdNET reads these settings <em>once</em> on startup, and the Controller uses the <code>enabled</code> field to orchestrate the container.</p>
+<p>Runtime-tunable settings stored in the <code>system_config</code> table (ADR-0023). BirdNET reads these settings <em>once</em> on startup (Immutable Container pattern, ADR-0019). The container lifecycle toggle (<code>enabled</code>) is managed via the <code>managed_services</code> table (ADR-0029), not via <code>system_config</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3165,12 +3109,6 @@ BirdNET is an <strong>expendable</strong> analysis worker. If the system is unde
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>birdnet</code></td>
-<td><code>enabled</code></td>
-<td><code>True</code></td>
-<td>Master Controller toggle for the container lifecycle</td>
-</tr>
 <tr>
 <td><code>system</code></td>
 <td><code>latitude</code></td>

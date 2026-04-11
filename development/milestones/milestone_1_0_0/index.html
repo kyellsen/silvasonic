@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3349,11 +3293,11 @@ If <strong>0-1 criteria</strong> are true → keep at <code>services/controller/
 </ol>
 <h3 id="config-schema-evolution-strategy">Config Schema Evolution Strategy<a class="headerlink" href="#config-schema-evolution-strategy" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Define policy for schema versioning (new fields added to <code>config_schemas.py</code>)</li>
+<li>[ ] Define policy for schema versioning (new fields added to <code>schemas/system_config.py</code>)</li>
 <li>[ ] Document the "Schema = Schema Evolution Safety, YAML = Operator Interface"
   pattern in ADR-0023 (currently only in code comments)</li>
 <li>[ ] Consider adding a CI test that validates <code>defaults.yml</code> values match
-  <code>config_schemas.py</code> Pydantic defaults (zero drift guarantee)</li>
+  <code>schemas/system_config.py</code> Pydantic defaults (zero drift guarantee)</li>
 </ul>
 <h3 id="per-station-configuration-overlay">Per-Station Configuration Overlay<a class="headerlink" href="#per-station-configuration-overlay" title="Permanent link">&para;</a></h3>
 <ul>

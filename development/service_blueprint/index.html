@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2356,10 +2300,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#composeyml-tier-1-only" class="md-nav__link">
+  <a href="#tier-1-infrastructure-auto-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        compose.yml (Tier 1 Only)
+        Tier 1 (Infrastructure) — Auto-Started
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-application-managed-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 (Application) — Managed Profile
       
     </span>
   </a>
@@ -3014,10 +2969,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#composeyml-tier-1-only" class="md-nav__link">
+  <a href="#tier-1-infrastructure-auto-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        compose.yml (Tier 1 Only)
+        Tier 1 (Infrastructure) — Auto-Started
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-application-managed-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 (Application) — Managed Profile
       
     </span>
   </a>
@@ -3235,16 +3201,28 @@ its only workspace dependency:</p>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">health</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">)</span>
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>            <span class="c1"># Your domain logic here</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_extra_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Optional: add service-specific fields to heartbeat meta.&quot;&quot;&quot;</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;my_metric&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">}</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="n">MyService</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">health</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                <span class="c1"># Cyclic Transient I/O Guard (ADR-0030)</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>                <span class="c1"># Your DB / Network / Filesystem domain logic here</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>                <span class="k">pass</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>                <span class="c1"># Log error and soft-fail to avoid fatal crashes from transient outages</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>                <span class="c1"># E.g. logger.warning(&quot;service.db_cycle_failed&quot;, error=str(exc))</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">health</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;database_unavailable&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>  <span class="c1"># Use a backoff constant like _DB_RETRY_SLEEP_S</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>                <span class="k">continue</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_extra_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Optional: add service-specific fields to heartbeat meta.&quot;&quot;&quot;</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;my_metric&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">}</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    <span class="n">MyService</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 </code></pre></div>
 <p>The <code>SilvaService</code> base class handles the full lifecycle automatically:</p>
 <ol>
@@ -3326,7 +3304,7 @@ from <code>silvasonic.core</code>:</p>
 </tr>
 <tr>
 <td>Config Schemas</td>
-<td><code>silvasonic.core.config_schemas.*</code></td>
+<td><code>silvasonic.core.schemas.system_config.*</code></td>
 <td>Pydantic models for <code>system_config</code> JSONB blobs</td>
 </tr>
 <tr>
@@ -3391,24 +3369,18 @@ update all services at once.</p>
 </blockquote>
 <h3 id="mandatory-rules">Mandatory Rules<a class="headerlink" href="#mandatory-rules" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Base image:</strong> <code>python:3.13-slim-bookworm</code> (default for all services)</li>
-<li><strong>Exception:</strong> ML worker services (e.g., BirdNET) MAY use <code>python:3.11-slim-bookworm</code>
-    when hardware-specific ML libraries (e.g., <code>tflite-runtime</code> on aarch64) lack wheels for
-    Python ≥ 3.12. This exception <strong>requires</strong> a documented ADR. See
-    <a href="../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a>.</li>
+<li><strong>Base image:</strong> <code>python:3.13-slim-bookworm</code> (mandatory for all services)</li>
 <li><strong>Build context:</strong> Always the repo root (<code>.</code>), never the service directory</li>
 <li><code>curl</code> is always required (healthcheck)</li>
 <li><code>packages/</code> is always copied (contains <code>silvasonic-core</code>)</li>
 <li><code>PYTHONUNBUFFERED=1</code> and <code>PYTHONDONTWRITEBYTECODE=1</code> are always set</li>
 </ul>
 <h2 id="6-compose-integration">6. Compose Integration<a class="headerlink" href="#6-compose-integration" title="Permanent link">&para;</a></h2>
-<blockquote>
-<p><strong>IMPORTANT</strong>
-Only <strong>Tier 1 (Infrastructure)</strong> services should be added to <code>compose.yml</code>.
-Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uploader, BirdNET) are managed dynamically by the Controller and <strong>MUST NOT</strong> be placed in <code>compose.yml</code>.</p>
-</blockquote>
-<h3 id="composeyml-tier-1-only"><code>compose.yml</code> (Tier 1 Only)<a class="headerlink" href="#composeyml-tier-1-only" title="Permanent link">&para;</a></h3>
-<p>Add a new service block following the established pattern:</p>
+<p>Silvasonic uses two distinct Compose patterns depending on the service tier:</p>
+<h3 id="tier-1-infrastructure-auto-started">Tier 1 (Infrastructure) — Auto-Started<a class="headerlink" href="#tier-1-infrastructure-auto-started" title="Permanent link">&para;</a></h3>
+<p>Tier 1 services (Database, Controller, Processor, Redis, Web-Mock, Gateway) are
+started automatically by <code>podman-compose up</code>. Add a new Tier 1 service block
+following this pattern:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">  </span><span class="nt">&lt;name&gt;</span><span class="p">:</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">silvasonic-&lt;name&gt;</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">build</span><span class="p">:</span>
@@ -3417,7 +3389,7 @@ Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uplo
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unless-stopped</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="nt">env_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.env</span>
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">POSTGRES_HOST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">database</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">SILVASONIC_DB_HOST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">database</span>
 <a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;${SILVASONIC_&lt;NAME&gt;_PORT:-&lt;PORT&gt;}:&lt;PORT&gt;&quot;</span>
 <a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span>
@@ -3432,18 +3404,58 @@ Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uplo
 <a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">      </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
 <a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">      </span><span class="nt">start_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15s</span>
 </code></pre></div>
-<h3 id="composeoverrideyml-development"><code>compose.override.yml</code> (Development)<a class="headerlink" href="#composeoverrideyml-development" title="Permanent link">&para;</a></h3>
-<p>Add volume mounts for hot-reload:</p>
+<h3 id="tier-2-application-managed-profile">Tier 2 (Application) — Managed Profile<a class="headerlink" href="#tier-2-application-managed-profile" title="Permanent link">&para;</a></h3>
+<p>Tier 2 containers (e.g., Recorder, BirdNET) are <strong>not</strong> auto-started by Compose.
+They are managed dynamically by the Controller at runtime via <code>podman-py</code>
+(see <a href="../../adr/0013-tier2-container-management/">ADR-0013</a>).</p>
+<p>However, Tier 2 services <strong>MUST</strong> still be declared in <code>compose.yml</code> under
+<code>profiles: ["managed"]</code>. This serves three purposes:</p>
+<ol>
+<li><strong>Centralized build definitions</strong> — <code>just build</code> uses Compose to build all
+   images, including managed ones, from a single command.</li>
+<li><strong>Resource-limit templates</strong> — <code>mem_limit</code>, <code>cpus</code>, <code>oom_score_adj</code>, volumes,
+   and healthchecks serve as declarative reference for the Controller's runtime
+   container specs.</li>
+<li><strong>Dev-override mounts</strong> — <code>compose.override.yml</code> can provide <code>PYTHONPATH</code>
+   overrides for hot-reload during development.</li>
+</ol>
+<blockquote>
+<p>[!IMPORTANT]
+The <code>profiles: ["managed"]</code> key ensures these containers are <strong>excluded</strong> from
+<code>podman-compose up</code>. They exist in <code>compose.yml</code> purely as build targets and
+configuration templates — the Controller is the sole authority for starting,
+stopping, and configuring them at runtime.</p>
+</blockquote>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">  </span><span class="nt">&lt;name&gt;</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">      </span><span class="nt">PYTHONPATH</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/app/develop/service:/app/develop/core</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./services/&lt;name&gt;/src:/app/develop/service:z</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./packages/core/src:/app/develop/core:z</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="nt">build</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">dockerfile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">services/&lt;name&gt;/Containerfile</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unless-stopped</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;managed&quot;</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="nt">networks</span><span class="p">:</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">silvasonic-net</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="nt">healthcheck</span><span class="p">:</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">      </span><span class="nt">test</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;CMD&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;curl&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-f&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;http://localhost:&lt;PORT&gt;/healthy&quot;</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10s</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5s</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">      </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">      </span><span class="nt">start_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10s</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="c1"># Resource Limits &amp; QoS (ADR-0020) — template values, enforced by Controller</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="nt">mem_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;LIMIT&gt;</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;CPUS&gt;</span>
+</code></pre></div>
+<h3 id="composeoverrideyml-development"><code>compose.override.yml</code> (Development)<a class="headerlink" href="#composeoverrideyml-development" title="Permanent link">&para;</a></h3>
+<p>Add volume mounts for hot-reload (applies to both Tier 1 and Tier 2 services):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">  </span><span class="nt">&lt;name&gt;</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">      </span><span class="nt">PYTHONPATH</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/app/develop/service:/app/develop/core</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./services/&lt;name&gt;/src:/app/develop/service:z</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./packages/core/src:/app/develop/core:z</span>
 </code></pre></div>
 <h3 id="envexample"><code>.env.example</code><a class="headerlink" href="#envexample" title="Permanent link">&para;</a></h3>
 <p>Add the port variable:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>SILVASONIC_&lt;NAME&gt;_PORT=&lt;PORT&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>SILVASONIC_&lt;NAME&gt;_PORT=&lt;PORT&gt;
 </code></pre></div>
 <p>See <a href="../../arch/port_allocation/">Port Allocation</a> for port assignment rules.</p>
 <h2 id="7-testing">7. Testing<a class="headerlink" href="#7-testing" title="Permanent link">&para;</a></h2>
@@ -3454,44 +3466,44 @@ Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uplo
 <li>Cover all code paths — <strong>100% coverage target</strong></li>
 <li>Follow the established test class structure:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="sd">&quot;&quot;&quot;Unit tests for silvasonic-&lt;name&gt; service — 100 % coverage.&quot;&quot;&quot;</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncMock</span><span class="p">,</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestPackage</span><span class="p">:</span>
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Basic package-level tests.&quot;&quot;&quot;</span>
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">test_package_importable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Package is importable.&quot;&quot;&quot;</span>
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">silvasonic.</span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        <span class="k">assert</span> <span class="n">silvasonic</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestMonitorSomething</span><span class="p">:</span>
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for monitor coroutines.&quot;&quot;&quot;</span>
-<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    <span class="c1"># Mock asyncio.sleep with CancelledError to test one loop iteration</span>
-<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
-<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>
-<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
-<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestMain</span><span class="p">:</span>
-<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for the main() coroutine.&quot;&quot;&quot;</span>
-<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>    <span class="c1"># Test lifecycle wiring + signal handling</span>
-<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>    <span class="c1"># Test __main__ guard with runpy</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="sd">&quot;&quot;&quot;Unit tests for silvasonic-&lt;name&gt; service — 100 % coverage.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncMock</span><span class="p">,</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestPackage</span><span class="p">:</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Basic package-level tests.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">test_package_importable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Package is importable.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">silvasonic.</span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="k">assert</span> <span class="n">silvasonic</span><span class="o">.&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestMonitorSomething</span><span class="p">:</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for monitor coroutines.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    <span class="c1"># Mock asyncio.sleep with CancelledError to test one loop iteration</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="k">class</span><span class="w"> </span><span class="nc">TestMain</span><span class="p">:</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for the main() coroutine.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    <span class="c1"># Test lifecycle wiring + signal handling</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    <span class="c1"># Test __main__ guard with runpy</span>
 </code></pre></div>
 <h3 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>just<span class="w"> </span>test-unit<span class="w">     </span><span class="c1"># Fast, mocked, parallel (4 workers)</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>just<span class="w"> </span>test-int<span class="w">      </span><span class="c1"># Integration (Testcontainers, needs Podman)</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>just<span class="w"> </span>test-system<span class="w">   </span><span class="c1"># System lifecycle (real Podman + built images, no HW)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>just<span class="w"> </span>test-hw-all<span class="w">   </span><span class="c1"># Hardware system tests (real USB mic required)</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>just<span class="w"> </span>test-smoke<span class="w">    </span><span class="c1"># Against running stack (just start first)</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>just<span class="w"> </span>test-all<span class="w">      </span><span class="c1"># All tests except hardware (Unit+Int+System+Smoke+E2E)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>just<span class="w"> </span>test-unit<span class="w">     </span><span class="c1"># Fast, mocked, parallel (4 workers)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>just<span class="w"> </span>test-int<span class="w">      </span><span class="c1"># Integration (Testcontainers, needs Podman)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>just<span class="w"> </span>test-system<span class="w">   </span><span class="c1"># System lifecycle (real Podman + built images, no HW)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>just<span class="w"> </span>test-hw-all<span class="w">   </span><span class="c1"># Hardware system tests (real USB mic required)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>just<span class="w"> </span>test-smoke<span class="w">    </span><span class="c1"># Against running stack (just start first)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>just<span class="w"> </span>test-all<span class="w">      </span><span class="c1"># All tests except hardware (Unit+Int+System+Smoke+E2E)</span>
 </code></pre></div>
 <blockquote>
 <p>For full test marker documentation, see <a href="../testing/">Testing Guide</a>.</p>
@@ -3550,10 +3562,10 @@ Immutable <strong>Tier 2 (Application)</strong> containers (e.g., Recorder, Uplo
 <li>[ ] <code>__main__.py</code> follows lifecycle pattern (§3)</li>
 <li>[ ] Uses <strong>only</strong> shared <code>silvasonic.core</code> modules (§4)</li>
 <li>[ ] <code>Containerfile</code> follows template exactly (§5)</li>
-<li>[ ] <code>compose.yml</code> service block added (§6)</li>
+<li>[ ] <code>compose.yml</code> service block added — Tier 1: auto-started / Tier 2: <code>profiles: ["managed"]</code> (§6)</li>
 <li>[ ] <code>compose.override.yml</code> dev mounts added (§6)</li>
-<li>[ ] <code>.env.example</code> port variable added (§6)</li>
-<li>[ ] <code>docs/arch/port_allocation.md</code> updated (§6)</li>
+<li>[ ] <code>.env.example</code> port variable added (Tier 1 only) (§6)</li>
+<li>[ ] <code>docs/arch/port_allocation.md</code> updated (Tier 1 only) (§6)</li>
 <li>[ ] Unit tests at 100% coverage (§7)</li>
 <li>[ ] <code>just check</code> passes (lint + type + tests)</li>
 <li>[ ] <code>just ci</code> passes (full CI pipeline incl. build + smoke)</li>

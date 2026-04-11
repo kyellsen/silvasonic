@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3077,7 +3021,7 @@
 <li>Configuration management (0023)</li>
 </ul>
 <blockquote>
-<p><strong>Note:</strong> ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the <a href="../../../adr/">ADR index</a> for the complete list.</p>
+<p><strong>Note:</strong> ADRs created during later milestones (e.g., ADR-0024: FFmpeg Audio Engine, written during v0.4.0) are not listed here. See the <a href="../../../#adrs">ADR index</a> for the complete list.</p>
 </blockquote>
 <hr />
 <h2 id="phase-3-core-package-database">Phase 3: Core Package &amp; Database<a class="headerlink" href="#phase-3-core-package-database" title="Permanent link">&para;</a></h2>
@@ -3086,7 +3030,7 @@
 <ul>
 <li>[x] Create <code>packages/core/</code> with <code>silvasonic.core</code> namespace</li>
 <li>[x] Implement database schema (<code>silvasonic.core.models</code>):</li>
-<li><code>devices</code>, <code>microphone_profiles</code>, <code>system_config</code>, <code>system_services</code>, <code>users</code> tables</li>
+<li><code>devices</code>, <code>microphone_profiles</code>, <code>system_config</code>, <code>managed_services</code>, <code>users</code> tables</li>
 <li>[x] Implement Pydantic schemas (<code>silvasonic.core.schemas</code>)</li>
 <li>[x] Implement shared settings module (<code>silvasonic.core.settings</code>)</li>
 <li>[x] Implement health server (<code>silvasonic.core.health</code>)</li>

@@ -377,34 +377,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1119,34 +1091,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2660,17 +2604,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#core-ai-directive" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core AI Directive
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#1-commit-message-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2750,19 +2683,6 @@
 <p><strong>Status:</strong> Normative (Mandatory) · <strong>Scope:</strong> All Contributors &amp; AI Agents</p>
 </blockquote>
 <p>This document outlines the standard for creating Git commit messages in the Silvasonic repository. Our approach leans heavily on <a href="https://www.conventionalcommits.org/en/v1.0.0/">Conventional Commits</a> to automate versioning and provide a highly readable <code>git log</code>.</p>
-<h2 id="core-ai-directive">Core AI Directive<a class="headerlink" href="#core-ai-directive" title="Permanent link">&para;</a></h2>
-<p>When the User asks you to "create a commit message" or "generate a commit", you MUST follow these specific steps:</p>
-<ol>
-<li><strong>Read the Changes</strong>: 
-   Since you suffer from a VS Code terminal bug, you must manually capture the diffs via temporary files.
-   Run: <code>git status &gt; /tmp/git_status.txt &amp;&amp; git diff &gt; /tmp/git_diff.txt</code>
-   Read these files using your file tools to understand what files precisely are staged or modified.</li>
-<li><strong>Analyze and Draft</strong>: 
-   Draft a commit message fitting the standard below. Focus on <em>what</em> was changed and <em>why</em>, rather than restating the diff line-by-line. Group changes logically (e.g., Bug Fix, Testing, Optimizations).</li>
-<li><strong>Format Output</strong>: 
-   Provide the commit message directly in your chat output inside a markdown code block so the User can easily copy/paste it into the terminal. Do not clutter the terminal with other formatting.</li>
-</ol>
-<hr />
 <h2 id="1-commit-message-structure">1. Commit Message Structure<a class="headerlink" href="#1-commit-message-structure" title="Permanent link">&para;</a></h2>
 <p>Every commit message must follow this anatomy:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&lt;type&gt;(&lt;optional scope&gt;): &lt;subject starting with lowercase&gt;

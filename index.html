@@ -553,34 +553,6 @@
   
   
     <li class="md-nav__item">
-      <a href="arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1295,34 +1267,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2985,7 +2929,7 @@
 <h1 id="silvasonic">Silvasonic<a class="headerlink" href="#silvasonic" title="Permanent link">&para;</a></h1>
 <p><strong>Autonomous Bioacoustic Recording Station for Raspberry Pi 5</strong></p>
 <blockquote>
-<p><strong>Status:</strong> v0.7.0 — Gateway ✅</p>
+<p><strong>Status:</strong> v0.7.1 — DB-Viewer &amp; System Stabilization ✅</p>
 </blockquote>
 <hr />
 <h2 id="what-is-silvasonic">What is Silvasonic?<a class="headerlink" href="#what-is-silvasonic" title="Permanent link">&para;</a></h2>
@@ -3031,11 +2975,12 @@
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>├── services/            # Container service definitions &amp; Containerfiles
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>│   ├── database/        # TimescaleDB / PostgreSQL
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>│   ├── controller/      # Hardware/Container manager
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│   ├── processor/       # Data ingestion, indexing &amp; retention (Janitor)
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│   ├── recorder/        # Audio capture (FFmpeg, Dual Stream)
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>│   └── web-mock/        # Dev UI shell (FastAPI + Jinja2 + HTMX)
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>├── scripts/             # Build &amp; lifecycle scripts (Python)
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>└── tests/               # Cross-cutting tests (integration, system, smoke, e2e)
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│   ├── gateway/         # Caddy reverse proxy, HTTPS termination &amp; routing
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│   ├── processor/       # Data ingestion, indexing &amp; retention (Janitor)
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>│   ├── recorder/        # Audio capture (FFmpeg, Dual Stream)
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>│   └── web-mock/        # Dev UI shell (FastAPI + Jinja2 + HTMX)
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>├── scripts/             # Build &amp; lifecycle scripts (Python)
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>└── tests/               # Cross-cutting tests (integration, system, smoke, e2e)
 </code></pre></div>
 <hr />
 <h2 id="current-services">Current Services<a class="headerlink" href="#current-services" title="Permanent link">&para;</a></h2>
@@ -3066,6 +3011,12 @@
 <td><strong>controller</strong></td>
 <td>1</td>
 <td>Hardware/Container manager — health monitoring, placeholder orchestration</td>
+<td>✅ Running</td>
+</tr>
+<tr>
+<td><strong>gateway</strong></td>
+<td>1</td>
+<td>Caddy reverse proxy — HTTPS termination and internal routing</td>
 <td>✅ Running</td>
 </tr>
 <tr>
@@ -3110,11 +3061,11 @@
 </thead>
 <tbody>
 <tr>
-<td><code>just init</code></td>
+<td><code>just init</code> (<code>i</code>)</td>
 <td>Initialize project (uv sync, pre-commit hooks, workspace)</td>
 </tr>
 <tr>
-<td><code>just build</code></td>
+<td><code>just build</code> (<code>b</code>)</td>
 <td>Build all container images</td>
 </tr>
 <tr>
@@ -3132,6 +3083,14 @@
 <tr>
 <td><code>just status</code></td>
 <td>Show service status</td>
+</tr>
+<tr>
+<td><code>just check</code> (<code>c</code>)</td>
+<td>Static analysis &amp; unit tests (fast check)</td>
+</tr>
+<tr>
+<td><code>just verify</code> (<code>v</code>)</td>
+<td>Code quality &amp; integration tests</td>
 </tr>
 <tr>
 <td><code>just ci</code></td>
@@ -3261,11 +3220,12 @@
 </ul>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="arch/">Architecture Overview</a></li>
+<li>Architecture Overview</li>
 <li><a href="arch/filesystem_governance/">Filesystem Governance</a></li>
 <li><a href="arch/messaging_patterns/">Messaging Patterns &amp; Protocols</a></li>
 <li><a href="arch/port_allocation/">Port Allocation</a></li>
 <li><a href="arch/microphone_profiles/">Microphone Profiles</a></li>
+<li><a href="arch/lifecycle-configuration/">Lifecycle Configuration</a></li>
 <li><a href="arch/frontend_features/">Frontend Feature Specs</a> · <a href="arch/frontend_design_system/">Frontend Design System</a></li>
 </ul>
 <h2 id="services">Services<a class="headerlink" href="#services" title="Permanent link">&para;</a></h2>
@@ -3281,7 +3241,37 @@
 </ul>
 <h2 id="adrs">ADRs<a class="headerlink" href="#adrs" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="adr/">Architecture Decision Records</a></li>
+<li><a href="adr/0001-use-uv/">ADR-0001: Use uv as Python Package and Project Manager</a></li>
+<li><a href="adr/0002-use-pyproject-toml/">ADR-0002: Use pyproject.toml for Configuration and Dependencies</a></li>
+<li><a href="adr/0003-frontend-architecture/">ADR-0003: Frontend Architecture ("The Modern Monolith")</a></li>
+<li><a href="adr/0004-use-podman/">ADR-0004: Use Podman instead of Docker</a></li>
+<li><a href="adr/0005-two-worlds-separation/">ADR-0005: Separation of Immutable Code &amp; Mutable State ("Two-Worlds")</a></li>
+<li><a href="adr/0006-bind-mounts-over-volumes/">ADR-0006: Host Bind Mounts as Default Persistence Strategy</a></li>
+<li><a href="adr/0007-rootless-os-compliance/">ADR-0007: Rootless Podman &amp; OS Compliance</a></li>
+<li><a href="adr/0008-domain-driven-isolation/">ADR-0008: Domain-Driven Workspace Isolation</a></li>
+<li><a href="adr/0009-zero-trust-data-sharing/">ADR-0009: Zero-Trust Data Sharing Policy</a></li>
+<li><a href="adr/0010-naming-conventions/">ADR-0010: Naming Conventions</a></li>
+<li><a href="adr/0011-audio-recording-strategy/">ADR-0011: Audio Recording Strategy (Raw vs Processed)</a></li>
+<li><a href="adr/0012-use-pydantic/">ADR-0012: Use Pydantic for Data Validation</a></li>
+<li><a href="adr/0013-tier2-container-management/">ADR-0013: Tier 2 Container Management — Podman-Only with podman-py</a></li>
+<li><a href="adr/0014-dual-deployment-strategy/">ADR-0014: Dual Deployment Strategy — Compose (Dev) / Quadlets (Prod)</a></li>
+<li><a href="adr/0015-nvme-only-storage/">ADR-0015: NVMe-Only Storage Policy</a></li>
+<li><a href="adr/0016-hybrid-yaml-db-profiles/">ADR-0016: Hybrid YAML/DB Profile Management</a></li>
+<li><a href="adr/0017-service-state-management/">ADR-0017: Service State Management — Desired vs. Actual State</a></li>
+<li><a href="adr/0018-worker-pull-orchestration/">ADR-0018: Worker Pull Orchestration — Self-Service Analysis via DB Polling</a></li>
+<li><a href="adr/0019-unified-service-infrastructure/">ADR-0019: Unified Service Infrastructure — SilvaService Pattern</a></li>
+<li><a href="adr/0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS — Protecting Data Capture Integrity</a></li>
+<li><a href="adr/0021-frontend-design-system/">ADR-0021: Frontend Design System — Tailwind CSS + DaisyUI + ECharts + Wavesurfer.js</a></li>
+<li><a href="adr/0022-live-log-streaming/">ADR-0022: Live Log Streaming — Podman Logs via Redis SSE</a></li>
+<li><a href="adr/0023-configuration-management/">ADR-0023: Configuration Management — YAML Seed, DB Settings, Users Table</a></li>
+<li><a href="adr/0024-ffmpeg-audio-engine/">ADR-0024: FFmpeg Audio Engine — Externalizing the Real-Time Audio Path</a></li>
+<li><a href="adr/0025-recordings-standard-table/">ADR-0025: Recordings Table — Standard PostgreSQL Table (No Hypertable)</a></li>
+<li><a href="adr/0026-timescaledb-edge-analytics/">ADR-0026: Database Engine Selection for Edge Analytics</a></li>
+<li><a href="adr/0027-birdnet-inference-engine/">ADR-0027: BirdNET Inference Engine</a></li>
+<li><a href="adr/0029-system-worker-orchestration/">ADR-0029: System Worker Orchestration</a></li>
+<li><a href="adr/0030-database-resilience/">ADR-0030: Database Runtime Resilience (Soft-Fail Loops)</a></li>
+<li><a href="adr/0030-logging-cadence-and-stats/">ADR-0030: Logging Cadence &amp; Stats Extensibility</a></li>
+<li><a href="adr/0031-runtime-tuning-snapshot-refresh/">ADR-0031: Runtime Tuning via DB Snapshot Refresh</a></li>
 </ul>
 <h2 id="development">Development<a class="headerlink" href="#development" title="Permanent link">&para;</a></h2>
 <ul>

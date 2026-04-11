@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1125,34 +1097,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1904,10 +1848,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-pydantic-validation-config_schemaspy" class="md-nav__link">
+  <a href="#25-pydantic-validation-schemassystem_configpy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5. Pydantic Validation — config_schemas.py
+        2.5. Pydantic Validation — schemas/system_config.py
       
     </span>
   </a>
@@ -2896,10 +2840,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-pydantic-validation-config_schemaspy" class="md-nav__link">
+  <a href="#25-pydantic-validation-schemassystem_configpy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5. Pydantic Validation — config_schemas.py
+        2.5. Pydantic Validation — schemas/system_config.py
       
     </span>
   </a>
@@ -2993,7 +2937,7 @@
 <tr>
 <td><strong>Infrastructure</strong></td>
 <td><code>.env</code> file</td>
-<td><code>SILVASONIC_WORKSPACE_PATH</code>, <code>POSTGRES_HOST</code>, <code>SILVASONIC_PODMAN_SOCKET</code></td>
+<td><code>SILVASONIC_WORKSPACE_PATH</code>, <code>SILVASONIC_DB_HOST</code>, <code>SILVASONIC_PODMAN_SOCKET</code></td>
 <td>Admin (SSH / Ansible)</td>
 <td>No — requires container rebuild/restart</td>
 </tr>
@@ -3042,11 +2986,11 @@
 <tr>
 <td><code>birdnet</code></td>
 <td><code>BirdnetSettings</code></td>
-<td>BirdNET (confidence threshold)</td>
+<td>BirdNET runtime settings (confidence threshold, overlap, sensitivity). Lifecycle toggle (<code>enabled</code>) is managed separately in <code>managed_services</code> table (ADR-0029).</td>
 </tr>
 </tbody>
 </table>
-<p>Each key maps to a Pydantic <code>BaseModel</code> that defines field types and default values. Services read their settings <strong>once on startup</strong> (Immutable Container pattern, ADR-0019). The Web-Interface writes changes to <code>system_config</code>, then triggers a <code>silvasonic:nudge</code> so the Controller restarts the affected service.</p>
+<p>Each key maps to a Pydantic <code>BaseModel</code> that defines field types and default values. Historically, services read their settings <strong>once on startup</strong> (Immutable Container pattern). However, under the newer <strong>Hybrid Tier-2 Architecture</strong>, workers like BirdNET dynamically poll their relevant <code>system_config</code> settings (e.g., sensitivity, thresholds) at safe loop boundaries via Snapshot Refresh. This allows the Web-Interface to adjust parameters on-the-fly without requiring the Controller to restart the affected service. See <a href="../0031-runtime-tuning-snapshot-refresh/">ADR-0031</a> for the field classification matrix and implementation details.</p>
 <h3 id="23-yaml-seed-file-configdefaultsyml">2.3. YAML Seed File — <code>config/defaults.yml</code><a class="headerlink" href="#23-yaml-seed-file-configdefaultsyml" title="Permanent link">&para;</a></h3>
 <p>A version-controlled YAML file defines factory defaults for all <code>system_config</code> keys:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># config/defaults.yml — seeded into system_config on Controller startup</span>
@@ -3090,8 +3034,8 @@
 </code></pre></div>
 <p><strong>Rationale:</strong> Credentials have a fundamentally different structure (username + bcrypt hash) and lifecycle (RBAC readiness for v1.9.0+) than key-value settings. A separate table keeps the schema clean and enables future multi-user support without schema changes.</p>
 <p><strong>Seeding:</strong> A default admin account is seeded from the <code>auth</code> section of <code>config/defaults.yml</code> by the Controller on startup. The password is hashed with bcrypt before insertion. Production deployments must change the default password via the Web-Interface settings page.</p>
-<h3 id="25-pydantic-validation-config_schemaspy">2.5. Pydantic Validation — <code>config_schemas.py</code><a class="headerlink" href="#25-pydantic-validation-config_schemaspy" title="Permanent link">&para;</a></h3>
-<p>All configuration blobs are parsed and validated via Pydantic <code>BaseModel</code> classes in <code>silvasonic.core.config_schemas</code>. This ensures:</p>
+<h3 id="25-pydantic-validation-schemassystem_configpy">2.5. Pydantic Validation — <code>schemas/system_config.py</code><a class="headerlink" href="#25-pydantic-validation-schemassystem_configpy" title="Permanent link">&para;</a></h3>
+<p>All configuration blobs are parsed and validated via Pydantic <code>BaseModel</code> classes in <code>silvasonic.core.schemas.system_config</code>. This ensures:</p>
 <ul>
 <li>Type safety (latitude must be a float, max_recorders must be an int).</li>
 <li>Defaults are defined in one place (the schema), mirrored in the YAML seed.</li>
@@ -3144,6 +3088,10 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>Lifecycle toggles</strong> (<code>enabled: bool</code>) for Controller-managed Tier-2 containers (BirdNET, BatDetect, Weather) belong in the <code>managed_services</code> table, <strong>NOT</strong> in <code>system_config</code>. The <code>system_config</code> table stores exclusively domain/business settings. See <a href="../0029-system-worker-orchestration/">ADR-0029</a>.</p>
+</blockquote>
 <h2 id="3-options-considered">3. Options Considered<a class="headerlink" href="#3-options-considered" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>SQL-only seed (<code>INSERT</code> statements):</strong> Rejected. SQL is unwieldy for nested JSON defaults, hard to review/diff, and creates a second seeding path alongside YAML. All seeding goes through Python for consistency.</li>

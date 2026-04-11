@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3882,7 +3826,7 @@
 </code></pre></div></li>
 <li>[x] Verify Controller's <code>ConfigSeeder</code> correctly seeds <code>processor</code> key into <code>system_config</code> table on startup (<code>INSERT ... ON CONFLICT DO NOTHING</code>)</li>
 <li>[x] Verify <code>ProcessorSettings</code> Pydantic schema defaults match YAML seed values (CI test from ADR-0023)</li>
-<li>~~Add <code>processor</code> entry to <code>system_services</code> table seed~~ → <strong>Deferred to <a href="../milestone_0_9_0/">v0.9.0</a></strong> (no consumer until Web-Interface)</li>
+<li>~~Add <code>processor</code> entry to <code>managed_services</code> table seed~~ → <strong>Deferred to <a href="../milestone_0_9_0/">v0.9.0</a></strong> (no consumer until Web-Interface)</li>
 <li>[x] Add Processor workspace directory (<code>processor/</code>) to <code>scripts/init.py</code> initialization</li>
 </ul>
 <h3 id="tests_4">Tests<a class="headerlink" href="#tests_4" title="Permanent link">&para;</a></h3>

@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/arch/">
+        <link rel="canonical" href="https://docs.silvasonic.de/adr/0031-runtime-tuning-snapshot-refresh/">
       
       
-        <link rel="prev" href="../ROADMAP/">
-      
-      
-        <link rel="next" href="filesystem_governance/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Overview - Silvasonic</title>
+        <title>ADR-0031: Runtime Tuning via DB Snapshot Refresh - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#architecture-documentation" class="md-skip">
+        <a href="#adr-0031-runtime-tuning-via-db-snapshot-refresh" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              ADR-0031: Runtime Tuning via DB Snapshot Refresh
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTS/" class="md-nav__link">
+      <a href="../../AGENTS/" class="md-nav__link">
         
   
   
@@ -280,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../VISION/" class="md-nav__link">
+      <a href="../../VISION/" class="md-nav__link">
         
   
   
@@ -307,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ROADMAP/" class="md-nav__link">
+      <a href="../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -331,20 +327,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -365,7 +359,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -380,48 +374,10 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="filesystem_governance/" class="md-nav__link">
+      <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -449,7 +405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="messaging_patterns/" class="md-nav__link">
+      <a href="../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -477,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="port_allocation/" class="md-nav__link">
+      <a href="../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -505,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="microphone_profiles/" class="md-nav__link">
+      <a href="../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -587,7 +543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/controller/" class="md-nav__link">
+      <a href="../../services/controller/" class="md-nav__link">
         
   
   
@@ -615,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/database/" class="md-nav__link">
+      <a href="../../services/database/" class="md-nav__link">
         
   
   
@@ -643,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/recorder/" class="md-nav__link">
+      <a href="../../services/recorder/" class="md-nav__link">
         
   
   
@@ -671,7 +627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/redis/" class="md-nav__link">
+      <a href="../../services/redis/" class="md-nav__link">
         
   
   
@@ -699,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_mock/" class="md-nav__link">
+      <a href="../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -727,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/processor/" class="md-nav__link">
+      <a href="../../services/processor/" class="md-nav__link">
         
   
   
@@ -755,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/gateway/" class="md-nav__link">
+      <a href="../../services/gateway/" class="md-nav__link">
         
   
   
@@ -783,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_interface/" class="md-nav__link">
+      <a href="../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -811,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="frontend_design_system/" class="md-nav__link">
+      <a href="../../arch/frontend_design_system/" class="md-nav__link">
         
   
   
@@ -839,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="frontend_features/" class="md-nav__link">
+      <a href="../../arch/frontend_features/" class="md-nav__link">
         
   
   
@@ -867,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/icecast/" class="md-nav__link">
+      <a href="../../services/icecast/" class="md-nav__link">
         
   
   
@@ -895,7 +851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/birdnet/" class="md-nav__link">
+      <a href="../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -923,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/weather/" class="md-nav__link">
+      <a href="../../services/weather/" class="md-nav__link">
         
   
   
@@ -951,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/batdetect/" class="md-nav__link">
+      <a href="../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -979,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/tailscale/" class="md-nav__link">
+      <a href="../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1061,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -1143,35 +1099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adr/0001-use-uv/" class="md-nav__link">
+      <a href="../0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1199,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1227,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0003-frontend-architecture/" class="md-nav__link">
+      <a href="../0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1255,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0004-use-podman/" class="md-nav__link">
+      <a href="../0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1283,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1311,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1339,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1367,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1395,7 +1323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1423,7 +1351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0010-naming-conventions/" class="md-nav__link">
+      <a href="../0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1451,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1479,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0012-use-pydantic/" class="md-nav__link">
+      <a href="../0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1507,7 +1435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0013-tier2-container-management/" class="md-nav__link">
+      <a href="../0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1535,7 +1463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1563,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1591,7 +1519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1619,7 +1547,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0017-service-state-management/" class="md-nav__link">
+      <a href="../0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1647,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1675,7 +1603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1703,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1731,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0021-frontend-design-system/" class="md-nav__link">
+      <a href="../0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -1759,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0022-live-log-streaming/" class="md-nav__link">
+      <a href="../0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -1787,7 +1715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0023-configuration-management/" class="md-nav__link">
+      <a href="../0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -1815,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adr/0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -1897,7 +1825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -1925,7 +1853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -1953,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -1981,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2009,7 +1937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2037,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2065,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2093,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2121,7 +2049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2149,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2177,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/_template/" class="md-nav__link">
+      <a href="../../development/milestones/_template/" class="md-nav__link">
         
   
   
@@ -2205,7 +2133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/service_blueprint/" class="md-nav__link">
+      <a href="../../development/service_blueprint/" class="md-nav__link">
         
   
   
@@ -2233,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../../development/testing/" class="md-nav__link">
         
   
   
@@ -2261,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/release_checklist/" class="md-nav__link">
+      <a href="../../development/release_checklist/" class="md-nav__link">
         
   
   
@@ -2343,7 +2271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/controller/" class="md-nav__link">
+      <a href="../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2371,7 +2299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/recorder/" class="md-nav__link">
+      <a href="../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2399,7 +2327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2427,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2455,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/processor/" class="md-nav__link">
+      <a href="../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2483,7 +2411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/gateway/" class="md-nav__link">
+      <a href="../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2511,7 +2439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/icecast/" class="md-nav__link">
+      <a href="../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2539,7 +2467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/cloud_sync/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
@@ -2567,7 +2495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2602,7 +2530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hardware/" class="md-nav__link">
+      <a href="../../hardware/" class="md-nav__link">
         
   
   
@@ -2629,7 +2557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../glossary/" class="md-nav__link">
         
   
   
@@ -2669,6 +2597,158 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-context-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Context &amp; Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-field-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1. Field Classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-snapshot-refresh-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2. The Snapshot Refresh Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3. Infrastructure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-relationship-to-adr-0013" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4. Relationship to ADR-0013
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-field-classification-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5. Field Classification Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5. Field Classification Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#birdnet-system_config-keys-birdnet-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BirdNET (system_config keys: birdnet, system)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#processor-system_config-key-processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Processor (system_config key: processor)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uploadworker-system_config-keys-cloud_sync-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UploadWorker (system_config keys: cloud_sync, system)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Options Considered
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2687,12 +2767,214 @@
   
 
 
-<h1 id="architecture-documentation">Architecture Documentation<a class="headerlink" href="#architecture-documentation" title="Permanent link">&para;</a></h1>
+<h1 id="adr-0031-runtime-tuning-via-db-snapshot-refresh">ADR-0031: Runtime Tuning via DB Snapshot Refresh<a class="headerlink" href="#adr-0031-runtime-tuning-via-db-snapshot-refresh" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-04-11</p>
+</blockquote>
+<h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
+<p>Silvasonic's Tier 2 containers were originally designed as <strong>strictly immutable</strong> (ADR-0013): all configuration is injected at launch time, and any change requires a container restart via the Controller.</p>
+<p>While this model is correct for <strong>lifecycle orchestration</strong> (starting, stopping, resource limits), it forces unnecessary restarts for <strong>domain tuning parameters</strong> — values like BirdNET's <code>confidence_threshold</code> or the Janitor's disk thresholds that are pure post-processing filters with no impact on container resources.</p>
+<p>Users expect a responsive "Mischpult" (mixing console) experience: adjust a threshold in the Web-Interface, see the effect within seconds — without the Controller restarting a container and interrupting in-progress work.</p>
+<h2 id="2-decision">2. Decision<a class="headerlink" href="#2-decision" title="Permanent link">&para;</a></h2>
+<p><strong>We chose:</strong> A three-tier field classification with worker-owned DB polling at safe loop boundaries.</p>
+<h3 id="21-field-classification">2.1. Field Classification<a class="headerlink" href="#21-field-classification" title="Permanent link">&para;</a></h3>
+<p>Every configuration field is classified into exactly one of three categories:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Behavior</th>
+<th>Who Owns the Change</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Operational Immutable</strong></td>
+<td>Requires container restart</td>
+<td>Controller (via <code>managed_services</code>)</td>
+<td><code>threads</code>, model path, container mounts, QoS limits</td>
+</tr>
+<tr>
+<td><strong>Domain Mutable (Snapshot)</strong></td>
+<td>Reloaded at next loop boundary</td>
+<td>Worker (self-polling)</td>
+<td><code>confidence_threshold</code>, <code>sensitivity</code>, <code>overlap</code>, <code>processing_order</code>, Janitor thresholds, <code>indexer_poll_interval</code></td>
+</tr>
+<tr>
+<td><strong>Domain Mutable (Snapshot + Recompute)</strong></td>
+<td>Reloaded + triggers derived state recalculation</td>
+<td>Worker (self-polling)</td>
+<td><code>system.latitude</code>, <code>system.longitude</code> → species mask recompute</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-the-snapshot-refresh-pattern">2.2. The Snapshot Refresh Pattern<a class="headerlink" href="#22-the-snapshot-refresh-pattern" title="Permanent link">&para;</a></h3>
+<p>Workers poll their relevant <code>system_config</code> rows at the <strong>top of each outer-loop iteration</strong>, before claiming the next work item:</p>
+<ol>
+<li><code>SELECT key, updated_at FROM system_config WHERE key IN (...)</code> — lightweight index-only scan.</li>
+<li>Compare <code>updated_at</code> against a local cache (<code>_config_updated_at</code>).</li>
+<li><strong>If changed:</strong> Call <code>load_config()</code> to re-parse the JSONB blob via Pydantic.</li>
+<li><strong>If unchanged:</strong> No-op. No log output, no Pydantic parsing, minimal overhead.</li>
+</ol>
+<p>This ensures:
+-  A work item is <strong>never</strong> processed with mixed settings (old start, new finish).
+-  No push signals, no Redis messages, no runtime commands between Controller and Worker.
+-  The Controller remains <strong>ignorant</strong> of domain parameter changes.</p>
+<h3 id="23-infrastructure">2.3. Infrastructure<a class="headerlink" href="#23-infrastructure" title="Permanent link">&para;</a></h3>
+<p>The <code>SilvaService</code> base class provides:
+- <code>_config_keys: list[str]</code> — declared by subclasses to specify which <code>system_config</code> keys to monitor.
+- <code>_config_updated_at: dict[str, datetime]</code> — staleness cache.
+- <code>_refresh_config()</code> — the polling method, called by workers at loop boundaries.</p>
+<p>Subclasses that do not declare <code>_config_keys</code> (e.g. Recorder, which has no DB access) incur zero overhead — <code>_refresh_config()</code> returns immediately.</p>
+<h3 id="24-relationship-to-adr-0013">2.4. Relationship to ADR-0013<a class="headerlink" href="#24-relationship-to-adr-0013" title="Permanent link">&para;</a></h3>
+<p>ADR-0013's immutability doctrine is preserved in its entirety for <strong>lifecycle orchestration</strong>. This ADR adds a complementary layer for <strong>domain tuning</strong> that does not involve the Controller at all.</p>
+<table>
+<thead>
+<tr>
+<th>Change Type</th>
+<th>Table</th>
+<th>Who Reacts</th>
+<th>Controller Involved?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lifecycle toggle (<code>enabled</code>)</td>
+<td><code>managed_services</code></td>
+<td>Controller → start/stop container</td>
+<td>Yes (Redis nudge)</td>
+</tr>
+<tr>
+<td>Domain tuning (thresholds, sensitivity)</td>
+<td><code>system_config</code></td>
+<td>Worker → self-polling at loop boundary</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Operational config (threads, model)</td>
+<td><code>system_config</code></td>
+<td>Requires restart via Controller</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="25-field-classification-matrix">2.5. Field Classification Matrix<a class="headerlink" href="#25-field-classification-matrix" title="Permanent link">&para;</a></h3>
+<h4 id="birdnet-system_config-keys-birdnet-system">BirdNET (<code>system_config</code> keys: <code>birdnet</code>, <code>system</code>)<a class="headerlink" href="#birdnet-system_config-keys-birdnet-system" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Category</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>confidence_threshold</code></td>
+<td>Snapshot</td>
+<td>Post-processing float comparison</td>
+</tr>
+<tr>
+<td><code>sensitivity</code></td>
+<td>Snapshot</td>
+<td>Sigmoid parameter</td>
+</tr>
+<tr>
+<td><code>overlap</code></td>
+<td>Snapshot</td>
+<td>Frame slide rate</td>
+</tr>
+<tr>
+<td><code>processing_order</code></td>
+<td>Snapshot</td>
+<td>SQL <code>ORDER BY</code> direction</td>
+</tr>
+<tr>
+<td><code>system.latitude</code></td>
+<td>Snapshot + Recompute</td>
+<td>Triggers <code>_get_allowed_species_mask()</code></td>
+</tr>
+<tr>
+<td><code>system.longitude</code></td>
+<td>Snapshot + Recompute</td>
+<td>Triggers <code>_get_allowed_species_mask()</code></td>
+</tr>
+<tr>
+<td><code>threads</code></td>
+<td>Operational Immutable</td>
+<td>TFLite Interpreter C++ allocation</td>
+</tr>
+</tbody>
+</table>
+<h4 id="processor-system_config-key-processor">Processor (<code>system_config</code> key: <code>processor</code>)<a class="headerlink" href="#processor-system_config-key-processor" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Category</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>janitor_threshold_warning</code></td>
+<td>Snapshot</td>
+<td>Float comparison in <code>evaluate_mode()</code></td>
+</tr>
+<tr>
+<td><code>janitor_threshold_critical</code></td>
+<td>Snapshot</td>
+<td>Float comparison</td>
+</tr>
+<tr>
+<td><code>janitor_threshold_emergency</code></td>
+<td>Snapshot</td>
+<td>Float comparison</td>
+</tr>
+<tr>
+<td><code>janitor_batch_size</code></td>
+<td>Snapshot</td>
+<td>SQL <code>LIMIT</code> clause</td>
+</tr>
+<tr>
+<td><code>janitor_interval_seconds</code></td>
+<td>Snapshot</td>
+<td>Sleep timing + <code>_janitor_every_n</code> recompute</td>
+</tr>
+<tr>
+<td><code>indexer_poll_interval</code></td>
+<td>Snapshot</td>
+<td>Sleep duration</td>
+</tr>
+</tbody>
+</table>
+<h4 id="uploadworker-system_config-keys-cloud_sync-system">UploadWorker (<code>system_config</code> keys: <code>cloud_sync</code>, <code>system</code>)<a class="headerlink" href="#uploadworker-system_config-keys-cloud_sync-system" title="Permanent link">&para;</a></h4>
+<p>All fields are Snapshot. The UploadWorker already implements this pattern natively via <code>_fetch_config()</code> per loop iteration (predates this ADR).</p>
+<h2 id="3-options-considered">3. Options Considered<a class="headerlink" href="#3-options-considered" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="filesystem_governance/">Filesystem Governance</a> — Data storage, container access control, and directory structure rules.</li>
-<li><a href="messaging_patterns/">Messaging Patterns &amp; Protocols</a> — Inter-service communication, Redis usage, and State Reconciliation Pattern.</li>
-<li><a href="port_allocation/">Port Allocation</a> — Service port scheme and allocation strategy.</li>
-<li><a href="microphone_profiles/">Microphone Profiles</a> — Hardware configuration, YAML bootstrapping, and profile schema.</li>
+<li><strong>Push-based reload via Redis Pub/Sub:</strong> Rejected. Adds coupling between Controller/API and workers. Violates KISS. Workers already have a natural polling cadence.</li>
+<li><strong>SIGHUP signal for config reload:</strong> Rejected. Requires signal plumbing through Podman. Not portable. No granularity (reloads everything).</li>
+<li><strong>Separate <code>config_refresh.py</code> utility:</strong> Rejected. The existing <code>load_config()</code> hook in <code>SilvaService</code> already provides the mechanism. A new module would be over-engineering.</li>
+<li><strong>Reload <code>load_config()</code> every iteration without staleness check:</strong> Rejected. Causes log spam (Processor logs all fields on each <code>load_config()</code> call) and ~43,000 unnecessary DB queries per day.</li>
+</ul>
+<h2 id="4-consequences">4. Consequences<a class="headerlink" href="#4-consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Positive:</strong><ul>
+<li>"Mischpult" UX — threshold changes take effect within seconds, not minutes.</li>
+<li>No container restarts for domain tuning — no interrupted work items.</li>
+<li>Clean separation: Controller owns lifecycle, Workers own domain tuning.</li>
+<li>Zero overhead when config hasn't changed (index-only <code>updated_at</code> check).</li>
+<li>Pattern already proven by UploadWorker — formalized, not invented.</li>
+</ul>
+</li>
+<li><strong>Negative:</strong><ul>
+<li>Workers must declare <code>_config_keys</code> — one line per subclass.</li>
+<li><code>SystemConfig.updated_at</code> requires <code>onupdate=</code> — silent timestamp drift if forgotten.</li>
+<li>Debugging requires awareness that config can change between loop iterations.</li>
+<li>Operational Immutable fields (e.g. <code>threads</code>) update in <code>self.birdnet_config</code> but have no runtime effect until restart — potentially confusing without documentation.</li>
+</ul>
+</li>
 </ul>
 
 
@@ -2743,10 +3025,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

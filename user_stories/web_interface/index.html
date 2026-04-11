@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3238,7 +3182,7 @@
 <h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Module entries in the sidebar (Birds, Bats, Weather, Livesound) are only displayed if the corresponding module is activated in Settings → Modules.</li>
-<li>[ ] Activation status is read from the database (<code>system_services</code> table, <code>enabled</code> flag).</li>
+<li>[ ] Activation status is read from the database (<code>managed_services</code> table, <code>enabled</code> flag).</li>
 <li>[ ] If a module is enabled/disabled, the sidebar updates <strong>without a page reload</strong> (HTMX swap or SSE push).</li>
 <li>[ ] Accessing the URL of a disabled module (e.g., <code>/birds</code> when BirdNET is disabled) shows a friendly notice page — no 404.</li>
 <li>[ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Cloud Sync) are visible.</li>

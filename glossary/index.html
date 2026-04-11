@@ -379,34 +379,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1121,34 +1093,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2885,7 +2829,7 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tbody>
 </table>
 <p>| <strong>System Config</strong>       | <code>system_config</code>       | Global key-value store for application-wide settings.                                                                                                                                                                                                                    |
-| <strong>System Service</strong>      | <code>system_services</code>     | Registry of Tier 1 services and Tier 2 singletons (BirdNET, BatDetect, Weather), tracking desired state (<code>enabled</code>, <code>status</code>). Multi-instance Tier 2 services (Recorder) derive desired state from domain tables (<code>devices</code>). Upload state is managed via <code>system_config</code> key <code>"upload"</code>. See ADR-0017.                    |
+| <strong>Managed Service</strong>     | <code>managed_services</code>    | Registry for container lifecycles actively managed by the Controller via Podman. Exclusively Tier-2 singletons (BirdNET, BatDetect, Weather). Multi-instance Tier-2 services (Recorder) derive state from domain tables (<code>devices</code>). Lifecycle toggle: <code>enabled</code> (BOOLEAN). Domain/business settings (thresholds, intervals) remain in <code>system_config</code>. See ADR-0017, ADR-0029.                    |
 | <strong>Taxonomy</strong>            | <code>taxonomy</code>            | Metadata registry mapping raw detection labels to human-readable information: scientific name, localized common names, description, images, and conservation status (IUCN).                                                                                              |
 | <strong>Upload</strong>              | <code>uploads</code>             | Immutable audit log entry for a single upload attempt. Links a Recording to a Storage Remote and records success/failure, file size, and errors.                                                                                                                         |
 | <strong>Weather Observation</strong> | <code>weather</code>             | Environmental data point from a local sensor (e.g. BME280) or external API (e.g. OpenMeteo). TimescaleDB hypertable partitioned by time.                                                                                                                                 |</p>
@@ -2921,7 +2865,7 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tr>
 <tr>
 <td><strong>Desired State</strong></td>
-<td>The intended operational mode of a service, stored in the <code>system_services</code> table (<code>enabled</code>, <code>status</code>). Set by admin or Web-Interface. Not to be confused with Actual State. See ADR-0017.</td>
+<td>The intended operational mode of a Tier-2 singleton, stored in the <code>managed_services</code> table (<code>enabled</code>). Set by admin or Web-Interface. For Recorders, desired state is derived from <code>devices</code> + <code>microphone_profiles</code>. Not to be confused with Actual State. See ADR-0017, ADR-0029.</td>
 </tr>
 <tr>
 <td><strong>Device Binding</strong></td>

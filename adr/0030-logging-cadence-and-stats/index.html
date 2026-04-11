@@ -12,13 +12,9 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/adr/0017-service-state-management/">
+        <link rel="canonical" href="https://docs.silvasonic.de/adr/0030-logging-cadence-and-stats/">
       
       
-        <link rel="prev" href="../0016-hybrid-yaml-db-profiles/">
-      
-      
-        <link rel="next" href="../0018-worker-pull-orchestration/">
       
       
         
@@ -29,7 +25,7 @@
     
     
       
-        <title>ADR-0017: Service State Management - Silvasonic</title>
+        <title>ADR-0030: Logging Cadence & Stats Extensibility - Silvasonic</title>
       
     
     
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adr-0017-service-state-management-desired-vs-actual-state" class="md-skip">
+        <a href="#adr-0030-logging-cadence-stats-extensibility" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ADR-0017: Service State Management
+              ADR-0030: Logging Cadence &amp; Stats Extensibility
             
           </span>
         </div>
@@ -1053,20 +1049,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -1087,7 +1081,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1550,37 +1544,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    ADR-0017: Service State Management
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1596,131 +1563,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-context-problem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Context &amp; Problem
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-decision" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Decision
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Decision">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#desired-state-database" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Desired State → Database
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#actual-state-redis-v020" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Actual State → Redis (v0.2.0)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unified-heartbeat-all-services-including-recorder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unified Heartbeat — All Services, Including Recorder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#control-via-db-reconcile-nudge-state-reconciliation-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Control via DB + Reconcile-Nudge (State Reconciliation Pattern)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monitoring-distributed-not-centralized" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Monitoring: Distributed, Not Centralized
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-options-considered" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Options Considered
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-consequences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Consequences
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2785,10 +2627,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#desired-state-database" class="md-nav__link">
+  <a href="#21-composition-with-twophasewindow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Desired State → Database
+        2.1. Composition with TwoPhaseWindow
       
     </span>
   </a>
@@ -2796,10 +2638,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#actual-state-redis-v020" class="md-nav__link">
+  <a href="#22-the-structured-logging-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Actual State → Redis (v0.2.0)
+        2.2. The Structured Logging Contract
       
     </span>
   </a>
@@ -2807,32 +2649,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#unified-heartbeat-all-services-including-recorder" class="md-nav__link">
+  <a href="#23-configuration-tier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unified Heartbeat — All Services, Including Recorder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#control-via-db-reconcile-nudge-state-reconciliation-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Control via DB + Reconcile-Nudge (State Reconciliation Pattern)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monitoring-distributed-not-centralized" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Monitoring: Distributed, Not Centralized
+        2.3. Configuration Tier
       
     </span>
   </a>
@@ -2886,94 +2706,44 @@
   
 
 
-<h1 id="adr-0017-service-state-management-desired-vs-actual-state">ADR-0017: Service State Management — Desired vs. Actual State<a class="headerlink" href="#adr-0017-service-state-management-desired-vs-actual-state" title="Permanent link">&para;</a></h1>
+<h1 id="adr-0030-logging-cadence-stats-extensibility">ADR-0030: Logging Cadence &amp; Stats Extensibility<a class="headerlink" href="#adr-0030-logging-cadence-stats-extensibility" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-02-18 • <strong>Updated:</strong> 2026-02-21</p>
+<p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-04-06</p>
 </blockquote>
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
-<p>The <code>managed_services</code> table tracks Tier-2 singleton containers whose lifecycle is orchestrated by the Controller via Podman. Without a clear split between desired and actual state, the system conflates configuration with observation, making it impossible to detect drift (e.g., a service <em>should</em> be active but has crashed).</p>
-<p>Additionally, the Web-Interface needs real-time visibility into service health. Polling the database for runtime state introduces latency, couples the UI to the DB, and forces every service to write frequent status updates into a transactional store — a poor fit for ephemeral heartbeat data.</p>
+<p>Silvasonic's backend consists of a Controller and various Tier-2 or Background Workers (Recorder, UploadWorker, Indexer, BirdNET). These services operate continuously and process thousands of discrete events over time (audio files, log lines, uploads).</p>
+<p>Currently, logging behavior is fragmented and prone to spam:
+- <code>ControllerStats</code>, <code>RecordingStats</code> and <code>UploadStats</code> implemented a "Two-Phase" logging pattern (5 minutes of verbose startup logging followed by periodic 5-minute summaries). While effective in reducing log-spam (Loki/Promtail), this lead to duplicated boilerplate for time measurement (<code>time.monotonic()</code>) and edge-case transitions.
+- Conversely, modules like the <code>Indexer</code>, <code>Janitor</code>, and <code>BirdNET</code> log indiscriminately <em>per action</em>, flooding the SIEM view and slowing down log rotation.</p>
+<p>A forced abstract base class (<code>ABC</code>) to handle stats tracking across the board was considered but discarded due to the risk of "False Abstraction". The tracker instances operate under vastly different concurrency assumptions (multi-threaded GIL locks in <code>RecordingStats</code>, asynchronous loop snapshots in <code>ControllerStats</code>, lock-free async runs in <code>UploadStats</code>).</p>
 <h2 id="2-decision">2. Decision<a class="headerlink" href="#2-decision" title="Permanent link">&para;</a></h2>
-<p><strong>We chose:</strong> A strict separation of Desired State (database) and Actual State (Redis), with a <strong>unified heartbeat pattern</strong> for all services.</p>
-<p><strong>Reasoning:</strong></p>
-<h3 id="desired-state-database">Desired State → Database<a class="headerlink" href="#desired-state-database" title="Permanent link">&para;</a></h3>
-<p>Desired state is persisted in the <strong>database</strong>, not in Redis. The Controller reads it on every reconciliation cycle to determine what <em>should</em> be running. There are two sources of desired state, depending on the service type:</p>
-<ul>
-<li><strong>Tier-2 singletons</strong> (BirdNET, BatDetect, Weather): <code>managed_services</code> table — see <a href="../0029-system-worker-orchestration/">ADR-0029</a> for schema and rationale.</li>
-<li><strong>Recorder</strong> (multi-instance): Derived from <code>devices</code> + <code>microphone_profiles</code> (one Recorder per enrolled device).</li>
-</ul>
-<p>Tier 1 services (Processor, Controller, Web-Interface) are managed externally via Compose and are <strong>not</strong> tracked in any desired-state table.</p>
-<blockquote>
-<p><strong>Note:</strong> Upload desired state is managed via <code>system_config</code> key <code>"cloud_sync"</code> (<code>CloudSyncSettings.enabled</code>), not via a separate domain table.</p>
-</blockquote>
-<h3 id="actual-state-redis-v020">Actual State → Redis (v0.2.0)<a class="headerlink" href="#actual-state-redis-v020" title="Permanent link">&para;</a></h3>
-<p>Runtime health and activity is <strong>ephemeral</strong> and stored in Redis via two complementary mechanisms:</p>
-<ol>
-<li><strong><code>SET silvasonic:status:&lt;instance_id&gt;</code></strong> with TTL — current status snapshot, readable anytime (TTL: see <code>DEFAULT_HEARTBEAT_TTL_S</code> in <code>heartbeat.py</code>).</li>
-<li><strong><code>PUBLISH silvasonic:status</code></strong> — live updates for subscribers (Web-Interface).</li>
-</ol>
-<p>This is the <strong>Read + Subscribe Pattern:</strong> The Web-Interface reads all <code>silvasonic:status:*</code> keys on page load for the initial state, then subscribes to <code>silvasonic:status</code> for live updates. No missed heartbeats, no polling.</p>
-<h3 id="unified-heartbeat-all-services-including-recorder">Unified Heartbeat — All Services, Including Recorder<a class="headerlink" href="#unified-heartbeat-all-services-including-recorder" title="Permanent link">&para;</a></h3>
-<p><strong>Every</strong> Python service publishes its own heartbeat to Redis via the <code>SilvaService</code> base class (see <a href="../0019-unified-service-infrastructure/">ADR-0019</a>). This includes the Recorder.</p>
-<ul>
-<li>The heartbeat runs in an isolated <code>asyncio.Task</code>, completely decoupled from the service's core logic.</li>
-<li><code>PUBLISH</code> and <code>SET</code> operations are fire-and-forget with a 50ms timeout.</li>
-<li>Any Redis failure is silently caught — the service continues without interruption.</li>
-<li>The recording loop has <strong>zero coupling</strong> to the heartbeat task.</li>
-</ul>
-<blockquote>
-<p>[!IMPORTANT]
-Redis is as stable as TimescaleDB on this hardware (same host, NVMe, no network). The fire-and-forget pattern is not motivated by distrust of Redis — it reflects the principle that a service's core function should never be blocked by a non-essential operation.</p>
-</blockquote>
-<h3 id="control-via-db-reconcile-nudge-state-reconciliation-pattern">Control via DB + Reconcile-Nudge (State Reconciliation Pattern)<a class="headerlink" href="#control-via-db-reconcile-nudge-state-reconciliation-pattern" title="Permanent link">&para;</a></h3>
-<p>Control flows through the <strong>Database</strong> (desired state), not through HTTP API or Redis commands:</p>
-<ol>
-<li>The Web-Interface writes the desired state to the database (e.g., <code>enabled=false</code> in <code>managed_services</code>).</li>
-<li>A simple <code>PUBLISH silvasonic:nudge "reconcile"</code> wakes the Controller immediately (instead of waiting for the reconciliation timer).</li>
-<li>The Controller reads the DB, compares desired vs. actual state, and acts via <code>podman-py</code>.</li>
-</ol>
-<p>This follows the <strong>Kubernetes Operator Pattern</strong> (State Reconciliation) adapted for a single-node system:</p>
-<ul>
-<li><strong>DB is the Single Source of Truth</strong> — commands are never lost. If the Controller restarts, it reads the DB and applies the desired state automatically.</li>
-<li><strong>The Controller has no HTTP API</strong> (beyond the <code>/healthy</code> health endpoint). It is a pure <strong>Listener + Actor</strong>: subscribe to nudge, read DB, act via Podman.</li>
-<li><strong>Recorder services</strong> are fully immutable — they do not process runtime commands and are stopped and restarted with new configuration by the Controller.  Background workers (BirdNET, Processor) support runtime tuning of domain parameters (thresholds, sensitivity) via DB Snapshot Refresh at safe loop boundaries — see <a href="../0031-runtime-tuning-snapshot-refresh/">ADR-0031</a>.  Operational parameters (threads, model path) still require a restart.</li>
-</ul>
-<p>For details see <a href="../../services/controller/">controller.md</a> and <a href="../../arch/messaging_patterns/">Messaging Patterns</a>.</p>
-<h3 id="monitoring-distributed-not-centralized">Monitoring: Distributed, Not Centralized<a class="headerlink" href="#monitoring-distributed-not-centralized" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Each Service</strong> → Publishes its own heartbeat to Redis (via <code>SilvaService</code>).</li>
-<li><strong>Controller</strong> → Additionally publishes Tier 2 container status based on its <code>podman-py</code> reconciliation loop (for containers that may not have Redis connectivity yet during startup).</li>
-<li><strong>Web-Interface</strong> → Subscribes to Redis, displays live dashboard.</li>
-<li><strong>Podman</strong> → Restart policy (<code>on-failure</code>) as the last safety net.</li>
-</ul>
-<p>A dedicated Monitor service was rejected as over-engineering for a single-node edge device. External alerting (e-mail on failure) can be a future Web-Interface feature.</p>
+<p>We mandate a unified <strong>Two-Phase Logging Pattern</strong> ("Logging Contract") via <strong>Composition</strong> instead of inheritance, to eliminate log spam while acknowledging the diverse concurrency models. This contract becomes an integral extension of the <code>SilvaService</code> blueprint.</p>
+<h3 id="21-composition-with-twophasewindow">2.1. Composition with <code>TwoPhaseWindow</code><a class="headerlink" href="#21-composition-with-twophasewindow" title="Permanent link">&para;</a></h3>
+<p>We introduce <code>packages/core/src/silvasonic/core/logging/two_phase.py</code> (<code>TwoPhaseWindow</code>).
+This helper strictly encapsulates the math of time comparisons (<code>time.monotonic()</code>) and phase transitions (evaluating whether a system is in startup phase or steady state). It performs no logging, maintains no thread-locks, and has no domain-metrics counters. Services instantiate it to safely trigger their domain-specific logs under their required concurrency model.</p>
+<h3 id="22-the-structured-logging-contract">2.2. The Structured Logging Contract<a class="headerlink" href="#22-the-structured-logging-contract" title="Permanent link">&para;</a></h3>
+<p>When logging summary metrics in structured format (<code>structlog</code>), services MUST adhere to the following event names to allow uniform Promtail/Loki dashboarding:
+- <code>&lt;service/module&gt;.startup_phase_complete</code>: Logs exactly once when transitioning to steady state.
+- <code>&lt;service/module&gt;.summary</code>: Emitted periodically during steady state.
+- <code>&lt;service/module&gt;.final_summary</code>: Emitted when the service gracefully shuts down.</p>
+<p>Additionally, every summary JSON payload MUST include at the top level:
+- <code>uptime_s</code>: (float) Precision time since instantiation.
+- <code>interval_s</code>: (float) Precision time since the last summary.</p>
+<h3 id="23-configuration-tier">2.3. Configuration Tier<a class="headerlink" href="#23-configuration-tier" title="Permanent link">&para;</a></h3>
+<p>Following <strong>ADR-0023</strong>, the intervals for logging cadence are considered <strong>Operational Infrastructure</strong> state, not Business Domain state.
+- Fallback defaults (<code>DEFAULT_LOG_STARTUP_S</code>, <code>DEFAULT_LOG_SUMMARY_INTERVAL_S</code>) reside in <code>packages/core/src/silvasonic/core/logging/constants.py</code>.
+- Service-specific configuration continues to use Environment overrides (<code>.env</code> -&gt; <code>BaseSettings</code>, e.g., <code>SILVASONIC_PROCESSOR_LOG_STARTUP_S</code>).
+- There is no central database configuration table for logging rhythms.</p>
 <h2 id="3-options-considered">3. Options Considered<a class="headerlink" href="#3-options-considered" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Database-only (status + last_seen column):</strong> Rejected. Requires DB polling for UI, adds write load for heartbeats, and mixes ephemeral runtime data with persistent configuration.</li>
-<li><strong>Redis-only (remove managed_services):</strong> Rejected. Desired state must survive Redis restarts. DB is the right home for configuration.</li>
-<li><strong>Separate Monitor service:</strong> Rejected. Adds complexity without proportional value on a single-node device.</li>
-<li><strong>Redis Streams for lifecycle/control/audit:</strong> Rejected. Lifecycle events are derivable from heartbeats, control flows through DB + Nudge, and business events (recording finished, upload completed) are already tracked in the DB. Four separate channels add complexity without proportional value — one Pub/Sub channel + key-value pattern + nudge covers all needs.</li>
-<li><strong>Controller HTTP API for control commands:</strong> Rejected. Imperative commands ("stop now!") can be lost if the Controller restarts. The State Reconciliation pattern (DB write + nudge) is more robust: desired state is always persisted, and reconciliation is idempotent.</li>
-<li><strong>Recorder without Redis:</strong> Rejected. Creates a non-uniform pattern where the Controller must proxy Recorder status. With fire-and-forget heartbeats, the Recorder's core function is completely unaffected, and the Web-Interface gets direct, real-time status from all services.</li>
+<li><strong>Abstract Base Class (<code>TwoPhaseTracker</code>)</strong>: Rejected. Would force identical thread-locking paradigms onto all services, creating overhead for lock-free services and preventing <code>async</code> snapshot injection for services like the Controller.</li>
+<li><strong><code>system_config</code> Database Table</strong>: Rejected. Dynamically changeable JSON intervals for system logging violate the immutable-container directive and overcomplicate the database settings tier. Overrides belong in <code>.env</code>.</li>
+<li><strong>Ignore spammy services:</strong> Rejected. Technical debt in the logging sphere causes real-world pain for deployments over cellular/LTE connections.</li>
 </ul>
 <h2 id="4-consequences">4. Consequences<a class="headerlink" href="#4-consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Positive:</strong><ul>
-<li>Clear semantic split: DB = "what should be", Redis = "what is".</li>
-<li><strong>Unified pattern:</strong> Every service uses the same <code>SilvaService</code> heartbeat — no special cases.</li>
-<li>Web-Interface gets real-time status from day one (v0.9.0) via Read + Subscribe — no DB polling, no missed heartbeats.</li>
-<li>No separate Monitor service — fewer containers, less complexity.</li>
-<li><code>managed_services</code> table provides a clean, strictly-typed schema for Tier-2 lifecycle orchestration.</li>
-<li>Minimal Redis footprint: one Pub/Sub channel + N keys with TTL. No Streams, no Consumer Groups.</li>
-</ul>
-</li>
-<li><strong>Negative:</strong><ul>
-<li>Redis becomes a dependency for live status visibility (but not for recording, analysis, or data integrity).</li>
-<li>If Redis is down, the Web-Interface loses real-time status. Desired state from DB remains accessible.</li>
-<li>No persistent history of runtime state (heartbeats are ephemeral). If needed later, an audit trail can be added to the DB.</li>
-<li><code>redis-py</code> becomes a dependency for all services (including Recorder). The library is ~60 KB pure Python with zero C dependencies.</li>
-</ul>
-</li>
+<li><strong>Positive:</strong> Massive reduction in log spam for remote edge devices. Unified SIEM parsing via <code>interval_s</code> and <code>uptime_s</code> metadata. Clear decoupled API boundaries for future services (e.g. BatDetect, Weather worker) without locking constraints.</li>
+<li><strong>Negative:</strong> Existing services (BirdNET, Indexer) require immediate refactoring to align with this standard, shifting their logs from per-action prints to bundled counters.</li>
 </ul>
 
 

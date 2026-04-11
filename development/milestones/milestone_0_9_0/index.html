@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2194,15 +2138,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#system_services-table-seeding-reconciliation-from-v050-phase-5" class="md-nav__link">
+  <a href="#managed_services-table-seeding-reconciliation-from-v050-phase-5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        system_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)
+        managed_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="system_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)">
+    <nav class="md-nav" aria-label="managed_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3010,15 +2954,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#system_services-table-seeding-reconciliation-from-v050-phase-5" class="md-nav__link">
+  <a href="#managed_services-table-seeding-reconciliation-from-v050-phase-5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        system_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)
+        managed_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="system_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)">
+    <nav class="md-nav" aria-label="managed_services Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3239,7 +3183,7 @@ ECharts, and WaveSurfer.js (ADR-0003, ADR-0021).</p>
 <h3 id="key-capabilities">Key Capabilities<a class="headerlink" href="#key-capabilities" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Real-time service status via Redis Read+Subscribe pattern (ADR-0017)</li>
-<li>Service control: enable/disable services via <code>system_services</code> table + nudge</li>
+<li>Service control: enable/disable Tier-2 singletons via <code>managed_services</code> table + nudge</li>
 <li>Configuration editor for <code>system_config</code> values</li>
 <li>Recording browser with audio playback (WaveSurfer.js)</li>
 <li>Detection timeline with species visualizations (ECharts)</li>
@@ -3273,40 +3217,39 @@ ECharts, and WaveSurfer.js (ADR-0003, ADR-0021).</p>
 </table>
 <hr />
 <h2 id="deferred-items-from-earlier-milestones">Deferred Items from Earlier Milestones<a class="headerlink" href="#deferred-items-from-earlier-milestones" title="Permanent link">&para;</a></h2>
-<h3 id="system_services-table-seeding-reconciliation-from-v050-phase-5"><code>system_services</code> Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)<a class="headerlink" href="#system_services-table-seeding-reconciliation-from-v050-phase-5" title="Permanent link">&para;</a></h3>
+<h3 id="managed_services-table-seeding-reconciliation-from-v050-phase-5"><code>managed_services</code> Table Seeding &amp; Reconciliation (from v0.5.0 Phase 5)<a class="headerlink" href="#managed_services-table-seeding-reconciliation-from-v050-phase-5" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><strong>Context:</strong> v0.5.0 originally planned seeding <code>processor</code> into the
-<code>system_services</code> table. This was deferred because:</p>
+<p><strong>Context:</strong> v0.5.0 originally planned seeding <code>processor</code> into a
+service registry table. This was deferred because:</p>
 <ol>
-<li>The <code>system_services</code> table exists (DB schema + ORM model) but has
-   <strong>zero consumers</strong> — no service reads from or writes to it.</li>
+<li>The <code>managed_services</code> table did not yet exist — lifecycle toggles were
+   temporarily stored as <code>enabled: bool</code> inside <code>system_config</code> JSONB (ADR-0029).</li>
 <li>The Controller Reconciler derives desired state from <code>devices</code> +
    <code>microphone_profiles</code> (for Recorders) and <code>compose.yml</code> dependencies
    (for Tier 1 services like Processor).</li>
 <li>Seeding rows without a consumer is dead code.</li>
 </ol>
 <p><strong>v0.9.0 is the right milestone</strong> because the Web-Interface is the first
-consumer: it reads <code>system_services.enabled</code> to show toggle switches, and
-writes <code>enabled=false</code> + publishes a nudge to disable services (ADR-0017).</p>
+consumer: it reads <code>managed_services.enabled</code> to show toggle switches, and
+writes <code>enabled=false</code> + publishes a nudge to disable Tier-2 services (ADR-0017).</p>
+<p><strong>Scope:</strong> <code>managed_services</code> tracks exclusively Tier-2 singletons (BirdNET,
+BatDetect, Weather). Tier-1 services (Processor, Controller) are managed
+externally via Compose and are NOT tracked in this table.</p>
 <p>See: <a href="../../../adr/0017-service-state-management/">ADR-0017</a> §2 "Desired State → Database"</p>
 </blockquote>
 <h4 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h4>
 <ul>
-<li>[ ] Implement <code>SystemServiceSeeder</code> in Controller seeder:</li>
-<li>Seed Tier 1 services: <code>controller</code>, <code>processor</code> (<code>enabled=true</code>, <code>status=active</code>)</li>
-<li>Seed Tier 2 singletons when added: <code>birdnet</code> (v0.8.0), <code>weather</code> (v1.2.0)</li>
-<li>Multi-instance Tier 2 (Recorder, Uploader) derive state from domain tables — NOT seeded here</li>
-<li>[ ] Extend Controller Reconciler to read <code>system_services.enabled</code> for Tier 1 services:</li>
-<li>If <code>enabled=false</code> for Processor → Controller stops the Processor container</li>
-<li>If <code>enabled=true</code> → Controller ensures it is running</li>
-<li>[ ] Web-Interface: render <code>system_services</code> rows as toggle switches in the admin panel</li>
-<li>[ ] Web-Interface: toggle writes <code>enabled</code> to DB + <code>PUBLISH silvasonic:nudge "reconcile"</code></li>
+<li>[ ] Implement <code>ManagedServiceSeeder</code> in Controller seeder (if not already done in v0.8.0):</li>
+<li>Seed Tier 2 singletons: <code>birdnet</code> (<code>enabled=true</code>), later <code>batdetect</code>, <code>weather</code></li>
+<li>Tier 1 services and multi-instance Tier 2 (Recorder) are NOT seeded here</li>
+<li>[ ] Web-Interface: render <code>managed_services</code> rows as toggle switches in the admin panel</li>
+<li>[ ] Web-Interface: toggle writes <code>enabled</code> to <code>managed_services</code> + <code>PUBLISH silvasonic:nudge "reconcile"</code></li>
 </ul>
 <h4 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h4>
 <ul>
-<li>[ ] Unit: <code>test_system_service_seeder</code> — seeds <code>controller</code> + <code>processor</code> rows</li>
-<li>[ ] Unit: <code>test_reconciler_reads_system_services</code> — <code>enabled=false</code> → stops container</li>
-<li>[ ] Integration: <code>test_controller_seeds_system_services</code> — fresh DB contains expected rows</li>
+<li>[ ] Unit: <code>test_managed_service_seeder</code> — seeds expected Tier-2 rows</li>
+<li>[ ] Unit: <code>test_reconciler_reads_managed_services</code> — <code>enabled=false</code> → stops container</li>
+<li>[ ] Integration: <code>test_controller_seeds_managed_services</code> — fresh DB contains expected rows</li>
 <li>[ ] E2E: <code>test_toggle_service_via_ui</code> — Playwright: click toggle → service stops → heartbeat disappears</li>
 </ul>
 <hr />
@@ -3329,7 +3272,7 @@ writes <code>enabled=false</code> + publishes a nudge to disable services (ADR-0
 <li>[ ] Dashboard page: service cards with live health status (Redis heartbeats)</li>
 <li>[ ] System overview: disk usage, CPU, memory (from heartbeat <code>meta.resources</code>)</li>
 <li>[ ] Recording statistics: total indexed, pending analysis, storage used</li>
-<li>[ ] Service control toggles (requires <code>system_services</code> seeding above)</li>
+<li>[ ] Service control toggles (requires <code>managed_services</code> seeding above)</li>
 </ul>
 <hr />
 <h2 id="phase-3-configuration-settings">Phase 3: Configuration &amp; Settings<a class="headerlink" href="#phase-3-configuration-settings" title="Permanent link">&para;</a></h2>

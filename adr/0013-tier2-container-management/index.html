@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1125,34 +1097,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2993,7 +2937,7 @@
 <h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
 <p>The Controller (Tier 1) must dynamically manage <strong>Tier 2 services</strong> (Recorder, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:</p>
 <ul>
-<li><strong>Immutable Tier 2 containers:</strong> Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (BirdNET, etc.) may access the database.</li>
+<li><strong>Hybrid Tier 2 containers:</strong> Core infrastructure configuration (e.g. paths, sockets) is injected via environment variables at launch time (Profile Injection). To support a responsive "Mischpult" UX, services like BirdNET and the Processor use a hybrid pattern, allowing dynamic reloading of ML thresholds and parameters at runtime without a container restart. Only the Recorder remains strictly immutable with no database access.</li>
 <li><strong>Multi-instance support:</strong> Multiple Recorder instances may run concurrently (one per USB microphone).</li>
 <li><strong>Pre-built images:</strong> All images are built before deployment (<code>just build</code>). The Controller never builds images at runtime.</li>
 <li><strong>Container-in-Container (DooD):</strong> The Controller itself runs in a container and manages sibling containers on the host engine via the host's Podman socket (Docker-out-of-Docker pattern).</li>

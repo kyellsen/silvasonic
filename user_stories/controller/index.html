@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3890,7 +3834,7 @@
 <h3 id="acceptance-criteria_2">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[x] The Controller reacts to change signals and immediately reads the desired state from the database.</li>
-<li>[x] Desired state from <code>system_services</code> and <code>devices</code> is correctly evaluated.</li>
+<li>[x] Desired state from <code>managed_services</code> (Tier-2 singletons) and <code>devices</code> (Recorders) is correctly evaluated.</li>
 <li>[x] Services are started or stopped based on the <code>enabled</code> flag.</li>
 <li>[x] On configuration change: stop service and restart with new settings.</li>
 <li>[x] If a signal is lost (e.g., Controller restart), the reconciliation timer catches the change as a fallback.</li>

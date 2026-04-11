@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3533,7 +3477,7 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>The BirdNET service is an immutable Tier 2 container responsible for performing on-device inference for avian species classification. It processes recorded audio segments and saves detections into the database.</p>
+<p>The BirdNET service is a hybrid Tier 2 container responsible for performing on-device inference for avian species classification. Domain parameters (confidence, sensitivity, location) are reloaded at safe loop boundaries via Snapshot Refresh (<a href="../../../adr/0031-runtime-tuning-snapshot-refresh/">ADR-0031</a>); operational parameters (threads, model path) remain immutable. It processes recorded audio segments and saves detections into the database.</p>
 <h3 id="key-capabilities">Key Capabilities<a class="headerlink" href="#key-capabilities" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Pulls unanalyzed <code>processed</code> segments via the database (Worker Pull pattern)</li>
@@ -3559,8 +3503,8 @@
 <h3 id="architecture-decision-completed">Architecture Decision: Completed ✅<a class="headerlink" href="#architecture-decision-completed" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p>[!NOTE]
-<strong>Spike complete.</strong> Native <code>tflite_runtime</code> is the chosen inference engine.
-See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a href="../../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a>.</p>
+<strong>Spike complete.</strong> Native <code>ai-edge-litert</code> is the chosen inference engine on pure Python 3.13.
+See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a>.</p>
 </blockquote>
 <h4 id="key-findings-spike-v3">Key Findings (Spike v3)<a class="headerlink" href="#key-findings-spike-v3" title="Permanent link">&para;</a></h4>
 <ul>
@@ -3568,7 +3512,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <li><strong>Initialization:</strong> Native has much lower measured initialization overhead.</li>
 <li><strong>Memory Footprint:</strong> Native stays flat at ~201 MB RSS. <code>birdnetlib</code> exhibits higher RSS growth across sequential runs.</li>
 <li><strong>Identical results:</strong> Native produces identical outputs on the evaluated fixtures.</li>
-<li><strong>Container:</strong> <code>python:3.11-slim-bookworm</code> required (tflite-runtime lacks aarch64 wheels for Python ≥ 3.12)</li>
+<li><strong>Container:</strong> <code>python:3.13-slim-bookworm</code> (standardized baseline, <code>ai-edge-litert</code> provides cp313 wheels)</li>
 <li><strong>Custom code surface:</strong> ~60 lines (sigmoid, labels, meta-model, windowing, numpy mask filtering)</li>
 </ul>
 <h3 id="existing-infrastructure-reuse-do-not-rebuild">Existing Infrastructure (Reuse — Do NOT Rebuild)<a class="headerlink" href="#existing-infrastructure-reuse-do-not-rebuild" title="Permanent link">&para;</a></h3>
@@ -3585,9 +3529,9 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <tbody>
 <tr>
 <td><code>BirdnetSettings</code> Pydantic schema</td>
-<td><code>packages/core/src/silvasonic/core/config_schemas.py:82</code></td>
+<td><code>packages/core/src/silvasonic/core/schemas/system_config.py:82</code></td>
 <td>Has <code>confidence_threshold</code> only</td>
-<td><strong>Extend</strong> with <code>enabled</code>, <code>clip_padding_seconds</code>, <code>overlap</code>, <code>sensitivity</code>, <code>threads</code>, <code>processing_order</code></td>
+<td><strong>Extend</strong> with <code>clip_padding_seconds</code>, <code>overlap</code>, <code>sensitivity</code>, <code>threads</code>, <code>processing_order</code> (lifecycle toggle <code>enabled</code> is in <code>managed_services</code>, NOT here)</td>
 </tr>
 <tr>
 <td><code>defaults.yml</code> (birdnet section)</td>
@@ -3621,9 +3565,9 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 </tr>
 <tr>
 <td><code>_CLEANUP_TABLES</code></td>
-<td><code>tests/integration/conftest.py:21-27</code></td>
-<td>Missing <code>detections</code></td>
-<td><strong>Add</strong> <code>detections</code> before <code>recordings</code> (FK order)</td>
+<td><code>tests/integration/conftest.py</code></td>
+<td>Removed</td>
+<td><strong>Replaced</strong> with dynamic <code>clean_database</code> from <code>test-utils</code></td>
 </tr>
 <tr>
 <td>Existing <code>BirdnetSettings</code> unit test</td>
@@ -3653,7 +3597,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <li>[x] Create a temporary script in <code>scripts/spikes/birdnet/</code> testing 10-second audio chunks, processing multiple chunks in succession.</li>
 <li>[x] Benchmark memory footprint AND initialization time of <code>birdnetlib</code> (community wrapper) vs. bare-metal <code>tflite_runtime.Interpreter</code>.</li>
 <li>[x] Optimize post-processing: use numpy boolean mask instead of Python for-loop over all 6,522 species scores (25× faster).</li>
-<li>[x] Document findings in <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> (Inference Engine) and <a href="../../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a> (Python 3.11 for ML Workers).</li>
+<li>[x] Document findings in <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> (Inference Engine).</li>
 </ul>
 <h4 id="implementation-insights-from-spike-for-phase-3">Implementation Insights from Spike (for Phase 3)<a class="headerlink" href="#implementation-insights-from-spike-for-phase-3" title="Permanent link">&para;</a></h4>
 <ul>
@@ -3670,19 +3614,20 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <strong>User Stories:</strong> Preparation for US-B01, US-B03, US-B04.</p>
 <h3 id="tasks_1">Tasks<a class="headerlink" href="#tasks_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Scaffold <code>services/birdnet/</code> (directories, <code>pyproject.toml</code>, <code>.env</code> mapping).</li>
-<li>[ ] <strong>Extend</strong> existing <code>BirdnetSettings</code> in <code>packages/core/src/silvasonic/core/config_schemas.py</code> with new fields (<code>enabled: bool = True</code>, <code>clip_padding_seconds: float = 3.0</code>, <code>overlap: float = 0.0</code>, <code>sensitivity: float = 1.0</code>, <code>threads: int = 1</code>, <code>processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"</code>).</li>
-<li>[ ] <strong>Extend</strong> existing <code>birdnet</code> section in <code>services/controller/config/defaults.yml</code> to match the updated schema.</li>
-<li>[ ] <strong>Add</strong> <code>clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)</code> to the existing <code>Detection</code> model (<code>packages/core/src/silvasonic/core/database/models/detections.py</code>).</li>
-<li>[ ] <strong>Create</strong> a new Pydantic schema <code>BirdnetDetectionDetails</code> in <code>packages/core/src/silvasonic/core/schemas/detections.py</code> to enforce the data contract for the JSONB <code>details</code> field (must include <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filter_active</code>, <code>lat</code>, <code>lon</code>, <code>week</code>).</li>
-<li>[ ] <strong>Add</strong> <code>birdnet</code> entry to <code>scripts/workspace_dirs.txt</code>.</li>
-<li>[ ] Create <code>Containerfile</code> with <code>python:3.11-slim-bookworm</code> base image (per <a href="../../../adr/0028-python-version-flexibility-ml-workers/">ADR-0028</a>) including <code>tflite-runtime</code>, <code>numpy</code>, <code>soundfile</code> dependencies.</li>
-<li>[ ] Initialize <code>SilvaService</code> base class. Read <code>system_config</code> on startup for <code>BirdnetSettings</code>, <code>SystemSettings</code> (latitude, longitude) — use <code>SystemConfig</code> model.</li>
+<li>[x] Scaffold <code>services/birdnet/</code> (directories, <code>pyproject.toml</code>, <code>.env</code> mapping).</li>
+<li>[x] <strong>Extend</strong> existing <code>BirdnetSettings</code> in <code>packages/core/src/silvasonic/core/schemas/system_config.py</code> with new fields (<code>clip_padding_seconds: float = 3.0</code>, <code>overlap: float = 0.0</code>, <code>sensitivity: float = 1.0</code>, <code>threads: int = 1</code>, <code>processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"</code>). Note: <code>enabled</code> is NOT added here — it lives in the <code>managed_services</code> table (ADR-0029).</li>
+<li>[x] <strong>Create</strong> generic DB-fallback and polling configuration via <code>BirdnetEnvSettings</code> (<code>SILVASONIC_POLLING_INTERVAL_S</code>, <code>SILVASONIC_DB_RETRY_INTERVAL_S</code>) according to the centralized worker resilience pattern (ADR-0030).</li>
+<li>[x] <strong>Extend</strong> existing <code>birdnet</code> section in <code>services/controller/config/defaults.yml</code> to match the updated schema.</li>
+<li>[x] <strong>Add</strong> <code>clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)</code> to the existing <code>Detection</code> model (<code>packages/core/src/silvasonic/core/database/models/detections.py</code>).</li>
+<li>[x] <strong>Create</strong> a new Pydantic schema <code>BirdnetDetectionDetails</code> in <code>packages/core/src/silvasonic/core/schemas/detections.py</code> to enforce the data contract for the JSONB <code>details</code> field (must include <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filter_active</code>, <code>lat</code>, <code>lon</code>, <code>week</code>).</li>
+<li>[x] <strong>Add</strong> <code>birdnet</code> entry to <code>scripts/workspace_dirs.txt</code>.</li>
+<li>[x] Create <code>Containerfile</code> with standard <code>python:3.13-slim-bookworm</code> base image including <code>ai-edge-litert</code>, <code>numpy</code>, <code>soundfile</code> dependencies.</li>
+<li>[x] Initialize <code>SilvaService</code> base class. Read <code>system_config</code> on startup for <code>BirdnetSettings</code>, <code>SystemSettings</code> (latitude, longitude) — use <code>SystemConfig</code> model.</li>
 </ul>
 <h3 id="testing-phase-2">Testing (Phase 2)<a class="headerlink" href="#testing-phase-2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — <code>packages/core/tests/unit/test_service.py</code>: <strong>Extend</strong> existing <code>test_birdnet_settings_defaults</code>.</li>
-<li>[ ] <strong><code>smoke</code></strong> — <code>tests/smoke/conftest.py</code> + <code>test_health.py</code>: Add <code>birdnet_container</code> fixture and <code>test_birdnet_healthy</code> smoke test.</li>
+<li>[x] <strong><code>unit</code></strong> — <code>packages/core/tests/unit/test_service.py</code>: <strong>Extend</strong> existing <code>test_birdnet_settings_defaults</code>.</li>
+<li>[x] <strong><code>smoke</code></strong> — <code>tests/smoke/conftest.py</code> + <code>test_health.py</code>: Add <code>birdnet_container</code> fixture and <code>test_birdnet_healthy</code> smoke test.</li>
 </ul>
 <hr />
 <h2 id="phase-3-inference-loop-worker-pull-orchestration-commit-3">Phase 3: Inference Loop &amp; Worker Pull Orchestration (Commit 3)<a class="headerlink" href="#phase-3-inference-loop-worker-pull-orchestration-commit-3" title="Permanent link">&para;</a></h2>
@@ -3690,35 +3635,37 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <strong>User Stories:</strong> US-B01 (Automatic detection), US-B03 (Location logic), US-B04 (Confidence threshold).</p>
 <h3 id="tasks_2">Tasks<a class="headerlink" href="#tasks_2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Implement Worker Pull pattern (<code>SELECT ... FOR UPDATE SKIP LOCKED</code> on <code>recordings</code>). Respect dynamic <code>processing_order</code> setting for <code>ORDER BY time</code> ASC/DESC. Update <code>recordings.analysis_state</code> JSONB with <code>{"birdnet": "done"}</code> after processing.</li>
-<li>[ ] Implement the inference engine logic determined by the Phase 1 Spike.</li>
-<li>[ ] Map DB runtime config (latitude, longitude from <code>SystemSettings</code>; <code>min_conf</code>, <code>sensitivity</code>, <code>overlap</code> from <code>BirdnetSettings</code>) to inference parameters. Derive <code>week</code> automatically.</li>
-<li>[ ] Implement explicit memory management: e.g. <code>del audio_chunk</code> after inference, periodic <code>gc.collect()</code>.</li>
-<li>[ ] Save results using the existing <code>Detection</code> ORM model — set <code>worker='birdnet'</code>. Use the raw English string provided by the model for <code>label</code> and <code>common_name</code> temporarily. <strong>Must populate <code>details</code> JSONB</strong> with inference context (e.g., <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filtered</code>).</li>
+<li>[x] Implement Worker Pull pattern (<code>SELECT ... FOR UPDATE SKIP LOCKED</code> on <code>recordings</code>). Respect dynamic <code>processing_order</code> setting for <code>ORDER BY time</code> ASC/DESC. Update <code>recordings.analysis_state</code> JSONB with <code>{"birdnet": "done"}</code> after processing.</li>
+<li>[x] Implement centralized Exception catching around the Worker Pull loop to sleep for <code>DB_RETRY_INTERVAL_S</code> on transient database issues (ADR-0030).</li>
+<li>[x] Implement the inference engine logic determined by the Phase 1 Spike.</li>
+<li>[x] Map DB runtime config (latitude, longitude from <code>SystemSettings</code>; <code>min_conf</code>, <code>sensitivity</code>, <code>overlap</code> from <code>BirdnetSettings</code>) to inference parameters. Derive <code>week</code> automatically.</li>
+<li>[x] Implement explicit memory management: e.g. <code>del audio_chunk</code> after inference, periodic <code>gc.collect()</code>.</li>
+<li>[x] Implement strictly standard multi-phase logging via <code>BirdnetStats</code> and <code>TwoPhaseWindow</code> class.</li>
+<li>[x] Save results using the existing <code>Detection</code> ORM model — set <code>worker='birdnet'</code>. Use the raw English string provided by the model for <code>label</code> and <code>common_name</code> temporarily. <strong>Must populate <code>details</code> JSONB</strong> with inference context (e.g., <code>model_version</code>, <code>sensitivity</code>, <code>overlap</code>, <code>confidence_threshold</code>, <code>location_filtered</code>).</li>
 </ul>
 <h3 id="testing-phase-3">Testing (Phase 3)<a class="headerlink" href="#testing-phase-3" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_worker.py</code>: Test graceful shutdown logic (<code>shutdown_event.is_set()</code> between chunks stops processing).</li>
-<li>[ ] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_worker_pull.py</code>: Level 3. Using <code>testcontainers</code> and a synthetic recording, claim via <code>FOR UPDATE SKIP LOCKED</code>, mock the inference engine, and verify <code>detections</code> rows and <code>analysis_state</code> updates.</li>
-<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_real_inference.py</code>: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.</li>
+<li>[x] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_worker.py</code>: Test graceful shutdown logic (<code>shutdown_event.is_set()</code> between chunks stops processing).</li>
+<li>[x] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_worker_pull.py</code>: Level 3. Using <code>testcontainers</code> and a synthetic recording, claim via <code>FOR UPDATE SKIP LOCKED</code>, mock the inference engine, and verify <code>detections</code> rows and <code>analysis_state</code> updates.</li>
+<li>[x] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_real_inference.py</code>: Run real inference via the chosen Engine against the 10s preprocessed test WAV fixtures to ensure actual classifications work without mocking.</li>
 </ul>
 <hr />
 <h2 id="phase-4-controller-system-config-orchestration-commit-4">Phase 4: Controller System Config Orchestration (Commit 4)<a class="headerlink" href="#phase-4-controller-system-config-orchestration-commit-4" title="Permanent link">&para;</a></h2>
-<p><strong>Goal:</strong> Provide execution capabilities in the Controller for the BirdNET worker based on the <code>system_config</code> table.
-<strong>Context:</strong> The BirdNET service is now standalone viable. We must extend the Controller's <code>Reconciler</code> to start/stop this background worker.</p>
+<p><strong>Goal:</strong> Provide execution capabilities in the Controller for the BirdNET worker based on the <code>managed_services</code> table (ADR-0029).
+<strong>Context:</strong> The BirdNET service is now standalone viable. We must extend the Controller's <code>Reconciler</code> to start/stop this background worker. Lifecycle orchestration reads from <code>managed_services</code>, NOT from <code>system_config</code> JSONB.</p>
 <h3 id="tasks_3">Tasks<a class="headerlink" href="#tasks_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] Create <code>worker_registry.py</code> with a robust statically typed array <code>SYSTEM_WORKERS</code> containing a <code>BackgroundWorker</code> dataclass configured for <code>"birdnet"</code> (incl. <code>mem_limit=512m</code>, <code>oom_score_adj=500</code>).</li>
-<li>[ ] Create <code>worker_evaluator.py</code> containing a generic <code>SystemWorkerEvaluator</code> that iterates through the registry and matches against the <code>system_config</code> dictionary for <code>enabled = True</code>.</li>
+<li>[ ] Create <code>worker_evaluator.py</code> containing a generic <code>SystemWorkerEvaluator</code> that queries the <code>managed_services</code> table for <code>enabled = True</code> rows and matches them against the registry to build <code>Tier2ServiceSpec</code> objects.</li>
 <li>[ ] Refactor <code>_reconcile_once</code> in the <code>ReconciliationLoop</code> to securely invoke both <code>DeviceStateEvaluator</code> and <code>SystemWorkerEvaluator</code>. Isolate each with <code>try...except</code> blocks to prevent worker configuration mismatches from halting active <code>recorder</code> container execution.</li>
-<li>[ ] Make sure <code>system_config["birdnet"].enabled</code> controls the desired runtime state for the BirdNET singleton worker.</li>
+<li>[ ] Implement <code>ManagedServiceSeeder</code>: On Controller startup, seed <code>managed_services</code> rows (<code>INSERT ON CONFLICT DO NOTHING</code>) for each worker in the registry (start: <code>birdnet</code>, <code>enabled=True</code>).</li>
 </ul>
 <h3 id="testing-phase-4">Testing (Phase 4)<a class="headerlink" href="#testing-phase-4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] <strong><code>unit</code></strong> — Add unit tests for <code>Reconciler._reconcile_once</code> to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.</li>
-<li>[ ] <strong><code>integration</code></strong> — Add <code>tests/integration/test_system_worker_evaluator.py</code>: Instantiate <code>SystemWorkerEvaluator</code> against a real PostgreSQL testcontainer. Verify it correctly queries <code>system_config</code> and maps the payload to <code>Tier2ServiceSpec</code>, excluding <code>enabled=False</code> workers (Rule: Mocking DB in integration tests is FORBIDDEN).</li>
-<li>[ ] <strong><code>system</code></strong> — Add <code>tests/system/test_singleton_worker_lifecycle.py</code>: Validate full <code>ReconciliationLoop</code> state transitions. Ensure changing <code>enabled</code> in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.</li>
-<li>[ ] <strong><code>system</code> (Regression)</strong> — Audit existing system tests (<code>test_controller_lifecycle.py</code>, <code>test_crash_recovery.py</code>). Since the <code>birdnet</code> config is <code>enabled=True</code> by default, existing tests asserting <code>len(containers) == 1</code> will fail. You must disable background workers in the test seeder or update the container tracking assertions.</li>
+<li>[ ] <strong><code>integration</code></strong> — Add <code>tests/integration/test_system_worker_evaluator.py</code>: Instantiate <code>SystemWorkerEvaluator</code> against a real PostgreSQL testcontainer. Verify it correctly queries <code>managed_services</code> and maps enabled rows to <code>Tier2ServiceSpec</code>, excluding <code>enabled=False</code> workers (Rule: Mocking DB in integration tests is FORBIDDEN).</li>
+<li>[x] <strong><code>system</code></strong> — Add <code>tests/system/test_singleton_worker_lifecycle.py</code>: Validate full <code>ReconciliationLoop</code> state transitions. Ensure changing <code>enabled</code> in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.</li>
+<li>[ ] <strong><code>system</code> (Regression)</strong> — Audit existing system tests (<code>test_controller_lifecycle.py</code>, <code>test_crash_recovery.py</code>). Since BirdNET is <code>enabled=True</code> by default in <code>managed_services</code>, existing tests asserting <code>len(containers) == 1</code> will fail. You must disable background workers in the test seeder or update the container tracking assertions.</li>
 </ul>
 <hr />
 <h2 id="phase-5-service-status-lifecycle-integration-commit-5">Phase 5: Service Status &amp; Lifecycle Integration (Commit 5)<a class="headerlink" href="#phase-5-service-status-lifecycle-integration-commit-5" title="Permanent link">&para;</a></h2>
@@ -3759,7 +3706,9 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <ul>
 <li>[ ] Verify <code>check-all</code> passes (lint, mypy, all tests up to smoke/system).</li>
 <li>[ ] Create <code>services/birdnet/README.md</code> using <code>services/_template_readme.md</code> boilerplate and convert <code>docs/services/birdnet.md</code> to a link-stub (per <code>STRUCTURE.md</code> §4).</li>
-<li>[ ] <strong>Add</strong> <code>"detections"</code> to <code>_CLEANUP_TABLES</code> in <code>tests/integration/conftest.py</code>.</li>
+<li>[ ] Update <code>docs/glossary.md</code> with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).</li>
+<li>[ ] Update <code>docs/index.md</code> to reflect the newly integrated BirdNET service and documentation structure.</li>
+<li>[x] <strong>Add</strong> <code>"detections"</code> to <code>_CLEANUP_TABLES</code> in <code>tests/integration/conftest.py</code>. (Resolved dynamically via <code>clean_database</code>)</li>
 </ul>
 <h3 id="testing-phase-7">Testing (Phase 7)<a class="headerlink" href="#testing-phase-7" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3771,7 +3720,7 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <p><strong>Goal:</strong> Formalize the release strictly according to <code>release_checklist.md</code>.</p>
 <h3 id="tasks_7">Tasks<a class="headerlink" href="#tasks_7" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong>Release Decision:</strong> Decide if the <code>system_config["birdnet"].enabled</code> seeder value should be switched to <code>True</code> by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.</li>
+<li>[ ] <strong>Release Decision:</strong> Verify that the <code>managed_services</code> seed for <code>birdnet</code> has <code>enabled=True</code> by default (to fulfill US-B01: 'automatically analyzed' out of the box) before tagging.</li>
 <li>[ ] Ensure branch is clean and <code>just ci</code> finishes successfully.</li>
 <li>[ ] Update <code>__version__</code> in <code>packages/core/src/silvasonic/core/__init__.py</code>.</li>
 <li>[ ] Update version in the root <code>pyproject.toml</code>.</li>
@@ -3794,8 +3743,8 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a> and <a hr
 <td>v0.9.0</td>
 </tr>
 <tr>
-<td>Taxonomy Metadata Init</td>
-<td>v0.9.0</td>
+<td>Taxonomy Metadata Init (i18n)</td>
+<td>v0.9.0 (Download <a href="https://github.com/Nachtzuster/BirdNET-Pi/tree/main/model/l18n">BirdNET-Pi l18n files</a> as seeders. Note: CC BY-NC-SA 4.0 license!)</td>
 </tr>
 <tr>
 <td>Push-based Orchestration</td>

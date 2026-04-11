@@ -377,34 +377,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1119,34 +1091,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2690,6 +2634,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#separation-of-concerns-orchestration-vs-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separation of Concerns: Orchestration vs. Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worker Registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2756,31 +2728,40 @@ If we hardcode singleton workers into the existing hardware evaluation loop, we 
 <p>We will decouple Tier 2 orchestration into separate <strong>State Evaluators</strong>:
 1. <strong><code>DeviceStateEvaluator</code></strong>: Dedicated exclusively to mapping hardware devices to Recorder containers.
 2. <strong><code>SystemWorkerEvaluator</code></strong>: A new, generic evaluator that manages singleton system workers.</p>
-<p>To keep the <code>SystemWorkerEvaluator</code> universally extensible (KISS) and Configuration-Driven, we establish the following <strong>Singleton-Worker State Convention</strong>:
-- Each singleton worker (e.g. <code>birdnet</code>, <code>batdetect</code>) possesses an isolated, dedicated Pydantic configuration namespace within the <code>system_config</code> JSONB table.
-- This namespace must hold both its runtime business logic (e.g., <code>confidence_threshold</code>) AND its orchestration toggle (<code>enabled: bool</code>).
-- The generic <code>SystemWorkerEvaluator</code> purely matches this <code>enabled</code> property to execute the container lifecycle, enforcing a single source of truth and deprecating legacy relational toggle tables (e.g. <code>system_services</code>).</p>
-<p>To configure the container specs, we introduce a static Python-based <strong>Worker Registry</strong> (<code>worker_registry.py</code>). This registry will hold plain dataclasses defining the operational footprint (<code>config_key</code>, <code>container_name</code>, <code>oom_score_adj</code>, <code>mem_limit</code>) for each supported background worker. </p>
-<p>The Controller's <code>ReconciliationLoop</code> will execute both evaluators sequentially, safely aggregating their target specs by isolating them with individual <code>try...except</code> blocks before dispatching to Podman.</p>
+<h3 id="separation-of-concerns-orchestration-vs-configuration">Separation of Concerns: Orchestration vs. Configuration<a class="headerlink" href="#separation-of-concerns-orchestration-vs-configuration" title="Permanent link">&para;</a></h3>
+<p>Lifecycle orchestration (start/stop) and domain configuration (thresholds, intervals) are <strong>strictly separated</strong>:</p>
+<ul>
+<li><strong><code>managed_services</code> table (DB):</strong> A dedicated relational table holds the orchestration toggle (<code>enabled: bool</code>) for each Tier-2 singleton. The <code>SystemWorkerEvaluator</code> queries this table with a simple <code>SELECT name FROM managed_services WHERE enabled = true</code>. This keeps the Controller's orchestration logic free from parsing complex JSONB payloads.</li>
+<li><strong><code>system_config</code> table (DB):</strong> Holds purely domain/business settings (e.g., <code>confidence_threshold</code>, <code>overlap</code>, <code>sensitivity</code>) as Pydantic-validated JSONB blobs. Workers dynamically poll these settings at safe loop boundaries via DB Snapshot Refresh (ADR-0031), allowing runtime tuning without container restarts.</li>
+</ul>
+<blockquote>
+<p><strong>Why not JSONB?</strong> Mixing lifecycle toggles into <code>system_config</code> JSONB violates Separation of Concerns, creates Read-Modify-Write race conditions for concurrent UI updates, and forces the Controller to parse foreign domain payloads just to find a boolean flag.</p>
+</blockquote>
+<h3 id="worker-registry">Worker Registry<a class="headerlink" href="#worker-registry" title="Permanent link">&para;</a></h3>
+<p>To configure the container specs, we introduce a static Python-based <strong>Worker Registry</strong> (<code>worker_registry.py</code>). This registry holds plain dataclasses defining the operational footprint (<code>container_name</code>, <code>oom_score_adj</code>, <code>mem_limit</code>) for each supported background worker.</p>
+<p>The Controller's <code>ReconciliationLoop</code> executes both evaluators sequentially, safely aggregating their target specs by isolating them with individual <code>try...except</code> blocks before dispatching to Podman.</p>
 <h2 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Architecture Extensibility (Open-Closed Principle):</strong> Adding <code>batdetect</code> later requires zero changes to the Controller's logic. A developer only needs to append a new <code>BackgroundWorker</code> definitions to the <code>SYSTEM_WORKERS</code> Python list.</li>
+<li><strong>Architecture Extensibility (Open-Closed Principle):</strong> Adding <code>batdetect</code> later requires zero changes to the Controller's logic. A developer only needs to append a new <code>BackgroundWorker</code> definition to the <code>SYSTEM_WORKERS</code> Python list and insert a row into <code>managed_services</code>.</li>
 <li><strong>Crash Isolation:</strong> If evaluating the <code>birdnet</code> database configuration yields a crash, catching it explicitly prevents the <code>recorder</code> specs from being lost. The <code>sync_state</code> engine still successfully keeps microphones recording.</li>
 <li><strong>Data Integrity:</strong> This strictly enforces the "Data Capture Integrity is paramount" directive by shielding the hardware capturing pipeline from backend AI worker failures.</li>
 <li><strong>Type-Safety:</strong> Using a static Python list in <code>worker_registry.py</code> provides full <code>mypy</code> type validation, preventing misspelled container flags without needing to parse or validate external JSON/YAML templates.</li>
+<li><strong>Atomic Toggles:</strong> A simple <code>UPDATE managed_services SET enabled = false WHERE name = 'birdnet'</code> is atomic — no JSONB Read-Modify-Write cycle, no race conditions from concurrent Web-UI users.</li>
 </ol>
 <h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Positive:</strong> Recorder orchestration is entirely shielded from analysis worker crashes.</li>
 <li><strong>Positive:</strong> Trivial scalability for future singleton containers.</li>
 <li><strong>Positive:</strong> Quality of Service Limits (oom_score_adj, mem_limit) for all background tasks are defined cleanly in one file.</li>
-<li><strong>Negative:</strong> Requires introducing a minor structural refactor (adding the registry and evaluator classes) to the Controller rather than a quick 2-line hardcoded hack.</li>
+<li><strong>Positive:</strong> Clean separation — Controller never parses domain-specific JSONB to determine container lifecycle.</li>
+<li><strong>Negative:</strong> Requires introducing a minor structural refactor (adding the registry, evaluator, and <code>managed_services</code> table) to the Controller rather than a quick 2-line hardcoded hack.</li>
 </ul>
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="0017-state-reconciliation-pattern.md">ADR-0017: State Reconciliation Pattern</a></li>
+<li><a href="../0017-service-state-management/">ADR-0017: Service State Management</a></li>
 <li><a href="../0018-worker-pull-orchestration/">ADR-0018: Worker Pull Orchestration</a></li>
 <li><a href="../0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS</a></li>
+<li><a href="../0023-configuration-management/">ADR-0023: Configuration Management</a></li>
 <li><a href="../../development/milestones/milestone_0_8_0/">Milestone v0.8.0 Phase 4</a></li>
 </ul>
 

@@ -12,28 +12,24 @@
         <meta name="author" content="Silvasonic Team">
       
       
-        <link rel="canonical" href="https://docs.silvasonic.de/adr/">
+        <link rel="canonical" href="https://docs.silvasonic.de/adr/0030-database-resilience/">
       
       
-        <link rel="prev" href="../deployment/">
-      
-      
-        <link rel="next" href="0001-use-uv/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Overview - Silvasonic</title>
+        <title>ADR-0030: Database Runtime Resilience (Soft-Fail Loops) - Silvasonic</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#architecture-decision-records" class="md-skip">
+        <a href="#adr-0030-database-runtime-resilience-soft-fail-loops" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-header__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              ADR-0030: Database Runtime Resilience (Soft-Fail Loops)
             
           </span>
         </div>
@@ -196,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
+    <a href="../.." title="Silvasonic" class="md-nav__button md-logo" aria-label="Silvasonic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTS/" class="md-nav__link">
+      <a href="../../AGENTS/" class="md-nav__link">
         
   
   
@@ -280,7 +276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../VISION/" class="md-nav__link">
+      <a href="../../VISION/" class="md-nav__link">
         
   
   
@@ -307,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ROADMAP/" class="md-nav__link">
+      <a href="../../ROADMAP/" class="md-nav__link">
         
   
   
@@ -381,35 +377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../arch/filesystem_governance/" class="md-nav__link">
+      <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
   
@@ -437,7 +405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/messaging_patterns/" class="md-nav__link">
+      <a href="../../arch/messaging_patterns/" class="md-nav__link">
         
   
   
@@ -465,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/port_allocation/" class="md-nav__link">
+      <a href="../../arch/port_allocation/" class="md-nav__link">
         
   
   
@@ -493,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/microphone_profiles/" class="md-nav__link">
+      <a href="../../arch/microphone_profiles/" class="md-nav__link">
         
   
   
@@ -575,7 +543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/controller/" class="md-nav__link">
+      <a href="../../services/controller/" class="md-nav__link">
         
   
   
@@ -603,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/database/" class="md-nav__link">
+      <a href="../../services/database/" class="md-nav__link">
         
   
   
@@ -631,7 +599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/recorder/" class="md-nav__link">
+      <a href="../../services/recorder/" class="md-nav__link">
         
   
   
@@ -659,7 +627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/redis/" class="md-nav__link">
+      <a href="../../services/redis/" class="md-nav__link">
         
   
   
@@ -687,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_mock/" class="md-nav__link">
+      <a href="../../services/web_mock/" class="md-nav__link">
         
   
   
@@ -715,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/processor/" class="md-nav__link">
+      <a href="../../services/processor/" class="md-nav__link">
         
   
   
@@ -743,7 +711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/gateway/" class="md-nav__link">
+      <a href="../../services/gateway/" class="md-nav__link">
         
   
   
@@ -771,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/web_interface/" class="md-nav__link">
+      <a href="../../services/web_interface/" class="md-nav__link">
         
   
   
@@ -799,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_design_system/" class="md-nav__link">
+      <a href="../../arch/frontend_design_system/" class="md-nav__link">
         
   
   
@@ -827,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/frontend_features/" class="md-nav__link">
+      <a href="../../arch/frontend_features/" class="md-nav__link">
         
   
   
@@ -855,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/icecast/" class="md-nav__link">
+      <a href="../../services/icecast/" class="md-nav__link">
         
   
   
@@ -883,7 +851,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/birdnet/" class="md-nav__link">
+      <a href="../../services/birdnet/" class="md-nav__link">
         
   
   
@@ -911,7 +879,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/weather/" class="md-nav__link">
+      <a href="../../services/weather/" class="md-nav__link">
         
   
   
@@ -939,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/batdetect/" class="md-nav__link">
+      <a href="../../services/batdetect/" class="md-nav__link">
         
   
   
@@ -967,7 +935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/tailscale/" class="md-nav__link">
+      <a href="../../services/tailscale/" class="md-nav__link">
         
   
   
@@ -1049,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../deployment/" class="md-nav__link">
         
   
   
@@ -1081,20 +1049,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -1115,7 +1081,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1130,48 +1096,10 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="0001-use-uv/" class="md-nav__link">
+      <a href="../0001-use-uv/" class="md-nav__link">
         
   
   
@@ -1199,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0002-use-pyproject-toml/" class="md-nav__link">
+      <a href="../0002-use-pyproject-toml/" class="md-nav__link">
         
   
   
@@ -1227,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0003-frontend-architecture/" class="md-nav__link">
+      <a href="../0003-frontend-architecture/" class="md-nav__link">
         
   
   
@@ -1255,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0004-use-podman/" class="md-nav__link">
+      <a href="../0004-use-podman/" class="md-nav__link">
         
   
   
@@ -1283,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0005-two-worlds-separation/" class="md-nav__link">
+      <a href="../0005-two-worlds-separation/" class="md-nav__link">
         
   
   
@@ -1311,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0006-bind-mounts-over-volumes/" class="md-nav__link">
+      <a href="../0006-bind-mounts-over-volumes/" class="md-nav__link">
         
   
   
@@ -1339,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0007-rootless-os-compliance/" class="md-nav__link">
+      <a href="../0007-rootless-os-compliance/" class="md-nav__link">
         
   
   
@@ -1367,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0008-domain-driven-isolation/" class="md-nav__link">
+      <a href="../0008-domain-driven-isolation/" class="md-nav__link">
         
   
   
@@ -1395,7 +1323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0009-zero-trust-data-sharing/" class="md-nav__link">
+      <a href="../0009-zero-trust-data-sharing/" class="md-nav__link">
         
   
   
@@ -1423,7 +1351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0010-naming-conventions/" class="md-nav__link">
+      <a href="../0010-naming-conventions/" class="md-nav__link">
         
   
   
@@ -1451,7 +1379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0011-audio-recording-strategy/" class="md-nav__link">
+      <a href="../0011-audio-recording-strategy/" class="md-nav__link">
         
   
   
@@ -1479,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0012-use-pydantic/" class="md-nav__link">
+      <a href="../0012-use-pydantic/" class="md-nav__link">
         
   
   
@@ -1507,7 +1435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0013-tier2-container-management/" class="md-nav__link">
+      <a href="../0013-tier2-container-management/" class="md-nav__link">
         
   
   
@@ -1535,7 +1463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0014-dual-deployment-strategy/" class="md-nav__link">
+      <a href="../0014-dual-deployment-strategy/" class="md-nav__link">
         
   
   
@@ -1563,7 +1491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0015-nvme-only-storage/" class="md-nav__link">
+      <a href="../0015-nvme-only-storage/" class="md-nav__link">
         
   
   
@@ -1591,7 +1519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0016-hybrid-yaml-db-profiles/" class="md-nav__link">
+      <a href="../0016-hybrid-yaml-db-profiles/" class="md-nav__link">
         
   
   
@@ -1619,7 +1547,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0017-service-state-management/" class="md-nav__link">
+      <a href="../0017-service-state-management/" class="md-nav__link">
         
   
   
@@ -1647,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0018-worker-pull-orchestration/" class="md-nav__link">
+      <a href="../0018-worker-pull-orchestration/" class="md-nav__link">
         
   
   
@@ -1675,7 +1603,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0019-unified-service-infrastructure/" class="md-nav__link">
+      <a href="../0019-unified-service-infrastructure/" class="md-nav__link">
         
   
   
@@ -1703,7 +1631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0020-resource-limits-qos/" class="md-nav__link">
+      <a href="../0020-resource-limits-qos/" class="md-nav__link">
         
   
   
@@ -1731,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0021-frontend-design-system/" class="md-nav__link">
+      <a href="../0021-frontend-design-system/" class="md-nav__link">
         
   
   
@@ -1759,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0022-live-log-streaming/" class="md-nav__link">
+      <a href="../0022-live-log-streaming/" class="md-nav__link">
         
   
   
@@ -1787,7 +1715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0023-configuration-management/" class="md-nav__link">
+      <a href="../0023-configuration-management/" class="md-nav__link">
         
   
   
@@ -1815,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="0024-ffmpeg-audio-engine/" class="md-nav__link">
+      <a href="../0024-ffmpeg-audio-engine/" class="md-nav__link">
         
   
   
@@ -1897,7 +1825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_1_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_1_0/" class="md-nav__link">
         
   
   
@@ -1925,7 +1853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_2_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_2_0/" class="md-nav__link">
         
   
   
@@ -1953,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_3_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_3_0/" class="md-nav__link">
         
   
   
@@ -1981,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_4_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_4_0/" class="md-nav__link">
         
   
   
@@ -2009,7 +1937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_5_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_5_0/" class="md-nav__link">
         
   
   
@@ -2037,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_6_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_6_0/" class="md-nav__link">
         
   
   
@@ -2065,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_8_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_8_0/" class="md-nav__link">
         
   
   
@@ -2093,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_9_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_9_0/" class="md-nav__link">
         
   
   
@@ -2121,7 +2049,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_0_10_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_0_10_0/" class="md-nav__link">
         
   
   
@@ -2149,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/milestone_1_0_0/" class="md-nav__link">
+      <a href="../../development/milestones/milestone_1_0_0/" class="md-nav__link">
         
   
   
@@ -2177,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/milestones/_template/" class="md-nav__link">
+      <a href="../../development/milestones/_template/" class="md-nav__link">
         
   
   
@@ -2205,7 +2133,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/service_blueprint/" class="md-nav__link">
+      <a href="../../development/service_blueprint/" class="md-nav__link">
         
   
   
@@ -2233,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/testing/" class="md-nav__link">
+      <a href="../../development/testing/" class="md-nav__link">
         
   
   
@@ -2261,7 +2189,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/release_checklist/" class="md-nav__link">
+      <a href="../../development/release_checklist/" class="md-nav__link">
         
   
   
@@ -2343,7 +2271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/controller/" class="md-nav__link">
+      <a href="../../user_stories/controller/" class="md-nav__link">
         
   
   
@@ -2371,7 +2299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/recorder/" class="md-nav__link">
+      <a href="../../user_stories/recorder/" class="md-nav__link">
         
   
   
@@ -2399,7 +2327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/birdnet/" class="md-nav__link">
+      <a href="../../user_stories/birdnet/" class="md-nav__link">
         
   
   
@@ -2427,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/batdetect/" class="md-nav__link">
+      <a href="../../user_stories/batdetect/" class="md-nav__link">
         
   
   
@@ -2455,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/processor/" class="md-nav__link">
+      <a href="../../user_stories/processor/" class="md-nav__link">
         
   
   
@@ -2483,7 +2411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/gateway/" class="md-nav__link">
+      <a href="../../user_stories/gateway/" class="md-nav__link">
         
   
   
@@ -2511,7 +2439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/icecast/" class="md-nav__link">
+      <a href="../../user_stories/icecast/" class="md-nav__link">
         
   
   
@@ -2539,7 +2467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/cloud_sync/" class="md-nav__link">
+      <a href="../../user_stories/cloud_sync/" class="md-nav__link">
         
   
   
@@ -2567,7 +2495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../user_stories/web_interface/" class="md-nav__link">
+      <a href="../../user_stories/web_interface/" class="md-nav__link">
         
   
   
@@ -2602,7 +2530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hardware/" class="md-nav__link">
+      <a href="../../hardware/" class="md-nav__link">
         
   
   
@@ -2629,7 +2557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../glossary/" class="md-nav__link">
+      <a href="../../glossary/" class="md-nav__link">
         
   
   
@@ -2669,6 +2597,58 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-context-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Context &amp; Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Options Considered
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2687,41 +2667,33 @@
   
 
 
-<h1 id="architecture-decision-records">Architecture Decision Records<a class="headerlink" href="#architecture-decision-records" title="Permanent link">&para;</a></h1>
+<h1 id="adr-0030-database-runtime-resilience-soft-fail-loops">ADR-0030: Database Runtime Resilience (Soft-Fail Loops)<a class="headerlink" href="#adr-0030-database-runtime-resilience-soft-fail-loops" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p>[!WARNING]
-Architecture Decision Records (ADRs) capture historical design decisions at a specific point in time. 
-As the system evolves, the implemented source code may diverge from the original ADR. 
-<strong>The current source code is always the single source of truth.</strong>
-- <a href="0001-use-uv/">ADR-0001: Use uv as Python Package and Project Manager</a>
-- <a href="0002-use-pyproject-toml/">ADR-0002: Use pyproject.toml for Configuration and Dependencies</a>
-- <a href="0003-frontend-architecture/">ADR-0003: Frontend Architecture ("The Modern Monolith")</a>
-- <a href="0004-use-podman/">ADR-0004: Use Podman instead of Docker</a>
-- <a href="0005-two-worlds-separation/">ADR-0005: Separation of Immutable Code &amp; Mutable State ("Two-Worlds")</a>
-- <a href="0006-bind-mounts-over-volumes/">ADR-0006: Host Bind Mounts as Default Persistence Strategy</a>
-- <a href="0007-rootless-os-compliance/">ADR-0007: Rootless Podman &amp; OS Compliance</a>
-- <a href="0008-domain-driven-isolation/">ADR-0008: Domain-Driven Workspace Isolation</a>
-- <a href="0009-zero-trust-data-sharing/">ADR-0009: Zero-Trust Data Sharing Policy</a>
-- <a href="0010-naming-conventions/">ADR-0010: Naming Conventions</a>
-- <a href="0011-audio-recording-strategy/">ADR-0011: Audio Recording Strategy (Raw vs Processed)</a>
-- <a href="0012-use-pydantic/">ADR-0012: Use Pydantic for Data Validation</a>
-- <a href="0013-tier2-container-management/">ADR-0013: Tier 2 Container Management — Podman-Only with podman-py</a>
-- <a href="0014-dual-deployment-strategy/">ADR-0014: Dual Deployment Strategy — Compose (Dev) / Quadlets (Prod)</a>
-- <a href="0015-nvme-only-storage/">ADR-0015: NVMe-Only Storage Policy</a>
-- <a href="0016-hybrid-yaml-db-profiles/">ADR-0016: Hybrid YAML/DB Profile Management</a>
-- <a href="0017-service-state-management/">ADR-0017: Service State Management — Desired vs. Actual State</a>
-- <a href="0018-worker-pull-orchestration/">ADR-0018: Worker Pull Orchestration — Self-Service Analysis via DB Polling</a>
-- <a href="0019-unified-service-infrastructure/">ADR-0019: Unified Service Infrastructure — SilvaService Pattern</a>
-- <a href="0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS — Protecting Data Capture Integrity</a>
-- <a href="0021-frontend-design-system/">ADR-0021: Frontend Design System — Tailwind CSS + DaisyUI + ECharts + Wavesurfer.js</a>
-- <a href="0022-live-log-streaming/">ADR-0022: Live Log Streaming — Podman Logs via Redis SSE</a>
-- <a href="0023-configuration-management/">ADR-0023: Configuration Management — YAML Seed, DB Settings, Users Table</a>
-- <a href="0024-ffmpeg-audio-engine/">ADR-0024: FFmpeg Audio Engine — Replacing sounddevice/soxr with FFmpeg</a>
-- <a href="0025-recordings-standard-table/">ADR-0025: Recordings Table — Standard PostgreSQL Table (No Hypertable)</a>
-- <a href="0026-timescaledb-edge-analytics/">ADR-0026: Database Engine Selection for Edge Analytics</a>
-- <a href="0027-birdnet-inference-engine/">ADR-0027: BirdNET Inference Engine — Native TFLite Runtime</a>
-- <a href="0028-python-version-flexibility-ml-workers/">ADR-0028: Python Version Flexibility for ML Worker Containers</a></p>
+<p><strong>Status:</strong> Accepted • <strong>Date:</strong> 2026-04-06</p>
 </blockquote>
+<h2 id="1-context-problem">1. Context &amp; Problem<a class="headerlink" href="#1-context-problem" title="Permanent link">&para;</a></h2>
+<p>The Silvasonic workers (Controller, Processor, BirdNET) all run continuous background polling loops (<code>while not _shutdown_event.is_set():</code>) pulling jobs from the database. Historically, the documentation and service blueprint did not explicitly outline how a worker should behave when the PostgreSQL database restarts or is transiently unavailable (e.g., during backups or network burps). 
+This lack of standard led to an architectural drift in BirdNET, which followed a "Let-It-Crash" philosophy, dying entirely on <code>InterfaceError</code> because its database connection was unshielded in the outer loop. While <code>SilvaService</code> ensures safe pod-level restarts (dying-gasp), a container crash causes massive performance penalties for ML workers by forcing them to dump and re-allocate gigabytes of tensor memory.</p>
+<h2 id="2-decision">2. Decision<a class="headerlink" href="#2-decision" title="Permanent link">&para;</a></h2>
+<p><strong>We chose:</strong> The "Soft-Fail" (Graceful Retry) pattern for cyclic transient I/O.</p>
+<p>All continuous polling loops MUST wrap their operational cycle (e.g. database querying or persisting data) in an explicit <code>try/except</code> boundary. Instead of crashing the container, transient errors must:
+1. Be caught and logged semantically (e.g. <code>logger.warning("worker.db_cycle_failed", exc_info=exc)</code>).
+2. Report the degradation to the web dashboard via <code>self.health.update_status(..., False, "database_unavailable")</code>.
+3. Sleep for a short, constant backoff (e.g. <code>_DB_RETRY_SLEEP_S = 5.0</code>).
+4. <code>continue</code> the outer loop.</p>
+<p>Startup constraints, malformed schemas, and fatal configuration initializations MUST continue to fail-fast.</p>
+<p><strong>Reasoning:</strong>
+Soft-failing protects expensive ML inference models (like TFLite in BirdNET) from unnecessary tear-downs during momentary infrastructure disruptions. Furthermore, by keeping the process alive, the Web-Interface dashboard retains clear visibility over the specific failure reason ("database_unavailable") instead of defaulting to a generic "container dead/restarting" overlay.</p>
+<h2 id="3-options-considered">3. Options Considered<a class="headerlink" href="#3-options-considered" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Let-It-Crash Only</strong>: Rejected because the time cost of reloading AI Edge LiteRT models outweighs the simplicity of container restarts.</li>
+<li><strong>Exponential Backoff Library (e.g. Tenacity)</strong>: Rejected to preserve the KISS principle. The architecture values simple, explicit, fixed interval sleeps (5 seconds) over introducing complex generic retry mechanisms for basic worker orchestration.</li>
+</ul>
+<h2 id="4-consequences">4. Consequences<a class="headerlink" href="#4-consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Positive:</strong> ML Workers retain their in-memory models during brief disruptions. Improved transparency and logging in the UI during outages. High convergence between Controller, Processor, and BirdNET architectures.</li>
+<li><strong>Negative:</strong> Developers must remember to add the outer <code>try/except</code> guard manually, which we mitigate by updating <code>service_blueprint.md</code>.</li>
+</ul>
 
 
 
@@ -2771,10 +2743,10 @@ As the system evolves, the implemented source code may diverge from the original
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

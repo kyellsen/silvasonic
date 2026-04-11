@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1123,34 +1095,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3029,12 +2973,12 @@ Fix all issues first, then re-run <code>just ci</code> until clean.</p>
 <td><code>version = "X.Y.Z"</code></td>
 </tr>
 <tr>
-<td><code>ROADMAP.md</code> Line 3</td>
+<td><code>ROADMAP.md</code> Status-Block</td>
 <td><strong>YES</strong></td>
 <td><code>&gt; **Status:** vX.Y.Z — Milestone</code></td>
 </tr>
 <tr>
-<td><code>README.md</code> Line 5</td>
+<td><code>README.md</code> Status-Block</td>
 <td><strong>YES</strong></td>
 <td><code>&gt; **Status:** vX.Y.Z — Milestone</code></td>
 </tr>
@@ -3082,6 +3026,9 @@ This is strongly recommended but not enforced by <code>just ci</code>.</p>
 <p>If any check fails: <strong>Fix → Commit → Re-run <code>just ci</code></strong>.</p>
 <hr />
 <h2 id="3-commit-tag">3. Commit &amp; Tag<a class="headerlink" href="#3-commit-tag" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>🚨 AI DIRECTIVE:</strong> AI Agents <strong>MUST NEVER</strong> execute <code>git commit</code>, <code>git tag</code>, or <code>git push</code> autonomously. Agents must strictly format these commands in a copy-pasteable script block for the Human user to execute.</p>
+</blockquote>
 <h3 id="final-commit">Final Commit<a class="headerlink" href="#final-commit" title="Permanent link">&para;</a></h3>
 <p>Ensure all changes are committed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>status<span class="w">                </span><span class="c1"># No uncommitted changes</span>

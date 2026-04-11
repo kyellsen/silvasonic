@@ -377,34 +377,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1119,34 +1091,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2694,10 +2638,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#python-version-constraint" class="md-nav__link">
+  <a href="#python-version-dependency-cleanup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Python Version Constraint
+        Python Version &amp; Dependency Cleanup
       
     </span>
   </a>
@@ -2733,15 +2677,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#benchmark-results-x86_64-python-311" class="md-nav__link">
+  <a href="#benchmark-results-x86_64-python-313" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark Results (x86_64, Python 3.11)
+        Benchmark Results (x86_64, Python 3.13)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Benchmark Results (x86_64, Python 3.11)">
+    <nav class="md-nav" aria-label="Benchmark Results (x86_64, Python 3.13)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2878,7 +2822,7 @@
 <p>Accepted</p>
 <h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
 <p>Milestone 0.8.0 requires an on-device avian species classification worker for the Raspberry Pi 5. We evaluated two approaches:
-1. <strong>Native <code>tflite_runtime</code></strong>: Raw TFLite model with ~60 lines of custom sigmoid, label mapping, meta-model location filtering, and 3s windowing logic.
+1. <strong>Native <code>ai-edge-litert</code></strong>: Raw TFLite model using the new official PyPI package, with ~60 lines of custom sigmoid, label mapping, meta-model location filtering, and 3s windowing logic.
 2. <strong><code>birdnetlib</code> (community wrapper)</strong>: Community-maintained Python package representing the <code>BirdNET-Analyzer</code> buffer logic for in-memory analysis.</p>
 <h3 id="spike-methodology-v3">Spike Methodology (v3)<a class="headerlink" href="#spike-methodology-v3" title="Permanent link">&para;</a></h3>
 <p>Both variants were benchmarked under identical conditions simulating the actual Silvasonic BirdNET service:
@@ -2888,46 +2832,46 @@
 - <strong>Same model</strong>: <code>BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite</code> (49.3 MB)
 - <strong>Same parameters</strong>: <code>lat=53.55, lon=9.99, week_48=14, min_conf=0.25, sensitivity=1.0</code>
 - <strong>3 repetitions</strong> with <code>gc.collect()</code> per segment and <code>tracemalloc</code> peak tracking</p>
-<h3 id="python-version-constraint">Python Version Constraint<a class="headerlink" href="#python-version-constraint" title="Permanent link">&para;</a></h3>
-<p><code>tflite-runtime</code> has <strong>no official pre-built wheels for Python ≥ 3.12 on aarch64</strong>. The last release (2.14.0, October 2023) supports Python 3.9–3.11 only. This necessitates using <code>python:3.11-slim-bookworm</code> for the BirdNET container. See <a href="../0028-python-version-flexibility-ml-workers/">ADR-0028</a> for the architectural justification.</p>
+<h3 id="python-version-dependency-cleanup">Python Version &amp; Dependency Cleanup<a class="headerlink" href="#python-version-dependency-cleanup" title="Permanent link">&para;</a></h3>
+<p><code>tflite-runtime</code> was deprecated. The new official <code>ai-edge-litert</code> provides native <strong>Python 3.13 <code>aarch64</code> wheels</strong>. This enables us to maintain a fully unified Python 3.13 architecture across all services.</p>
 <h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
-<p>We will use <strong>native <code>tflite_runtime.Interpreter</code></strong> with ~60 lines of custom post-processing code on a Python 3.11 container. We will NOT use <code>birdnetlib</code>, <code>birdnet-analyzer</code>, or CLI subprocesses.</p>
+<p>We will use <strong>native <code>ai-edge-litert.Interpreter</code></strong> with ~60 lines of custom post-processing code on a standard Python 3.13 container. We will NOT use <code>birdnetlib</code>, <code>birdnet-analyzer</code>, or CLI subprocesses.</p>
 <h2 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h2>
-<h3 id="benchmark-results-x86_64-python-311">Benchmark Results (x86_64, Python 3.11)<a class="headerlink" href="#benchmark-results-x86_64-python-311" title="Permanent link">&para;</a></h3>
+<h3 id="benchmark-results-x86_64-python-313">Benchmark Results (x86_64, Python 3.13)<a class="headerlink" href="#benchmark-results-x86_64-python-313" title="Permanent link">&para;</a></h3>
 <h4 id="macro-benchmark-spike-v3-per-10s-segment-3-windows-3s">Macro Benchmark — Spike v3 (per 10s segment, 3 windows × 3s)<a class="headerlink" href="#macro-benchmark-spike-v3-per-10s-segment-3-windows-3s" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
 <th>Metric</th>
-<th>Native (unoptimized)</th>
+<th>Native (optimized)</th>
 <th>birdnetlib</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Init (Module Load)</td>
-<td><strong>0.05s</strong></td>
-<td>1.09s</td>
+<td><strong>~0.05s</strong></td>
+<td>~0.06s (TensorFlow pre-loaded)</td>
 </tr>
 <tr>
 <td>Processing Time (10s segment)</td>
-<td><strong>0.155s (avg across 3 species)</strong></td>
-<td>0.238s</td>
+<td><strong>~0.068s (avg across 3 species)</strong></td>
+<td>~0.096s</td>
 </tr>
 <tr>
 <td>Memory (Steady-State RSS)</td>
-<td><strong>~201 MB Overhead</strong></td>
-<td>High Overhead (&gt;370 MB)</td>
+<td><strong>~810 MB (TF shared memory)</strong></td>
+<td>~860-980 MB</td>
 </tr>
 <tr>
 <td>Peak Heap Memory</td>
-<td><strong>~3.1 MB</strong></td>
-<td>~35 MB</td>
+<td><strong>~1.1 MB - 3.0 MB</strong></td>
+<td>~4.7 MB - 6.5 MB</td>
 </tr>
 <tr>
 <td>Top Detection</td>
-<td><code>Passer domesticus</code> <strong>0.8529</strong></td>
-<td><code>Passer domesticus</code> <strong>0.8529</strong></td>
+<td><code>Passer domesticus</code> <strong>0.8860</strong></td>
+<td><code>Passer domesticus</code> <strong>0.8860</strong></td>
 </tr>
 </tbody>
 </table>
@@ -2943,23 +2887,23 @@
 <tbody>
 <tr>
 <td>TFLite <code>invoke()</code></td>
-<td>45.8 ms</td>
+<td>21.48 ms</td>
 <td><strong>Identical</strong> for both variants</td>
 </tr>
 <tr>
 <td>Sigmoid</td>
-<td>+0.0 ms</td>
+<td>-0.07 ms</td>
 <td>numpy-vectorized, negligible</td>
 </tr>
 <tr>
 <td>Python for-loop (6522 species)</td>
-<td><strong>+3.48 ms</strong></td>
-<td>Spike v3 bug: iterating ALL scores in Python</td>
+<td><strong>+0.37 ms</strong></td>
+<td>Iterating ALL scores in Python</td>
 </tr>
 <tr>
 <td>Numpy boolean mask (optimized)</td>
-<td><strong>+0.14 ms</strong></td>
-<td>Fix: 25× faster post-processing</td>
+<td><strong>+0.36 ms</strong></td>
+<td>Negligible overhead</td>
 </tr>
 </tbody>
 </table>
@@ -2974,19 +2918,19 @@
 <tbody>
 <tr>
 <td><strong>Native (optimized)</strong></td>
-<td><strong>155.0 ms</strong></td>
+<td><strong>63.1 ms</strong></td>
 </tr>
 <tr>
 <td>birdnetlib</td>
-<td>238.0 ms</td>
+<td>70.5 ms</td>
 </tr>
 <tr>
 <td><strong>Result</strong></td>
-<td><strong>Native is ~35% faster</strong></td>
+<td><strong>Native is 10% FASTER</strong></td>
 </tr>
 </tbody>
 </table>
-<p>The macro benchmark (spike v3 with 3 different audio fixtures) shows the native variant is <strong>~35% faster</strong> per 10-second segment (155 ms avg vs 238 ms). Furthermore, the native approach showcases strongly bounded memory (RSS stays at ~201 MB limit), whereas <code>birdnetlib</code> exhibits significant memory overhead, accumulating up to 370+ MB across just three sequential runs due to TensorFlow internal bindings. The massive speedup in the macro benchmark comes from pre-computing the location filter boolean mask at initialization, avoiding birdnetlib's per-segment overhead (<code>RecordingBuffer</code> creation, string filtering, species list checks).</p>
+<p>The macro benchmark (spike v3 with 3 different audio fixtures) shows the native variant is <strong>~10% faster</strong> per 10-second segment (63 ms avg vs 70.5 ms). Furthermore, the native approach showcases strongly bounded memory, whereas <code>birdnetlib</code> exhibits significant memory overhead, accumulating up to 980+ MB across sequential runs due to TensorFlow internal bindings. The speedup comes from pre-computing the location filter boolean mask at initialization, avoiding birdnetlib's per-segment overhead (<code>RecordingBuffer</code> creation, string filtering, species list checks).</p>
 <h3 id="functional-validation">Functional Validation<a class="headerlink" href="#functional-validation" title="Permanent link">&para;</a></h3>
 <p>Both produce <strong>mathematically equivalent up to float precision limit</strong>: same species, identical confidence values (to 4 decimal places, e.g., 0.8529, 0.8469, 0.8389...), same time windows, same location filter (163 species for Hamburg/April). 0 detections on insect audio (correct negative). ✅</p>
 <h3 id="decision-drivers-ordered-by-impact">Decision Drivers (ordered by impact)<a class="headerlink" href="#decision-drivers-ordered-by-impact" title="Permanent link">&para;</a></h3>
@@ -2995,16 +2939,16 @@
 <p><strong>Dependency Footprint</strong>: birdnetlib loads <strong>697 Python modules</strong> at <code>Analyzer()</code> init — including matplotlib (full rendering stack), PIL, pydub, librosa, requests, http.client, and 100+ encoding modules. <strong>None of these are called by Silvasonic.</strong> Native requires ~20 modules total (<code>tflite_runtime</code>, <code>numpy</code>, <code>soundfile</code>).</p>
 </li>
 <li>
-<p><strong>Container Image Size</strong>: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only <code>tflite-runtime</code> (~5 MB). Reduces container image from ~700 MB to ~100 MB.</p>
+<p><strong>Container Image Size</strong>: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only <code>ai-edge-litert</code> (lightweight wheel). Reduces container image significantly.</p>
 </li>
 <li>
-<p><strong>Performance</strong>: Native is <strong>~35% faster</strong> overall per segment (155 ms vs 238 ms) AND avoids a heavy ~1.09s Python module/TensorFlow initialization overhead upon container start.</p>
+<p><strong>Performance</strong>: Native is <strong>FASTER</strong> overall per segment (63.1 ms vs 70.5 ms) AND avoids heavy Python module overhead.</p>
 </li>
 <li>
 <p><strong>Memory Footprint</strong>: Stable ~201 MB RSS limit with native, while <code>birdnetlib</code> accumulated up to ~379 MB overhead over three fixtures. This bounded memory is critical for the RPi 5 with <code>mem_limit</code> and <code>oom_score_adj=+500</code> (ADR-0020).</p>
 </li>
 <li>
-<p><strong>Python 3.11 Compatibility</strong>: <code>tflite-runtime</code> only provides aarch64 wheels for Python ≤ 3.11. Using native avoids the additional TensorFlow dependency that birdnetlib requires as fallback, keeping the dependency chain clean for Python 3.11 on ARM64. See <a href="../0028-python-version-flexibility-ml-workers/">ADR-0028</a>.</p>
+<p><strong>Python 3.13 Compatibility</strong>: <code>ai-edge-litert</code> provides official aarch64 wheels for Python 3.13. Using native avoids the additional heavy dependency chains and maintains total monorepo Python architecture alignment.</p>
 </li>
 <li>
 <p><strong>Architectural Compliance</strong>: birdnetlib's <code>check_for_model_files()</code> attempts HTTP downloads to <code>~/.birdnetlib/</code>. This violates our offline container principle and cannot be easily disabled.</p>
@@ -3031,18 +2975,16 @@
 <li><strong>Positive:</strong> No hidden HTTP, no unused matplotlib/PIL/librosa in production.</li>
 <li><strong>Negative:</strong> ~60 lines of custom code to maintain.</li>
 <li><strong>Negative:</strong> Must manually update <code>.tflite</code> model file + labels for BirdNET model upgrades (no <code>pip upgrade</code>).</li>
-<li><strong>Negative:</strong> Requires Python 3.11 container (see ADR-0028), introducing a second Python version to the project.</li>
 </ul>
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../scripts/spikes/birdnet/spike_v3.py">Spike v3 Script</a></li>
-<li><a href="../../scripts/spikes/birdnet/micro_bench.py">Micro Benchmark</a></li>
-<li><a href="../../scripts/spikes/birdnet/head2head.py">Head-to-Head Benchmark</a></li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/spike_v3.py">Spike v3 Script</a></li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/micro_bench.py">Micro Benchmark</a></li>
+<li><a href="https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/head2head.py">Head-to-Head Benchmark</a></li>
 <li><a href="../../development/milestones/milestone_0_8_0/">Milestone v0.8.0 Phase 1</a></li>
-<li><a href="../0028-python-version-flexibility-ml-workers/">ADR-0028: Python Version Flexibility for ML Workers</a></li>
 <li><a href="../0019-unified-service-infrastructure/">ADR-0019: Unified Service Infrastructure</a></li>
 <li><a href="../0020-resource-limits-qos/">ADR-0020: Resource Limits &amp; QoS</a></li>
-<li><a href="https://pypi.org/project/tflite-runtime/">tflite-runtime PyPI</a> — last release 2.14.0, October 2023</li>
+<li><a href="https://pypi.org/project/ai-edge-litert/">ai-edge-litert PyPI</a></li>
 </ul>
 
 

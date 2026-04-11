@@ -527,34 +527,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1269,34 +1241,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3081,6 +3025,7 @@ You suffer from a known VS Code shell integration bug where reading stdout direc
 <li><strong>Location:</strong> Service-specific tests inside the service package. Only cross-cutting tests in root <code>tests/</code>.</li>
 <li><strong>Hardware Tests:</strong> <code>@pytest.mark.system_hw_auto</code> / <code>.system_hw_manual</code> tests require real USB microphone hardware and are <strong>never</strong> run in CI or <code>just ci</code>. Run manually via <code>just test-hw</code> or <code>just test-hw-manual</code>.</li>
 </ol>
+<p>Full testing guide (anti-patterns, CI stages, writing rules, isolation): <strong><a href="https://github.com/kyellsen/silvasonic/blob/main/docs/development/testing.md">Testing Guide</a></strong>.</p>
 <h2 id="7-environment-variable-naming">7. Environment Variable Naming<a class="headerlink" href="#7-environment-variable-naming" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Prefix Rule:</strong> Every project variable <strong>MUST</strong> use <code>SILVASONIC_</code> prefix (e.g. <code>SILVASONIC_DB_PORT</code>).</li>
@@ -3088,7 +3033,7 @@ You suffer from a known VS Code shell integration bug where reading stdout direc
 </ul>
 <h2 id="8-data-contracts-spec-driven-development">8. Data Contracts (Spec-Driven Development)<a class="headerlink" href="#8-data-contracts-spec-driven-development" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Single Source of Truth:</strong> All shared data structures, event payloads, and configurations <strong>MUST</strong> use the central Pydantic schemas located in <code>packages/core/src/silvasonic/core/schemas/</code> or <code>config_schemas.py</code>.</li>
+<li><strong>Single Source of Truth:</strong> All shared data structures, event payloads, and configurations <strong>MUST</strong> use the central Pydantic schemas located in <code>packages/core/src/silvasonic/core/schemas/</code>.</li>
 <li><strong>No Duplication:</strong> <strong>Never</strong> hardcode or duplicate these payloads inside individual Tier 2 services. Before writing code that exchanges data between services, check the core schemas first.</li>
 </ul>
 <hr />

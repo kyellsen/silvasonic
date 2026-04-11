@@ -381,34 +381,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../arch/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../arch/filesystem_governance/" class="md-nav__link">
         
   
@@ -1327,34 +1299,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3156,14 +3100,14 @@ BatDetect is an <strong>expendable</strong> analysis worker. If the system is un
 <td>—</td>
 </tr>
 <tr>
-<td><code>POSTGRES_HOST</code>, <code>SILVASONIC_DB_*</code></td>
+<td><code>SILVASONIC_DB_HOST</code>, <code>SILVASONIC_DB_*</code></td>
 <td>Database connection</td>
 <td>via <code>.env</code></td>
 </tr>
 </tbody>
 </table>
 <h3 id="dynamic-configuration-database">Dynamic Configuration (Database)<a class="headerlink" href="#dynamic-configuration-database" title="Permanent link">&para;</a></h3>
-<p>Runtime-tunable settings stored in the <code>system_config</code> table under key <code>batdetect</code> (ADR-0023). As an <strong>Immutable Container</strong> (ADR-0019), BatDetect reads these settings <em>once</em> on startup.</p>
+<p>Runtime-tunable settings stored in the <code>system_config</code> table under key <code>batdetect</code> (ADR-0023). As an <strong>Immutable Container</strong> (ADR-0019), BatDetect reads these settings <em>once</em> on startup. The container lifecycle toggle (<code>enabled</code>) is managed via the <code>managed_services</code> table (ADR-0029), not via <code>system_config</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3207,7 +3151,7 @@ BatDetect is an <strong>expendable</strong> analysis worker. If the system is un
 4. BatDetect reads the new settings from the database upon startup.</p>
 <h2 id="6-technology-stack">6. Technology Stack<a class="headerlink" href="#6-technology-stack" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>ML Model:</strong> BatDetect2 (<a href="https://github.com/macaodha/batdetect2">github.com/macaodha/batdetect2</a>) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.11+, PyTorch 2 compatible. Finetuning for Central European species planned.</li>
+<li><strong>ML Model:</strong> BatDetect2 (<a href="https://github.com/macaodha/batdetect2">github.com/macaodha/batdetect2</a>) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.13, PyTorch 2 compatible. Finetuning for Central European species planned.</li>
 <li><strong>Runtime:</strong> PyTorch 2 — full framework required (no TFLite variant available). This is the primary reason for the high resource requirements.</li>
 <li><strong>Audio:</strong> <code>soundfile</code>, <code>numpy</code> (ultrasonic spectrogram generation)</li>
 </ul>
