@@ -7,6 +7,7 @@ Includes per-service timing to identify bottlenecks.
 """
 
 import subprocess
+import sys
 import time
 
 from common import (
@@ -24,7 +25,7 @@ from compose import compose
 SERVICES = ["database", "controller", "processor", "web-mock"]
 
 # Managed-profile services (require --profile managed to be visible)
-MANAGED_SERVICES = ["recorder"]
+MANAGED_SERVICES = ["recorder", "birdnet"]
 
 
 def _check_dangling_images() -> None:
@@ -51,35 +52,46 @@ def _check_dangling_images() -> None:
 def main() -> None:
     """Build all images via compose with per-service timing."""
     ensure_initialized()
-    print_header("Building Silvasonic Container Images")
+
+    target_services = sys.argv[1:]
+
+    if target_services:
+        print_header(f"Building Services: {', '.join(target_services)}")
+        build_services = target_services
+    else:
+        print_header("Building Silvasonic Container Images")
+        build_services = list(SERVICES)
+
+        # Add db-viewer to SERVICES if enabled
+        import os
+
+        env_db_viewer = os.environ.get("SILVASONIC_DB_VIEWER_RUN")
+        env_file_db_viewer = load_env_value("SILVASONIC_DB_VIEWER_RUN")
+        db_viewer_run = (env_db_viewer or env_file_db_viewer or "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if db_viewer_run:
+            build_services.append("db-viewer")
+
+        # Add managed services to the list
+        build_services.extend(MANAGED_SERVICES)
 
     timings: list[tuple[str, float]] = []
     total_start = time.monotonic()
 
-    # Add db-viewer to SERVICES if enabled
-    import os
-
-    env_db_viewer = os.environ.get("SILVASONIC_DB_VIEWER_RUN")
-    env_file_db_viewer = load_env_value("SILVASONIC_DB_VIEWER_RUN")
-    db_viewer_run = (env_db_viewer or env_file_db_viewer or "true").lower() in ("true", "1", "yes")
-
-    build_services = list(SERVICES)
-    if db_viewer_run:
-        build_services.append("db-viewer")
-
     for service in build_services:
-        print_step(f"Building {service}...")
-        start = time.monotonic()
-        compose("build", service)
-        elapsed = time.monotonic() - start
-        timings.append((service, elapsed))
-
-    # Build managed-profile services (e.g. recorder template)
-    for service in MANAGED_SERVICES:
-        print_step(f"Building {service} (managed profile)...")
-        start = time.monotonic()
-        compose("--profile", "managed", "build", service)
-        elapsed = time.monotonic() - start
+        if service in MANAGED_SERVICES:
+            print_step(f"Building {service} (managed profile)...")
+            start = time.monotonic()
+            compose("--profile", "managed", "build", service)
+            elapsed = time.monotonic() - start
+        else:
+            print_step(f"Building {service}...")
+            start = time.monotonic()
+            compose("build", service)
+            elapsed = time.monotonic() - start
         timings.append((service, elapsed))
 
     total_elapsed = time.monotonic() - total_start

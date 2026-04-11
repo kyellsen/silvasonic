@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install system tools
         run: |
@@ -97,9 +99,3 @@ jobs:
 
       - name: Run Full Pipeline
         run: just ci
-
-      - name: Auto-Merge to Main (Fast-Forward)
-        if: github.ref == 'refs/heads/dev' && success()
-        run: |
-          echo "Pipeline successful on dev! Fast-forwarding main to current commit..."
-          git push origin HEAD:main

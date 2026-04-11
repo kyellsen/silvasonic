@@ -56,6 +56,14 @@ class TestServiceHealth:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_birdnet_healthy(self, birdnet_container: DockerContainer) -> None:
+        """BirdNET /healthy returns 200 with status ok."""
+        host = birdnet_container.get_container_host_ip()
+        port = int(birdnet_container.get_exposed_port(9500))
+        resp = httpx.get(f"http://{host}:{port}/healthy", timeout=5.0)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
     def test_web_mock_healthy(self, web_mock_container: DockerContainer) -> None:
         """Web-Mock /healthy returns 200 with status ok."""
         host = web_mock_container.get_container_host_ip()
@@ -157,6 +165,31 @@ class TestServiceHeartbeats:
         assert payload["instance_id"] == "processor"
         assert payload["health"]["status"] == "ok"
         assert "resources" in payload["meta"]
+
+        redis_client.close()
+
+    def test_birdnet_heartbeat_in_redis(
+        self,
+        birdnet_container: DockerContainer,
+        redis_container_smoke: DockerContainer,
+    ) -> None:
+        """BirdNET writes a heartbeat to Redis with backlog metrics."""
+        host = redis_container_smoke.get_container_host_ip()
+        port = int(redis_container_smoke.get_exposed_port(6379))
+        redis_client = Redis(host=host, port=port, decode_responses=True)
+
+        payload = _poll_redis_key(redis_client, "silvasonic:status:birdnet")
+
+        assert payload["service"] == "birdnet"
+        assert payload["instance_id"] == "birdnet"
+        assert payload["health"]["status"] == "ok"
+        assert "resources" in payload["meta"]
+        assert "analysis" in payload["meta"]
+        assert "backlog_pending" in payload["meta"]["analysis"]
+        assert "total_analyzed" in payload["meta"]["analysis"]
+        assert "total_detections" in payload["meta"]["analysis"]
+        assert "total_errors" in payload["meta"]["analysis"]
+        assert "avg_inference_ms" in payload["meta"]["analysis"]
 
         redis_client.close()
 

@@ -6,7 +6,7 @@
 
 The Controller (Tier 1) must dynamically manage **Tier 2 services** (Recorder, BirdNET, BatDetect, Weather) at runtime — starting, stopping, and configuring them based on hardware detection and scheduling. Key constraints:
 
-*   **Immutable Tier 2 containers:** Configuration is injected via environment variables at launch time (Profile Injection). Only the Recorder has no database access; other Tier 2 services (BirdNET, etc.) may access the database.
+*   **Hybrid Tier 2 containers:** Core infrastructure configuration (e.g. paths, sockets) is injected via environment variables at launch time (Profile Injection). To support a responsive "Mischpult" UX, services like BirdNET and the Processor use a hybrid pattern, allowing dynamic reloading of ML thresholds and parameters at runtime without a container restart. Only the Recorder remains strictly immutable with no database access.
 *   **Multi-instance support:** Multiple Recorder instances may run concurrently (one per USB microphone).
 *   **Pre-built images:** All images are built before deployment (`just build`). The Controller never builds images at runtime.
 *   **Container-in-Container (DooD):** The Controller itself runs in a container and manages sibling containers on the host engine via the host's Podman socket (Docker-out-of-Docker pattern).

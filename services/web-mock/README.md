@@ -37,6 +37,17 @@ When building the real web-interface, clone this service and replace `mock_data`
 
 ## 5. Configuration & Environment
 
+| Variable / Mount                  | Description                                    | Default / Example    |
+| --------------------------------- | ---------------------------------------------- | -------------------- |
+| `SILVASONIC_WEB_MOCK_PORT`        | Internal application port                      | `8001`               |
+| `SILVASONIC_REDIS_URL`            | Connection to Redis for heartbeats & Pub/Sub   | `redis://redis:6379/0` |
+| `SILVASONIC_HEARTBEAT_INTERVAL_S` | Interval between Redis heartbeats              | `10.0`               |
+| `SILVASONIC_DB_HOST`                   | Database hostname                              | `database`           |
+| `POSTGRES_USER`                   | Database user                                  | `silvasonic`         |
+| `POSTGRES_PASSWORD`               | Database password                              | `silvasonic`         |
+| `POSTGRES_DB`                     | Target database name                           | `silvasonic`         |
+| `SILVASONIC_API_ROOT_PATH`        | Path prefix for reverse proxy routing (FastAPI)| `/web-mock`          |
+
 ## 6. Technology Stack
 
 The UI uses **Tailwind CSS v4 + DaisyUI v5**, compiled at build time — no CDN at runtime.

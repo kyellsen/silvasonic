@@ -1,20 +1,14 @@
 """Unit tests for silvasonic-recorder watchdog (US-R06).
 
 Tests the RecordingWatchdog class including:
-- No restart when pipeline is healthy
-- Crash detection and restart
-- Stall detection and restart
-- Exponential backoff delays
-- Max restart limit (give-up)
-- Restart counter tracking
-- Shutdown during backoff
-- Last failure reason
+- Pure logic: _detect_failure (crashes, stalls using explicit time)
+- Loop behavior: watch() (restarts, backoffs, max restarts, shutdown)
 """
 
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from silvasonic.recorder.watchdog import RecordingWatchdog
@@ -35,33 +29,90 @@ def _make_pipeline(
     return pipeline
 
 
+# ===========================================================================
+# Pure Logic Tests: _detect_failure
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestWatchdogDetectFailure:
+    """Explicit tests for _detect_failure logic using controlled time basis."""
+
+    def test_healthy(self) -> None:
+        """No failure detected when active and within stall timeout."""
+        pipeline = _make_pipeline(is_active=True, segments_promoted=5)
+        watchdog = RecordingWatchdog(pipeline, stall_timeout_s=30.0)
+        watchdog._last_segment_count = 5
+        watchdog._last_segment_change_s = 100.0
+
+        assert watchdog._detect_failure(110.0) is None
+
+    def test_crash(self) -> None:
+        """Crash detected immediately when pipeline is not active."""
+        pipeline = _make_pipeline(is_active=False, returncode=-9)
+        watchdog = RecordingWatchdog(pipeline)
+
+        reason = watchdog._detect_failure(100.0)
+        assert reason is not None
+        assert "exited" in reason
+        assert "-9" in reason
+
+    def test_stall(self) -> None:
+        """Stall detected when segments don't increase past timeout."""
+        pipeline = _make_pipeline(is_active=True, segments_promoted=5)
+        watchdog = RecordingWatchdog(pipeline, stall_timeout_s=30.0)
+        watchdog._last_segment_count = 5
+        watchdog._last_segment_change_s = 100.0
+
+        # Exactly at timeout -> OK
+        assert watchdog._detect_failure(130.0) is None
+        # Past timeout -> Stalled
+        reason = watchdog._detect_failure(131.0)
+        assert reason is not None
+        assert "No new segments" in reason
+
+    def test_progress_resets_stall(self) -> None:
+        """Stall timer resets globally when segments increase."""
+        pipeline = _make_pipeline(is_active=True, segments_promoted=6)  # Increased!
+        watchdog = RecordingWatchdog(pipeline, stall_timeout_s=30.0)
+        watchdog._last_segment_count = 5
+        watchdog._last_segment_change_s = 100.0
+
+        # Event at time 140 (past previous timeout), but segments increased
+        assert watchdog._detect_failure(140.0) is None
+        # State should be updated
+        assert watchdog._last_segment_count == 6
+        assert watchdog._last_segment_change_s == 140.0
+
+
+# ===========================================================================
+# Loop Behavior Tests: watch()
+# ===========================================================================
+
+
 @pytest.mark.unit
 class TestWatchdogHealthy:
     """Watchdog does nothing when the pipeline is healthy."""
 
     async def test_no_restart_when_pipeline_healthy(self) -> None:
         """Watchdog exits cleanly via shutdown_event without restarting."""
-        pipeline = _make_pipeline(is_active=True, segments_promoted=5)
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=5,
-            check_interval_s=0.05,
-        )
+        pipeline = _make_pipeline(segments_promoted=5)
+        watchdog = RecordingWatchdog(pipeline, max_restarts=5, check_interval_s=0.0025)
 
         shutdown = asyncio.Event()
 
-        async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.15)
+        # Shutdown immediately on the first check logic block
+        def mock_is_active() -> bool:
             shutdown.set()
+            return True
 
-        task = asyncio.create_task(trigger_shutdown())
+        type(pipeline).is_active = PropertyMock(side_effect=mock_is_active)
+
         await watchdog.watch(shutdown)
-        await task
 
         assert watchdog.restart_count == 0
         assert watchdog.is_giving_up is False
         assert watchdog.last_failure_reason is None
-        assert watchdog.max_restarts == 5
         pipeline.stop.assert_not_called()
         pipeline.start.assert_not_called()
 
@@ -88,235 +139,87 @@ class TestWatchdogInitialState:
 
 
 @pytest.mark.unit
-class TestWatchdogCrashDetection:
-    """Watchdog detects FFmpeg crashes and restarts."""
+class TestWatchdogCrashReaction:
+    """Watchdog executes restart routine upon crash detection."""
 
-    async def test_detects_ffmpeg_crash_and_restarts(self) -> None:
-        """Mock is_active=False → watchdog calls stop() + start()."""
+    async def test_executes_restart_and_resumes(self) -> None:
+        """Mock is_active=False -> watchdog stops, starts, then resumes."""
         pipeline = _make_pipeline(is_active=False, returncode=-9)
-
-        # After restart, pipeline becomes active
-        restart_call_count = 0
-
-        def on_start() -> None:
-            nonlocal restart_call_count
-            restart_call_count += 1
-            type(pipeline).is_active = PropertyMock(return_value=True)
-
-        pipeline.start.side_effect = on_start
-
         watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=5,
-            check_interval_s=0.05,
-            base_backoff_s=0.01,
+            pipeline, max_restarts=5, check_interval_s=0.01, base_backoff_s=0.01
         )
-
         shutdown = asyncio.Event()
 
-        async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.3)
-            shutdown.set()
+        # Ensure delay doesn't drag out the test unnecessarily
+        with patch("silvasonic.recorder.watchdog.asyncio.sleep", new_callable=AsyncMock):
 
-        task = asyncio.create_task(trigger_shutdown())
-        await watchdog.watch(shutdown)
-        await task
+            def on_start() -> None:
+                # Once restarted, pipeline becomes healthy and we set shutdown
+                type(pipeline).is_active = PropertyMock(return_value=True)
+                shutdown.set()
 
-        assert watchdog.restart_count == 1
-        pipeline.stop.assert_called_once()
-        assert restart_call_count == 1
+            pipeline.start.side_effect = on_start
 
+            await watchdog.watch(shutdown)
 
-@pytest.mark.unit
-class TestWatchdogStallDetection:
-    """Watchdog detects segment stalls and restarts."""
-
-    async def test_detects_stall_and_restarts(self) -> None:
-        """segments_promoted doesn't change → restart after stall_timeout_s."""
-        # Use a mutable counter so the mock always has a value to return
-        counter = [5]  # mutable — shared between mock and on_start
-
-        pipeline = _make_pipeline(is_active=True)
-        type(pipeline).segments_promoted = PropertyMock(side_effect=lambda: counter[0])
-
-        # After restart, bump the counter so stall detection resets
-        def on_start() -> None:
-            counter[0] += 100
-
-        pipeline.start.side_effect = on_start
-
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=5,
-            check_interval_s=0.02,
-            stall_timeout_s=0.06,
-            base_backoff_s=0.01,
-        )
-
-        shutdown = asyncio.Event()
-
-        async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.15)
-            shutdown.set()
-
-        task = asyncio.create_task(trigger_shutdown())
-        await watchdog.watch(shutdown)
-        await task
-
-        assert watchdog.restart_count >= 1
-        assert watchdog.last_failure_reason is not None
-        assert "No new segments" in watchdog.last_failure_reason
+            assert watchdog.restart_count == 1
+            assert watchdog.last_failure_reason is not None
+            assert "exited" in watchdog.last_failure_reason
+            pipeline.stop.assert_called_once()
+            pipeline.start.assert_called_once()
 
 
 @pytest.mark.unit
 class TestWatchdogBackoff:
-    """Watchdog applies exponential backoff delays."""
+    """Watchdog applies exponential backoff delays using loop.time()."""
 
-    async def test_exponential_backoff_delays(self) -> None:
-        """Verify backoff doubles each retry."""
+    async def test_exhausts_retries_with_backoff(self) -> None:
+        """Pipeline stays crashed -> exhausts retries -> sets is_giving_up."""
         pipeline = _make_pipeline(is_active=False, returncode=1)
-
-        # Pipeline always stays crashed
+        # Stays crashed
         pipeline.start.side_effect = lambda: None
 
         watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=3,
-            check_interval_s=0.02,
-            base_backoff_s=0.01,
+            pipeline, max_restarts=3, check_interval_s=0.01, base_backoff_s=0.01
         )
-
         shutdown = asyncio.Event()
+
+        # check_interval and backoff are set to 0.01 so it inherently executes fast
         with pytest.raises(RuntimeError, match="Watchdog exhausted all 3 restart attempts"):
             await watchdog.watch(shutdown)
 
-        # Should have attempted 3 restarts, then given up
         assert watchdog.restart_count == 3
         assert watchdog.is_giving_up is True
 
 
 @pytest.mark.unit
-class TestWatchdogMaxRestarts:
-    """Watchdog gives up after max restarts."""
-
-    async def test_gives_up_after_max_restarts(self) -> None:
-        """After max_restarts, is_giving_up=True, watch loop exits."""
-        pipeline = _make_pipeline(is_active=False, returncode=-11)
-        pipeline.start.side_effect = lambda: None  # stays crashed
-
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=2,
-            check_interval_s=0.02,
-            base_backoff_s=0.01,
-        )
-
-        shutdown = asyncio.Event()
-        with pytest.raises(RuntimeError, match="Watchdog exhausted all 2 restart attempts"):
-            await watchdog.watch(shutdown)
-
-        assert watchdog.is_giving_up is True
-        assert watchdog.restart_count == 2
-        assert watchdog.last_failure_reason is not None
-
-
-@pytest.mark.unit
-class TestWatchdogRestartCounter:
-    """Watchdog counts restarts correctly."""
-
-    async def test_restart_counter_increments(self) -> None:
-        """Each restart increments restart_count."""
-        call_count = 0
-
-        pipeline = _make_pipeline(is_active=False, returncode=1)
-
-        def on_start() -> None:
-            nonlocal call_count
-            call_count += 1
-            # Stay crashed to keep restarting
-            type(pipeline).is_active = PropertyMock(return_value=False)
-
-        pipeline.start.side_effect = on_start
-
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=3,
-            check_interval_s=0.02,
-            base_backoff_s=0.01,
-        )
-
-        shutdown = asyncio.Event()
-        with pytest.raises(RuntimeError, match="Watchdog exhausted all 3 restart attempts"):
-            await watchdog.watch(shutdown)
-
-        assert watchdog.restart_count == 3
-        assert call_count == 3
-
-
-@pytest.mark.unit
-class TestWatchdogShutdown:
-    """Watchdog respects shutdown during backoff."""
+class TestWatchdogShutdownDuringBackoff:
+    """Watchdog respects shutdown even when in the backoff sleep."""
 
     async def test_respects_shutdown_during_backoff(self) -> None:
-        """Setting shutdown_event during backoff delay exits immediately."""
+        """Setting shutdown_event exits backoff loop early."""
         pipeline = _make_pipeline(is_active=False, returncode=1)
 
         watchdog = RecordingWatchdog(
             pipeline,
             max_restarts=5,
-            check_interval_s=0.02,
-            base_backoff_s=10.0,  # Very long backoff — would hang if not interrupted
+            check_interval_s=0.01,
+            base_backoff_s=10.0,  # Massive delay, would hang if wait_for wasn't interrupted
         )
-
         shutdown = asyncio.Event()
 
-        async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.1)
-            shutdown.set()
+        def stop_side_effect() -> None:
+            # Set the shutdown event "soon" so it triggers during the backoff's wait_for
+            asyncio.get_running_loop().call_soon(shutdown.set)
 
-        task = asyncio.create_task(trigger_shutdown())
+        pipeline.stop.side_effect = stop_side_effect
+
         await watchdog.watch(shutdown)
-        await task
 
-        # Should have detected failure but not completed the restart
-        # (shutdown happened during backoff)
+        # Detected failure, entered backoff, shutdown event
+        # set immediately by side_effect, exited gracefully
         assert watchdog.restart_count == 0
         assert watchdog.is_giving_up is False
-
-
-@pytest.mark.unit
-class TestWatchdogFailureReason:
-    """Watchdog reports failure reasons."""
-
-    async def test_last_failure_reason_set(self) -> None:
-        """last_failure_reason contains human-readable description."""
-        pipeline = _make_pipeline(is_active=False, returncode=-9)
-
-        def on_start() -> None:
-            type(pipeline).is_active = PropertyMock(return_value=True)
-
-        pipeline.start.side_effect = on_start
-
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=5,
-            check_interval_s=0.02,
-            base_backoff_s=0.01,
-        )
-
-        shutdown = asyncio.Event()
-
-        async def trigger_shutdown() -> None:
-            await asyncio.sleep(0.2)
-            shutdown.set()
-
-        task = asyncio.create_task(trigger_shutdown())
-        await watchdog.watch(shutdown)
-        await task
-
-        assert watchdog.last_failure_reason is not None
-        assert "FFmpeg process exited" in watchdog.last_failure_reason
-        assert "-9" in watchdog.last_failure_reason
 
 
 @pytest.mark.unit
@@ -324,18 +227,19 @@ class TestWatchdogStartFailure:
     """Watchdog handles pipeline start() exceptions."""
 
     async def test_start_exception_counts_as_restart(self) -> None:
-        """If start() raises, the attempt still counts toward max_restarts."""
+        """If start() raises, the attempt counts toward max_restarts."""
         pipeline = _make_pipeline(is_active=False, returncode=1)
         pipeline.start.side_effect = RuntimeError("No audio device")
 
         watchdog = RecordingWatchdog(
             pipeline,
             max_restarts=2,
-            check_interval_s=0.02,
+            check_interval_s=0.01,
             base_backoff_s=0.01,
         )
 
         shutdown = asyncio.Event()
+
         with (
             patch("silvasonic.recorder.watchdog.log"),
             pytest.raises(RuntimeError, match="Watchdog exhausted all 2 restart attempts"),
@@ -344,41 +248,3 @@ class TestWatchdogStartFailure:
 
         assert watchdog.restart_count == 2
         assert watchdog.is_giving_up is True
-
-
-@pytest.mark.unit
-class TestWatchdogStallProgressReset:
-    """Watchdog resets stall timer when segments increase."""
-
-    async def test_stall_timer_resets_on_segment_progress(self) -> None:
-        """Increasing segments_promoted resets the stall timer."""
-        # Start with segments=5, increment every check cycle
-        counter = [5]
-
-        pipeline = _make_pipeline(is_active=True)
-        type(pipeline).segments_promoted = PropertyMock(side_effect=lambda: counter[0])
-
-        watchdog = RecordingWatchdog(
-            pipeline,
-            max_restarts=5,
-            check_interval_s=0.02,
-            stall_timeout_s=0.08,  # Would stall if no progress
-            base_backoff_s=0.01,
-        )
-
-        shutdown = asyncio.Event()
-
-        # Simulate progress: increment counter every check cycle
-        async def simulate_progress() -> None:
-            for _ in range(10):
-                await asyncio.sleep(0.02)
-                counter[0] += 1
-            shutdown.set()
-
-        task = asyncio.create_task(simulate_progress())
-        await watchdog.watch(shutdown)
-        await task
-
-        # No restarts because there was constant progress
-        assert watchdog.restart_count == 0
-        assert watchdog.is_giving_up is False

@@ -74,12 +74,14 @@ Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs
 3. **Location:** Service-specific tests inside the service package. Only cross-cutting tests in root `tests/`.
 4. **Hardware Tests:** `@pytest.mark.system_hw_auto` / `.system_hw_manual` tests require real USB microphone hardware and are **never** run in CI or `just ci`. Run manually via `just test-hw` or `just test-hw-manual`.
 
+Full testing guide (anti-patterns, CI stages, writing rules, isolation): **[Testing Guide](https://github.com/kyellsen/silvasonic/blob/main/docs/development/testing.md)**.
+
 ## 7. Environment Variable Naming
 *   **Prefix Rule:** Every project variable **MUST** use `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`).
 *   **Exceptions:** Third-party standards keep their names: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DOCKER_HOST`.
 
 ## 8. Data Contracts (Spec-Driven Development)
-*   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/` or `config_schemas.py`.
+*   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/`.
 *   **No Duplication:** **Never** hardcode or duplicate these payloads inside individual Tier 2 services. Before writing code that exchanges data between services, check the core schemas first.
 
 ---

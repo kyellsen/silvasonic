@@ -1,6 +1,6 @@
 [project]
 name = "silvasonic"
-version = "0.7.0"
+version = "0.7.1"
 description = "Silvasonic Autonomous Bioacoustic Monitoring System"
 readme = "README.md"
 requires-python = ">=3.13, <3.14"
@@ -11,6 +11,7 @@ dependencies = [
     "silvasonic-recorder",
     "silvasonic-web-mock",
     "silvasonic-db-viewer",
+    "silvasonic-birdnet",
 ]
 
 [tool.uv.workspace]
@@ -24,7 +25,6 @@ exclude = [
     "services/web-interface",
     "services/icecast",
     "services/batdetect",
-    "services/birdnet",
     "services/weather",
     "services/tailscale",
 ]
@@ -37,6 +37,7 @@ silvasonic-processor = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-web-mock = { workspace = true }
 silvasonic-db-viewer = { workspace = true }
+silvasonic-birdnet = { workspace = true }
 silvasonic-test-utils = { workspace = true }
 
 
@@ -80,7 +81,7 @@ dev = [
     "types-pyyaml",
 
     # -- Documentation --
-    "mkdocs>=1.5.0",
+    "mkdocs>=1.5.0,<2.0.0",
     "mkdocs-include-markdown-plugin>=6.0.0",
     "mkdocs-material>=9.5.0",
     "mkdocs-swagger-ui-tag>=0.4.0",
@@ -131,7 +132,7 @@ python_version = "3.13"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src"
+mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src:services/birdnet/src"
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]

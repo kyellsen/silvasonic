@@ -14,6 +14,7 @@ the subprocess lifecycle and atomic segment promotion.
 """
 
 import asyncio
+import contextlib
 from typing import Any
 
 import structlog
@@ -163,32 +164,40 @@ class RecorderService(SilvaService):
                 self._pipeline.stop()
                 self._pipeline = None
 
+    def _monitor_recording_once(self) -> None:
+        """Check FFmpeg status and update health synchronously."""
+        if self._pipeline is not None:
+            is_recording = self._pipeline.is_active
+            segments = self._pipeline.segments_promoted
+            errors = len(self._pipeline.stderr_errors)
+            if is_recording:
+                details = f"Recording active (segments: {segments}, errors: {errors})"
+            else:
+                log.warning(
+                    "recording.ffmpeg_exited_unexpectedly",
+                    segments=segments,
+                    errors=errors,
+                )
+                details = "FFmpeg process exited unexpectedly"
+        else:
+            is_recording = False
+            details = "Pipeline not initialized"
+
+        self.health.update_status("recording", is_recording, details)
+
     async def _monitor_recording(self) -> None:
         """Periodically check FFmpeg status and update health.
 
         Reports pipeline activity and segment count to the health
         monitor.
         """
-        while True:
-            if self._pipeline is not None:
-                is_recording = self._pipeline.is_active
-                segments = self._pipeline.segments_promoted
-                errors = len(self._pipeline.stderr_errors)
-                if is_recording:
-                    details = f"Recording active (segments: {segments}, errors: {errors})"
-                else:
-                    log.warning(
-                        "recording.ffmpeg_exited_unexpectedly",
-                        segments=segments,
-                        errors=errors,
-                    )
-                    details = "FFmpeg process exited unexpectedly"
-            else:
-                is_recording = False
-                details = "Pipeline not initialized"
-
-            self.health.update_status("recording", is_recording, details)
-            await asyncio.sleep(self._cfg.RECORDER_HEALTH_POLL_INTERVAL_S)
+        while not self._shutdown_event.is_set():
+            self._monitor_recording_once()
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    self._shutdown_event.wait(),
+                    timeout=self._cfg.RECORDER_HEALTH_POLL_INTERVAL_S,
+                )
 
 
 if __name__ == "__main__":

@@ -62,10 +62,9 @@ FIXTURES = [
     },
 ]
 
-MODEL_DIR = os.path.join(
-    os.path.dirname(__file__),
-    ".venv_311/lib/python3.11/site-packages/birdnetlib/models/analyzer",
-)
+import birdnetlib  # type: ignore  # noqa: E402
+
+MODEL_DIR = os.path.join(os.path.dirname(birdnetlib.__file__), "models/analyzer")
 MODEL_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite")
 META_MODEL_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite")
 LABELS_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_Labels.txt")
@@ -165,7 +164,7 @@ def benchmark_native(reps: int = 3) -> dict[str, Any]:
             # ── Init ──
             init_start = time.perf_counter()
 
-            from tflite_runtime.interpreter import Interpreter  # type: ignore
+            from ai_edge_litert.interpreter import Interpreter  # type: ignore
 
             interpreter = Interpreter(model_path=MODEL_PATH, num_threads=1)
             interpreter.allocate_tensors()

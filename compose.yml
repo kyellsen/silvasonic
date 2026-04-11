@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       SILVASONIC_CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
       SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
@@ -97,7 +97,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
       - "${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
@@ -157,6 +157,26 @@ services:
     cpus: 1.0
     oom_score_adj: -999 # Protected: OOM Killer kills this LAST
 
+  # --- BirdNET (Inference Worker) ---
+  # Tier 2 background worker. Controlled via runtime profiles.
+  birdnet:
+    build:
+      context: .
+      dockerfile: services/birdnet/Containerfile
+    restart: unless-stopped
+    profiles: [ "managed" ]
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9500/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Resource Limits & QoS (Template)
+    mem_limit: 1024m
+    cpus: 1.5
+
   # --- Redis (Pub/Sub broker for heartbeats and SSE log streaming) ---
   # Ephemeral — no persistence required (status bus, see ADR-0017, ADR-0019, ADR-0022).
   # Named volume used for bind-mount consistency (ADR-0006).
@@ -190,7 +210,7 @@ services:
     env_file: .env
     environment:
       SILVASONIC_REDIS_URL: redis://redis:6379/0
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
@@ -222,7 +242,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: database
+      SILVASONIC_DB_HOST: database
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}

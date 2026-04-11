@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-from silvasonic.core.config_schemas import CloudSyncSettings
 from silvasonic.core.crypto import decrypt_value
 from silvasonic.core.schemas.cloud_sync import validate_rclone_config
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 
 log = structlog.get_logger()
 

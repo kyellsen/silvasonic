@@ -1,0 +1,33 @@
+name: Auto-Merge to Main
+
+on:
+  workflow_run:
+    workflows: ["Silvasonic CI"]
+    types:
+      - completed
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+jobs:
+  fast-forward:
+    name: Fast-Forward Main
+    # Only run if the CI pipeline actually passed
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history so it can do a valid fast-forward
+          fetch-depth: 0
+          # We check out dev, which is the branch that just passed CI
+          ref: dev
+
+      - name: Fast-forward main
+        run: |
+          echo "CI Pipeline on dev succeeded. Fast-forwarding main..."
+          git push origin HEAD:main

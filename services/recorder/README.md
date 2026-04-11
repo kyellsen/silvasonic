@@ -39,7 +39,7 @@
     1.  **Raw:** Preserves original sample rate and bit depth (direct write via FFmpeg).
     2.  **Processed:** Resampled to 48 kHz / S16LE by FFmpeg for consistent ML input.
 *   **Segment Writing:** Files are written in configurable segments (default: 10 seconds, configurable via Microphone Profile).
-*   **Buffer → Data Workflow:** While a segment is being actively written by FFmpeg, it is stored in `.buffer/{stream}/`. A `SegmentPromoter` thread detects completed segments and atomically moves them to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
+*   **Buffer → Data Workflow:** While a segment is being actively written by FFmpeg, it is stored in `.buffer/{stream}/`. A background promotion routine detects completed segments and atomically moves them to `data/{stream}/`. This ensures the Processor only picks up complete, valid files.
 *   **Triple Stream Architecture** 🔮 Future (v1.1.0):
     3.  **Live (Opus):** Encodes to Ogg/Opus (64 kbps) and pushes to Icecast mount point. Best-effort — never compromises Data Capture Integrity (ADR-0011).
 
@@ -62,7 +62,7 @@
 | **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
 | **Resources**    | Medium — continuous I/O to NVMe, FFmpeg resampling CPU usage scales with sample rate     |
 | **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
-| **Retry Limit**  | Max 5 restart retries before giving up — prevents infinite restart loops                 |
+| **Retry Limit**  | Container restart limits apply to prevent infinite loops (managed by Controller)         |
 
 ---
 
@@ -73,13 +73,13 @@
 | `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
 | `SILVASONIC_RECORDER_DEVICE`        | ALSA device identifier                             | `hw:1,0`                                                               |
 | `SILVASONIC_RECORDER_PROFILE_SLUG`  | Microphone Profile slug                            | `ultramic_384_evo`                                                     |
-| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile config (JSONB, serialized by Controller) | `{"audio":{"sample_rate":384000,...}}`                              |
+| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile configuration parameters              | `{"audio":{"sample_rate":384000,...}}`                                 |
 | `SILVASONIC_ICECAST_URL`            | Target for Opus Stream                             | `icecast://user:pass@host:port/mount`                                  |
 | `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
 | Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |
 
 > [!NOTE]
-> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The `SILVASONIC_RECORDER_CONFIG_JSON` variable contains the full JSONB config block from the `microphone_profiles` table, serialized by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
+> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The full profile configuration parameters are managed centrally by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
 
 ---
 
@@ -158,23 +158,23 @@ The Recorder implements multiple layers of protection to ensure Data Capture Int
 
 ### OOM Protection
 
-*   `oom_score_adj=-999` — **Protected**. The OOM Killer kills this service LAST. (ADR-0020)
+*   **Highest QoS Priority / Protected Status**. The Recorder is configured to be the last service terminated under memory pressure (ADR-0020).
 *   All analysis services (BirdNET, BatDetect, Weather) are expendable (`+500`) and will be killed first under memory pressure.
 
 > [!CAUTION]
-> The Recorder's `oom_score_adj=-999` makes it the **most protected** process on the system. This is the final line of defense for Data Capture Integrity.
+> The Recorder's protected status makes it the **most protected** process on the system. This is the final line of defense for Data Capture Integrity.
 
 ### Multi-Level Recovery
 
 | Level | Mechanism                                                                                       | Scope                                      |
 | ----- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | 1     | **Subprocess Monitor** — monitors the FFmpeg process state and checks for errors or hangs       | Restarts the pipeline within the container |
-| 2     | **Container Restart** — Podman `restart: on-failure` (max 5 retries) restarts the entire container | Handles container-level crashes            |
+| 2     | **Container Restart** — Container engine restarts the entire container according to its policy  | Handles container-level crashes            |
 | 3     | **Controller Health Check** (reconciliation interval) — detects unresponsive Recorders and recreates them | Handles unrecoverable states               |
 
-### Retry Limit
+### Retry Limits
 
-*   Maximum **5 restart retries** before giving up, to prevent infinite restart loops from persistent hardware errors.
+*   Container restart policies (e.g., `restart: on-failure`) apply to prevent infinite restart loops from persistent hardware errors. The exact configuration is managed by the Controller's container specification.
 
 ### Independence
 

@@ -113,7 +113,11 @@ class TestBuildRecorderSpec:
         # CONFIG_JSON contains the full profile config (ADR-0016, Option C)
         assert "SILVASONIC_RECORDER_CONFIG_JSON" in spec.environment
         parsed = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
-        assert parsed == {"audio": {"sample_rate": 384000, "channels": 1}}
+        assert parsed["audio"]["sample_rate"] == 384000
+        assert parsed["audio"]["channels"] == 1
+        assert parsed["audio"]["format"] == "S16LE"
+        assert "processing" in parsed
+        assert "stream" in parsed
         assert spec.labels["io.silvasonic.service"] == "recorder"
         # device_id label still uses stable_device_id (DB primary key)
         assert spec.labels["io.silvasonic.device_id"] == "0869-0389-00000000034F"
@@ -499,7 +503,13 @@ class TestContainerManager:
 
     def test_build_run_kwargs_structure(self) -> None:
         """_build_run_kwargs() builds correct kwargs dict from spec."""
-        spec = _make_spec(name="silvasonic-recorder-test")
+        spec = _make_spec(
+            name="silvasonic-recorder-test",
+            mounts=[
+                MountSpec(source="/host/ro", target="/cont/ro", read_only=True),
+                MountSpec(source="/host/rw", target="/cont/rw", read_only=False),
+            ],
+        )
         kwargs = ContainerManager._build_run_kwargs(spec)
 
         assert kwargs["image"] == spec.image
@@ -512,6 +522,13 @@ class TestContainerManager:
         assert kwargs["cpu_quota"] == int(spec.cpu_limit * 100_000)
         assert isinstance(kwargs["restart_policy"], dict)
         assert kwargs["restart_policy"]["Name"] == "on-failure"
+
+        # Verify parsed volumes directly
+        assert "volumes" in kwargs
+        vols = kwargs["volumes"]
+        assert isinstance(vols, dict)
+        assert vols["/host/ro"] == {"bind": "/cont/ro", "mode": "ro"}
+        assert vols["/host/rw"] == {"bind": "/cont/rw", "mode": "z"}
 
     def test_get_not_found_returns_none(self) -> None:
         """get() returns None silently when container does not exist."""

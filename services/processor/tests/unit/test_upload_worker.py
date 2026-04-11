@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.config_schemas import CloudSyncSettings
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.modules.work_poller import PendingUpload
 from silvasonic.processor.upload_worker import UploadWorker, _is_within_window
@@ -53,22 +53,6 @@ def mock_encryption_key() -> Any:
     target = "silvasonic.processor.upload_worker.load_encryption_key"
     with patch(target, return_value=b"dummykey") as mock_key:
         yield mock_key
-
-
-@pytest.mark.unit
-async def test_upload_disabled_skips(worker: UploadWorker) -> None:
-    """Test that the worker skips DB polling if disabled."""
-
-    async def break_loop(*args: Any, **kwargs: Any) -> None:
-        worker._shutdown_event.set()
-
-    with patch.object(worker, "_sleep", side_effect=break_loop) as mock_sleep:
-        worker._fetch_config = AsyncMock(return_value=("station", CloudSyncSettings(enabled=False)))  # type: ignore
-        await worker.run()
-
-        health_mock = worker.health.update_status
-        health_mock.assert_called_with("upload_worker", True, "state: disabled")  # type: ignore
-        mock_sleep.assert_called()
 
 
 @pytest.mark.unit

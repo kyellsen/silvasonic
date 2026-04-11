@@ -15,6 +15,7 @@ import pytest
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
+    ManagedServiceSeeder,
     ProfileBootstrapper,
 )
 from silvasonic.test_utils.helpers import build_postgres_url
@@ -237,9 +238,10 @@ class TestRunAllSeedersIntegration:
             await ConfigSeeder(defaults_path=yml).seed(session)
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await AuthSeeder(defaults_path=yml).seed(session)
+            await ManagedServiceSeeder().seed(session)
             await session.commit()
 
-        # Verify all three tables have data
+        # Verify all tables have data
         async with session_factory() as session:
             config_count = (
                 await session.execute(text("SELECT count(*) FROM system_config"))
@@ -248,22 +250,25 @@ class TestRunAllSeedersIntegration:
                 await session.execute(text("SELECT count(*) FROM microphone_profiles"))
             ).scalar_one()
             user_count = (await session.execute(text("SELECT count(*) FROM users"))).scalar_one()
+            managed_count = (
+                await session.execute(text("SELECT count(*) FROM managed_services"))
+            ).scalar_one()
 
         await engine.dispose()
 
         assert config_count >= 1, "system_config should have at least 1 row"
         assert profile_count >= 1, "microphone_profiles should have at least 1 row"
         assert user_count >= 1, "users should have at least 1 row"
+        assert managed_count >= 1, "managed_services should have at least 1 row"
 
 
 @pytest.mark.integration
 class TestRunAllSeedersCloudSync:
     """Regression tests: run_all_seeders with cloud env vars.
 
-    Covers the duplicate-key bug where ConfigSeeder and CloudSyncSeeder
-    both insert a ``cloud_sync`` key in the same session batch, causing
-    an IntegrityError that kills the entire load_config() hook and
-    prevents Recorder startup (Data Capture Integrity violation).
+    Verifies per-seeder transaction isolation resolves the historic
+    duplicate-key bug (ConfigSeeder + CloudSyncSeeder both inserting
+    ``cloud_sync`` key).
     """
 
     async def test_run_all_seeders_with_cloud_env_vars(
@@ -302,7 +307,7 @@ class TestRunAllSeedersCloudSync:
 
         async with session_factory() as session:
             with _patch.dict("os.environ", env):
-                await run_all_seeders(session)
+                await run_all_seeders(session_factory)
 
         # Verify: cloud_sync exists with enabled=True and encrypted creds
         async with session_factory() as session:
@@ -347,9 +352,8 @@ class TestRunAllSeedersCloudSync:
             "SILVASONIC_CLOUD_REMOTE_PASS": "",
         }
 
-        async with session_factory() as session:
-            with _patch.dict("os.environ", env_clear):
-                await run_all_seeders(session)
+        with _patch.dict("os.environ", env_clear):
+            await run_all_seeders(session_factory)
 
         # Verify: cloud_sync exists with defaults (enabled=false)
         async with session_factory() as session:
@@ -395,14 +399,12 @@ class TestRunAllSeedersCloudSync:
         )
 
         # First run
-        async with session_factory() as session:
-            with _patch.dict("os.environ", env):
-                await run_all_seeders(session)
+        with _patch.dict("os.environ", env):
+            await run_all_seeders(session_factory)
 
         # Second run (simulates restart)
-        async with session_factory() as session:
-            with _patch.dict("os.environ", env):
-                await run_all_seeders(session)
+        with _patch.dict("os.environ", env):
+            await run_all_seeders(session_factory)
 
         # Verify single row, updated values
         async with session_factory() as session:
@@ -417,3 +419,54 @@ class TestRunAllSeedersCloudSync:
         assert count == 1, f"Expected exactly 1 cloud_sync row, got {count}"
         assert row is not None
         assert row.value["enabled"] is True
+
+
+@pytest.mark.integration
+class TestSeederIsolation:
+    """Per-seeder transaction isolation with real DB.
+
+    Verifies that a single seeder failure does not roll back
+    successfully committed seeders.
+    """
+
+    async def test_partial_seeder_failure_commits_successful(
+        self,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """Failed seeder does not roll back other seeders' committed data."""
+        from unittest.mock import patch as _patch
+
+        from silvasonic.controller.seeder import run_all_seeders
+        from silvasonic.core.database.models.system import SystemConfig
+
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+        # Patch ManagedServiceSeeder to crash
+        with _patch(
+            "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+            side_effect=RuntimeError("boom"),
+        ):
+            failed = await run_all_seeders(session_factory)
+
+        # ManagedServiceSeeder should be the only failure
+        assert failed == ["managed_services"]
+
+        # ConfigSeeder data must be committed (it ran before the crash)
+        async with session_factory() as session:
+            system_row = await session.get(SystemConfig, "system")
+            assert system_row is not None, "ConfigSeeder data must persist"
+
+        # ProfileBootstrapper data must be committed
+        async with session_factory() as session:
+            result = await session.execute(text("SELECT count(*) FROM microphone_profiles"))
+            count = result.scalar_one()
+            assert count >= 1, "ProfileBootstrapper data must persist"
+
+        await engine.dispose()

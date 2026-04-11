@@ -12,10 +12,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
-from silvasonic.core.config_schemas import CloudSyncSettings
 from silvasonic.core.crypto import load_encryption_key
 from silvasonic.core.database.models.system import SystemConfig
 from silvasonic.core.health import HealthMonitor
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.audit_logger import log_upload_attempt
 from silvasonic.processor.modules.flac_encoder import FlacEncodingError, encode_wav_to_flac
 from silvasonic.processor.modules.path_builder import build_remote_path

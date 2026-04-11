@@ -42,7 +42,7 @@ class TestFFmpegConfig:
         assert cfg.processed_enabled is True
 
     def test_from_injected_config(self) -> None:
-        """from_injected_config extracts all fields from an InjectedRecorderConfig."""
+        """from_injected_config extracts all fields from an RecorderRuntimeConfig."""
         config = MagicMock()
         config.audio.sample_rate = 384000
         config.audio.channels = 1

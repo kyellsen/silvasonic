@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device, Upload
+from silvasonic.core.database.models.recordings import Recording, Upload
+from silvasonic.core.database.models.system import Device
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -63,6 +63,9 @@ class TestMonitorDatabase:
         """Updates HealthMonitor with 'Connected' when DB is reachable."""
         svc = _make_bare_service()
 
+        async def mock_sleep(_: float) -> None:
+            svc._shutdown_event.set()
+
         with (
             patch(
                 "silvasonic.controller.__main__.check_database_connection",
@@ -71,11 +74,10 @@ class TestMonitorDatabase:
             ),
             patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
+                side_effect=mock_sleep,
             ),
-            pytest.raises(asyncio.CancelledError),
         ):
+            svc._shutdown_event = asyncio.Event()
             await svc._monitor_database()
 
         status = svc.health.get_status()
@@ -86,6 +88,9 @@ class TestMonitorDatabase:
         """Updates HealthMonitor with 'Connection failed' when DB is down."""
         svc = _make_bare_service()
 
+        async def mock_sleep(_: float) -> None:
+            svc._shutdown_event.set()
+
         with (
             patch(
                 "silvasonic.controller.__main__.check_database_connection",
@@ -94,11 +99,10 @@ class TestMonitorDatabase:
             ),
             patch(
                 "silvasonic.controller.__main__.asyncio.sleep",
-                new_callable=AsyncMock,
-                side_effect=asyncio.CancelledError,
+                side_effect=mock_sleep,
             ),
-            pytest.raises(asyncio.CancelledError),
         ):
+            svc._shutdown_event = asyncio.Event()
             await svc._monitor_database()
 
         status = svc.health.get_status()
@@ -123,13 +127,8 @@ class TestMonitorPodman:
         ]
         svc._podman_client.connect.return_value = None
 
-        call_count = 0
-
         async def mock_sleep(_seconds: float) -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 1:
-                raise asyncio.CancelledError
+            svc._shutdown_event.set()
 
         with (
             patch("pathlib.Path.exists", return_value=True),
@@ -141,9 +140,9 @@ class TestMonitorPodman:
                 "silvasonic.controller.__main__.asyncio.sleep",
                 side_effect=mock_sleep,
             ),
-            pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
+            svc._shutdown_event = asyncio.Event()
             await svc._monitor_podman()
 
         status = svc.health.get_status()
@@ -159,13 +158,8 @@ class TestMonitorPodman:
         svc._podman_client.ping.return_value = False
         svc._podman_client.connect.return_value = None
 
-        call_count = 0
-
         async def mock_sleep(_seconds: float) -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 1:
-                raise asyncio.CancelledError
+            svc._shutdown_event.set()
 
         with (
             patch("pathlib.Path.exists", return_value=True),
@@ -177,9 +171,9 @@ class TestMonitorPodman:
                 "silvasonic.controller.__main__.asyncio.sleep",
                 side_effect=mock_sleep,
             ),
-            pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
+            svc._shutdown_event = asyncio.Event()
             await svc._monitor_podman()
 
         status = svc.health.get_status()
@@ -195,13 +189,8 @@ class TestMonitorPodman:
         svc._podman_client.connect.side_effect = PodmanConnectionError("no socket")
         svc._podman_client.ping.return_value = False
 
-        call_count = 0
-
         async def mock_sleep(_seconds: float) -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 1:
-                raise asyncio.CancelledError
+            svc._shutdown_event.set()
 
         with (
             patch("pathlib.Path.exists", return_value=True),
@@ -213,9 +202,9 @@ class TestMonitorPodman:
                 "silvasonic.controller.__main__.asyncio.sleep",
                 side_effect=mock_sleep,
             ),
-            pytest.raises(asyncio.CancelledError),
         ):
             mock_to_thread.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
+            svc._shutdown_event = asyncio.Event()
             await svc._monitor_podman()
 
         status = svc.health.get_status()
@@ -263,29 +252,30 @@ class TestGetExtraMeta:
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestControllerLoadConfig:
-    """Tests for the load_config() hook (DB seeding)."""
+    """Service contract: load_config() bootstraps DB state and detects hardware.
+
+    These tests verify the decoupling between seeding and device scanning
+    (Data Capture Integrity — AGENTS.md §1).
+    """
 
     async def test_load_config_calls_seeders(self) -> None:
-        """load_config() runs all seeders and calls scan_and_sync_devices."""
+        """Contract: load_config() seeds factory defaults and triggers device scan."""
         svc = _make_bare_service()
         svc._reconciliation_loop.scan_and_sync_devices = AsyncMock(return_value=0)
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ) as mock_factory,
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
+                return_value=[],
             ) as mock_seeders,
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             await svc.load_config()
 
-        mock_seeders.assert_awaited_once_with(mock_ctx)
+        mock_seeders.assert_awaited_once_with(mock_factory.return_value)
         svc._reconciliation_loop.scan_and_sync_devices.assert_awaited_once()
 
     async def test_scan_runs_even_if_seeding_fails(self) -> None:
@@ -299,18 +289,14 @@ class TestControllerLoadConfig:
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ),
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("IntegrityError: duplicate key"),
             ),
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             # Must NOT raise — load_config catches the seeder error
             await svc.load_config()
 
@@ -326,17 +312,14 @@ class TestControllerLoadConfig:
 
         with (
             patch(
-                "silvasonic.controller.__main__.get_session",
-            ) as mock_session,
+                "silvasonic.controller.__main__.get_session_factory",
+            ),
             patch(
                 "silvasonic.controller.__main__.run_all_seeders",
                 new_callable=AsyncMock,
+                return_value=[],
             ),
         ):
-            mock_ctx = AsyncMock()
-            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
-            mock_session.return_value.__aexit__ = AsyncMock()
-
             # Must NOT raise
             await svc.load_config()
 
@@ -383,7 +366,7 @@ class TestControllerServiceRun:
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
 class TestEmitStatusSummary:
-    """Tests for the _emit_status_summary method."""
+    """Service contract: periodic status summaries include container state and stats."""
 
     async def test_summary_logs_container_names(self) -> None:
         """_emit_status_summary logs container names and stats."""

@@ -123,11 +123,11 @@ def controller_container(
     container = (
         DockerContainer("silvasonic_controller")
         .with_exposed_ports(9100)
-        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("SILVASONIC_DB_HOST", "test-database")
         .with_env("POSTGRES_USER", "silvasonic")
         .with_env("POSTGRES_PASSWORD", "silvasonic")
         .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_DB_PORT", "5432")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw", "/app/recorder-workspace": "rw"})
@@ -164,11 +164,11 @@ def processor_container(
     container = (
         DockerContainer("silvasonic_processor")
         .with_exposed_ports(9200)
-        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("SILVASONIC_DB_HOST", "test-database")
         .with_env("POSTGRES_USER", "silvasonic")
         .with_env("POSTGRES_PASSWORD", "silvasonic")
         .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_DB_PORT", "5432")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_env("SILVASONIC_ENCRYPTION_KEY", "zVwzBZb-B2UaAqyP3jDihh01e_-80u2rD5pYtQYkUaQ=")
         .with_network(smoke_network)
@@ -220,6 +220,37 @@ def recorder_container(
 
 
 @pytest.fixture()
+def birdnet_container(
+    smoke_network: Network,
+    database_container: DockerContainer,
+    redis_container_smoke: DockerContainer,
+) -> Generator[DockerContainer]:
+    """Start an isolated BirdNET container connected to test database and Redis."""
+    _require_image("silvasonic_birdnet")
+    _ = database_container
+    _ = redis_container_smoke
+
+    container = (
+        DockerContainer("silvasonic_birdnet")
+        .with_exposed_ports(9500)
+        .with_env("SILVASONIC_DB_HOST", "test-database")
+        .with_env("POSTGRES_USER", "silvasonic")
+        .with_env("POSTGRES_PASSWORD", "silvasonic")
+        .with_env("POSTGRES_DB", "silvasonic")
+        .with_env("SILVASONIC_DB_PORT", "5432")
+        .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
+        .with_network(smoke_network)
+        .with_kwargs(tmpfs={"/app/workspace": "rw"})
+    )
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(9500))
+    wait_for_http(host, port)
+    yield container
+    container.stop()
+
+
+@pytest.fixture()
 def web_mock_container() -> Generator[DockerContainer]:
     """Start an isolated Web-Mock container.
 
@@ -256,11 +287,11 @@ def db_viewer_container(
     container = (
         DockerContainer("silvasonic_db-viewer")
         .with_exposed_ports(8002)
-        .with_env("POSTGRES_HOST", "test-database")
+        .with_env("SILVASONIC_DB_HOST", "test-database")
         .with_env("POSTGRES_USER", "silvasonic")
         .with_env("POSTGRES_PASSWORD", "silvasonic")
         .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("POSTGRES_PORT", "5432")
+        .with_env("SILVASONIC_DB_PORT", "5432")
         .with_network(smoke_network)
     )
     container.start()

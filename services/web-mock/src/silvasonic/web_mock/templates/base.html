@@ -11,13 +11,13 @@
   <meta name="description" content="Silvasonic local management console — {{ station.name }}" />
 
   <!-- Compiled Tailwind CSS + DaisyUI (static build, no CDN) -->
-  <link href="/static/css/output.css" rel="stylesheet" />
+  <link href="{{ url_for('static', path='css/output.css') }}" rel="stylesheet" />
 
   <!-- Alpine.js (vendored) -->
-  <script defer src="/static/js/alpine.min.js"></script>
+  <script defer src="{{ url_for('static', path='js/alpine.min.js') }}"></script>
   <!-- HTMX + SSE extension (vendored) -->
-  <script src="/static/js/htmx.min.js"></script>
-  <script src="/static/js/htmx-ext-sse.js"></script>
+  <script src="{{ url_for('static', path='js/htmx.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/htmx-ext-sse.js') }}"></script>
 
 </head>
 
@@ -38,8 +38,8 @@
     </button>
 
     <!-- Logo + Name -->
-    <a href="/" class="flex items-center gap-2 font-semibold text-primary text-sm tracking-tight shrink-0">
-      <img src="/static/images/logo_no_text.webp" alt="Silvasonic Logo" class="h-7 w-7 object-contain" />
+    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 font-semibold text-primary text-sm tracking-tight shrink-0">
+      <img src="{{ url_for('static', path='images/logo_no_text.webp') }}" alt="Silvasonic Logo" class="h-7 w-7 object-contain" />
       <span class="text-base font-bold tracking-tight">Silvasonic</span>
     </a>
 
@@ -148,7 +148,7 @@
       <ul x-show="userMenuOpen" x-transition.opacity.duration.150ms style="display: none;"
         class="absolute right-0 top-full mt-2 w-52 bg-base-100 rounded-box shadow-lg border border-base-content/10 p-2 z-50 menu menu-sm">
         <li><span class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">SIGNED IN AS</span></li>
-        <li><a href="/settings" @click="userMenuOpen = false">User Settings</a></li>
+        <li><a href="{{ url_for('settings') }}" @click="userMenuOpen = false">User Settings</a></li>
         <div class="divider my-0"></div>
         <li><a href="#" class="text-error" @click="userMenuOpen = false">Sign Out</a></li>
       </ul>
@@ -166,21 +166,21 @@
       System</div>
 
     {% set nav_items = [
-    ('/', 'dashboard', 'Dashboard', 'hover:ring-1 hover:ring-inset hover:ring-mod-dashboard-strong',
+    (url_for('dashboard'), 'dashboard', 'Dashboard', 'hover:ring-1 hover:ring-inset hover:ring-mod-dashboard-strong',
     'bg-mod-dashboard-strong/15 text-mod-dashboard-strong font-semibold', '
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <polyline points="9 22 9 12 15 12 15 22" />'),
-    ('/recorders', 'recorders', 'Recorders', 'hover:ring-1 hover:ring-inset hover:ring-mod-recorder-strong',
+    (url_for('recorders'), 'recorders', 'Recorders', 'hover:ring-1 hover:ring-inset hover:ring-mod-recorder-strong',
     'bg-mod-recorder-strong/15 text-mod-recorder-strong font-semibold', '
     <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
     <line x1="12" y1="19" x2="12" y2="23" />
     <line x1="8" y1="23" x2="16" y2="23" />'),
-    ('/processor', 'processor', 'Processor', 'hover:ring-1 hover:ring-inset hover:ring-mod-processor-strong',
+    (url_for('processor'), 'processor', 'Processor', 'hover:ring-1 hover:ring-inset hover:ring-mod-processor-strong',
     'bg-mod-processor-strong/15 text-mod-processor-strong font-semibold', '
     <circle cx="12" cy="12" r="3" />
     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />'),
-    ('/upload', 'upload', 'Cloud Sync', 'hover:ring-1 hover:ring-inset hover:ring-mod-cloud-sync-strong',
+    (url_for('upload'), 'upload', 'Cloud Sync', 'hover:ring-1 hover:ring-inset hover:ring-mod-cloud-sync-strong',
     'bg-mod-cloud-sync-strong/15 text-mod-cloud-sync-strong font-semibold', '
     <polyline points="16 16 12 12 8 16" />
     <line x1="12" y1="12" x2="12" y2="21" />
@@ -202,12 +202,12 @@
       x-show="sidebarOpen">Modules</div>
 
     {% set module_items = [
-    ('/livesound', 'livesound', 'Livesound', 'hover:ring-1 hover:ring-inset hover:ring-mod-livesound-strong',
+    (url_for('livesound'), 'livesound', 'Livesound', 'hover:ring-1 hover:ring-inset hover:ring-mod-livesound-strong',
     'bg-mod-livesound-strong/15 text-mod-livesound-strong font-semibold', '
     <path d="M9 18V5l12-2v13" />
     <circle cx="6" cy="18" r="3" />
     <circle cx="18" cy="16" r="3" />'),
-    ('/birds', 'birds', 'Birds', 'hover:ring-1 hover:ring-inset hover:ring-mod-birds-strong', 'bg-mod-birds-strong/15
+    (url_for('birds'), 'birds', 'Birds', 'hover:ring-1 hover:ring-inset hover:ring-mod-birds-strong', 'bg-mod-birds-strong/15
     text-mod-birds-strong font-semibold', '
     <path d="M16 7h.01" />
     <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
@@ -216,10 +216,10 @@
     <path d="M14 17.75V21" />
     <path d="M7 18a6 6 0 0 0 3.84-10.61" />
     '),
-    ('/bats', 'bats', 'Bats', 'hover:ring-1 hover:ring-inset hover:ring-mod-bats-strong', 'bg-mod-bats-strong/15
+    (url_for('bats'), 'bats', 'Bats', 'hover:ring-1 hover:ring-inset hover:ring-mod-bats-strong', 'bg-mod-bats-strong/15
     text-mod-bats-strong font-semibold', '
     <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />'),
-    ('/weather', 'weather', 'Weather', 'hover:ring-1 hover:ring-inset hover:ring-mod-weather-strong',
+    (url_for('weather'), 'weather', 'Weather', 'hover:ring-1 hover:ring-inset hover:ring-mod-weather-strong',
     'bg-mod-weather-strong/15 text-mod-weather-strong font-semibold', '
     <path d="M12 2v2" />
     <path d="m4.93 4.93 1.41 1.41" />
@@ -243,7 +243,7 @@
     <!-- Pinned bottom links -->
     <div class="flex-1"></div>
     <div class="border-t border-base-content/5 pt-2 mx-2">
-      <a href="/settings"
+      <a href="{{ url_for('settings') }}"
         class="flex items-center gap-3 px-2 py-2 text-sm rounded-lg transition-colors {% if active == 'settings' %}text-primary{% else %}text-base-content/50 hover:text-base-content hover:bg-base-100{% endif %}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
@@ -252,7 +252,7 @@
         </svg>
         <span x-show="sidebarOpen">Settings</span>
       </a>
-      <a href="/about"
+      <a href="{{ url_for('about') }}"
         class="flex items-center gap-3 px-2 py-2 text-sm rounded-lg transition-colors {% if active == 'about' %}text-primary{% else %}text-base-content/50 hover:text-base-content hover:bg-base-100{% endif %}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
@@ -359,7 +359,7 @@
 
     <!-- SSE log stream -->
     <div class="h-40 overflow-y-auto px-4 py-2 font-mono text-xs text-green-400 space-y-0.5" x-ref="logContainer"
-      hx-ext="sse" :sse-connect="'/events/console?service=' + activeService" hx-swap="beforeend" hx-target="this">
+      hx-ext="sse" :sse-connect="'{{ url_for('console_events') }}?service=' + activeService" hx-swap="beforeend" hx-target="this">
       <div sse-swap="message" hx-swap="beforeend scroll:#console-log:bottom">
       </div>
     </div>

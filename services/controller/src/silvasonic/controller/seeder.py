@@ -1,6 +1,9 @@
 """Startup seeders for Controller — idempotent DB bootstrapping (ADR-0023).
 
-ConfigSeeder, ProfileBootstrapper, AuthSeeder run in sequence on startup.
+Seeder execution order (recorder-critical first):
+    ConfigSeeder → ProfileBootstrapper → ManagedServiceSeeder → CloudSyncSeeder → AuthSeeder
+
+Each seeder runs in its own transaction (per-seeder commit/rollback).
 All use INSERT ON CONFLICT DO NOTHING — existing user values are never overwritten.
 """
 
@@ -8,24 +11,25 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import bcrypt
 import structlog
 import yaml
 from pydantic import ValidationError
-from silvasonic.core.config_schemas import (
+from silvasonic.controller.worker_registry import SYSTEM_WORKERS
+from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
+from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
+from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
+from silvasonic.core.schemas.system_config import (
     AuthDefaults,
     BirdnetSettings,
     CloudSyncSettings,
     ProcessorSettings,
     SystemSettings,
 )
-from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import SystemConfig, User
-from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 log = structlog.get_logger()
 
@@ -68,20 +72,48 @@ def _load_defaults(path: Path) -> dict[str, Any] | None:
     return raw
 
 
+# ---------------------------------------------------------------------------
+# Seeder protocol (static typing only — no runtime_checkable)
+# ---------------------------------------------------------------------------
+
+
+class Seeder(Protocol):
+    """Uniform interface for startup seeders (static typing via mypy)."""
+
+    name: str
+
+    async def seed(self, session: AsyncSession) -> None:
+        """Seed initial configuration state into the database."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Individual seeders
+# ---------------------------------------------------------------------------
+
+
 class ConfigSeeder:
     """Seed ``system_config`` with factory defaults (ADR-0023)."""
 
-    def __init__(self, defaults_path: Path | None = None) -> None:
-        """Initialize with path to defaults YAML file."""
-        self._defaults_path = defaults_path
+    name = "config"
 
-    async def seed(
+    def __init__(
         self,
-        session: AsyncSession,
-        *,
+        defaults_path: Path | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize with path to defaults YAML file.
+
+        Args:
+            defaults_path: Path to defaults.yml (lazy-loaded when *defaults* is ``None``).
+            defaults: Pre-loaded defaults dict.  Takes precedence over *defaults_path*.
+        """
+        self._defaults_path = defaults_path
+        self._defaults = defaults
+
+    async def seed(self, session: AsyncSession) -> None:
         """Load ``defaults.yml`` and insert missing keys into ``system_config``."""
+        defaults = self._defaults
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
             defaults = _load_defaults(defaults_path)
@@ -126,6 +158,8 @@ class ConfigSeeder:
 
 class ProfileBootstrapper:
     """Seed ``microphone_profiles`` from YAML profile files (ADR-0016)."""
+
+    name = "profiles"
 
     def __init__(self, profiles_dir: Path | None = None) -> None:
         """Initialize with path to profiles directory."""
@@ -201,17 +235,25 @@ class ProfileBootstrapper:
 class AuthSeeder:
     """Seed default admin user with bcrypt-hashed password (ADR-0023)."""
 
-    def __init__(self, defaults_path: Path | None = None) -> None:
-        """Initialize with path to defaults YAML file."""
-        self._defaults_path = defaults_path
+    name = "auth"
 
-    async def seed(
+    def __init__(
         self,
-        session: AsyncSession,
-        *,
+        defaults_path: Path | None = None,
         defaults: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize with path to defaults YAML file.
+
+        Args:
+            defaults_path: Path to defaults.yml (lazy-loaded when *defaults* is ``None``).
+            defaults: Pre-loaded defaults dict.  Takes precedence over *defaults_path*.
+        """
+        self._defaults_path = defaults_path
+        self._defaults = defaults
+
+    async def seed(self, session: AsyncSession) -> None:
         """Create default admin user if not exists."""
+        defaults = self._defaults
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
             defaults = _load_defaults(defaults_path)
@@ -265,6 +307,8 @@ class CloudSyncSeeder:
     DB values.  If env vars are absent, the seeder does nothing (existing
     DB values are preserved for Web-UI configuration).
     """
+
+    name = "cloud_sync"
 
     _ENV_VARS = (
         "SILVASONIC_CLOUD_REMOTE_TYPE",
@@ -366,21 +410,71 @@ class CloudSyncSeeder:
             )
 
 
-async def run_all_seeders(session: AsyncSession) -> None:
-    """Run all seeders in order: config → cloud_sync → profiles → auth (idempotent)."""
-    log.info("seeder.start")
+class ManagedServiceSeeder:
+    """Seed ``managed_services`` with Tier-2 singleton workers (ADR-0029).
 
-    # Load defaults.yml once, share across seeders
+    Only Tier-2 containers orchestrated by the Controller belong here.
+    Tier-1 services (processor, controller) are managed externally via
+    Compose and MUST NOT be seeded.
+    """
+
+    name = "managed_services"
+
+    async def seed(self, session: AsyncSession) -> None:
+        """Insert default managed_services rows (ON CONFLICT DO NOTHING)."""
+        for worker in SYSTEM_WORKERS:
+            name = worker.name
+            # Default to enabled for all registered workers
+            enabled = True
+
+            existing = await session.get(ManagedService, name)
+            if existing is None:
+                session.add(ManagedService(name=name, enabled=enabled))
+                log.info("seeder.managed_service.inserted", name=name, enabled=enabled)
+            else:
+                log.debug("seeder.managed_service.skipped", name=name)
+
+
+async def run_all_seeders(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> list[str]:
+    """Run all seeders with per-seeder transaction isolation.
+
+    Returns list of failed seeder names (empty on full success).
+
+    Seeder order: recorder-critical first, then infrastructure, then optional.
+    ConfigSeeder and ProfileBootstrapper MUST run first because
+    ``ProfileMatcher`` reads ``system.auto_enrollment`` and profiles
+    during the Initial Device Scan that follows immediately after seeding.
+    """
     defaults = _load_defaults(_get_defaults_yml())
 
-    await ConfigSeeder().seed(session, defaults=defaults)
-    # Flush ConfigSeeder INSERTs so CloudSyncSeeder sees them via session.get().
-    # Without this, both seeders add a "cloud_sync" key to the pending batch,
-    # causing a duplicate-key IntegrityError on commit (Data Capture Integrity).
-    await session.flush()
-    await CloudSyncSeeder().seed(session)
-    await ProfileBootstrapper().seed(session)
-    await AuthSeeder().seed(session, defaults=defaults)
+    # Order: recorder-critical first, then infrastructure, then optional.
+    seeders: list[Seeder] = [
+        ConfigSeeder(defaults=defaults),
+        ProfileBootstrapper(),
+        ManagedServiceSeeder(),
+        CloudSyncSeeder(),
+        AuthSeeder(defaults=defaults),
+    ]
 
-    await session.commit()
-    log.info("seeder.complete")
+    log.info("seeder.start", count=len(seeders))
+    failed: list[str] = []
+
+    for seeder in seeders:
+        async with session_factory() as session:
+            try:
+                await seeder.seed(session)
+                await session.commit()
+                log.info("seeder.completed", seeder=seeder.name)
+            except Exception:
+                await session.rollback()
+                log.exception("seeder.failed", seeder=seeder.name)
+                failed.append(seeder.name)
+
+    if failed:
+        log.warning("seeder.partial_failure", failed=failed)
+    else:
+        log.info("seeder.all_complete")
+
+    return failed

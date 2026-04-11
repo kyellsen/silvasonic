@@ -466,8 +466,8 @@ def make_processor_env() -> dict[str, str]:
     within the test's isolated Podman network.
     """
     return {
-        "POSTGRES_HOST": "database",
-        "POSTGRES_PORT": "5432",
+        "SILVASONIC_DB_HOST": "database",
+        "SILVASONIC_DB_PORT": "5432",
         "POSTGRES_USER": "silvasonic",
         "POSTGRES_PASSWORD": "silvasonic",
         "POSTGRES_DB": "silvasonic",

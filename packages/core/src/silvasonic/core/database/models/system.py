@@ -42,6 +42,25 @@ class SystemConfig(Base):
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+
+class ManagedService(Base):
+    """Registry for Tier-2 containers managed by the Controller (ADR-0029).
+
+    Stores lifecycle orchestration toggles only. Domain/business settings
+    (thresholds, intervals) remain in ``system_config`` (ADR-0023).
+    """
+
+    __tablename__ = "managed_services"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
 
@@ -61,25 +80,3 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
-
-
-class Upload(Base):
-    """Immutable audit log of all upload attempts."""
-
-    __tablename__ = "uploads"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-
-    recording_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("recordings.id"), nullable=False, index=True
-    )
-
-    attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
-    )
-    filename: Mapped[str] = mapped_column(Text, nullable=False)
-    remote_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    size: Mapped[int] = mapped_column(BigInteger, nullable=False)
-
-    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

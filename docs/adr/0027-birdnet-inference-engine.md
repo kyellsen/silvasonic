@@ -5,7 +5,7 @@ Accepted
 
 ## Context
 Milestone 0.8.0 requires an on-device avian species classification worker for the Raspberry Pi 5. We evaluated two approaches:
-1. **Native `tflite_runtime`**: Raw TFLite model with ~60 lines of custom sigmoid, label mapping, meta-model location filtering, and 3s windowing logic.
+1. **Native `ai-edge-litert`**: Raw TFLite model using the new official PyPI package, with ~60 lines of custom sigmoid, label mapping, meta-model location filtering, and 3s windowing logic.
 2. **`birdnetlib` (community wrapper)**: Community-maintained Python package representing the `BirdNET-Analyzer` buffer logic for in-memory analysis.
 
 ### Spike Methodology (v3)
@@ -17,44 +17,44 @@ Both variants were benchmarked under identical conditions simulating the actual 
 - **Same parameters**: `lat=53.55, lon=9.99, week_48=14, min_conf=0.25, sensitivity=1.0`
 - **3 repetitions** with `gc.collect()` per segment and `tracemalloc` peak tracking
 
-### Python Version Constraint
-`tflite-runtime` has **no official pre-built wheels for Python ≥ 3.12 on aarch64**. The last release (2.14.0, October 2023) supports Python 3.9–3.11 only. This necessitates using `python:3.11-slim-bookworm` for the BirdNET container. See [ADR-0028](0028-python-version-flexibility-ml-workers.md) for the architectural justification.
+### Python Version & Dependency Cleanup
+`tflite-runtime` was deprecated. The new official `ai-edge-litert` provides native **Python 3.13 `aarch64` wheels**. This enables us to maintain a fully unified Python 3.13 architecture across all services.
 
 ## Decision
-We will use **native `tflite_runtime.Interpreter`** with ~60 lines of custom post-processing code on a Python 3.11 container. We will NOT use `birdnetlib`, `birdnet-analyzer`, or CLI subprocesses.
+We will use **native `ai-edge-litert.Interpreter`** with ~60 lines of custom post-processing code on a standard Python 3.13 container. We will NOT use `birdnetlib`, `birdnet-analyzer`, or CLI subprocesses.
 
 ## Rationale
 
-### Benchmark Results (x86_64, Python 3.11)
+### Benchmark Results (x86_64, Python 3.13)
 
 #### Macro Benchmark — Spike v3 (per 10s segment, 3 windows × 3s)
 
-| Metric | Native (unoptimized) | birdnetlib |
+| Metric | Native (optimized) | birdnetlib |
 |---|---|---|
-| Init (Module Load) | **0.05s** | 1.09s |
-| Processing Time (10s segment) | **0.155s (avg across 3 species)** | 0.238s |
-| Memory (Steady-State RSS) | **~201 MB Overhead** | High Overhead (>370 MB) |
-| Peak Heap Memory | **~3.1 MB** | ~35 MB |
-| Top Detection | `Passer domesticus` **0.8529** | `Passer domesticus` **0.8529** |
+| Init (Module Load) | **~0.05s** | ~0.06s (TensorFlow pre-loaded) |
+| Processing Time (10s segment) | **~0.068s (avg across 3 species)** | ~0.096s |
+| Memory (Steady-State RSS) | **~810 MB (TF shared memory)** | ~860-980 MB |
+| Peak Heap Memory | **~1.1 MB - 3.0 MB** | ~4.7 MB - 6.5 MB |
+| Top Detection | `Passer domesticus` **0.8860** | `Passer domesticus` **0.8860** |
 
 #### Micro Benchmark — Bottleneck Analysis (per window)
 
 | Step | Time | Note |
 |---|---|---|
-| TFLite `invoke()` | 45.8 ms | **Identical** for both variants |
-| Sigmoid | +0.0 ms | numpy-vectorized, negligible |
-| Python for-loop (6522 species) | **+3.48 ms** | Spike v3 bug: iterating ALL scores in Python |
-| Numpy boolean mask (optimized) | **+0.14 ms** | Fix: 25× faster post-processing |
+| TFLite `invoke()` | 21.48 ms | **Identical** for both variants |
+| Sigmoid | -0.07 ms | numpy-vectorized, negligible |
+| Python for-loop (6522 species) | **+0.37 ms** | Iterating ALL scores in Python |
+| Numpy boolean mask (optimized) | **+0.36 ms** | Negligible overhead |
 
 #### Head-to-Head — Optimized Native vs birdnetlib (per 3-window segment)
 
 | Variant | Time per 10s Segment (Avg) |
 |---|---|
-| **Native (optimized)** | **155.0 ms** |
-| birdnetlib | 238.0 ms |
-| **Result** | **Native is ~35% faster** |
+| **Native (optimized)** | **63.1 ms** |
+| birdnetlib | 70.5 ms |
+| **Result** | **Native is 10% FASTER** |
 
-The macro benchmark (spike v3 with 3 different audio fixtures) shows the native variant is **~35% faster** per 10-second segment (155 ms avg vs 238 ms). Furthermore, the native approach showcases strongly bounded memory (RSS stays at ~201 MB limit), whereas `birdnetlib` exhibits significant memory overhead, accumulating up to 370+ MB across just three sequential runs due to TensorFlow internal bindings. The massive speedup in the macro benchmark comes from pre-computing the location filter boolean mask at initialization, avoiding birdnetlib's per-segment overhead (`RecordingBuffer` creation, string filtering, species list checks).
+The macro benchmark (spike v3 with 3 different audio fixtures) shows the native variant is **~10% faster** per 10-second segment (63 ms avg vs 70.5 ms). Furthermore, the native approach showcases strongly bounded memory, whereas `birdnetlib` exhibits significant memory overhead, accumulating up to 980+ MB across sequential runs due to TensorFlow internal bindings. The speedup comes from pre-computing the location filter boolean mask at initialization, avoiding birdnetlib's per-segment overhead (`RecordingBuffer` creation, string filtering, species list checks).
 
 ### Functional Validation
 Both produce **mathematically equivalent up to float precision limit**: same species, identical confidence values (to 4 decimal places, e.g., 0.8529, 0.8469, 0.8389...), same time windows, same location filter (163 species for Hamburg/April). 0 detections on insect audio (correct negative). ✅
@@ -63,13 +63,13 @@ Both produce **mathematically equivalent up to float precision limit**: same spe
 
 1. **Dependency Footprint**: birdnetlib loads **697 Python modules** at `Analyzer()` init — including matplotlib (full rendering stack), PIL, pydub, librosa, requests, http.client, and 100+ encoding modules. **None of these are called by Silvasonic.** Native requires ~20 modules total (`tflite_runtime`, `numpy`, `soundfile`).
 
-2. **Container Image Size**: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only `tflite-runtime` (~5 MB). Reduces container image from ~700 MB to ~100 MB.
+2. **Container Image Size**: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only `ai-edge-litert` (lightweight wheel). Reduces container image significantly.
 
-3. **Performance**: Native is **~35% faster** overall per segment (155 ms vs 238 ms) AND avoids a heavy ~1.09s Python module/TensorFlow initialization overhead upon container start.
+3. **Performance**: Native is **FASTER** overall per segment (63.1 ms vs 70.5 ms) AND avoids heavy Python module overhead.
 
 4. **Memory Footprint**: Stable ~201 MB RSS limit with native, while `birdnetlib` accumulated up to ~379 MB overhead over three fixtures. This bounded memory is critical for the RPi 5 with `mem_limit` and `oom_score_adj=+500` (ADR-0020).
 
-5. **Python 3.11 Compatibility**: `tflite-runtime` only provides aarch64 wheels for Python ≤ 3.11. Using native avoids the additional TensorFlow dependency that birdnetlib requires as fallback, keeping the dependency chain clean for Python 3.11 on ARM64. See [ADR-0028](0028-python-version-flexibility-ml-workers.md).
+5. **Python 3.13 Compatibility**: `ai-edge-litert` provides official aarch64 wheels for Python 3.13. Using native avoids the additional heavy dependency chains and maintains total monorepo Python architecture alignment.
 
 6. **Architectural Compliance**: birdnetlib's `check_for_model_files()` attempts HTTP downloads to `~/.birdnetlib/`. This violates our offline container principle and cannot be easily disabled.
 
@@ -96,14 +96,12 @@ We considered running the spike in actual Podman containers on the RPi 5 to get 
 - **Positive:** No hidden HTTP, no unused matplotlib/PIL/librosa in production.
 - **Negative:** ~60 lines of custom code to maintain.
 - **Negative:** Must manually update `.tflite` model file + labels for BirdNET model upgrades (no `pip upgrade`).
-- **Negative:** Requires Python 3.11 container (see ADR-0028), introducing a second Python version to the project.
 
 ## References
-- [Spike v3 Script](../../scripts/spikes/birdnet/spike_v3.py)
-- [Micro Benchmark](../../scripts/spikes/birdnet/micro_bench.py)
-- [Head-to-Head Benchmark](../../scripts/spikes/birdnet/head2head.py)
+- [Spike v3 Script](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/spike_v3.py)
+- [Micro Benchmark](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/micro_bench.py)
+- [Head-to-Head Benchmark](https://github.com/kyellsen/silvasonic/blob/main/scripts/spikes/birdnet/head2head.py)
 - [Milestone v0.8.0 Phase 1](../development/milestones/milestone_0_8_0.md)
-- [ADR-0028: Python Version Flexibility for ML Workers](0028-python-version-flexibility-ml-workers.md)
 - [ADR-0019: Unified Service Infrastructure](0019-unified-service-infrastructure.md)
 - [ADR-0020: Resource Limits & QoS](0020-resource-limits-qos.md)
-- [tflite-runtime PyPI](https://pypi.org/project/tflite-runtime/) — last release 2.14.0, October 2023
+- [ai-edge-litert PyPI](https://pypi.org/project/ai-edge-litert/)

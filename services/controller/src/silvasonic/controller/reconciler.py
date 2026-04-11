@@ -25,6 +25,7 @@ from silvasonic.controller.container_spec import (
 from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceScanner
 from silvasonic.controller.profile_matcher import ProfileMatcher
+from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import get_session
@@ -124,12 +125,15 @@ class ReconciliationLoop:
         *,
         device_scanner: DeviceScanner | None = None,
         profile_matcher: ProfileMatcher | None = None,
+        hardware_evaluator: DeviceStateEvaluator | None = None,
+        sys_evaluator: SystemWorkerEvaluator | None = None,
         interval: float,
         grace_period_s: float = 3.0,
     ) -> None:
         """Initialize with a ContainerManager and reconciliation interval."""
         self._manager = container_manager
-        self._evaluator = DeviceStateEvaluator()
+        self._evaluator = hardware_evaluator or DeviceStateEvaluator()
+        self._sys_evaluator = sys_evaluator or SystemWorkerEvaluator()
         self._scanner = device_scanner
         self._matcher = profile_matcher
         self._interval = interval
@@ -146,6 +150,23 @@ class ReconciliationLoop:
         """Trigger an immediate reconciliation cycle (called by NudgeSubscriber)."""
         self._trigger_event.set()
 
+    async def _run_cycle_once(self) -> None:
+        """Execute exactly one reconciliation cycle and record stats.
+
+        This method encapsulates a single execution of the reconcile logic and
+        the bookkeeping of success/error statistics. It ensures that the stats
+        contracts can be tested in isolation from the infinite run loop and
+        its timeout mechanics.
+        """
+        try:
+            await self._reconcile_once()
+            if self._stats is not None:
+                self._stats.record_reconcile_cycle()
+        except Exception:
+            log.exception("reconciler.cycle_failed")
+            if self._stats is not None:
+                self._stats.record_reconcile_error()
+
     async def run(self) -> NoReturn:
         """Run the reconciliation loop until cancelled.
 
@@ -156,14 +177,7 @@ class ReconciliationLoop:
         4. Reconcile: start missing, stop orphaned.
         """
         while True:
-            try:
-                await self._reconcile_once()
-                if self._stats is not None:
-                    self._stats.record_reconcile_cycle()
-            except Exception:
-                log.exception("reconciler.cycle_failed")
-                if self._stats is not None:
-                    self._stats.record_reconcile_error()
+            await self._run_cycle_once()
 
             # Wait for interval OR immediate trigger
             try:
@@ -183,8 +197,19 @@ class ReconciliationLoop:
             await self._rescan_hardware()
 
         # Step 2: Evaluate desired state from DB
+        desired: list[Tier2ServiceSpec] = []
         async with get_session() as session:
-            desired = await self._evaluator.evaluate(session)
+            try:
+                hardware_specs = await self._evaluator.evaluate(session)
+                desired.extend(hardware_specs)
+            except Exception:
+                log.exception("reconciler.hardware_evaluator_failed")
+
+            try:
+                worker_specs = await self._sys_evaluator.evaluate(session)
+                desired.extend(worker_specs)
+            except Exception:
+                log.exception("reconciler.worker_evaluator_failed")
 
         # Step 3: Get actual running containers
         actual = await asyncio.to_thread(self._manager.list_managed)

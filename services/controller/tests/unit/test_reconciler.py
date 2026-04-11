@@ -13,6 +13,7 @@ from silvasonic.controller.reconciler import (
     DeviceStateEvaluator,
     ReconciliationLoop,
 )
+from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +36,25 @@ def _make_spec(**overrides: Any) -> Tier2ServiceSpec:
     }
     defaults.update(overrides)
     return Tier2ServiceSpec(**defaults)
+
+
+class FakeEvaluator(DeviceStateEvaluator, SystemWorkerEvaluator):
+    """Fake evaluator to replace heavy mocking, per testing.md."""
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> Any:
+        return super().__new__(cls)
+
+    def __init__(
+        self, specs: list[Tier2ServiceSpec] | None = None, error: Exception | None = None
+    ) -> None:
+        """Initialize with static specs to return or error to raise."""
+        self.specs = specs or []
+        self.error = error
+
+    async def evaluate(self, session: Any) -> list[Tier2ServiceSpec]:
+        if self.error:
+            raise self.error
+        return self.specs
 
 
 # ===================================================================
@@ -162,35 +182,36 @@ class TestReconciliationLoop:
         loop.trigger()
         assert loop._trigger_event.is_set()
 
-    async def test_reconcile_once_calls_evaluate_and_reconcile(self) -> None:
-        """_reconcile_once() queries DB, lists containers, and reconciles."""
+    async def test_reconcile_once_passes_desired_and_actual_to_sync(self) -> None:
+        """Contract: _reconcile_once feeds evaluated specs and running containers to sync_state.
+
+        This is the core reconciliation contract (ADR-0017):
+        desired state (from DB evaluation) + actual state (from Podman)
+        → sync_state(desired, actual) to converge the system.
+        """
         mgr = MagicMock()
         mgr.list_managed.return_value = [{"name": "existing"}]
         mock_spec = _make_spec()
 
-        loop = ReconciliationLoop(mgr, interval=1.0)
+        loop = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator([mock_spec]),
+            sys_evaluator=FakeEvaluator([]),
+            interval=1.0,
+        )
 
-        with (
-            patch.object(
-                loop._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[mock_spec],
-            ),
-            patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-        ):
+        with patch("silvasonic.controller.reconciler.get_session") as mock_session:
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_session.return_value.__aexit__ = AsyncMock()
 
             await loop._reconcile_once()
 
+        # Core contract: sync_state receives desired specs and actual containers
         mgr.sync_state.assert_called_once()
-        args = mgr.sync_state.call_args[0]
-        assert args[0] == [mock_spec]
-        assert args[1] == [{"name": "existing"}]
+        desired, actual = mgr.sync_state.call_args[0]
+        assert desired == [mock_spec]
+        assert actual == [{"name": "existing"}]
 
     async def test_reconcile_once_with_scanner_calls_rescan(self) -> None:
         """_reconcile_once() calls _rescan_hardware when scanner is present."""
@@ -201,24 +222,17 @@ class TestReconciliationLoop:
         scanner = MagicMock()
         matcher = MagicMock()
         loop = ReconciliationLoop(
-            mgr, device_scanner=scanner, profile_matcher=matcher, interval=1.0
+            mgr,
+            device_scanner=scanner,
+            profile_matcher=matcher,
+            hardware_evaluator=FakeEvaluator([]),
+            sys_evaluator=FakeEvaluator([]),
+            interval=1.0,
         )
 
         with (
-            patch.object(
-                loop._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[],
-            ),
-            patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-            patch.object(
-                loop,
-                "_rescan_hardware",
-                new_callable=AsyncMock,
-            ) as mock_rescan,
+            patch("silvasonic.controller.reconciler.get_session") as mock_session,
+            patch.object(loop, "_rescan_hardware", new_callable=AsyncMock) as mock_rescan,
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
@@ -652,6 +666,54 @@ class TestReconciliationLoop:
         # Should return immediately without errors
         await loop._rescan_hardware()
 
+    async def test_reconcile_once_hardware_eval_fails_isolated(self) -> None:
+        """Hardware eval failure does not halt worker evaluation."""
+        mgr = MagicMock()
+        mgr.list_managed.return_value = []
+        spec = _make_spec(name="worker1")
+
+        loop = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator(error=Exception("DB dead")),
+            sys_evaluator=FakeEvaluator([spec]),
+            interval=1.0,
+        )
+
+        with patch("silvasonic.controller.reconciler.get_session") as mock_session:
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+
+            await loop._reconcile_once()
+
+        mgr.sync_state.assert_called_once()
+        desired, _actual = mgr.sync_state.call_args[0]
+        assert desired == [spec]
+
+    async def test_reconcile_once_worker_eval_fails_isolated(self) -> None:
+        """Worker eval failure does not halt hardware evaluation."""
+        mgr = MagicMock()
+        mgr.list_managed.return_value = []
+        spec = _make_spec(name="recorder1")
+
+        loop = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator([spec]),
+            sys_evaluator=FakeEvaluator(error=Exception("DB dead")),
+            interval=1.0,
+        )
+
+        with patch("silvasonic.controller.reconciler.get_session") as mock_session:
+            mock_ctx = AsyncMock()
+            mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_session.return_value.__aexit__ = AsyncMock()
+
+            await loop._reconcile_once()
+
+        mgr.sync_state.assert_called_once()
+        desired, _actual = mgr.sync_state.call_args[0]
+        assert desired == [spec]
+
 
 # ===================================================================
 # ReconciliationLoop + ControllerStats Integration
@@ -676,39 +738,21 @@ class TestReconciliationLoopStats:
 
     async def test_reconcile_cycle_records_stats(self) -> None:
         """Successful reconciliation cycle records in stats."""
-        import asyncio
-
         from silvasonic.controller.controller_stats import ControllerStats
 
         mgr = MagicMock()
-        mgr.list_managed.return_value = []
-        mgr.sync_state = MagicMock()
-
         loop = ReconciliationLoop(mgr, interval=0.01)
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         loop.set_stats(stats)
 
-        call_count = 0
+        with patch.object(loop, "_reconcile_once", new_callable=AsyncMock):
+            await loop._run_cycle_once()
+            await loop._run_cycle_once()
 
-        async def mock_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 3:
-                raise asyncio.CancelledError
-
-        with (
-            patch.object(loop, "_reconcile_once", side_effect=mock_reconcile),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await loop.run()
-
-        # 2 successful cycles before cancel on 3rd
         assert stats._total_reconcile_cycles == 2
 
     async def test_reconcile_error_records_stats(self) -> None:
         """Failed reconciliation cycle records error in stats."""
-        import asyncio
-
         from silvasonic.controller.controller_stats import ControllerStats
 
         mgr = MagicMock()
@@ -716,20 +760,11 @@ class TestReconciliationLoopStats:
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         loop.set_stats(stats)
 
-        call_count = 0
-
         async def failing_reconcile() -> None:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                raise asyncio.CancelledError
             raise RuntimeError("DB down")
 
-        with (
-            patch.object(loop, "_reconcile_once", side_effect=failing_reconcile),
-            pytest.raises(asyncio.CancelledError),
-        ):
-            await loop.run()
+        with patch.object(loop, "_reconcile_once", side_effect=failing_reconcile):
+            await loop._run_cycle_once()
 
         assert stats._total_reconcile_errors == 1
 
@@ -744,23 +779,18 @@ class TestReconciliationLoopStats:
         mgr.sync_state = MagicMock()
 
         spec = _make_spec(name="silvasonic-recorder-new-mic")
-        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        reconciler = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator([spec]),  # One desired container
+            sys_evaluator=FakeEvaluator([]),
+            interval=1.0,
+        )
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         reconciler.set_stats(stats)
 
         with (
-            patch.object(
-                reconciler._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[spec],  # One desired container
-            ),
-            _patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-            _patch(
-                "silvasonic.controller.controller_stats.log",
-            ),
+            _patch("silvasonic.controller.reconciler.get_session") as mock_session,
+            _patch("silvasonic.controller.controller_stats.log"),
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
@@ -781,23 +811,18 @@ class TestReconciliationLoopStats:
         ]
         mgr.sync_state = MagicMock()
 
-        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        reconciler = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator([]),  # No desired containers
+            sys_evaluator=FakeEvaluator([]),
+            interval=1.0,
+        )
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         reconciler.set_stats(stats)
 
         with (
-            patch.object(
-                reconciler._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[],  # No desired containers
-            ),
-            _patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-            _patch(
-                "silvasonic.controller.controller_stats.log",
-            ),
+            _patch("silvasonic.controller.reconciler.get_session") as mock_session,
+            _patch("silvasonic.controller.controller_stats.log"),
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)
@@ -829,7 +854,12 @@ class TestReconciliationLoopStats:
             labels={"io.silvasonic.config_hash": "new_hash_456"},
         )
 
-        reconciler = ReconciliationLoop(mgr, interval=1.0)
+        reconciler = ReconciliationLoop(
+            mgr,
+            hardware_evaluator=FakeEvaluator([spec]),
+            sys_evaluator=FakeEvaluator([]),
+            interval=1.0,
+        )
         stats = ControllerStats(startup_duration_s=0.0, summary_interval_s=9999.0)
         reconciler.set_stats(stats)
 
@@ -841,18 +871,8 @@ class TestReconciliationLoopStats:
                 new_callable=PropertyMock,
                 return_value="new_hash_456",
             ),
-            patch.object(
-                reconciler._evaluator,
-                "evaluate",
-                new_callable=AsyncMock,
-                return_value=[spec],
-            ),
-            _patch(
-                "silvasonic.controller.reconciler.get_session",
-            ) as mock_session,
-            _patch(
-                "silvasonic.controller.controller_stats.log",
-            ),
+            _patch("silvasonic.controller.reconciler.get_session") as mock_session,
+            _patch("silvasonic.controller.controller_stats.log"),
         ):
             mock_ctx = AsyncMock()
             mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_ctx)

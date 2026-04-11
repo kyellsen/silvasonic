@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.7.0 — Gateway ✅
+> **Status:** v0.7.1 — DB-Viewer & System Stabilization ✅
 
 ---
 
@@ -17,8 +17,8 @@
 | **v0.5.2** | Core Infrastructure Upgrade — Python 3.13 adoption and runtime typing simplification                                                                                                                                                                                  | ✅ Done        |
 | **v0.5.3** | Cloud Sync Preparatory Refactoring — Uploader wipe, storage_remotes DB drop, Test Suite Fixes                                                                                                                                                                           | ✅ Done        |
 | **v0.6.0** | Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)                                                                                                        | ✅ Done     |
-| **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ✅ Current     |
-| **v0.7.1** | DB-Viewer — Database inspector & Data Export UI                                                                                                                                                                                                                           | ✅ Done        |
+| **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ✅ Done        |
+| **v0.7.1** | DB-Viewer — Database inspector & Data Export UI                                                                                                                                                                                                                           | ✅ Current     |
 | **v0.8.0** | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | 🔨 In Progress |
 | v0.9.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | ⏳ Planned     |
 | v0.10.0    | Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: `kyellsen/silvasonic.de`)                                                                                                                                             | ⏳ Planned     |
@@ -45,7 +45,7 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.7.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_0.md)** — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)
 - **[Milestone v0.7.1](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_1.md)** — DB-Viewer
 - **[Milestone v0.8.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_0.md)** — BirdNET (On-device Avian Inference)
-- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `system_services` Seeding)
+- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `managed_services` Seeding)
 - **[Milestone v0.10.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md)** — Marketing Landing Page (Astro) -> *`silvasonic.de` repo*
 - **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
 

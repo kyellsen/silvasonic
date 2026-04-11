@@ -1,0 +1,37 @@
+FROM docker.io/library/python:3.13-slim-bookworm AS base
+
+# Prevent Python from buffering stdout/stderr and writing pyc files
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# Install system dependencies (libsndfile for soundfile) and curl for model downloads
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (via its official container image - standalone binary)
+COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
+
+# Download BirdNET v2.4 Native Models robustly via the PyPI wheel to avoid GitHub limits
+RUN mkdir -p /app/models \
+    && uv venv /tmp/.venv_dl && uv pip install --python /tmp/.venv_dl birdnetlib \
+    && cp /tmp/.venv_dl/lib/python*/site-packages/birdnetlib/models/analyzer/*V2.4* /app/models/ \
+    && rm -rf /tmp/.venv_dl
+
+# We copy the entire packages directory because core/pyproject.toml
+# might have sibling dependencies (if any).
+COPY packages/ ./packages/
+COPY services/birdnet/ ./services/birdnet/
+
+# Install the application and its dependencies into the system environment
+RUN uv pip install --system -e ./packages/core -e ./services/birdnet
+
+# The base SilvaService will automatically read SILVASONIC_PORT if needed,
+# but we explicitly expose 9500 as documented.
+EXPOSE 9500
+
+CMD ["silvasonic-birdnet"]

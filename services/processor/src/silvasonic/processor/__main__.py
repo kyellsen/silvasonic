@@ -14,15 +14,19 @@ shutdown.
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
-from silvasonic.core.config_schemas import ProcessorSettings
 from silvasonic.core.database.session import get_session
+from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.core.service import SilvaService
 from silvasonic.processor import indexer, janitor, reconciliation
 from silvasonic.processor.janitor import RetentionMode
 from silvasonic.processor.settings import ProcessorEnvSettings
+
+if TYPE_CHECKING:
+    from silvasonic.processor.modules.indexer_stats import IndexerStats
+    from silvasonic.processor.modules.janitor_stats import JanitorStats
 
 log = structlog.get_logger()
 
@@ -40,16 +44,16 @@ class ProcessorService(SilvaService):
 
     def __init__(self) -> None:
         """Initialize with settings from environment."""
-        cfg = ProcessorEnvSettings()
-        self.service_port = cfg.PROCESSOR_PORT
+        self._env_config = ProcessorEnvSettings()
+        self.service_port = self._env_config.PROCESSOR_PORT
         super().__init__(
             instance_id="processor",
-            redis_url=cfg.REDIS_URL,
-            heartbeat_interval=cfg.HEARTBEAT_INTERVAL_S,
+            redis_url=self._env_config.REDIS_URL,
+            heartbeat_interval=self._env_config.HEARTBEAT_INTERVAL_S,
         )
         # Runtime config from DB — loaded in load_config(), defaults until then
         self._settings = ProcessorSettings()
-        self._recordings_dir = Path(cfg.RECORDINGS_DIR)
+        self._recordings_dir = Path(self._env_config.RECORDINGS_DIR)
 
         # Indexer metrics (reported in heartbeat)
         self._total_indexed: int = 0
@@ -59,7 +63,13 @@ class ProcessorService(SilvaService):
         # Janitor metrics (reported in heartbeat)
         self._disk_usage_percent: float = 0.0
         self._janitor_mode: str = RetentionMode.IDLE.value
+        self._cloud_sync_fallback: bool = False
         self._files_deleted_total: int = 0
+        self._janitor_counter: int = 0
+        self._janitor_every_n: int = 1
+
+        # Snapshot Refresh: monitor processor tuning parameters (ADR-0031)
+        self._config_keys = ["processor"]
 
     async def load_config(self) -> None:
         """Read ProcessorSettings from system_config table (ADR-0023).
@@ -114,21 +124,8 @@ class ProcessorService(SilvaService):
 
         return extra
 
-    async def run(self) -> None:
-        """Main service loop — Reconciliation Audit + Indexer polling.
-
-        1. Run Reconciliation Audit once on startup (Split-Brain healing).
-        2. Start the UploadWorker as a background task.
-        3. Periodic Indexer loop: scan workspace, register new recordings.
-        """
-        self.health.update_status("processor", True, "running")
-
-        # Initialize Upload Worker
-        from silvasonic.processor.upload_worker import UploadWorker
-
-        self._upload_worker = UploadWorker(get_session, self.health, self._recordings_dir)
-
-        # --- Phase 1: Reconciliation Audit (once on startup) ---
+    async def _run_reconciliation_audit_once(self) -> None:
+        """Run Reconciliation Audit once on startup (Split-Brain healing)."""
         try:
             async with get_session() as session:
                 self._reconciled_count = await reconciliation.run_audit(
@@ -139,15 +136,95 @@ class ProcessorService(SilvaService):
             log.exception("processor.reconciliation_failed")
             self.health.update_status("indexer", False, "reconciliation_failed")
 
+    async def _run_indexer_cycle(self, errored_files: set[str], stats: "IndexerStats") -> None:
+        """Run one cycle of the Indexer."""
+        try:
+            async with get_session() as session:
+                result = await indexer.index_recordings(
+                    session, self._recordings_dir, errored_files=errored_files, stats=stats
+                )
+            if result.new > 0:
+                self._total_indexed += result.new
+                self._last_indexed_at = datetime.now(UTC)
+                self.health.update_status("indexer", True, f"indexed {result.new} new")
+            elif result.errors > 0:
+                self.health.update_status("indexer", False, f"{result.errors} errors")
+            else:
+                self.health.update_status("indexer", True, "idle")
+            # Accumulate error files into blacklist for next cycle
+            errored_files.update(result.error_details)
+            if errored_files:
+                log.info(
+                    "processor.errored_files_blacklisted",
+                    count=len(errored_files),
+                )
+        except Exception:
+            log.exception("processor.indexer_error")
+            self.health.update_status("indexer", False, "error")
+
+    async def _run_janitor_cycle(self, stats: "JanitorStats") -> None:
+        """Run one cycle of the Janitor, respecting the n-cycle interval."""
+        self._janitor_counter += 1
+        if self._janitor_counter >= self._janitor_every_n:
+            self._janitor_counter = 0
+            try:
+                jr = await janitor.run_cleanup_safe(
+                    self._recordings_dir, self._settings, stats=stats
+                )
+                self._disk_usage_percent = jr.disk_usage_percent
+                self._janitor_mode = jr.mode.value
+                self._cloud_sync_fallback = jr.cloud_sync_fallback
+                self._files_deleted_total += jr.files_deleted
+                healthy = jr.errors == 0
+                detail = f"{jr.mode.value} - deleted {jr.files_deleted}"
+                self.health.update_status("janitor", healthy, detail)
+            except Exception:
+                log.exception("processor.janitor_error")
+                self.health.update_status("janitor", False, "error")
+
+    async def run(self) -> None:
+        """Main service loop — Reconciliation Audit + Indexer polling.
+
+        1. Run Reconciliation Audit once on startup (Split-Brain healing).
+        2. Start the UploadWorker as a background task.
+        3. Periodic Indexer loop: scan workspace, register new recordings.
+        """
+        self.health.update_status("processor", True, "running")
+
+        # Initialize Upload Worker
+        from silvasonic.processor.modules.indexer_stats import IndexerStats
+        from silvasonic.processor.modules.janitor_stats import JanitorStats
+        from silvasonic.processor.modules.upload_stats import UploadStats
+        from silvasonic.processor.upload_worker import UploadWorker
+
+        upload_stats = UploadStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._indexer_stats = IndexerStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._janitor_stats = JanitorStats(
+            startup_duration_s=self._env_config.PROCESSOR_LOG_STARTUP_S,
+            summary_interval_s=self._env_config.PROCESSOR_LOG_SUMMARY_INTERVAL_S,
+        )
+        self._upload_worker = UploadWorker(
+            get_session, self.health, self._recordings_dir, stats=upload_stats
+        )
+
+        # --- Phase 1: Reconciliation Audit (once on startup) ---
+        await self._run_reconciliation_audit_once()
+
         # Start Upload Worker in background
         self._upload_task = asyncio.create_task(self._upload_worker.run())
 
         # --- Phase 2: Indexer + Janitor polling loop ---
-        janitor_every_n = max(
+        self._janitor_every_n = max(
             1,
             int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
         )
-        janitor_counter = 0
+        self._janitor_counter = 0
 
         log.info(
             "processor.indexer_started",
@@ -157,7 +234,7 @@ class ProcessorService(SilvaService):
         log.info(
             "processor.janitor_started",
             interval=self._settings.janitor_interval_seconds,
-            every_n_cycles=janitor_every_n,
+            every_n_cycles=self._janitor_every_n,
             batch_size=self._settings.janitor_batch_size,
         )
 
@@ -168,49 +245,31 @@ class ProcessorService(SilvaService):
         errored_files: set[str] = set()
 
         while not self._shutdown_event.is_set():
+            # --- Snapshot Refresh: reload processor tuning parameters (ADR-0031) ---
+            await self._refresh_config()
+            self._janitor_every_n = max(
+                1,
+                int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
+            )
+
             # --- Indexer (every cycle) ---
-            try:
-                async with get_session() as session:
-                    result = await indexer.index_recordings(
-                        session, self._recordings_dir, errored_files=errored_files
-                    )
-                if result.new > 0:
-                    self._total_indexed += result.new
-                    self._last_indexed_at = datetime.now(UTC)
-                    self.health.update_status("indexer", True, f"indexed {result.new} new")
-                elif result.errors > 0:
-                    self.health.update_status("indexer", False, f"{result.errors} errors")
-                else:
-                    self.health.update_status("indexer", True, "idle")
-                # Accumulate error files into blacklist for next cycle
-                errored_files.update(result.error_details)
-                if errored_files:
-                    log.info(
-                        "processor.errored_files_blacklisted",
-                        count=len(errored_files),
-                    )
-            except Exception:
-                log.exception("processor.indexer_error")
-                self.health.update_status("indexer", False, "error")
+            await self._run_indexer_cycle(errored_files, self._indexer_stats)
+            self._indexer_stats.maybe_emit_summary()
 
             # --- Janitor (every N cycles) ---
-            janitor_counter += 1
-            if janitor_counter >= janitor_every_n:
-                janitor_counter = 0
-                try:
-                    jr = await janitor.run_cleanup_safe(self._recordings_dir, self._settings)
-                    self._disk_usage_percent = jr.disk_usage_percent
-                    self._janitor_mode = jr.mode.value
-                    self._files_deleted_total += jr.files_deleted
-                    healthy = jr.errors == 0
-                    detail = f"{jr.mode.value} - deleted {jr.files_deleted}"
-                    self.health.update_status("janitor", healthy, detail)
-                except Exception:
-                    log.exception("processor.janitor_error")
-                    self.health.update_status("janitor", False, "error")
+            await self._run_janitor_cycle(self._janitor_stats)
+            self._janitor_stats.maybe_emit_summary(
+                mode=self._janitor_mode,
+                disk_usage_percent=self._disk_usage_percent,
+                cloud_sync_fallback=self._cloud_sync_fallback,
+            )
 
             self.health.touch()
             await asyncio.sleep(self._settings.indexer_poll_interval)
+
+        # Emit final shutdown summaries
+        self._indexer_stats.emit_final_summary()
+        self._janitor_stats.emit_final_summary()
 
 
 if __name__ == "__main__":

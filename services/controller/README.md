@@ -74,8 +74,8 @@
 *   **Hardware Detection:** Direct `sysfs` reads via `pathlib` (USB metadata extraction — zero external dependencies)
 *   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
-*   **Config:** `pydantic` (Tier2ServiceSpec model, Microphone Profiles)
-*   **Core:** `silvasonic.core.service.SilvaService` (base class for Health check and Redis Publisher)
+*   **Config:** `pydantic` (Service configuration schemas, Microphone Profiles)
+*   **Core:** Standardized Service Lifecycle Framework (provides unified Health checks and Redis Publishing via `silvasonic-core`)
 *   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
 
 ---
@@ -142,12 +142,10 @@ If the database is wiped, the next Controller startup restores all defaults auto
 
 The Controller starts a Recorder for a Device **only** when all of the following conditions are met:
 
-```
-status == "online"
-AND enabled == true
-AND enrollment_status == "enrolled"
-AND profile_slug IS NOT NULL (valid FK to microphone_profiles)
-```
+*   The hardware is verified as physically present and active.
+*   The device is administratively enabled by a user.
+*   The device has successfully completed the enrollment process.
+*   A specific Microphone Profile is firmly assigned to the device.
 
 If any condition is not met, the Controller will not start (or will stop) the Recorder for that Device.
 
@@ -178,7 +176,7 @@ The Controller detects **all** USB audio devices on the host — not only those 
 
 ### Polling-Based Detection (≤ 1 s)
 
-A `DeviceScanner` runs inside the reconciliation loop (interval: 1 second):
+A background hardware scanning routine runs inside the reconciliation loop (interval: 1 second):
 
 *   Enumerates all ALSA cards via `/proc/asound/cards`.
 *   Correlates each card with its USB parent via `sysfs` to extract stable identifiers (VID, PID, Serial).
@@ -359,7 +357,7 @@ The Controller publishes its own heartbeat like every service (via `SilvaService
 *   Total RAM used/total/percent
 *   Storage used/total/percent (for `SILVASONIC_WORKSPACE_PATH`)
 
-This enables the Web-Interface dashboard to display system-wide resource gauges alongside per-service metrics. The Controller uses the `HostResourceCollector` from `silvasonic.core.resources` for this.
+This enables the Web-Interface dashboard to display system-wide resource gauges alongside per-service metrics. The Controller uses shared standard telemetry components from `silvasonic-core` for this.
 
 > **Note:** Each Tier 2 service publishes its own status independently via its own `SilvaService` heartbeat. The Controller does **not** publish on behalf of other services.
 
@@ -412,7 +410,7 @@ Specific technical rules the Controller must obey:
 
 The Recorder's `oom_score_adj=-999` ensures it is the **last** process the Linux OOM Killer targets. This is the final line of defense for Data Capture Integrity.
 
-Resource limit fields (`memory_limit`, `cpu_limit`, `oom_score_adj`) are part of the `Tier2ServiceSpec` Pydantic model. See [ADR-0020](../../docs/adr/0020-resource-limits-qos.md).
+Resource limit parameters are governed by central configuration rules. See [ADR-0020](../../docs/adr/0020-resource-limits-qos.md).
 
 ---
 

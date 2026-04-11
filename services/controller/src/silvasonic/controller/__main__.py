@@ -17,7 +17,7 @@ sysfs-based USB detection (Phase 4).
 
 import asyncio
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 import structlog
 from silvasonic.controller.container_manager import ContainerManager
@@ -31,7 +31,7 @@ from silvasonic.controller.reconciler import ReconciliationLoop
 from silvasonic.controller.seeder import run_all_seeders
 from silvasonic.controller.settings import ControllerSettings
 from silvasonic.core.database.check import check_database_connection
-from silvasonic.core.database.session import get_session
+from silvasonic.core.database.session import get_session_factory
 from silvasonic.core.resources import HostResourceCollector
 from silvasonic.core.service import SilvaService
 
@@ -103,10 +103,11 @@ class ControllerService(SilvaService):
         """
         # Step 1: Seed factory defaults (best-effort)
         try:
-            async with get_session() as session:
-                await run_all_seeders(session)
-        except Exception as exc:
-            log.error("controller.seeding_failed", error=str(exc))
+            failed = await run_all_seeders(get_session_factory())
+            if failed:
+                log.warning("controller.seeding_partial", failed=failed)
+        except Exception:
+            log.exception("controller.seeding_failed")
 
         # Step 2: Initial device scan (MUST run even if seeding failed)
         try:
@@ -183,12 +184,12 @@ class ControllerService(SilvaService):
             **summary,
         )
 
-    async def _monitor_database(self) -> NoReturn:
+    async def _monitor_database(self) -> None:
         """Periodically check database connectivity and update health status.
 
         Logs state changes (connected ↔ disconnected) individually.
         """
-        while True:
+        while not self._shutdown_event.is_set():
             is_connected = await check_database_connection()
             self.health.update_status(
                 "database", is_connected, "Connected" if is_connected else "Connection failed"
@@ -235,7 +236,7 @@ class ControllerService(SilvaService):
         except Exception:
             self.health.update_status("podman", False, "Socket unreachable")
 
-        while True:
+        while not self._shutdown_event.is_set():
             is_alive = await asyncio.to_thread(self._podman_client.ping)
             self.health.update_status(
                 "podman",

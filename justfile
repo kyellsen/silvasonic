@@ -19,6 +19,7 @@ default:
     @just --list
 
 # 🛠️  Initialisiert das Projekt (uv sync, hooks, workspace)
+alias i := init
 init:
     @{{ BOOTSTRAP_PYTHON }} scripts/init.py
 
@@ -27,8 +28,9 @@ init:
 # ==============================================================================
 
 # 🔨 Baut die Container-Images
-build:
-    @{{ BOOTSTRAP_PYTHON }} scripts/build.py
+alias b := build
+build *services:
+    @{{ BOOTSTRAP_PYTHON }} scripts/build.py {{services}}
 
 # 🚀 Startet die Silvasonic Services
 start:
@@ -69,6 +71,10 @@ fix *args:
 # 🔍 Nur Ruff Lint (Read-Only, kein Auto-Fix)
 lint:
     @{{ BOOTSTRAP_PYTHON }} scripts/lint.py
+
+# 📈 Prints the repository Lines of Code statistics
+loc:
+    @uv run scripts/loc.py
 
 # 🔍 Nur statische Analyse & Unit Tests -> < 10s
 alias c := check

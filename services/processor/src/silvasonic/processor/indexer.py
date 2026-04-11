@@ -23,6 +23,7 @@ from pathlib import Path
 
 import soundfile as sf  # type: ignore[import-untyped]
 import structlog
+from silvasonic.processor.modules.indexer_stats import IndexerStats
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -185,6 +186,7 @@ async def index_recordings(
     recordings_dir: Path,
     *,
     errored_files: set[str] | None = None,
+    stats: IndexerStats | None = None,
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
 
@@ -195,10 +197,10 @@ async def index_recordings(
     name to the device's stable identifier (``devices.name``).
 
     Args:
-        session: Active async DB session.
-        recordings_dir: Root of the Recorder workspace.
-        errored_files: Optional set of relative paths that previously failed
-            metadata extraction.  Skipped immediately without DB interaction.
+        session: Active DB session
+        recordings_dir: Base directory for the workspace
+        errored_files: Set of relative paths that failed extraction and should be skipped
+        stats: Two-Phase Logging stats object
 
     Returns:
         IndexResult with counts of new, skipped, and errored files.
@@ -214,6 +216,8 @@ async def index_recordings(
         # Skip files that failed extraction in a previous cycle
         if rel_path in _errored:
             result.skipped += 1
+            if stats:
+                stats.record_skipped()
             continue
 
         try:
@@ -230,6 +234,8 @@ async def index_recordings(
                 )
             if exists.fetchone() is not None:
                 result.skipped += 1
+                if stats:
+                    stats.record_skipped()
                 continue
 
             # Extract metadata
@@ -245,6 +251,8 @@ async def index_recordings(
             row = device_row.fetchone()
             if row is None:
                 result.skipped += 1
+                if stats:
+                    stats.record_skipped()
                 log.info(
                     "indexer.device_not_registered",
                     file=rel_path,
@@ -293,18 +301,28 @@ async def index_recordings(
                 },
             )
             result.new += 1
-            log.info(
-                "indexer.indexed",
-                file=rel_path,
-                sensor_id=device_name,
-                duration=meta.duration,
-            )
+            if stats:
+                stats.record_indexed(
+                    rel_path=rel_path,
+                    sensor_id=device_name,
+                    duration=meta.duration,
+                )
+            else:
+                log.info(
+                    "indexer.indexed",
+                    file=rel_path,
+                    sensor_id=device_name,
+                    duration=meta.duration,
+                )
 
         except Exception:
             await session.rollback()
             result.errors += 1
             result.error_details.append(rel_path)
-            log.exception("indexer.error", file=rel_path)
+            if stats:
+                stats.record_error(rel_path)
+            else:
+                log.exception("indexer.error", file=rel_path)
 
     if result.new > 0:
         await session.commit()

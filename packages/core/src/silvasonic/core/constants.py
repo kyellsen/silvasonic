@@ -11,3 +11,9 @@ RECONNECT_DELAY_S: float = 5.0
 
 Used by NudgeSubscriber and LogForwarder in the Controller service.
 """
+
+DEFAULT_LOG_STARTUP_S: float = 300.0
+"""Default duration (seconds) for the initial verbose logging phase (Two-Phase Logging)."""
+
+DEFAULT_LOG_SUMMARY_INTERVAL_S: float = 300.0
+"""Default interval (seconds) for steady-state summary logs (Two-Phase Logging)."""

@@ -147,8 +147,8 @@ class TestJanitorIntegration:
         """Inject testcontainer DB credentials into environment."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("POSTGRES_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("POSTGRES_PORT", str(postgres_container.get_exposed_port(5432)))
+        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
+        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
         monkeypatch.setenv("POSTGRES_USER", "silvasonic")
         monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
         monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
@@ -193,7 +193,7 @@ class TestJanitorIntegration:
             time=datetime(2026, 1, 2, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
@@ -245,7 +245,7 @@ class TestJanitorIntegration:
             time=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
@@ -290,7 +290,7 @@ class TestJanitorIntegration:
             time=datetime(2026, 2, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=85.0):
@@ -334,7 +334,7 @@ class TestJanitorIntegration:
             time=datetime(2026, 3, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=85.0):
@@ -391,7 +391,7 @@ class TestJanitorIntegration:
             time=datetime(2026, 12, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings(janitor_batch_size=1)
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):
@@ -440,7 +440,7 @@ class TestJanitorIntegration:
                 time=datetime(2026, 1, i + 1, tzinfo=UTC),
             )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings(janitor_batch_size=2)
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):
@@ -508,7 +508,7 @@ class TestJanitorIntegration:
             time=datetime(2025, 1, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.config_schemas import ProcessorSettings
+        from silvasonic.core.schemas.system_config import ProcessorSettings
 
         settings = ProcessorSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):

@@ -154,3 +154,22 @@
 - [ ] The BirdNET worker dynamically alters its database pull query (`ORDER BY time ASC` vs `DESC`) based on the active setting.
 - [ ] Changes to the processing order are applied immediately or upon the next worker cycle.
 
+---
+
+<a id="us-b08"></a>
+## US-B08: Localized bird species names (i18n) 🌍
+
+> **As a user**
+> **I want to** see the detected bird species in my preferred language (e.g., German) instead of just the scientific name,
+> **so that** I can easily identify the birds without looking up Latin terms.
+
+### Acceptance Criteria
+
+- [ ] The system imports the BirdNET-Pi localization JSON files ([Source](https://github.com/Nachtzuster/BirdNET-Pi/tree/main/model/l18n)) as seed data into a taxonomy table.
+- [ ] **License Requirement:** Since these files are licensed under **CC BY-NC-SA 4.0**, proper attribution and a license notice MUST be provided in the repository (e.g., a `LICENSE`/`README.md` in the seed data folder) to ensure coexistence with Silvasonic's Apache 2.0 repository. Commercial usage of this specific data is prohibited.
+- [ ] The backend delivers the translations as `JSONB` dictionaries per detection to the frontend (e.g., `{"de": "Blaumeise", "en": "Blue Tit"}`).
+- [ ] The frontend (v0.9.0) dynamically resolves the user's preferred language at runtime.
+
+### References
+
+- [AGENTS.md (Language & Domain Policy)](../AGENTS.md)

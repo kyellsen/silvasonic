@@ -94,7 +94,7 @@
 ### Acceptance Criteria
 
 - [ ] Module entries in the sidebar (Birds, Bats, Weather, Livesound) are only displayed if the corresponding module is activated in Settings → Modules.
-- [ ] Activation status is read from the database (`system_services` table, `enabled` flag).
+- [ ] Activation status is read from the database (`managed_services` table, `enabled` flag).
 - [ ] If a module is enabled/disabled, the sidebar updates **without a page reload** (HTMX swap or SSE push).
 - [ ] Accessing the URL of a disabled module (e.g., `/birds` when BirdNET is disabled) shows a friendly notice page — no 404.
 - [ ] On first boot, all optional modules are disabled — only system pages (Dashboard, Recorders, Processor, Cloud Sync) are visible.

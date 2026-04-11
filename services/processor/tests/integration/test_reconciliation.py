@@ -45,8 +45,8 @@ class TestReconciliationIntegration:
         """Inject testcontainer DB credentials into environment."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("POSTGRES_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("POSTGRES_PORT", str(postgres_container.get_exposed_port(5432)))
+        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
+        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
         monkeypatch.setenv("POSTGRES_USER", "silvasonic")
         monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
         monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")

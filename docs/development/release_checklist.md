@@ -42,8 +42,8 @@ Silvasonic has **one** central version file. All sub-packages (Controller, Recor
 | ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------ |
 | `packages/core/src/silvasonic/core/__init__.py` | **YES — Single Source of Truth** | `__version__ = "X.Y.Z"`                                      |
 | `pyproject.toml` (Root)                         | **YES**                          | `version = "X.Y.Z"`                                          |
-| `ROADMAP.md` Line 3                             | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
-| `README.md` Line 5                              | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
+| `ROADMAP.md` Status-Block                       | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
+| `README.md` Status-Block                        | **YES**                          | `> **Status:** vX.Y.Z — Milestone`                           |
 | `ROADMAP.md` Milestone table                    | **YES**                          | Set version status to `✅ Current`, mark previous as `✅ Done` |
 | Sub-package `pyproject.toml`                    | **NO**                           | Version is derived dynamically from `silvasonic-core`        |
 | `uv.lock`                                       | **YES — Indirectly**             | Run `uv lock` to sync the lockfile after `pyproject.toml` bump  |
@@ -80,6 +80,8 @@ If any check fails: **Fix → Commit → Re-run `just ci`**.
 ---
 
 ## 3. Commit & Tag
+
+> **🚨 AI DIRECTIVE:** AI Agents **MUST NEVER** execute `git commit`, `git tag`, or `git push` autonomously. Agents must strictly format these commands in a copy-pasteable script block for the Human user to execute.
 
 ### Final Commit
 

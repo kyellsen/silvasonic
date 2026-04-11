@@ -4,11 +4,11 @@ Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
 (via root ``conftest.py``) to spin up a real TimescaleDB instance.
 """
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from silvasonic.core.database.session import _get_engine, _get_session_factory
 from silvasonic.web_mock.__main__ import app
 
 
@@ -17,24 +17,30 @@ class TestWebMockDatabaseConnectivity:
     """Verify that web-mock can connect and read/write to the database."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
+    async def setup_env(
+        self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any
+    ) -> AsyncIterator[None]:
         """Inject the testcontainer's database credentials into the environment.
 
         Also clears any dependency_overrides that unit tests may have set on
         the shared ``app`` singleton (e.g. mock get_db), so integration tests
         use real database sessions.
         """
+        from silvasonic.core.database.session import override_engine, reset_engine
+        from silvasonic.test_utils.helpers import build_postgres_url
+        from sqlalchemy.ext.asyncio import create_async_engine
+
         # Remove any leftover dependency overrides from unit tests
         app.dependency_overrides.clear()
 
-        _get_engine.cache_clear()
-        _get_session_factory.cache_clear()
+        engine = create_async_engine(build_postgres_url(postgres_container))
+        override_engine(engine)
 
-        monkeypatch.setenv("POSTGRES_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("POSTGRES_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        try:
+            yield
+        finally:
+            reset_engine()
+            await engine.dispose()
 
     async def test_read_write_db(self) -> None:
         """Test writing to the DB via /api/test-db and reading it back."""

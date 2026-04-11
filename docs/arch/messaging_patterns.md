@@ -39,7 +39,7 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 | Dimension                  | Storage                                    | Written By                        | Read By       |
 | -------------------------- | ------------------------------------------ | --------------------------------- | ------------- |
-| **Desired State** (config) | `system_services` table (DB)               | Admin / Web-Interface             | Controller    |
+| **Desired State** (config) | `managed_services` table (DB)              | Admin / Web-Interface             | Controller    |
 | **Actual State** (runtime) | Redis: `SET` with TTL + `PUBLISH` (see §3) | Each service (via `SilvaService`) | Web-Interface |
 
 ---
@@ -111,7 +111,7 @@ Control is **declarative** (DB desired state), not imperative (HTTP commands). T
 The nudge is a simple wake-up signal — not a command. If the nudge is lost (Controller restarting), the reconciliation timer catches up. The DB desired state is never lost.
 
 > [!NOTE]
-> Immutable services (Recorder, Workers, Processor) do not process runtime commands. To change their configuration, the Controller stops and restarts them with updated environment variables.
+> Recorder services are fully immutable — configuration changes require a container restart via the Controller. Background workers (BirdNET, Processor) support runtime tuning of domain parameters via DB Snapshot Refresh at safe loop boundaries — see [Lifecycle & Configuration](lifecycle-configuration.md) and [ADR-0031](../adr/0031-runtime-tuning-snapshot-refresh.md).
 
 ---
 
@@ -144,5 +144,7 @@ The nudge is a simple wake-up signal — not a command. If the nudge is lost (Co
 *   [ADR-0019: Unified Service Infrastructure](../adr/0019-unified-service-infrastructure.md)
 *   [ADR-0022: Live Log Streaming](../adr/0022-live-log-streaming.md)
 *   [ADR-0013: Tier 2 Container Management](../adr/0013-tier2-container-management.md)
+*   [ADR-0031: Runtime Tuning via DB Snapshot Refresh](../adr/0031-runtime-tuning-snapshot-refresh.md)
 *   [ADR-0011: Audio Recording Strategy](../adr/0011-audio-recording-strategy.md)
+*   [Lifecycle & Configuration](lifecycle-configuration.md)
 *   [Filesystem Governance](filesystem_governance.md)

@@ -25,15 +25,12 @@ Design:
 from __future__ import annotations
 
 import threading
-import time
 
 import structlog
+from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
+from silvasonic.core.two_phase import TwoPhaseWindow
 
 log = structlog.get_logger()
-
-# Default phase thresholds (overridable via envvars)
-DEFAULT_STARTUP_DURATION_S: float = 300.0  # 5 minutes
-DEFAULT_SUMMARY_INTERVAL_S: float = 300.0  # 5 minutes
 
 
 class ControllerStats:
@@ -51,14 +48,15 @@ class ControllerStats:
     def __init__(
         self,
         *,
-        startup_duration_s: float = DEFAULT_STARTUP_DURATION_S,
-        summary_interval_s: float = DEFAULT_SUMMARY_INTERVAL_S,
+        startup_duration_s: float = DEFAULT_LOG_STARTUP_S,
+        summary_interval_s: float = DEFAULT_LOG_SUMMARY_INTERVAL_S,
     ) -> None:
         """Initialize the stats tracker."""
         self._lock = threading.Lock()
-        self._start_time = time.monotonic()
-        self._startup_duration_s = startup_duration_s
-        self._summary_interval_s = summary_interval_s
+        self._window = TwoPhaseWindow(
+            startup_duration_s=startup_duration_s,
+            summary_interval_s=summary_interval_s,
+        )
 
         # Lifetime counters
         self._total_reconcile_cycles: int = 0
@@ -73,19 +71,13 @@ class ControllerStats:
         self._interval_containers_started: int = 0
         self._interval_containers_stopped: int = 0
         self._interval_nudges: int = 0
-        self._last_summary_time: float = self._start_time
-
-        # Container action log (names started/stopped in this interval)
         self._interval_started_names: list[str] = []
         self._interval_stopped_names: list[str] = []
-
-        # Phase transition flag
-        self._startup_ended_logged = False
 
     @property
     def in_startup_phase(self) -> bool:
         """Return ``True`` if still in the detailed startup phase."""
-        return (time.monotonic() - self._start_time) < self._startup_duration_s
+        return self._window.is_startup_phase
 
     # ------------------------------------------------------------------
     # Record methods (thread-safe)
@@ -148,27 +140,25 @@ class ControllerStats:
 
         Resets interval counters on each emission.
         """
-        now = time.monotonic()
-
         # Check phase transition
-        if not self.in_startup_phase and not self._startup_ended_logged:
-            self._startup_ended_logged = True
+        if self._window.consume_startup_transition():
             with self._lock:
                 total_cycles = self._total_reconcile_cycles
                 total_errors = self._total_reconcile_errors
             log.info(
                 "controller.startup_phase_complete",
-                startup_duration_s=self._startup_duration_s,
+                startup_duration_s=self._window._startup_duration_s,
                 total_reconcile_cycles=total_cycles,
                 total_reconcile_errors=total_errors,
-                summary_interval_s=self._summary_interval_s,
+                summary_interval_s=self._window._summary_interval_s,
             )
 
-        with self._lock:
-            elapsed = now - self._last_summary_time
-            if elapsed < self._summary_interval_s:
-                return None
+        if not self._window.is_summary_due():
+            return None
 
+        elapsed = self._window.mark_summary_emitted()
+
+        with self._lock:
             # Snapshot and reset
             summary: dict[str, object] = {
                 "interval_s": round(elapsed, 1),
@@ -184,7 +174,7 @@ class ControllerStats:
                 "total_containers_started": self._total_containers_started,
                 "total_containers_stopped": self._total_containers_stopped,
                 "total_nudges": self._total_nudges,
-                "uptime_s": round(now - self._start_time, 0),
+                "uptime_s": round(self._window.uptime_s, 0),
             }
 
             # Reset interval
@@ -195,13 +185,11 @@ class ControllerStats:
             self._interval_nudges = 0
             self._interval_started_names = []
             self._interval_stopped_names = []
-            self._last_summary_time = now
 
         return summary
 
     def emit_final_summary(self) -> None:
         """Emit a final summary at shutdown."""
-        now = time.monotonic()
         with self._lock:
             log.info(
                 "controller.final_summary",
@@ -210,6 +198,6 @@ class ControllerStats:
                 total_containers_started=self._total_containers_started,
                 total_containers_stopped=self._total_containers_stopped,
                 total_nudges=self._total_nudges,
-                uptime_s=round(now - self._start_time, 0),
+                uptime_s=round(self._window.uptime_s, 0),
                 pending_cycles_since_last_summary=self._interval_reconcile_cycles,
             )

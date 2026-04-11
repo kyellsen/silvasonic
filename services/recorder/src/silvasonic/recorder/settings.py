@@ -15,7 +15,7 @@ from pathlib import Path
 import structlog
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from silvasonic.recorder.schemas import InjectedRecorderConfig
+from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
 
 log = structlog.get_logger()
 
@@ -95,11 +95,11 @@ class RecorderSettings(BaseSettings):
     # Range: 1-30.  Default 5 provides quick failure detection without busy-looping.
     RECORDER_HEALTH_POLL_INTERVAL_S: float = 5.0
 
-    def parse_injected_config(self) -> InjectedRecorderConfig | None:
-        """Parse ``RECORDER_CONFIG_JSON`` into an :class:`InjectedRecorderConfig`.
+    def parse_injected_config(self) -> RecorderRuntimeConfig | None:
+        """Parse ``RECORDER_CONFIG_JSON`` into an :class:`RecorderRuntimeConfig`.
 
         Returns:
-            Validated ``InjectedRecorderConfig`` or ``None`` if no config
+            Validated ``RecorderRuntimeConfig`` or ``None`` if no config
             is set or parsing fails (best-effort — Recorder starts with
             defaults).
         """
@@ -117,7 +117,7 @@ class RecorderSettings(BaseSettings):
             return None
 
         try:
-            return InjectedRecorderConfig(**raw)
+            return RecorderRuntimeConfig(**raw)
         except ValidationError as exc:  # pragma: no cover — edge-case validation
             log.warning(
                 "settings.config_json_validation_failed",

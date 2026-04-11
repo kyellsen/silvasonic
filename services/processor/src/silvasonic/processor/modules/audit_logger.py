@@ -9,8 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Upload
+from silvasonic.core.database.models.recordings import Recording, Upload
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 

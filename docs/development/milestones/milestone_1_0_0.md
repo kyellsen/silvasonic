@@ -110,11 +110,11 @@ See the detailed plan archived from the v0.5.0 discussion:
 
 ### Config Schema Evolution Strategy
 
-- [ ] Define policy for schema versioning (new fields added to `config_schemas.py`)
+- [ ] Define policy for schema versioning (new fields added to `schemas/system_config.py`)
 - [ ] Document the "Schema = Schema Evolution Safety, YAML = Operator Interface"
   pattern in ADR-0023 (currently only in code comments)
 - [ ] Consider adding a CI test that validates `defaults.yml` values match
-  `config_schemas.py` Pydantic defaults (zero drift guarantee)
+  `schemas/system_config.py` Pydantic defaults (zero drift guarantee)
 
 ### Per-Station Configuration Overlay
 

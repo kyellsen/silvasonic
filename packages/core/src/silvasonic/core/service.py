@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -95,6 +96,12 @@ class SilvaService:
         # Stored in _main() after run() task is created; used for active cancel.
         self._run_task: asyncio.Task[None] | None = None
 
+        # --- Snapshot Refresh (ADR-0031) ---
+        # Subclasses declare which system_config keys to monitor.
+        # Services without config keys (e.g. Recorder) leave this empty.
+        self._config_keys: list[str] = []
+        self._config_updated_at: dict[str, datetime] = {}
+
     # ------------------------------------------------------------------
     # Delegated properties — convenience access to shared infrastructure
     # ------------------------------------------------------------------
@@ -146,6 +153,50 @@ class SilvaService:
         Best-effort: if the database is unreachable, ``_setup()`` logs a
         warning and continues — the service starts with hardcoded defaults.
         """
+
+    async def _refresh_config(self) -> None:
+        """Check if config has changed, and re-run load_config() only if needed.
+
+        Compares ``updated_at`` timestamps of the relevant ``system_config``
+        rows against a local cache.  Only calls ``load_config()`` when at
+        least one row has been modified since the last check.
+
+        Called by workers at the top of each outer-loop iteration,
+        *before* claiming the next work item (ADR-0031).
+
+        Best-effort: failures are logged and swallowed — the service
+        continues with the previously loaded configuration.
+        """
+        if not self._config_keys:
+            return
+
+        try:
+            from silvasonic.core.database.models.system import SystemConfig
+            from silvasonic.core.database.session import get_session
+            from sqlalchemy import select
+
+            async with get_session() as session:
+                stmt = select(SystemConfig.key, SystemConfig.updated_at).where(
+                    SystemConfig.key.in_(self._config_keys)
+                )
+                result = await session.execute(stmt)
+                rows = result.all()
+
+            changed = False
+            for key, updated_at in rows:
+                if key not in self._config_updated_at or updated_at > self._config_updated_at[key]:
+                    changed = True
+                self._config_updated_at[key] = updated_at
+
+            if changed:
+                await self.load_config()
+                logger.info(
+                    "config_refreshed",
+                    service=self.service_name,
+                    keys=[k for k, _ in rows],
+                )
+        except Exception as exc:
+            logger.warning("config_refresh_failed", error=str(exc))
 
     # ------------------------------------------------------------------
     # Internal lifecycle helpers

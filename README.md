@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.7.0 — Gateway ✅
+> **Status:** v0.7.1 — DB-Viewer & System Stabilization ✅
 
 ---
 
@@ -62,6 +62,7 @@ silvasonic/
 ├── services/            # Container service definitions & Containerfiles
 │   ├── database/        # TimescaleDB / PostgreSQL
 │   ├── controller/      # Hardware/Container manager
+│   ├── gateway/         # Caddy reverse proxy, HTTPS termination & routing
 │   ├── processor/       # Data ingestion, indexing & retention (Janitor)
 │   ├── recorder/        # Audio capture (FFmpeg, Dual Stream)
 │   └── web-mock/        # Dev UI shell (FastAPI + Jinja2 + HTMX)
@@ -80,6 +81,7 @@ silvasonic/
 | **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
 | **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Running  |
+| **gateway**    | 1    | Caddy reverse proxy — HTTPS termination and internal routing                             | ✅ Running  |
 | **processor**  | 1    | Data ingestion, metadata indexing, and retention management (Janitor)                    | ✅ Running  |
 | **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to Web-Interface) | ✅ Running  |
 | **db-viewer**  | 1    | Dev Data UI — Database inspector & analytical data export tool (toggle via `COMPOSE_PROFILES=db-viewer`) | ✅ Running  |
@@ -95,17 +97,19 @@ All commands are run via **[just](https://github.com/casey/just)**. Use `just --
 
 Here are the most common daily commands:
 
-| Command           | Description                                                    |
-| ----------------- | -------------------------------------------------------------- |
-| `just init`       | Initialize project (uv sync, pre-commit hooks, workspace)      |
-| `just build`      | Build all container images                                     |
-| `just start`      | Start all services                                             |
-| `just stop`       | Stop all services                                              |
-| `just logs`       | Show aggregated service logs                                   |
-| `just status`     | Show service status                                            |
-| `just ci`  | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
-| `just docs`       | Start MkDocs live server (`localhost:8085`)                    |
-| `just nuke`       | Full reset (delete containers, volumes, `.venv`, and images)   |
+| Command                 | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `just init` (`i`)       | Initialize project (uv sync, pre-commit hooks, workspace)      |
+| `just build` (`b`)      | Build all container images                                     |
+| `just start`            | Start all services                                             |
+| `just stop`             | Stop all services                                              |
+| `just logs`             | Show aggregated service logs                                   |
+| `just status`           | Show service status                                            |
+| `just check` (`c`)      | Static analysis & unit tests (fast check)                      |
+| `just verify` (`v`)     | Code quality & integration tests                               |
+| `just ci`               | Full CI pipeline (Lint → Type → Unit → Int → System → E2E)     |
+| `just docs`             | Start MkDocs live server (`localhost:8085`)                    |
+| `just nuke`             | Full reset (delete containers, volumes, `.venv`, and images)   |
 
 > **🧪 Testing:** For the full list of specific test commands (e.g., `just test-unit`, `just test-e2e`), see the **[Testing](#testing)** section below.
 

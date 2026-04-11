@@ -13,8 +13,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from silvasonic.controller.worker_registry import BackgroundWorker
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
+from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +242,8 @@ def build_recorder_spec(
     workspace_dir = generate_workspace_name(profile.slug, device)
     container_name = generate_recorder_container_name(workspace_dir)
 
+    runtime_payload = RecorderRuntimeConfig.model_validate(profile.config)
+
     spec = Tier2ServiceSpec(
         image=env.RECORDER_IMAGE,
         name=container_name,
@@ -247,7 +251,7 @@ def build_recorder_spec(
         environment={
             "SILVASONIC_RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
             "SILVASONIC_RECORDER_PROFILE_SLUG": profile.slug,
-            "SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(profile.config),
+            "SILVASONIC_RECORDER_CONFIG_JSON": runtime_payload.model_dump_json(),
             "SILVASONIC_REDIS_URL": env.REDIS_URL,
             "SILVASONIC_INSTANCE_ID": device_id,
             # Force PortAudio to use raw ALSA (not PulseAudio/PipeWire).
@@ -281,5 +285,105 @@ def build_recorder_spec(
     )
 
     # Inject config hash into labels for drift detection
+    spec.labels["io.silvasonic.config_hash"] = spec.config_hash
+    return spec
+
+
+# ---------------------------------------------------------------------------
+# Factory: Background Worker
+# ---------------------------------------------------------------------------
+
+
+class WorkerEnvConfig(BaseSettings):
+    """Environment-based defaults for Tier 2 background workers."""
+
+    model_config = SettingsConfigDict(env_prefix="SILVASONIC_")
+
+    NETWORK: str = "silvasonic-net"
+    WORKSPACE_PATH: str = "/mnt/data/workspace"
+    WORKER_WORKSPACE_LOCAL: str | None = None
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    WORKER_RESTART_MAX_RETRIES: int = 5
+
+
+def build_worker_spec(
+    worker: BackgroundWorker,
+    *,
+    network: str | None = None,
+    workspace_path: str | None = None,
+) -> Tier2ServiceSpec:
+    """Build a ``Tier2ServiceSpec`` for a singleton background worker.
+
+    Args:
+        worker: BackgroundWorker definition from registry.
+        network: Override for SILVASONIC_NETWORK.
+        workspace_path: Override for SILVASONIC_WORKSPACE_PATH.
+
+    Returns:
+        Complete spec ready for ContainerManager.start().
+    """
+    env = WorkerEnvConfig()
+    network = network or env.NETWORK
+    workspace_path = workspace_path or env.WORKSPACE_PATH
+
+    container_name = f"silvasonic-{worker.name}"
+
+    # Typical env vars needed by Tier 2 workers
+    environment = {
+        "SILVASONIC_INSTANCE_ID": worker.name,
+        "SILVASONIC_REDIS_URL": env.REDIS_URL,
+        "SILVASONIC_DB_HOST": "database",
+        "POSTGRES_USER": "silvasonic",
+        "POSTGRES_PASSWORD": "silvasonic",
+        "POSTGRES_DB": "silvasonic",
+    }
+
+    mounts = []
+
+    if worker.needs_recorder_read_access:
+        # RO mount of all recorders, mapped to /data/recorder (Processor convention)
+        mounts.append(
+            MountSpec(
+                source=str(Path(workspace_path) / "recorder"),
+                target="/data/recorder",
+                read_only=True,
+                controller_source=str(
+                    Path(env.WORKER_WORKSPACE_LOCAL or str(Path(workspace_path) / "recorder"))
+                ),
+            )
+        )
+
+    if worker.needs_own_workspace:
+        # RW mount of worker's own workspace, mapped to /data/{worker.name}
+        mounts.append(
+            MountSpec(
+                source=str(Path(workspace_path) / worker.name),
+                target=f"/data/{worker.name}",
+                read_only=False,
+                controller_source=str(
+                    Path(env.WORKER_WORKSPACE_LOCAL or str(Path(workspace_path) / worker.name))
+                ),
+            )
+        )
+
+    spec = Tier2ServiceSpec(
+        image=worker.image,
+        name=container_name,
+        network=network,
+        environment=environment,
+        labels={
+            "io.silvasonic.tier": "2",
+            "io.silvasonic.owner": "controller",
+            "io.silvasonic.service": worker.name,
+            "io.silvasonic.device_id": worker.name,  # Unique singleton identifier
+        },
+        mounts=mounts,
+        restart_policy=RestartPolicy(max_retry_count=env.WORKER_RESTART_MAX_RETRIES),
+        memory_limit=worker.memory_limit,
+        cpu_limit=worker.cpu_limit,
+        oom_score_adj=worker.oom_score_adj,
+    )
+
     spec.labels["io.silvasonic.config_hash"] = spec.config_hash
     return spec

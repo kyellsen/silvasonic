@@ -67,11 +67,11 @@
 | `SILVASONIC_BATDETECT_PORT`        | Health endpoint port                 | `9500`            |
 | `${SILVASONIC_WORKSPACE_PATH}/recorder:ro,z` | Recorder workspace (read-only mount) | —                 |
 | `${SILVASONIC_WORKSPACE_PATH}/batdetect:z` | BatDetect workspace (clips, read-write) | —              |
-| `POSTGRES_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
+| `SILVASONIC_DB_HOST`, `SILVASONIC_DB_*` | Database connection                  | via `.env`        |
 
 ### Dynamic Configuration (Database)
 
-Runtime-tunable settings stored in the `system_config` table under key `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup.
+Runtime-tunable settings stored in the `system_config` table under key `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup. The container lifecycle toggle (`enabled`) is managed via the `managed_services` table (ADR-0029), not via `system_config`.
 
 | Setting                | Default  | Description                                                  |
 | :--------------------- | :------- | :----------------------------------------------------------- |
@@ -89,7 +89,7 @@ Runtime-tunable settings stored in the `system_config` table under key `batdetec
 
 ## 6. Technology Stack
 
-*   **ML Model:** BatDetect2 ([github.com/macaodha/batdetect2](https://github.com/macaodha/batdetect2)) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.11+, PyTorch 2 compatible. Finetuning for Central European species planned.
+*   **ML Model:** BatDetect2 ([github.com/macaodha/batdetect2](https://github.com/macaodha/batdetect2)) — CNN-based bat call detection and species classification, trained on European full-spectrum ultrasonic recordings. Python 3.13, PyTorch 2 compatible. Finetuning for Central European species planned.
 *   **Runtime:** PyTorch 2 — full framework required (no TFLite variant available). This is the primary reason for the high resource requirements.
 *   **Audio:** `soundfile`, `numpy` (ultrasonic spectrogram generation)
 

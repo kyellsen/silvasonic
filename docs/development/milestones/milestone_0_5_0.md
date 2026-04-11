@@ -257,7 +257,7 @@
   ```
 - [x] Verify Controller's `ConfigSeeder` correctly seeds `processor` key into `system_config` table on startup (`INSERT ... ON CONFLICT DO NOTHING`)
 - [x] Verify `ProcessorSettings` Pydantic schema defaults match YAML seed values (CI test from ADR-0023)
-- ~~Add `processor` entry to `system_services` table seed~~ → **Deferred to [v0.9.0](milestone_0_9_0.md)** (no consumer until Web-Interface)
+- ~~Add `processor` entry to `managed_services` table seed~~ → **Deferred to [v0.9.0](milestone_0_9_0.md)** (no consumer until Web-Interface)
 - [x] Add Processor workspace directory (`processor/`) to `scripts/init.py` initialization
 ### Tests
 
