@@ -1,5 +1,6 @@
 """Unit tests for BirdNET heartbeat and get_extra_meta implementation."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -7,8 +8,14 @@ from silvasonic.birdnet.service import BirdNETService
 
 
 @pytest.fixture
-def mock_service() -> BirdNETService:
-    with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "test-bnet"}):
+def mock_service(tmp_path: Path) -> BirdNETService:
+    with patch.dict(
+        "os.environ",
+        {
+            "SILVASONIC_INSTANCE_ID": "test-bnet",
+            "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+        },
+    ):
         svc = BirdNETService()
         return svc
 

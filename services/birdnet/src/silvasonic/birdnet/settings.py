@@ -15,6 +15,7 @@ class BirdnetEnvSettings(BaseSettings):
     INSTANCE_ID: str = "birdnet"
     REDIS_URL: str = "redis://localhost:6379/0"
     HEARTBEAT_INTERVAL_S: float = DEFAULT_HEARTBEAT_INTERVAL_S
+    WORKSPACE_DIR: str = "/data/birdnet"
 
     # Worker orchestration timings
     DB_RETRY_INTERVAL_S: float = 5.0

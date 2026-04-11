@@ -67,6 +67,7 @@ class BirdNETService(SilvaService):
 
         super().__init__(
             instance_id=env_settings.INSTANCE_ID,
+            workspace_path=env_settings.WORKSPACE_DIR,
             redis_url=env_settings.REDIS_URL,
             heartbeat_interval=env_settings.HEARTBEAT_INTERVAL_S,
         )
@@ -75,6 +76,9 @@ class BirdNETService(SilvaService):
         self.system_config: SystemSettings | None = None
         self.model_version = _derive_model_version(MODEL_PATH.name)
         self.recordings_dir = Path(env_settings.RECORDINGS_DIR)
+
+        self.clips_dir = Path(env_settings.WORKSPACE_DIR) / "clips"
+        self.clips_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize Two-Phase Logging stats
         self.stats = BirdnetStats()
@@ -228,6 +232,9 @@ class BirdNETService(SilvaService):
                 score = float(scores[i])
                 parts = labels[i].split("_")
 
+                label_basename = f"{parts[0]}_{parts[1]}" if len(parts) > 1 else parts[0]
+                common_name = parts[1] if len(parts) > 1 else ""
+
                 details = BirdnetDetectionDetails(
                     model_version=self.model_version,
                     sensitivity=self.birdnet_config.sensitivity,
@@ -239,15 +246,47 @@ class BirdNETService(SilvaService):
                     week=None,  # Week logic simplified out of payload for brevity
                 )
 
+                # Extraction: Create a WAV file clip
+                start_ms = int(w_start_td.total_seconds() * 1000)
+                end_ms = int(w_end_td.total_seconds() * 1000)
+
+                safe_label = re.sub(r"[^a-zA-Z0-9]", "", label_basename)
+                clip_filename = f"{recording.id}_{start_ms}_{end_ms}_{safe_label}.wav"
+
+                clip_path = self.clips_dir / clip_filename
+
+                # Audio slicing logic: ± clip_padding_seconds
+                pad_samples = int(self.birdnet_config.clip_padding_seconds * MODEL_SR)
+                slice_start = max(0, start_idx - pad_samples)
+                slice_end = min(len(audio), start_idx + WINDOW_SAMPLES + pad_samples)
+
+                # Write audio inside executor, with IO try/except
+                def _write_clip(
+                    s_start: int = slice_start,
+                    s_end: int = slice_end,
+                    dest: Path = clip_path,
+                    aud: np.ndarray = audio,
+                ) -> bool:
+                    try:
+                        sf.write(str(dest), aud[s_start:s_end], MODEL_SR)
+                        return True
+                    except Exception as e:
+                        log.warning("birdnet.clip_extraction_failed", error=str(e), path=str(dest))
+                        return False
+
+                written = await loop.run_in_executor(None, _write_clip)
+                det_clip_path = f"clips/{clip_filename}" if written else None
+
                 det = Detection(
                     recording_id=recording.id,
                     worker="birdnet",
                     time=recording.time + w_start_td,
                     end_time=recording.time + w_end_td,
-                    label=f"{parts[0]}_{parts[1]}" if len(parts) > 1 else parts[0],
-                    common_name=parts[1] if len(parts) > 1 else "",
+                    label=label_basename,
+                    common_name=common_name,
                     confidence=score,
                     details=details.model_dump(),
+                    clip_path=det_clip_path,
                 )
                 detections.append(det)
 

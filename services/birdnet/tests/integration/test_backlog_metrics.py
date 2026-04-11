@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
 
@@ -86,10 +87,19 @@ class TestBacklogMetrics:
     """Verify backlog query counts exactly the required rows against real DB."""
 
     async def test_backlog_count_pending_recordings(
-        self, postgres_container: PostgresContainer, seeded_backlog_db: None
+        self,
+        postgres_container: PostgresContainer,
+        seeded_backlog_db: None,
+        tmp_path: Path,
     ) -> None:
         """Worker fetch loop accurately counts pending unanalyzed recordings."""
-        with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "w-test"}):
+        with patch.dict(
+            "os.environ",
+            {
+                "SILVASONIC_INSTANCE_ID": "w-test",
+                "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+            },
+        ):
             svc = BirdNETService()
 
         # Let the service loop run once but skip inference
@@ -116,7 +126,9 @@ class TestBacklogMetrics:
         assert svc._backlog_pending == 2
 
     async def test_backlog_zero_when_all_analyzed(
-        self, postgres_container: PostgresContainer
+        self,
+        postgres_container: PostgresContainer,
+        tmp_path: Path,
     ) -> None:
         """When all recordings are analyzed or deleted, backlog is zero."""
         await check_database_connection()
@@ -156,7 +168,13 @@ class TestBacklogMetrics:
             session.add_all([r1, r2])
             await session.commit()
 
-        with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "w-test"}):
+        with patch.dict(
+            "os.environ",
+            {
+                "SILVASONIC_INSTANCE_ID": "w-test",
+                "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+            },
+        ):
             svc = BirdNETService()
 
         # Let the service loop run once but skip inference
