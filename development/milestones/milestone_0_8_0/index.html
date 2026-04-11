@@ -3655,17 +3655,17 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a>.</p>
 <strong>Context:</strong> The BirdNET service is now standalone viable. We must extend the Controller's <code>Reconciler</code> to start/stop this background worker. Lifecycle orchestration reads from <code>managed_services</code>, NOT from <code>system_config</code> JSONB.</p>
 <h3 id="tasks_3">Tasks<a class="headerlink" href="#tasks_3" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Create <code>worker_registry.py</code> with a robust statically typed array <code>SYSTEM_WORKERS</code> containing a <code>BackgroundWorker</code> dataclass configured for <code>"birdnet"</code> (incl. <code>mem_limit=512m</code>, <code>oom_score_adj=500</code>).</li>
-<li>[ ] Create <code>worker_evaluator.py</code> containing a generic <code>SystemWorkerEvaluator</code> that queries the <code>managed_services</code> table for <code>enabled = True</code> rows and matches them against the registry to build <code>Tier2ServiceSpec</code> objects.</li>
-<li>[ ] Refactor <code>_reconcile_once</code> in the <code>ReconciliationLoop</code> to securely invoke both <code>DeviceStateEvaluator</code> and <code>SystemWorkerEvaluator</code>. Isolate each with <code>try...except</code> blocks to prevent worker configuration mismatches from halting active <code>recorder</code> container execution.</li>
-<li>[ ] Implement <code>ManagedServiceSeeder</code>: On Controller startup, seed <code>managed_services</code> rows (<code>INSERT ON CONFLICT DO NOTHING</code>) for each worker in the registry (start: <code>birdnet</code>, <code>enabled=True</code>).</li>
+<li>[x] Create <code>worker_registry.py</code> with a robust statically typed array <code>SYSTEM_WORKERS</code> containing a <code>BackgroundWorker</code> dataclass configured for <code>"birdnet"</code> (incl. <code>mem_limit=512m</code>, <code>oom_score_adj=500</code>).</li>
+<li>[x] Create <code>worker_evaluator.py</code> containing a generic <code>SystemWorkerEvaluator</code> that queries the <code>managed_services</code> table for <code>enabled = True</code> rows and matches them against the registry to build <code>Tier2ServiceSpec</code> objects.</li>
+<li>[x] Refactor <code>_reconcile_once</code> in the <code>ReconciliationLoop</code> to securely invoke both <code>DeviceStateEvaluator</code> and <code>SystemWorkerEvaluator</code>. Isolate each with <code>try...except</code> blocks to prevent worker configuration mismatches from halting active <code>recorder</code> container execution.</li>
+<li>[x] Implement <code>ManagedServiceSeeder</code>: On Controller startup, seed <code>managed_services</code> rows (<code>INSERT ON CONFLICT DO NOTHING</code>) for each worker in the registry (start: <code>birdnet</code>, <code>enabled=True</code>).</li>
 </ul>
 <h3 id="testing-phase-4">Testing (Phase 4)<a class="headerlink" href="#testing-phase-4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — Add unit tests for <code>Reconciler._reconcile_once</code> to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.</li>
-<li>[ ] <strong><code>integration</code></strong> — Add <code>tests/integration/test_system_worker_evaluator.py</code>: Instantiate <code>SystemWorkerEvaluator</code> against a real PostgreSQL testcontainer. Verify it correctly queries <code>managed_services</code> and maps enabled rows to <code>Tier2ServiceSpec</code>, excluding <code>enabled=False</code> workers (Rule: Mocking DB in integration tests is FORBIDDEN).</li>
+<li>[x] <strong><code>unit</code></strong> — Add unit tests for <code>Reconciler._reconcile_once</code> to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.</li>
+<li>[x] <strong><code>integration</code></strong> — Add <code>tests/integration/test_system_worker_evaluator.py</code>: Instantiate <code>SystemWorkerEvaluator</code> against a real PostgreSQL testcontainer. Verify it correctly queries <code>managed_services</code> and maps enabled rows to <code>Tier2ServiceSpec</code>, excluding <code>enabled=False</code> workers (Rule: Mocking DB in integration tests is FORBIDDEN).</li>
 <li>[x] <strong><code>system</code></strong> — Add <code>tests/system/test_singleton_worker_lifecycle.py</code>: Validate full <code>ReconciliationLoop</code> state transitions. Ensure changing <code>enabled</code> in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.</li>
-<li>[ ] <strong><code>system</code> (Regression)</strong> — Audit existing system tests (<code>test_controller_lifecycle.py</code>, <code>test_crash_recovery.py</code>). Since BirdNET is <code>enabled=True</code> by default in <code>managed_services</code>, existing tests asserting <code>len(containers) == 1</code> will fail. You must disable background workers in the test seeder or update the container tracking assertions.</li>
+<li>[x] <strong><code>system</code> (Regression)</strong> — Audit existing system tests (<code>test_controller_lifecycle.py</code>, <code>test_crash_recovery.py</code>). Since BirdNET is <code>enabled=True</code> by default in <code>managed_services</code>, existing tests asserting <code>len(containers) == 1</code> will fail. You must disable background workers in the test seeder or update the container tracking assertions.</li>
 </ul>
 <hr />
 <h2 id="phase-5-service-status-lifecycle-integration-commit-5">Phase 5: Service Status &amp; Lifecycle Integration (Commit 5)<a class="headerlink" href="#phase-5-service-status-lifecycle-integration-commit-5" title="Permanent link">&para;</a></h2>
@@ -3673,15 +3673,15 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a>.</p>
 <strong>User Stories:</strong> US-B05 (Analysis status via Heartbeat), US-B06 (Enable/Disable via DB/Controller).</p>
 <h3 id="tasks_4">Tasks<a class="headerlink" href="#tasks_4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <code>SilvaService</code> already provides Heartbeat functionality. Implement <code>get_extra_meta()</code> in the <code>BirdNETService</code> class to inject backlog numbers (remaining unanalyzed recordings) into the standard Redis heartbeat payload.</li>
-<li>[ ] Ensure lean graceful shutdown logic inside <code>run()</code> accurately breaks long-running tasks.</li>
+<li>[x] <code>SilvaService</code> already provides Heartbeat functionality. Implement <code>get_extra_meta()</code> in the <code>BirdNETService</code> class to inject backlog numbers (remaining unanalyzed recordings) into the standard Redis heartbeat payload.</li>
+<li>[x] Ensure lean graceful shutdown logic inside <code>run()</code> accurately breaks long-running tasks.</li>
 </ul>
 <h3 id="testing-phase-5">Testing (Phase 5)<a class="headerlink" href="#testing-phase-5" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_heartbeat.py</code>: Assert that <code>get_extra_meta()</code> returns valid backlog payloads.</li>
-<li>[ ] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_backlog_metrics.py</code>: Verify the backlog counting query against a real Testcontainers database.</li>
-<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_lifecycle.py</code>: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.</li>
-<li>[ ] <strong><code>smoke</code></strong> — <code>tests/smoke/test_health.py</code>: Extend with <code>test_birdnet_heartbeat_in_redis</code>.</li>
+<li>[x] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_heartbeat.py</code>: Assert that <code>get_extra_meta()</code> returns valid backlog payloads.</li>
+<li>[x] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_backlog_metrics.py</code>: Verify the backlog counting query against a real Testcontainers database.</li>
+<li>[x] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_lifecycle.py</code>: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.</li>
+<li>[x] <strong><code>smoke</code></strong> — <code>tests/smoke/test_health.py</code>: Extend with <code>test_birdnet_heartbeat_in_redis</code>.</li>
 </ul>
 <hr />
 <h2 id="phase-6-audio-clip-extraction-commit-6">Phase 6: Audio Clip Extraction (Commit 6)<a class="headerlink" href="#phase-6-audio-clip-extraction-commit-6" title="Permanent link">&para;</a></h2>
@@ -3689,14 +3689,14 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a>.</p>
 <strong>User Stories:</strong> US-B01 (clip storage), US-B02 (playback preparation).</p>
 <h3 id="tasks_5">Tasks<a class="headerlink" href="#tasks_5" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Implement clip extraction using <code>soundfile</code>: read detection time range ± <code>clip_padding_seconds</code> (from <code>BirdnetSettings</code>) from the processed WAV file, write to <code>birdnet/clips/</code>.</li>
-<li>[ ] Clip naming convention: <code>{recording_id}_{start_ms}_{end_ms}_{label}.wav</code>. Store the relative path (<code>clips/...</code>) in <code>detections.clip_path</code>.</li>
-<li>[ ] Ensure <code>birdnet/clips/</code> directory is created at service startup.</li>
+<li>[x] Implement clip extraction using <code>soundfile</code>: read detection time range ± <code>clip_padding_seconds</code> (from <code>BirdnetSettings</code>) from the processed WAV file, write to <code>birdnet/clips/</code>.</li>
+<li>[x] Clip naming convention: <code>{recording_id}_{start_ms}_{end_ms}_{label}.wav</code>. Store the relative path (<code>clips/...</code>) in <code>detections.clip_path</code>.</li>
+<li>[x] Ensure <code>birdnet/clips/</code> directory is created at service startup.</li>
 </ul>
 <h3 id="testing-phase-6">Testing (Phase 6)<a class="headerlink" href="#testing-phase-6" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_clip_extraction.py</code>: Test clip filename generation, path construction, label sanitization, padding clamping.</li>
-<li>[ ] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_clip_pipeline.py</code>: Run the full clip extraction pipeline using <code>testcontainers</code>.</li>
+<li>[x] <strong><code>unit</code></strong> — <code>services/birdnet/tests/unit/test_clip_extraction.py</code>: Test clip filename generation, path construction, label sanitization, padding clamping.</li>
+<li>[x] <strong><code>integration</code></strong> — <code>services/birdnet/tests/integration/test_clip_pipeline.py</code>: Run the full clip extraction pipeline using <code>testcontainers</code>.</li>
 </ul>
 <hr />
 <h2 id="phase-7-final-system-audit-documentation-commit-7">Phase 7: Final System Audit &amp; Documentation (Commit 7)<a class="headerlink" href="#phase-7-final-system-audit-documentation-commit-7" title="Permanent link">&para;</a></h2>
