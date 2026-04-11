@@ -207,13 +207,13 @@ CMD ["silvasonic.<name>"]
 
 ## 6. Compose Integration
 
-> **IMPORTANT**
-> Only **Tier 1 (Infrastructure)** services should be added to `compose.yml`.
-> Immutable **Tier 2 (Application)** containers (e.g., Recorder, Uploader, BirdNET) are managed dynamically by the Controller and **MUST NOT** be placed in `compose.yml`.
+Silvasonic uses two distinct Compose patterns depending on the service tier:
 
-### `compose.yml` (Tier 1 Only)
+### Tier 1 (Infrastructure) — Auto-Started
 
-Add a new service block following the established pattern:
+Tier 1 services (Database, Controller, Processor, Redis, Web-Mock, Gateway) are
+started automatically by `podman-compose up`. Add a new Tier 1 service block
+following this pattern:
 
 ```yaml
   <name>:
@@ -240,9 +240,52 @@ Add a new service block following the established pattern:
       start_period: 15s
 ```
 
+### Tier 2 (Application) — Managed Profile
+
+Tier 2 containers (e.g., Recorder, BirdNET) are **not** auto-started by Compose.
+They are managed dynamically by the Controller at runtime via `podman-py`
+(see [ADR-0013](../adr/0013-tier2-container-management.md)).
+
+However, Tier 2 services **MUST** still be declared in `compose.yml` under
+`profiles: ["managed"]`. This serves three purposes:
+
+1. **Centralized build definitions** — `just build` uses Compose to build all
+   images, including managed ones, from a single command.
+2. **Resource-limit templates** — `mem_limit`, `cpus`, `oom_score_adj`, volumes,
+   and healthchecks serve as declarative reference for the Controller's runtime
+   container specs.
+3. **Dev-override mounts** — `compose.override.yml` can provide `PYTHONPATH`
+   overrides for hot-reload during development.
+
+> [!IMPORTANT]
+> The `profiles: ["managed"]` key ensures these containers are **excluded** from
+> `podman-compose up`. They exist in `compose.yml` purely as build targets and
+> configuration templates — the Controller is the sole authority for starting,
+> stopping, and configuring them at runtime.
+
+```yaml
+  <name>:
+    build:
+      context: .
+      dockerfile: services/<name>/Containerfile
+    restart: unless-stopped
+    profiles: ["managed"]
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:<PORT>/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Resource Limits & QoS (ADR-0020) — template values, enforced by Controller
+    mem_limit: <LIMIT>
+    cpus: <CPUS>
+```
+
 ### `compose.override.yml` (Development)
 
-Add volume mounts for hot-reload:
+Add volume mounts for hot-reload (applies to both Tier 1 and Tier 2 services):
 
 ```yaml
   <name>:
@@ -345,10 +388,11 @@ Use this checklist when adding a new service:
 - [ ] `__main__.py` follows lifecycle pattern (§3)
 - [ ] Uses **only** shared `silvasonic.core` modules (§4)
 - [ ] `Containerfile` follows template exactly (§5)
-- [ ] `compose.yml` service block added (§6)
+- [ ] `compose.yml` service block added — Tier 1: auto-started / Tier 2: `profiles: ["managed"]` (§6)
 - [ ] `compose.override.yml` dev mounts added (§6)
-- [ ] `.env.example` port variable added (§6)
-- [ ] `docs/arch/port_allocation.md` updated (§6)
+- [ ] `.env.example` port variable added (Tier 1 only) (§6)
+- [ ] `docs/arch/port_allocation.md` updated (Tier 1 only) (§6)
 - [ ] Unit tests at 100% coverage (§7)
 - [ ] `just check` passes (lint + type + tests)
 - [ ] `just ci` passes (full CI pipeline incl. build + smoke)
+

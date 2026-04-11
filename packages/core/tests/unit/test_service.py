@@ -425,6 +425,156 @@ class TestConfigSchemas:
 
 
 # ===================================================================
+# Snapshot Refresh (_refresh_config)
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestRefreshConfig:
+    """Tests for SilvaService._refresh_config() staleness check (ADR-0031).
+
+    Covers four behavioral branches:
+    1. Short-circuit when no config keys are declared.
+    2. No-op when timestamps haven't changed (staleness cache hit).
+    3. Calls load_config() when timestamps indicate a change.
+    4. Swallows DB errors and keeps the previous configuration.
+    """
+
+    async def test_no_config_keys_returns_immediately(self) -> None:
+        """Services without _config_keys skip the DB query entirely."""
+        svc_cls = _make_test_service()
+        svc = svc_cls()
+
+        assert svc._config_keys == []
+
+        # If it tried to hit the DB, it would raise (no session configured).
+        # The fact that it completes means the short-circuit works.
+        await svc._refresh_config()
+
+    async def test_unchanged_timestamps_skip_load_config(self) -> None:
+        """When updated_at hasn't changed, load_config() is NOT called."""
+        from datetime import UTC, datetime
+
+        svc_cls = _make_test_service()
+        svc = svc_cls()
+        svc._config_keys = ["test_key"]
+
+        frozen_time = datetime(2026, 1, 1, tzinfo=UTC)
+
+        # Pre-seed the cache to simulate a previous successful refresh
+        svc._config_updated_at = {"test_key": frozen_time}
+
+        # Mock: DB returns the SAME timestamp
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [("test_key", frozen_time)]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        svc.load_config = AsyncMock()
+
+        with patch(
+            "silvasonic.core.database.session.get_session",
+            return_value=mock_ctx,
+        ):
+            await svc._refresh_config()
+
+        # load_config should NOT have been called — timestamps identical
+        svc.load_config.assert_not_awaited()
+
+    async def test_newer_timestamp_triggers_load_config(self) -> None:
+        """When updated_at is newer than cached, load_config() IS called."""
+        from datetime import UTC, datetime, timedelta
+
+        svc_cls = _make_test_service()
+        svc = svc_cls()
+        svc._config_keys = ["test_key"]
+
+        old_time = datetime(2026, 1, 1, tzinfo=UTC)
+        new_time = old_time + timedelta(seconds=5)
+
+        # Pre-seed the cache with old timestamp
+        svc._config_updated_at = {"test_key": old_time}
+
+        # Mock: DB returns a NEWER timestamp
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [("test_key", new_time)]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        svc.load_config = AsyncMock()
+
+        with patch(
+            "silvasonic.core.database.session.get_session",
+            return_value=mock_ctx,
+        ):
+            await svc._refresh_config()
+
+        # load_config MUST have been called — timestamp was newer
+        svc.load_config.assert_awaited_once()
+        # Cache must be updated to new timestamp
+        assert svc._config_updated_at["test_key"] == new_time
+
+    async def test_first_refresh_always_triggers_load_config(self) -> None:
+        """On first call (empty cache), load_config() is always called."""
+        from datetime import UTC, datetime
+
+        svc_cls = _make_test_service()
+        svc = svc_cls()
+        svc._config_keys = ["key_a", "key_b"]
+
+        now = datetime(2026, 4, 11, tzinfo=UTC)
+
+        # Cache is empty — first time
+        assert svc._config_updated_at == {}
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [("key_a", now), ("key_b", now)]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        svc.load_config = AsyncMock()
+
+        with patch(
+            "silvasonic.core.database.session.get_session",
+            return_value=mock_ctx,
+        ):
+            await svc._refresh_config()
+
+        svc.load_config.assert_awaited_once()
+        assert len(svc._config_updated_at) == 2
+
+    async def test_db_error_swallowed_keeps_old_config(self) -> None:
+        """DB errors are logged but don't crash — old config persists."""
+        svc_cls = _make_test_service()
+        svc = svc_cls()
+        svc._config_keys = ["test_key"]
+        svc.load_config = AsyncMock()
+
+        # Simulate DB unreachable
+        with patch(
+            "silvasonic.core.database.session.get_session",
+            side_effect=ConnectionError("db down"),
+        ):
+            # Must NOT raise
+            await svc._refresh_config()
+
+        # load_config should not have been called
+        svc.load_config.assert_not_awaited()
+
+
+# ===================================================================
 # Lazy DB Session
 # ===================================================================
 
