@@ -607,7 +607,7 @@ class TestJanitorIntegration:
             f.write_bytes(b"\x00" * 100)
             os.utime(f, (1000 + i * 1000, 1000 + i * 1000))
 
-        deleted = panic_filesystem_fallback(tmp_path, batch_size=1)
+        deleted = await panic_filesystem_fallback(tmp_path, batch_size=1)
         assert deleted == 1
         assert not (sensor_dir / "old.wav").exists()
         assert (sensor_dir / "newer.wav").exists()
@@ -641,5 +641,95 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.PANIC
         assert result.files_deleted == 0
+
+        await engine.dispose()
+
+    async def test_partial_deletion_failure_does_not_abort_soft_delete(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """Partial deletion failure ensures DB strictly limits updates to successful unlinks."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        await _seed_device(factory, "partial-mic")
+        await _enable_upload_config(factory)
+
+        recordings_dir = tmp_path / "recorder"
+
+        # 1. Provide recording (raw & processed)
+        proc = recordings_dir / "partial-mic" / "data" / "processed" / "uploaded.wav"
+        raw = recordings_dir / "partial-mic" / "data" / "raw" / "uploaded.wav"
+        _create_wav(proc)
+        _create_wav(raw)
+
+        # 2. Provide TWO associated worker clips
+        worker = "birdnet"
+        clip_path_success = "clips/success.wav"
+        clip_path_fail = "clips/fail.wav"
+
+        physical_clip_success = tmp_path / worker / clip_path_success
+        _create_wav(physical_clip_success)
+
+        physical_clip_fail = tmp_path / worker / clip_path_fail
+        _create_wav(physical_clip_fail)
+
+        rec_id = await _seed_recording(
+            factory,
+            sensor_id="partial-mic",
+            file_raw="partial-mic/data/raw/uploaded.wav",
+            file_processed="partial-mic/data/processed/uploaded.wav",
+            uploaded=True,
+            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            time=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        await _seed_detection(
+            factory, recording_id=rec_id, worker=worker, clip_path=clip_path_success
+        )
+        await _seed_detection(factory, recording_id=rec_id, worker=worker, clip_path=clip_path_fail)
+
+        original_unlink = Path.unlink
+
+        def _mock_unlink(self_path: Path, *args: Any, **kwargs: Any) -> None:
+            if "fail.wav" in str(self_path):
+                raise PermissionError("Mock failure for fail.wav")
+            original_unlink(self_path, *args, **kwargs)
+
+        from silvasonic.core.schemas.system_config import ProcessorSettings
+
+        settings = ProcessorSettings()
+
+        with (
+            patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
+            patch.object(Path, "unlink", side_effect=_mock_unlink, autospec=True),
+        ):
+            async with factory() as session:
+                result = await run_cleanup(session, recordings_dir, settings)
+
+        assert result.mode == RetentionMode.HOUSEKEEPING
+        assert result.files_deleted == 1
+        assert result.errors == 1
+
+        # Assert successful clip is gone
+        assert not physical_clip_success.exists()
+        # Assert failed clip remains
+        assert physical_clip_fail.exists()
+
+        # Assert DB strictly limited NULL updates to successful clips
+        async with factory() as session:
+            rows = await session.execute(
+                text("SELECT clip_path FROM detections WHERE recording_id = :id"), {"id": rec_id}
+            )
+            clip_paths = [row[0] for row in rows.fetchall()]
+
+            assert clip_path_fail in clip_paths
+            assert None in clip_paths
+            assert clip_path_success not in clip_paths
+
+            row_rec = await session.execute(
+                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+            )
+            assert row_rec.scalar() is True
 
         await engine.dispose()

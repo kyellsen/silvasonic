@@ -22,6 +22,7 @@ to avoid I/O storms and excessive DB load.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -58,7 +59,7 @@ class JanitorResult:
     error_details: list[str] = field(default_factory=list)
 
 
-def get_disk_usage(path: Path) -> float:
+async def get_disk_usage(path: Path) -> float:
     """Return disk usage percentage for the filesystem containing *path*.
 
     Args:
@@ -67,8 +68,12 @@ def get_disk_usage(path: Path) -> float:
     Returns:
         Usage percentage (0.0-100.0).
     """
-    usage = shutil.disk_usage(path)
-    return (usage.used / usage.total) * 100.0
+
+    def _sync_usage() -> float:
+        usage = shutil.disk_usage(path)
+        return (usage.used / usage.total) * 100.0
+
+    return await asyncio.to_thread(_sync_usage)
 
 
 def evaluate_mode(disk_pct: float, settings: ProcessorSettings) -> RetentionMode:
@@ -110,7 +115,7 @@ async def find_deletable(
     mode: RetentionMode,
     batch_size: int,
     cloud_sync_active: bool,
-) -> list[tuple[int, str, str]]:
+) -> list[tuple[int, str, str | None]]:
     """Query recordings eligible for deletion in the given mode.
 
     Args:
@@ -186,7 +191,7 @@ async def find_deletable(
     return [(row[0], row[1], row[2]) for row in result.fetchall()]
 
 
-def delete_files(
+async def delete_files(
     recordings_dir: Path,
     file_raw: str,
     file_processed: str | None,
@@ -201,13 +206,19 @@ def delete_files(
     Returns:
         Number of files actually removed.
     """
-    removed = 0
-    for rel_path in filter(None, (file_raw, file_processed)):
-        full = recordings_dir / rel_path
-        if full.exists():
-            full.unlink()
-            removed += 1
-    return removed
+
+    def _unlink_sync() -> int:
+        removed = 0
+        for rel_path in filter(None, (file_raw, file_processed)):
+            full = recordings_dir / rel_path
+            try:
+                full.unlink()
+                removed += 1
+            except FileNotFoundError:
+                pass  # Already deleted, considered success
+        return removed
+
+    return await asyncio.to_thread(_unlink_sync)
 
 
 async def delete_worker_clips(
@@ -218,8 +229,8 @@ async def delete_worker_clips(
     """Physically delete audio clips extracted by analysis workers.
 
     1. Query the detections table for associated clips.
-    2. Unlink the physical files from the respective worker workspaces.
-    3. Nullify the clip_path column in the database.
+    2. Unlink the physical files from the respective worker workspaces via a thread.
+    3. Nullify the clip_path column in the database only for successfully deleted paths.
 
     Args:
         session: Active async DB session.
@@ -239,33 +250,49 @@ async def delete_worker_clips(
         {"id": recording_id},
     )
     rows = result.fetchall()
+    if not rows:
+        return 0
 
-    removed = 0
-    for worker, clip_path in rows:
-        # Expected path format: /data/birdnet/clips/file.wav
-        full_path = workspace_root / worker / clip_path
-        try:
-            if full_path.exists():
+    def _unlink_clips_sync() -> tuple[list[str], Exception | None]:
+        successful_clip_paths = []
+        err: Exception | None = None
+        for worker, clip_path in rows:
+            # Expected path format: /data/birdnet/clips/file.wav
+            full_path = workspace_root / worker / clip_path
+            try:
                 full_path.unlink()
-                removed += 1
-        except OSError:
-            log.exception(
-                "janitor.delete_worker_clip_error",
-                recording_id=recording_id,
-                clip_path=str(full_path),
-            )
+                successful_clip_paths.append(clip_path)
+            except FileNotFoundError:
+                # File already missing, safe to nullify in DB
+                successful_clip_paths.append(clip_path)
+            except OSError as e:
+                log.exception(
+                    "janitor.delete_worker_clip_error",
+                    recording_id=recording_id,
+                    clip_path=str(full_path),
+                )
+                err = e
+                # Halt further unlinks for this recording
+                break
+        return successful_clip_paths, err
 
-    if rows:
+    successful_clip_paths, err = await asyncio.to_thread(_unlink_clips_sync)
+
+    if successful_clip_paths:
         await session.execute(
             text("""
                 UPDATE detections 
                 SET clip_path = NULL 
-                WHERE recording_id = :id AND clip_path IS NOT NULL
+                WHERE recording_id = :id AND clip_path = ANY(:clip_paths)
             """),
-            {"id": recording_id},
+            {"id": recording_id, "clip_paths": successful_clip_paths},
         )
 
-    return removed
+    if err:
+        # Raise error to halt further soft_delete for this recording
+        raise err
+
+    return len(successful_clip_paths)
 
 
 async def soft_delete(
@@ -283,7 +310,7 @@ async def soft_delete(
     )
 
 
-def panic_filesystem_fallback(
+async def panic_filesystem_fallback(
     recordings_dir: Path,
     batch_size: int,
 ) -> int:
@@ -300,37 +327,46 @@ def panic_filesystem_fallback(
     Returns:
         Number of files deleted.
     """
-    all_wavs: list[tuple[float, Path]] = []
-    for wav_path in recordings_dir.glob("*/data/*/*.wav"):
-        try:
-            mtime = os.path.getmtime(wav_path)
-            all_wavs.append((mtime, wav_path))
-        except OSError:
-            continue
 
-    # Sort oldest first
-    all_wavs.sort(key=lambda x: x[0])
+    def _panic_sync() -> int:
+        import heapq
+        from collections.abc import Iterator
 
-    deleted = 0
-    for _, wav_path in all_wavs[:batch_size]:
-        try:
-            wav_path.unlink()
-            deleted += 1
-            log.warning(
-                "janitor.panic_fallback_deleted",
-                file=str(wav_path.name),
-                reason="panic_filesystem_fallback",
-            )
-        except OSError:
-            log.exception("janitor.panic_fallback_error", file=str(wav_path.name))
+        def _generate_wav_mtimes() -> Iterator[tuple[float, Path]]:
+            for wav_path in recordings_dir.glob("*/data/*/*.wav"):
+                try:
+                    yield (os.path.getmtime(wav_path), wav_path)
+                except OSError:
+                    continue
 
-    return deleted
+        oldest_wavs = heapq.nsmallest(batch_size, _generate_wav_mtimes(), key=lambda x: x[0])
+
+        deleted = 0
+        for _, wav_path in oldest_wavs:
+            try:
+                wav_path.unlink()
+                deleted += 1
+                log.warning(
+                    "janitor.panic_fallback_deleted",
+                    file=str(wav_path.name),
+                    reason="panic_filesystem_fallback",
+                )
+            except FileNotFoundError:
+                pass
+            except OSError:
+                log.exception("janitor.panic_fallback_error", file=str(wav_path.name))
+
+        return deleted
+
+    return await asyncio.to_thread(_panic_sync)
 
 
 async def run_cleanup(
     session: AsyncSession,
     recordings_dir: Path,
     settings: ProcessorSettings,
+    mode: RetentionMode | None = None,
+    disk_pct: float | None = None,
     stats: JanitorStats | None = None,
 ) -> JanitorResult:
     """Execute one Janitor cleanup cycle.
@@ -347,13 +383,17 @@ async def run_cleanup(
         session: Database session
         recordings_dir: Root directory for recordings
         settings: Active ProcessorSettings with intervals and batch sizes
+        mode: Optional pre-evaluated retention mode
+        disk_pct: Optional pre-evaluated disk usage percentage
         stats: Two-Phase Logging stats object.
 
     Returns:
         JanitorResult with mode, deletions, and error counts.
     """
-    disk_pct = get_disk_usage(recordings_dir)
-    mode = evaluate_mode(disk_pct, settings)
+    if disk_pct is None:
+        disk_pct = await get_disk_usage(recordings_dir)
+    if mode is None:
+        mode = evaluate_mode(disk_pct, settings)
 
     result = JanitorResult(mode=mode, disk_usage_percent=disk_pct)
 
@@ -389,8 +429,7 @@ async def run_cleanup(
     workspace_root = recordings_dir.parent
     for rec_id, file_raw, file_processed in rows:
         try:
-            delete_files(recordings_dir, file_raw, file_processed)
-            await delete_worker_clips(session, rec_id, workspace_root)
+            await delete_files(recordings_dir, file_raw, file_processed)
             await soft_delete(session, rec_id)
             result.files_deleted += 1
             if stats:
@@ -408,6 +447,15 @@ async def run_cleanup(
                     mode=mode.value,
                     cloud_sync_fallback=result.cloud_sync_fallback,
                 )
+
+            # Post-cleanup for worker clips. Failure here must not abort soft_delete!
+            try:
+                await delete_worker_clips(session, rec_id, workspace_root)
+            except Exception:
+                result.errors += 1
+                result.error_details.append(file_processed if file_processed else "")
+                if stats:
+                    stats.record_error(rec_id, file_processed)
         except Exception:
             result.errors += 1
             result.error_details.append(file_processed if file_processed else "")
@@ -420,8 +468,9 @@ async def run_cleanup(
                     file_processed=file_processed,
                 )
 
-    if result.files_deleted > 0:
-        await session.commit()
+    # Always commit to ensure any partial NULLs applied by delete_worker_clips are saved,
+    # even if files_deleted is 0 due to an exception aborting a soft_delete.
+    await session.commit()
 
     log.info(
         "janitor.cycle_complete",
@@ -457,7 +506,7 @@ async def run_cleanup_safe(
     """
     from silvasonic.core.database.session import get_session
 
-    disk_pct = get_disk_usage(recordings_dir)
+    disk_pct = await get_disk_usage(recordings_dir)
     mode = evaluate_mode(disk_pct, settings)
 
     if mode == RetentionMode.IDLE:
@@ -465,7 +514,9 @@ async def run_cleanup_safe(
 
     try:
         async with get_session() as session:
-            return await run_cleanup(session, recordings_dir, settings, stats=stats)
+            return await run_cleanup(
+                session, recordings_dir, settings, mode=mode, disk_pct=disk_pct, stats=stats
+            )
     except Exception:
         if mode == RetentionMode.PANIC:
             log.critical(
@@ -473,7 +524,7 @@ async def run_cleanup_safe(
                 disk_usage_percent=round(disk_pct, 1),
                 detail="Database unreachable during PANIC — falling back to mtime cleanup.",
             )
-            deleted = panic_filesystem_fallback(recordings_dir, settings.janitor_batch_size)
+            deleted = await panic_filesystem_fallback(recordings_dir, settings.janitor_batch_size)
             return JanitorResult(
                 mode=RetentionMode.PANIC,
                 disk_usage_percent=disk_pct,

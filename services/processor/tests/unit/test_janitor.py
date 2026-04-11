@@ -80,9 +80,9 @@ class TestEvaluateMode:
 class TestGetDiskUsage:
     """Tests for get_disk_usage()."""
 
-    def test_returns_percentage(self, tmp_path: Path) -> None:
+    async def test_returns_percentage(self, tmp_path: Path) -> None:
         """get_disk_usage returns a float percentage."""
-        pct = get_disk_usage(tmp_path)
+        pct = await get_disk_usage(tmp_path)
         assert isinstance(pct, float)
         assert 0.0 <= pct <= 100.0
 
@@ -95,7 +95,7 @@ class TestGetDiskUsage:
 class TestDeleteFiles:
     """Tests for delete_files() physical removal."""
 
-    def test_deletes_existing_files(self, tmp_path: Path) -> None:
+    async def test_deletes_existing_files(self, tmp_path: Path) -> None:
         """Both raw and processed WAV files are deleted."""
         raw = tmp_path / "sensor" / "data" / "raw" / "test.wav"
         proc = tmp_path / "sensor" / "data" / "processed" / "test.wav"
@@ -104,16 +104,16 @@ class TestDeleteFiles:
         raw.write_bytes(b"\x00" * 100)
         proc.write_bytes(b"\x00" * 100)
 
-        removed = delete_files(
+        removed = await delete_files(
             tmp_path, "sensor/data/raw/test.wav", "sensor/data/processed/test.wav"
         )
         assert removed == 2
         assert not raw.exists()
         assert not proc.exists()
 
-    def test_missing_file_no_error(self, tmp_path: Path) -> None:
+    async def test_missing_file_no_error(self, tmp_path: Path) -> None:
         """Non-existing files are gracefully skipped."""
-        removed = delete_files(tmp_path, "nonexistent/raw.wav", "nonexistent/proc.wav")
+        removed = await delete_files(tmp_path, "nonexistent/raw.wav", "nonexistent/proc.wav")
         assert removed == 0
 
 
@@ -143,7 +143,7 @@ class TestDeleteWorkerClips:
         assert session.execute.call_count == 2
         update_call = session.execute.call_args_list[1]
         assert "UPDATE detections" in str(update_call[0][0])
-        assert update_call[0][1] == {"id": 10}
+        assert update_call[0][1] == {"id": 10, "clip_paths": ["clips/123.wav"]}
 
     async def test_missing_files_are_graceful(self, tmp_path: Path) -> None:
         """Missing physical files do not crash the cleanup."""
@@ -157,10 +157,13 @@ class TestDeleteWorkerClips:
         # Do NOT create the file physically
 
         removed = await delete_worker_clips(session, 10, tmp_path)
-        assert removed == 0
+        assert removed == 1
 
-        # DB update is still called because DB rows existed
+        # DB update is still called because DB rows existed and missing files
+        # are considered successfully removed
         assert session.execute.call_count == 2
+        update_call = session.execute.call_args_list[1]
+        assert update_call[0][1] == {"id": 10, "clip_paths": ["clips/missing.wav"]}
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +174,7 @@ class TestDeleteWorkerClips:
 class TestPanicFilesystemFallback:
     """Tests for panic_filesystem_fallback() mtime-based cleanup."""
 
-    def test_deletes_oldest_first(self, tmp_path: Path) -> None:
+    async def test_deletes_oldest_first(self, tmp_path: Path) -> None:
         """Oldest files (by mtime) are deleted first."""
         sensor_dir = tmp_path / "sensor" / "data" / "processed"
         sensor_dir.mkdir(parents=True)
@@ -182,14 +185,14 @@ class TestPanicFilesystemFallback:
             f.write_bytes(b"\x00" * 100)
             os.utime(f, (1000 + i * 100, 1000 + i * 100))
 
-        deleted = panic_filesystem_fallback(tmp_path, batch_size=2)
+        deleted = await panic_filesystem_fallback(tmp_path, batch_size=2)
         assert deleted == 2
         # Only newest should remain
         remaining = list(sensor_dir.glob("*.wav"))
         assert len(remaining) == 1
         assert remaining[0].name == "new.wav"
 
-    def test_batch_size_limits_deletion(self, tmp_path: Path) -> None:
+    async def test_batch_size_limits_deletion(self, tmp_path: Path) -> None:
         """Batch size limits the number of files deleted."""
         sensor_dir = tmp_path / "sensor" / "data" / "raw"
         sensor_dir.mkdir(parents=True)
@@ -197,17 +200,17 @@ class TestPanicFilesystemFallback:
         for i in range(10):
             (sensor_dir / f"file_{i:02d}.wav").write_bytes(b"\x00" * 100)
 
-        deleted = panic_filesystem_fallback(tmp_path, batch_size=3)
+        deleted = await panic_filesystem_fallback(tmp_path, batch_size=3)
         assert deleted == 3
         remaining = list(sensor_dir.glob("*.wav"))
         assert len(remaining) == 7
 
-    def test_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
+    async def test_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
         """Empty workspace → 0 files deleted, no crash."""
-        deleted = panic_filesystem_fallback(tmp_path, batch_size=50)
+        deleted = await panic_filesystem_fallback(tmp_path, batch_size=50)
         assert deleted == 0
 
-    def test_getmtime_oserror_skips_file(self, tmp_path: Path) -> None:
+    async def test_getmtime_oserror_skips_file(self, tmp_path: Path) -> None:
         """OSError during getmtime (race condition) gracefully skips the file."""
         sensor_dir = tmp_path / "sensor" / "data" / "processed"
         sensor_dir.mkdir(parents=True)
@@ -215,11 +218,11 @@ class TestPanicFilesystemFallback:
         f.write_bytes(b"\x00" * 100)
 
         with patch("os.path.getmtime", side_effect=OSError("File vanished")):
-            deleted = panic_filesystem_fallback(tmp_path, batch_size=10)
+            deleted = await panic_filesystem_fallback(tmp_path, batch_size=10)
 
         assert deleted == 0
 
-    def test_unlink_oserror_logged(self, tmp_path: Path) -> None:
+    async def test_unlink_oserror_logged(self, tmp_path: Path) -> None:
         """OSError during unlink is caught and logged, file not counted."""
         sensor_dir = tmp_path / "sensor" / "data" / "processed"
         sensor_dir.mkdir(parents=True)
@@ -227,7 +230,7 @@ class TestPanicFilesystemFallback:
         f.write_bytes(b"\x00" * 100)
 
         with patch.object(Path, "unlink", side_effect=OSError("Permission denied")):
-            deleted = panic_filesystem_fallback(tmp_path, batch_size=10)
+            deleted = await panic_filesystem_fallback(tmp_path, batch_size=10)
 
         assert deleted == 0
 
