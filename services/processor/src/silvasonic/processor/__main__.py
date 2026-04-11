@@ -68,6 +68,9 @@ class ProcessorService(SilvaService):
         self._janitor_counter: int = 0
         self._janitor_every_n: int = 1
 
+        # Snapshot Refresh: monitor processor tuning parameters (ADR-0031)
+        self._config_keys = ["processor"]
+
     async def load_config(self) -> None:
         """Read ProcessorSettings from system_config table (ADR-0023).
 
@@ -242,6 +245,13 @@ class ProcessorService(SilvaService):
         errored_files: set[str] = set()
 
         while not self._shutdown_event.is_set():
+            # --- Snapshot Refresh: reload processor tuning parameters (ADR-0031) ---
+            await self._refresh_config()
+            self._janitor_every_n = max(
+                1,
+                int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
+            )
+
             # --- Indexer (every cycle) ---
             await self._run_indexer_cycle(errored_files, self._indexer_stats)
             self._indexer_stats.maybe_emit_summary()

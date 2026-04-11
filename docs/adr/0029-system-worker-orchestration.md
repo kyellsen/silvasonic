@@ -19,7 +19,7 @@ We will decouple Tier 2 orchestration into separate **State Evaluators**:
 Lifecycle orchestration (start/stop) and domain configuration (thresholds, intervals) are **strictly separated**:
 
 - **`managed_services` table (DB):** A dedicated relational table holds the orchestration toggle (`enabled: bool`) for each Tier-2 singleton. The `SystemWorkerEvaluator` queries this table with a simple `SELECT name FROM managed_services WHERE enabled = true`. This keeps the Controller's orchestration logic free from parsing complex JSONB payloads.
-- **`system_config` table (DB):** Holds purely domain/business settings (e.g., `confidence_threshold`, `overlap`, `sensitivity`) as Pydantic-validated JSONB blobs. The Tier-2 service itself reads these settings once on startup (Immutable Container pattern, ADR-0019).
+- **`system_config` table (DB):** Holds purely domain/business settings (e.g., `confidence_threshold`, `overlap`, `sensitivity`) as Pydantic-validated JSONB blobs. Workers dynamically poll these settings at safe loop boundaries via DB Snapshot Refresh (ADR-0031), allowing runtime tuning without container restarts.
 
 > **Why not JSONB?** Mixing lifecycle toggles into `system_config` JSONB violates Separation of Concerns, creates Read-Modify-Write race conditions for concurrent UI updates, and forces the Controller to parse foreign domain payloads just to find a boolean flag.
 

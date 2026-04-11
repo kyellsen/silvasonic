@@ -35,7 +35,7 @@ The existing `system_config` table (key TEXT, value JSONB) stores all applicatio
 | `cloud_sync` | `CloudSyncSettings` | Processor Cloud-Sync-Worker (enabled flag, polling, bandwidth, schedule, remote target) |
 | `birdnet`   | `BirdnetSettings`   | BirdNET runtime settings (confidence threshold, overlap, sensitivity). Lifecycle toggle (`enabled`) is managed separately in `managed_services` table (ADR-0029). |
 
-Each key maps to a Pydantic `BaseModel` that defines field types and default values. Historically, services read their settings **once on startup** (Immutable Container pattern). However, under the newer **Hybrid Tier-2 Architecture**, workers like BirdNET dynamically poll their relevant `system_config` settings (e.g., sensitivity, thresholds). This allows the Web-Interface to adjust parameters on-the-fly without requiring the Controller to restart the affected service.
+Each key maps to a Pydantic `BaseModel` that defines field types and default values. Historically, services read their settings **once on startup** (Immutable Container pattern). However, under the newer **Hybrid Tier-2 Architecture**, workers like BirdNET dynamically poll their relevant `system_config` settings (e.g., sensitivity, thresholds) at safe loop boundaries via Snapshot Refresh. This allows the Web-Interface to adjust parameters on-the-fly without requiring the Controller to restart the affected service. See [ADR-0031](0031-runtime-tuning-snapshot-refresh.md) for the field classification matrix and implementation details.
 
 ### 2.3. YAML Seed File — `config/defaults.yml`
 

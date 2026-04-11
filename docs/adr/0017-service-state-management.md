@@ -58,7 +58,7 @@ This follows the **Kubernetes Operator Pattern** (State Reconciliation) adapted 
 
 *   **DB is the Single Source of Truth** — commands are never lost. If the Controller restarts, it reads the DB and applies the desired state automatically.
 *   **The Controller has no HTTP API** (beyond the `/healthy` health endpoint). It is a pure **Listener + Actor**: subscribe to nudge, read DB, act via Podman.
-*   **Immutable services** (Recorder, Workers, Processor) do not process runtime commands — they are stopped and restarted with new configuration by the Controller.
+*   **Recorder services** are fully immutable — they do not process runtime commands and are stopped and restarted with new configuration by the Controller.  Background workers (BirdNET, Processor) support runtime tuning of domain parameters (thresholds, sensitivity) via DB Snapshot Refresh at safe loop boundaries — see [ADR-0031](0031-runtime-tuning-snapshot-refresh.md).  Operational parameters (threads, model path) still require a restart.
 
 For details see [controller.md](../services/controller.md) and [Messaging Patterns](../arch/messaging_patterns.md).
 

@@ -11,7 +11,7 @@
 
 ## Overview
 
-The BirdNET service is an immutable Tier 2 container responsible for performing on-device inference for avian species classification. It processes recorded audio segments and saves detections into the database.
+The BirdNET service is a hybrid Tier 2 container responsible for performing on-device inference for avian species classification. Domain parameters (confidence, sensitivity, location) are reloaded at safe loop boundaries via Snapshot Refresh ([ADR-0031](../../adr/0031-runtime-tuning-snapshot-refresh.md)); operational parameters (threads, model path) remain immutable. It processes recorded audio segments and saves detections into the database.
 
 ### Key Capabilities
 

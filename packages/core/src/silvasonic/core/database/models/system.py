@@ -42,7 +42,10 @@ class SystemConfig(Base):
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
 

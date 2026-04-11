@@ -78,6 +78,9 @@ class BirdNETService(SilvaService):
         # Initialize Two-Phase Logging stats
         self.stats = BirdnetStats()
 
+        # Snapshot Refresh: monitor birdnet tuning + system location (ADR-0031)
+        self._config_keys = ["birdnet", "system"]
+
     async def load_config(self) -> None:
         """Load runtime configuration from the database."""
         from silvasonic.core.database.models.system import SystemConfig
@@ -268,6 +271,21 @@ class BirdNETService(SilvaService):
         while not self._shutdown_event.is_set():
             self.health.touch()
             self.stats.maybe_emit_summary()
+
+            # --- Snapshot Refresh: reload tuning parameters (ADR-0031) ---
+            prev_lat = self.system_config.latitude if self.system_config else None
+            prev_lon = self.system_config.longitude if self.system_config else None
+            await self._refresh_config()
+            # Recompute species mask only if location actually changed
+            if self.system_config and (
+                self.system_config.latitude != prev_lat or self.system_config.longitude != prev_lon
+            ):
+                allowed_mask, loc_filter_active = self._get_allowed_species_mask(labels)
+                log.info(
+                    "birdnet.species_mask_recomputed",
+                    lat=self.system_config.latitude,
+                    lon=self.system_config.longitude,
+                )
 
             try:
                 self.health.update_status("birdnet", True, "polling")
