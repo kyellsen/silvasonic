@@ -129,6 +129,8 @@ class ReconciliationLoop:
         sys_evaluator: SystemWorkerEvaluator | None = None,
         interval: float,
         grace_period_s: float = 3.0,
+        redis_url: str | None = None,
+        stale_timeout_s: float = 45.0,
     ) -> None:
         """Initialize with a ContainerManager and reconciliation interval."""
         self._manager = container_manager
@@ -138,6 +140,8 @@ class ReconciliationLoop:
         self._matcher = profile_matcher
         self._interval = interval
         self._grace_period_s = grace_period_s
+        self._redis_url = redis_url
+        self._stale_timeout_s = stale_timeout_s
         self._missing_devices: dict[str, float] = {}
         self._trigger_event = asyncio.Event()
         self._stats: ControllerStats | None = None
@@ -213,6 +217,71 @@ class ReconciliationLoop:
 
         # Step 3: Get actual running containers
         actual = await asyncio.to_thread(self._manager.list_managed)
+
+        # Step 3.5: Health Evaluation (Issue 006)
+        # Verify heartbeat freshness via Redis. If a container is "running" but its
+        # heartbeat is missing or stale, it's unhealthy (e.g. deadlocked).
+        # We actively stop it and exclude it from `actual`, so `sync_state` recreates it.
+        if self._redis_url:
+            import json
+
+            from silvasonic.core.redis import get_redis_connection
+
+            redis = await get_redis_connection(self._redis_url)
+            if redis is not None:
+                healthy_actual = []
+                now = time.time()
+                for c in actual:
+                    name = str(c.get("name", ""))
+                    labels = c.get("labels", {})
+                    device_id = (
+                        labels.get("io.silvasonic.device_id") if isinstance(labels, dict) else None
+                    )
+                    if not device_id:
+                        healthy_actual.append(c)
+                        continue
+
+                    key = f"silvasonic:status:{device_id}"
+                    val = await redis.get(key)
+                    is_healthy = True
+
+                    if not val:
+                        # No heartbeat in Redis
+                        log.warning(
+                            "reconciler.heartbeat_missing", container=name, device_id=device_id
+                        )
+                        is_healthy = False
+                    else:
+                        try:
+                            payload = json.loads(val)
+                            timestamp = payload.get("timestamp", 0.0)
+                            if now - timestamp > self._stale_timeout_s:
+                                log.warning(
+                                    "reconciler.heartbeat_stale",
+                                    container=name,
+                                    device_id=device_id,
+                                    age_s=round(now - timestamp, 1),
+                                )
+                                is_healthy = False
+                            elif payload.get("health", {}).get("status") not in ("ok", "starting"):
+                                log.warning(
+                                    "reconciler.heartbeat_reports_error",
+                                    container=name,
+                                    device_id=device_id,
+                                )
+                                is_healthy = False
+                        except Exception:
+                            log.warning("reconciler.heartbeat_invalid", container=name)
+                            is_healthy = False
+
+                    if is_healthy:
+                        healthy_actual.append(c)
+                    else:
+                        # Actively kill the unhealthy container
+                        await asyncio.to_thread(self._manager.stop_and_remove, name)
+
+                await redis.aclose()
+                actual = healthy_actual
 
         # Step 4: Track container actions in stats (before sync)
         if self._stats is not None:

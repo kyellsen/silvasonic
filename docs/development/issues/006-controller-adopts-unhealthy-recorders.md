@@ -1,6 +1,6 @@
 # [BUG] 006: Controller adopts unhealthy Recorder containers and never self-heals them
 
-> **Status:** `open`
+> **Status:** `closed`
 >
 > **Priority:** 8
 >
@@ -11,9 +11,11 @@
 ---
 
 ## 1. Description
-The Controller currently reconciles Recorder containers based on container presence and config hash, but not on functional recording health. A Recorder container can remain running while not recording any audio, and the Controller will continue to adopt it as healthy desired state.
+*Update (v0.8.0): Both the Recorder-side fail-fast and the Controller-side health-aware reconciliation are now implemented and verified by system tests.*
 
-This creates a silent failure mode: the system appears operational at the container layer, but Data Capture Integrity is already lost.
+Originally, the Controller reconciled Recorder containers based on container presence and config hash only, but not on functional recording health. A Recorder container could remain running while not recording any audio, and the Controller would continue to adopt it as healthy desired state.
+
+This created a silent failure mode: the system appeared operational at the container layer, but Data Capture Integrity was already lost.
 
 ## 2. Context & Root Cause Analysis
 The current reconciliation logic in `services/controller/src/silvasonic/controller/container_manager.py` only compares desired vs. actual containers using:
@@ -57,15 +59,14 @@ Implement one or both of the following:
    - `_validate_device()` was removed. The Recorder always starts FFmpeg directly.
    - If FFmpeg fails, the Watchdog restarts it (Level 1). If exhausted, the container exits and Podman `restart: on-failure` takes over (Level 2).
 
-2. **Controller-side health-aware reconciliation**
-   - Extend Controller reconciliation to inspect Recorder health or a stronger runtime signal than container presence alone.
-   - Possible mechanisms:
-     - poll `/healthy` from managed containers
-     - inspect health state from Podman if exposed
-     - use a Redis heartbeat freshness check per Recorder instance
-     - optionally define a label or metadata contract for “recording active”
-
-No schema change is strictly required, but this may warrant an ADR or at least an architecture note because it changes the Controller’s reconciliation contract from “container exists” to “container is functionally healthy”.
+2. **Controller-side health-aware reconciliation** ✅ **RESOLVED**
+   - The `ReconciliationLoop._reconcile_once()` now evaluates heartbeat freshness
+     via Redis (`silvasonic:status:<device_id>`) before executing `sync_state`.
+   - Containers with missing, stale (>45s), or error-status heartbeats are
+     actively evicted via `ContainerManager.stop_and_remove()` and excluded
+     from the `actual` list, causing `sync_state` to recreate them.
+   - System test: `tests/system/test_controller_health_reconciliation.py`
+     validates the full zombie-detection-and-replacement cycle.
 
 ## 7. Relevant Documentation Links
 * [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
