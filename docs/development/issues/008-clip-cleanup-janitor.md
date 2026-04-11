@@ -1,6 +1,6 @@
 # [TASK] 008: Janitor Clip Cleanup for Analysis Workers
 
-> **Status:** `open`
+> **Status:** `closed`
 >
 > **Priority:** 4 (not blocking v0.8.0, but required before production use)
 >

@@ -22,7 +22,7 @@ class TestReconciliationAudit:
         # Mock: SELECT returns one row with a non-existent file
         select_result = MagicMock()
         select_result.fetchall.return_value = [
-            (42, "mic-01/data/processed/missing.wav"),
+            (42, "mic-01/data/processed/missing.wav", None),
         ]
 
         session = AsyncMock()
@@ -42,7 +42,7 @@ class TestReconciliationAudit:
 
         select_result = MagicMock()
         select_result.fetchall.return_value = [
-            (1, "mic-01/data/processed/exists.wav"),
+            (1, "mic-01/data/processed/exists.wav", None),
         ]
 
         session = AsyncMock()
@@ -71,9 +71,9 @@ class TestReconciliationAudit:
         """Returns correct count of reconciled (missing) rows."""
         select_result = MagicMock()
         select_result.fetchall.return_value = [
-            (1, "mic-01/data/processed/gone1.wav"),
-            (2, "mic-01/data/processed/gone2.wav"),
-            (3, "mic-01/data/processed/gone3.wav"),
+            (1, "mic-01/data/processed/gone1.wav", None),
+            (2, "mic-01/data/processed/gone2.wav", None),
+            (3, "mic-01/data/processed/gone3.wav", None),
         ]
 
         # Each UPDATE call returns a new mock
@@ -103,7 +103,7 @@ class TestReconciliationAudit:
         # COALESCE returns file_raw since file_processed is NULL
         select_result = MagicMock()
         select_result.fetchall.return_value = [
-            (10, "rode-nt-usb-p3d6/data/raw/audio.wav"),
+            (10, None, "rode-nt-usb-p3d6/data/raw/audio.wav"),
         ]
 
         session = AsyncMock()
@@ -122,7 +122,7 @@ class TestReconciliationAudit:
         """
         select_result = MagicMock()
         select_result.fetchall.return_value = [
-            (99, None),  # COALESCE(NULL, NULL) = NULL
+            (99, None, None),  # Both streams NULL
         ]
 
         session = AsyncMock()
@@ -132,3 +132,79 @@ class TestReconciliationAudit:
         count = await reconciliation.run_audit(session, tmp_path)
         assert count == 0
         session.commit.assert_not_called()
+
+    async def test_twin_stream_raw_missing_marked_deleted(self, tmp_path: Path) -> None:
+        """Twin stream where processed exists but raw is missing → marked deleted."""
+        processed_wav = tmp_path / "mic-01" / "data" / "processed" / "valid.wav"
+        processed_wav.parent.mkdir(parents=True)
+        processed_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (42, "mic-01/data/processed/valid.wav", "mic-01/data/raw/missing.wav"),
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[select_result, AsyncMock()])
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 1
+        session.commit.assert_called_once()
+
+    async def test_twin_stream_processed_missing_marked_deleted(self, tmp_path: Path) -> None:
+        """Twin stream where raw exists but processed is missing → marked deleted."""
+        raw_wav = tmp_path / "mic-01" / "data" / "raw" / "valid.wav"
+        raw_wav.parent.mkdir(parents=True)
+        raw_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (43, "mic-01/data/processed/missing.wav", "mic-01/data/raw/valid.wav"),
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[select_result, AsyncMock()])
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 1
+        session.commit.assert_called_once()
+
+    async def test_twin_stream_both_exist_unchanged(self, tmp_path: Path) -> None:
+        """Twin stream where both files exist → unchanged."""
+        processed_wav = tmp_path / "mic-01" / "data" / "processed" / "valid.wav"
+        processed_wav.parent.mkdir(parents=True)
+        processed_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        raw_wav = tmp_path / "mic-01" / "data" / "raw" / "valid.wav"
+        raw_wav.parent.mkdir(parents=True)
+        raw_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (44, "mic-01/data/processed/valid.wav", "mic-01/data/raw/valid.wav"),
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=select_result)
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 0
+        session.commit.assert_not_called()
+
+    async def test_twin_stream_both_missing_marked_deleted(self, tmp_path: Path) -> None:
+        """Twin stream where both files are missing → marked deleted."""
+        select_result = MagicMock()
+        select_result.fetchall.return_value = [
+            (45, "mic-01/data/processed/missing.wav", "mic-01/data/raw/missing.wav"),
+        ]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[select_result, AsyncMock()])
+        session.commit = AsyncMock()
+
+        count = await reconciliation.run_audit(session, tmp_path)
+        assert count == 1
+        session.commit.assert_called_once()

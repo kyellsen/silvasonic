@@ -38,7 +38,7 @@ async def run_audit(
     """
     result = await session.execute(
         text("""
-            SELECT id, COALESCE(file_processed, file_raw) AS check_file
+            SELECT id, file_processed, file_raw
             FROM recordings
             WHERE local_deleted = false
         """)
@@ -46,11 +46,17 @@ async def run_audit(
     rows = result.fetchall()
 
     reconciled = 0
-    for row_id, check_file in rows:
-        if check_file is None:
+    for row_id, file_processed, file_raw in rows:
+        if file_processed is None and file_raw is None:
             continue
-        full_path = recordings_dir / check_file
-        if not full_path.exists():
+
+        missing_file = None
+        if file_processed is not None and not (recordings_dir / file_processed).exists():
+            missing_file = file_processed
+        elif file_raw is not None and not (recordings_dir / file_raw).exists():
+            missing_file = file_raw
+
+        if missing_file is not None:
             await session.execute(
                 text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
                 {"id": row_id},
@@ -59,7 +65,7 @@ async def run_audit(
             log.warning(
                 "reconciliation.file_missing",
                 recording_id=row_id,
-                file=check_file,
+                file=missing_file,
                 reason="reconciliation",
             )
 
