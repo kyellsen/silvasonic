@@ -6,6 +6,7 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import soundfile as sf  # type: ignore[import-untyped]
@@ -18,7 +19,7 @@ from silvasonic.core.database.session import get_session
 from silvasonic.core.schemas.detections import BirdnetDetectionDetails
 from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 from silvasonic.core.service import SilvaService
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 log = structlog.get_logger()
 
@@ -80,6 +81,21 @@ class BirdNETService(SilvaService):
 
         # Snapshot Refresh: monitor birdnet tuning + system location (ADR-0031)
         self._config_keys = ["birdnet", "system"]
+        self._backlog_pending: int = 0
+
+    def get_extra_meta(self) -> dict[str, Any]:
+        """Inject backlog and operational metrics into the Redis heartbeat (Phase 5)."""
+        return {
+            "analysis": {
+                "backlog_pending": self._backlog_pending,
+                "total_analyzed": self.stats.total_analyzed,
+                "total_detections": self.stats.total_hits,
+                "total_errors": self.stats.total_errors,
+                "avg_inference_ms": round(
+                    (self.stats.total_duration_s / max(1, self.stats.total_analyzed)) * 1000, 1
+                ),
+            },
+        }
 
     async def load_config(self) -> None:
         """Load runtime configuration from the database."""
@@ -286,6 +302,19 @@ class BirdNETService(SilvaService):
                     lat=self.system_config.latitude,
                     lon=self.system_config.longitude,
                 )
+
+            # Backlog update (for heartbeat meta)
+            try:
+                async with get_session() as session:
+                    count_result = await session.execute(
+                        select(func.count())
+                        .select_from(Recording)
+                        .where(Recording.local_deleted.is_(False))
+                        .where(~Recording.analysis_state.has_key("birdnet"))
+                    )
+                    self._backlog_pending = count_result.scalar_one()
+            except Exception:
+                pass  # Best-effort — keep last known value
 
             try:
                 self.health.update_status("birdnet", True, "polling")

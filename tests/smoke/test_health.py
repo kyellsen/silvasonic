@@ -168,6 +168,31 @@ class TestServiceHeartbeats:
 
         redis_client.close()
 
+    def test_birdnet_heartbeat_in_redis(
+        self,
+        birdnet_container: DockerContainer,
+        redis_container_smoke: DockerContainer,
+    ) -> None:
+        """BirdNET writes a heartbeat to Redis with backlog metrics."""
+        host = redis_container_smoke.get_container_host_ip()
+        port = int(redis_container_smoke.get_exposed_port(6379))
+        redis_client = Redis(host=host, port=port, decode_responses=True)
+
+        payload = _poll_redis_key(redis_client, "silvasonic:status:birdnet")
+
+        assert payload["service"] == "birdnet"
+        assert payload["instance_id"] == "birdnet"
+        assert payload["health"]["status"] == "ok"
+        assert "resources" in payload["meta"]
+        assert "analysis" in payload["meta"]
+        assert "backlog_pending" in payload["meta"]["analysis"]
+        assert "total_analyzed" in payload["meta"]["analysis"]
+        assert "total_detections" in payload["meta"]["analysis"]
+        assert "total_errors" in payload["meta"]["analysis"]
+        assert "avg_inference_ms" in payload["meta"]["analysis"]
+
+        redis_client.close()
+
 
 def _extract_pg_errors(logs: str) -> list[str]:
     """Extract PostgreSQL ERROR and FATAL log lines with their DETAIL/HINT context.

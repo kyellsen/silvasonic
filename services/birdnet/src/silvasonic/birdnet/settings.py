@@ -12,7 +12,7 @@ class BirdnetEnvSettings(BaseSettings):
         extra="ignore",
     )
 
-    INSTANCE_ID: str = "default"
+    INSTANCE_ID: str = "birdnet"
     REDIS_URL: str = "redis://localhost:6379/0"
     HEARTBEAT_INTERVAL_S: float = DEFAULT_HEARTBEAT_INTERVAL_S
 
