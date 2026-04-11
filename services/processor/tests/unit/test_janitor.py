@@ -117,6 +117,52 @@ class TestDeleteFiles:
         assert removed == 0
 
 
+class TestDeleteWorkerClips:
+    """Tests for delete_worker_clips()."""
+
+    async def test_deletes_physical_files_and_updates_db(self, tmp_path: Path) -> None:
+        """Queried files are unlinked and DB is updated."""
+        from silvasonic.processor.janitor import delete_worker_clips
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [("birdnet", "clips/123.wav")]
+        session.execute.return_value = mock_result
+
+        # Create the file physically
+        clip_path = tmp_path / "birdnet" / "clips" / "123.wav"
+        clip_path.parent.mkdir(parents=True)
+        clip_path.write_bytes(b"\x00")
+        assert clip_path.exists()
+
+        removed = await delete_worker_clips(session, 10, tmp_path)
+        assert removed == 1
+        assert not clip_path.exists()
+
+        # Check DB update was called
+        assert session.execute.call_count == 2
+        update_call = session.execute.call_args_list[1]
+        assert "UPDATE detections" in str(update_call[0][0])
+        assert update_call[0][1] == {"id": 10}
+
+    async def test_missing_files_are_graceful(self, tmp_path: Path) -> None:
+        """Missing physical files do not crash the cleanup."""
+        from silvasonic.processor.janitor import delete_worker_clips
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [("birdnet", "clips/missing.wav")]
+        session.execute.return_value = mock_result
+
+        # Do NOT create the file physically
+
+        removed = await delete_worker_clips(session, 10, tmp_path)
+        assert removed == 0
+
+        # DB update is still called because DB rows existed
+        assert session.execute.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # Panic Filesystem Fallback
 # ---------------------------------------------------------------------------

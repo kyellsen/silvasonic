@@ -129,16 +129,16 @@ The following structures already exist and MUST be reused or extended in-place:
 **Context:** The BirdNET service is now standalone viable. We must extend the Controller's `Reconciler` to start/stop this background worker. Lifecycle orchestration reads from `managed_services`, NOT from `system_config` JSONB.
 
 ### Tasks
-- [ ] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=512m`, `oom_score_adj=500`).
-- [ ] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that queries the `managed_services` table for `enabled = True` rows and matches them against the registry to build `Tier2ServiceSpec` objects.
-- [ ] Refactor `_reconcile_once` in the `ReconciliationLoop` to securely invoke both `DeviceStateEvaluator` and `SystemWorkerEvaluator`. Isolate each with `try...except` blocks to prevent worker configuration mismatches from halting active `recorder` container execution.
-- [ ] Implement `ManagedServiceSeeder`: On Controller startup, seed `managed_services` rows (`INSERT ON CONFLICT DO NOTHING`) for each worker in the registry (start: `birdnet`, `enabled=True`).
+- [x] Create `worker_registry.py` with a robust statically typed array `SYSTEM_WORKERS` containing a `BackgroundWorker` dataclass configured for `"birdnet"` (incl. `mem_limit=512m`, `oom_score_adj=500`).
+- [x] Create `worker_evaluator.py` containing a generic `SystemWorkerEvaluator` that queries the `managed_services` table for `enabled = True` rows and matches them against the registry to build `Tier2ServiceSpec` objects.
+- [x] Refactor `_reconcile_once` in the `ReconciliationLoop` to securely invoke both `DeviceStateEvaluator` and `SystemWorkerEvaluator`. Isolate each with `try...except` blocks to prevent worker configuration mismatches from halting active `recorder` container execution.
+- [x] Implement `ManagedServiceSeeder`: On Controller startup, seed `managed_services` rows (`INSERT ON CONFLICT DO NOTHING`) for each worker in the registry (start: `birdnet`, `enabled=True`).
 
 ### Testing (Phase 4)
-- [ ] **`unit`** — Add unit tests for `Reconciler._reconcile_once` to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.
-- [ ] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `managed_services` and maps enabled rows to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
+- [x] **`unit`** — Add unit tests for `Reconciler._reconcile_once` to ensure it safely catches simulated exceptions from the worker evaluator while maintaining active hardware specs.
+- [x] **`integration`** — Add `tests/integration/test_system_worker_evaluator.py`: Instantiate `SystemWorkerEvaluator` against a real PostgreSQL testcontainer. Verify it correctly queries `managed_services` and maps enabled rows to `Tier2ServiceSpec`, excluding `enabled=False` workers (Rule: Mocking DB in integration tests is FORBIDDEN).
 - [x] **`system`** — Add `tests/system/test_singleton_worker_lifecycle.py`: Validate full `ReconciliationLoop` state transitions. Ensure changing `enabled` in the DB reliably starts/stops the BirdNET worker via Podman without impacting the Recorder.
-- [ ] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since BirdNET is `enabled=True` by default in `managed_services`, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
+- [x] **`system` (Regression)** — Audit existing system tests (`test_controller_lifecycle.py`, `test_crash_recovery.py`). Since BirdNET is `enabled=True` by default in `managed_services`, existing tests asserting `len(containers) == 1` will fail. You must disable background workers in the test seeder or update the container tracking assertions.
 
 ---
 
@@ -148,14 +148,14 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** US-B05 (Analysis status via Heartbeat), US-B06 (Enable/Disable via DB/Controller).
 
 ### Tasks
-- [ ] `SilvaService` already provides Heartbeat functionality. Implement `get_extra_meta()` in the `BirdNETService` class to inject backlog numbers (remaining unanalyzed recordings) into the standard Redis heartbeat payload.
-- [ ] Ensure lean graceful shutdown logic inside `run()` accurately breaks long-running tasks.
+- [x] `SilvaService` already provides Heartbeat functionality. Implement `get_extra_meta()` in the `BirdNETService` class to inject backlog numbers (remaining unanalyzed recordings) into the standard Redis heartbeat payload.
+- [x] Ensure lean graceful shutdown logic inside `run()` accurately breaks long-running tasks.
 
 ### Testing (Phase 5)
-- [ ] **`unit`** — `services/birdnet/tests/unit/test_heartbeat.py`: Assert that `get_extra_meta()` returns valid backlog payloads.
-- [ ] **`integration`** — `services/birdnet/tests/integration/test_backlog_metrics.py`: Verify the backlog counting query against a real Testcontainers database.
-- [ ] **`system`** — `tests/system/test_birdnet_lifecycle.py`: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.
-- [ ] **`smoke`** — `tests/smoke/test_health.py`: Extend with `test_birdnet_heartbeat_in_redis`.
+- [x] **`unit`** — `services/birdnet/tests/unit/test_heartbeat.py`: Assert that `get_extra_meta()` returns valid backlog payloads.
+- [x] **`integration`** — `services/birdnet/tests/integration/test_backlog_metrics.py`: Verify the backlog counting query against a real Testcontainers database.
+- [x] **`system`** — `tests/system/test_birdnet_lifecycle.py`: Using real Podman with isolated network, test: Controller starts BirdNET container → Heartbeat in Redis → Controller stops BirdNET → Exits cleanly.
+- [x] **`smoke`** — `tests/smoke/test_health.py`: Extend with `test_birdnet_heartbeat_in_redis`.
 
 ---
 
@@ -165,13 +165,13 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** US-B01 (clip storage), US-B02 (playback preparation).
 
 ### Tasks
-- [ ] Implement clip extraction using `soundfile`: read detection time range ± `clip_padding_seconds` (from `BirdnetSettings`) from the processed WAV file, write to `birdnet/clips/`.
-- [ ] Clip naming convention: `{recording_id}_{start_ms}_{end_ms}_{label}.wav`. Store the relative path (`clips/...`) in `detections.clip_path`.
-- [ ] Ensure `birdnet/clips/` directory is created at service startup.
+- [x] Implement clip extraction using `soundfile`: read detection time range ± `clip_padding_seconds` (from `BirdnetSettings`) from the processed WAV file, write to `birdnet/clips/`.
+- [x] Clip naming convention: `{recording_id}_{start_ms}_{end_ms}_{label}.wav`. Store the relative path (`clips/...`) in `detections.clip_path`.
+- [x] Ensure `birdnet/clips/` directory is created at service startup.
 
 ### Testing (Phase 6)
-- [ ] **`unit`** — `services/birdnet/tests/unit/test_clip_extraction.py`: Test clip filename generation, path construction, label sanitization, padding clamping.
-- [ ] **`integration`** — `services/birdnet/tests/integration/test_clip_pipeline.py`: Run the full clip extraction pipeline using `testcontainers`.
+- [x] **`unit`** — `services/birdnet/tests/unit/test_clip_extraction.py`: Test clip filename generation, path construction, label sanitization, padding clamping.
+- [x] **`integration`** — `services/birdnet/tests/integration/test_clip_pipeline.py`: Run the full clip extraction pipeline using `testcontainers`.
 
 ---
 

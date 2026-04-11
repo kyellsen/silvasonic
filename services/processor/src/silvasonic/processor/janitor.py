@@ -210,6 +210,64 @@ def delete_files(
     return removed
 
 
+async def delete_worker_clips(
+    session: AsyncSession,
+    recording_id: int,
+    workspace_root: Path,
+) -> int:
+    """Physically delete audio clips extracted by analysis workers.
+
+    1. Query the detections table for associated clips.
+    2. Unlink the physical files from the respective worker workspaces.
+    3. Nullify the clip_path column in the database.
+
+    Args:
+        session: Active async DB session.
+        recording_id: Primary key of the deleted recording.
+        workspace_root: Base Workspace path (e.g., ``/data``) to resolve
+            ``{worker}/{clip_path}``.
+
+    Returns:
+        Number of physical clip files successfully unlinked.
+    """
+    result = await session.execute(
+        text("""
+            SELECT worker, clip_path 
+            FROM detections 
+            WHERE recording_id = :id AND clip_path IS NOT NULL
+        """),
+        {"id": recording_id},
+    )
+    rows = result.fetchall()
+
+    removed = 0
+    for worker, clip_path in rows:
+        # Expected path format: /data/birdnet/clips/file.wav
+        full_path = workspace_root / worker / clip_path
+        try:
+            if full_path.exists():
+                full_path.unlink()
+                removed += 1
+        except OSError:
+            log.exception(
+                "janitor.delete_worker_clip_error",
+                recording_id=recording_id,
+                clip_path=str(full_path),
+            )
+
+    if rows:
+        await session.execute(
+            text("""
+                UPDATE detections 
+                SET clip_path = NULL 
+                WHERE recording_id = :id AND clip_path IS NOT NULL
+            """),
+            {"id": recording_id},
+        )
+
+    return removed
+
+
 async def soft_delete(
     session: AsyncSession,
     recording_id: int,
@@ -328,9 +386,11 @@ async def run_cleanup(
     rows = await find_deletable(session, mode, settings.janitor_batch_size, cloud_sync_active)
 
     # Delete files + soft-delete in DB
+    workspace_root = recordings_dir.parent
     for rec_id, file_raw, file_processed in rows:
         try:
             delete_files(recordings_dir, file_raw, file_processed)
+            await delete_worker_clips(session, rec_id, workspace_root)
             await soft_delete(session, rec_id)
             result.files_deleted += 1
             if stats:
