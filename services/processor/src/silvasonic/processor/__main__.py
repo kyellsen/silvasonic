@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from silvasonic.core.config_schemas import ProcessorSettings
 from silvasonic.core.database.session import get_session
+from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.core.service import SilvaService
 from silvasonic.processor import indexer, janitor, reconciliation
 from silvasonic.processor.janitor import RetentionMode

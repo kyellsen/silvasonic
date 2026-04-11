@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 import structlog
 from minio import Minio
-from silvasonic.core.config_schemas import CloudSyncSettings
 from silvasonic.core.crypto import encrypt_value, generate_key
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneClient
 from testcontainers.minio import MinioContainer
 

@@ -29,7 +29,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import structlog
-from silvasonic.core.config_schemas import ProcessorSettings
+from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.processor.modules.janitor_stats import JanitorStats
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

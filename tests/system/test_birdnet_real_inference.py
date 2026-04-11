@@ -86,7 +86,7 @@ async def test_native_tflite_inference(
     with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "sys-w"}):
         worker = BirdNETService()
 
-    from silvasonic.core.config_schemas import BirdnetSettings, SystemSettings
+    from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 
     worker.birdnet_config = BirdnetSettings(
         confidence_threshold=0.25,

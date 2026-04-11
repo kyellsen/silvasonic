@@ -148,7 +148,7 @@ from `silvasonic.core`:
 | Resources      | `silvasonic.core.resources.ResourceCollector`              | Per-process CPU/memory/storage metrics          |
 | Resources      | `silvasonic.core.resources.HostResourceCollector`          | Host-level metrics (Controller only)            |
 | Settings       | `silvasonic.core.settings.DatabaseSettings`                | Pydantic-based config from env vars             |
-| Config Schemas | `silvasonic.core.config_schemas.*`                         | Pydantic models for `system_config` JSONB blobs |
+| Config Schemas | `silvasonic.core.schemas.system_config.*`                  | Pydantic models for `system_config` JSONB blobs |
 | Database       | `silvasonic.core.database.session.get_session`             | Async SQLAlchemy session (context manager)      |
 | Database       | `silvasonic.core.database.session.get_db`                  | FastAPI dependency for DB sessions              |
 | Database       | `silvasonic.core.database.check.check_database_connection` | Health probe for DB connectivity                |

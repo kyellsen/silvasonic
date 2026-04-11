@@ -47,7 +47,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 | Structure | Location | Status | Action for v0.8.0 |
 |---|---|---|---|
-| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/config_schemas.py:82` | Has `confidence_threshold` only | **Extend** with `clip_padding_seconds`, `overlap`, `sensitivity`, `threads`, `processing_order` (lifecycle toggle `enabled` is in `managed_services`, NOT here) |
+| `BirdnetSettings` Pydantic schema | `packages/core/src/silvasonic/core/schemas/system_config.py:82` | Has `confidence_threshold` only | **Extend** with `clip_padding_seconds`, `overlap`, `sensitivity`, `threads`, `processing_order` (lifecycle toggle `enabled` is in `managed_services`, NOT here) |
 | `defaults.yml` (birdnet section) | `services/controller/config/defaults.yml:75-80` | Has `confidence_threshold` only | **Extend** with new fields to match schema |
 | `Detection` ORM model | `packages/core/src/silvasonic/core/database/models/detections.py` | Missing `clip_path` column | **Add** `clip_path: Mapped[str \| None]` to match DDL |
 | `Recording` ORM model | `packages/core/src/silvasonic/core/database/models/recordings.py` | Complete — has `analysis_state` JSONB | ✅ Reuse as-is (read-only from BirdNET) |
@@ -87,7 +87,7 @@ The following structures already exist and MUST be reused or extended in-place:
 
 ### Tasks
 - [x] Scaffold `services/birdnet/` (directories, `pyproject.toml`, `.env` mapping).
-- [x] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/config_schemas.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
+- [x] **Extend** existing `BirdnetSettings` in `packages/core/src/silvasonic/core/schemas/system_config.py` with new fields (`clip_padding_seconds: float = 3.0`, `overlap: float = 0.0`, `sensitivity: float = 1.0`, `threads: int = 1`, `processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`). Note: `enabled` is NOT added here — it lives in the `managed_services` table (ADR-0029).
 - [x] **Create** generic DB-fallback and polling configuration via `BirdnetEnvSettings` (`SILVASONIC_POLLING_INTERVAL_S`, `SILVASONIC_DB_RETRY_INTERVAL_S`) according to the centralized worker resilience pattern (ADR-0030).
 - [x] **Extend** existing `birdnet` section in `services/controller/config/defaults.yml` to match the updated schema.
 - [x] **Add** `clip_path: Mapped[str | None] = mapped_column(Text, nullable=True)` to the existing `Detection` model (`packages/core/src/silvasonic/core/database/models/detections.py`).

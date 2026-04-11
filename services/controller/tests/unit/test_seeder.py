@@ -855,7 +855,7 @@ class TestDefaultsYamlParity:
     @staticmethod
     def _get_schema_map() -> dict[str, type]:
         """Return the same schema_map the seeder uses at runtime."""
-        from silvasonic.core.config_schemas import (
+        from silvasonic.core.schemas.system_config import (
             BirdnetSettings,
             CloudSyncSettings,
             ProcessorSettings,

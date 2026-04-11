@@ -62,8 +62,8 @@ The `path_builder` module is the **only component** that knows about the remote 
 
 | Purpose | File |
 |---------|------|
-| Upload DB model | `packages/core/src/silvasonic/core/database/models/system.py` |
-| CloudSyncSettings schema | `packages/core/src/silvasonic/core/config_schemas.py` |
+| Upload DB model | `packages/core/src/silvasonic/core/database/models/recordings.py` |
+| CloudSyncSettings schema | `packages/core/src/silvasonic/core/schemas/system_config.py` |
 | Database DDL | `services/database/init/01-init-schema.sql` |
 | Existing Controller seeder pattern | `services/controller/src/silvasonic/controller/seeder.py` |
 | Environment config | `.env` / `.env.example` |

@@ -12,7 +12,7 @@
 #
 # The key names (system, auth, processor, cloud_sync, birdnet) map to entries
 # in the system_config table and are validated against Pydantic schemas
-# in packages/core/src/silvasonic/core/config_schemas.py.
+# in packages/core/src/silvasonic/core/schemas/system_config.py.
 #
 # Schema defaults MUST match the values below.
 # See also: .env.example for infrastructure-level settings.

@@ -81,7 +81,7 @@ Full testing guide (anti-patterns, CI stages, writing rules, isolation): **[Test
 *   **Exceptions:** Third-party standards keep their names: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DOCKER_HOST`.
 
 ## 8. Data Contracts (Spec-Driven Development)
-*   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/` or `config_schemas.py`.
+*   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/`.
 *   **No Duplication:** **Never** hardcode or duplicate these payloads inside individual Tier 2 services. Before writing code that exchanges data between services, check the core schemas first.
 
 ---

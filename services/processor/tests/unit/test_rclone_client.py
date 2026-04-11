@@ -5,8 +5,8 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from silvasonic.core.config_schemas import CloudSyncSettings
 from silvasonic.core.crypto import generate_key
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneClient
 
 

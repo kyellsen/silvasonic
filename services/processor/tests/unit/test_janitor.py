@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.config_schemas import ProcessorSettings
+from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.processor.janitor import (
     RetentionMode,
     delete_files,

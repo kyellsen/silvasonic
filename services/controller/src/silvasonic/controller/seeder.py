@@ -18,16 +18,16 @@ import structlog
 import yaml
 from pydantic import ValidationError
 from silvasonic.controller.worker_registry import SYSTEM_WORKERS
-from silvasonic.core.config_schemas import (
+from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
+from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
+from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
+from silvasonic.core.schemas.system_config import (
     AuthDefaults,
     BirdnetSettings,
     CloudSyncSettings,
     ProcessorSettings,
     SystemSettings,
 )
-from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
-from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 

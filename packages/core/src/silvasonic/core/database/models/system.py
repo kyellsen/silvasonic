@@ -80,25 +80,3 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
-
-
-class Upload(Base):
-    """Immutable audit log of all upload attempts."""
-
-    __tablename__ = "uploads"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-
-    recording_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("recordings.id"), nullable=False, index=True
-    )
-
-    attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
-    )
-    filename: Mapped[str] = mapped_column(Text, nullable=False)
-    remote_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    size: Mapped[int] = mapped_column(BigInteger, nullable=False)
-
-    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

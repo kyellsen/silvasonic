@@ -19,8 +19,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.config_schemas import ProcessorSettings
 from silvasonic.core.health import HealthMonitor
+from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.processor.__main__ import ProcessorService
 from silvasonic.processor.janitor import RetentionMode
 

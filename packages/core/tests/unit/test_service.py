@@ -12,7 +12,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.config_schemas import (
+from silvasonic.core.schemas.system_config import (
     BirdnetSettings,
     CloudSyncSettings,
     ProcessorSettings,

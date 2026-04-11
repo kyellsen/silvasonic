@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from silvasonic.core.config_schemas import CloudSyncSettings
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.session import _get_engine, _get_session_factory
 from silvasonic.core.health import HealthMonitor
+from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.upload_worker import UploadWorker
 from sqlalchemy import text

@@ -12,11 +12,11 @@ import soundfile as sf  # type: ignore[import-untyped]
 import structlog
 from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
-from silvasonic.core.config_schemas import BirdnetSettings, SystemSettings
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.session import get_session
 from silvasonic.core.schemas.detections import BirdnetDetectionDetails
+from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 from silvasonic.core.service import SilvaService
 from sqlalchemy import select
 

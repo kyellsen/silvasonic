@@ -91,9 +91,9 @@ CREATE TABLE users (
 
 **Seeding:** A default admin account is seeded from the `auth` section of `config/defaults.yml` by the Controller on startup. The password is hashed with bcrypt before insertion. Production deployments must change the default password via the Web-Interface settings page.
 
-### 2.5. Pydantic Validation — `config_schemas.py`
+### 2.5. Pydantic Validation — `schemas/system_config.py`
 
-All configuration blobs are parsed and validated via Pydantic `BaseModel` classes in `silvasonic.core.config_schemas`. This ensures:
+All configuration blobs are parsed and validated via Pydantic `BaseModel` classes in `silvasonic.core.schemas.system_config`. This ensures:
 
 *   Type safety (latitude must be a float, max_recorders must be an int).
 *   Defaults are defined in one place (the schema), mirrored in the YAML seed.
