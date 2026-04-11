@@ -12,8 +12,14 @@ class TestBirdNETServiceUnit:
     """Isolate and test the worker orchestration mechanisms."""
 
     @pytest.fixture
-    def mock_service(self) -> BirdNETService:
-        with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "test-bnet"}):
+    def mock_service(self, tmp_path: Path) -> BirdNETService:
+        with patch.dict(
+            "os.environ",
+            {
+                "SILVASONIC_INSTANCE_ID": "test-bnet",
+                "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+            },
+        ):
             return BirdNETService()
 
     @pytest.mark.asyncio
@@ -38,7 +44,7 @@ class TestBirdNETServiceUnit:
 class TestAudioPathResolution:
     """Verify BirdNET resolves relative DB paths against RECORDINGS_DIR."""
 
-    def test_audio_path_resolves_relative_to_recordings_dir(self) -> None:
+    def test_audio_path_resolves_relative_to_recordings_dir(self, tmp_path: Path) -> None:
         """Relative DB path must be prefixed with recordings_dir to form an absolute path.
 
         The indexer stores relative paths like 'mic-001/data/processed/seg.wav'
@@ -53,6 +59,7 @@ class TestAudioPathResolution:
             {
                 "SILVASONIC_INSTANCE_ID": "test-path",
                 "SILVASONIC_RECORDINGS_DIR": "/data/recorder",
+                "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
             },
         ):
             service = BirdNETService()
@@ -87,8 +94,14 @@ class TestBirdNETResilience:
     """Test BirdNET Soft-Fail and transient I/O resilience (ADR-0030)."""
 
     @pytest.fixture
-    def mock_service(self) -> BirdNETService:
-        with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "test-bnet"}):
+    def mock_service(self, tmp_path: Path) -> BirdNETService:
+        with patch.dict(
+            "os.environ",
+            {
+                "SILVASONIC_INSTANCE_ID": "test-bnet",
+                "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+            },
+        ):
             svc = BirdNETService()
             svc.birdnet_config = MagicMock()
             svc.system_config = MagicMock()

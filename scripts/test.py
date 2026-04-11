@@ -351,6 +351,8 @@ def _preflight_hw() -> None:
     conflict_ok = True
     conflict_detail = "no background services"
     try:
+        import json
+
         cs = subprocess.run(
             [
                 "podman",
@@ -360,14 +362,34 @@ def _preflight_hw() -> None:
                 "--filter",
                 "name=silvasonic-recorder",
                 "--format",
-                "{{.Names}}",
+                "json",
             ],
             capture_output=True,
             text=True,
             timeout=5,
         )
-        running = [line.strip() for line in cs.stdout.strip().splitlines() if line.strip()]
-        if cs.returncode == 0 and running:
+        running = []
+        if cs.returncode == 0 and cs.stdout.strip():
+            containers = json.loads(cs.stdout)
+            for c in containers:
+                labels = c.get("Labels") or {}
+                owner = labels.get("io.silvasonic.owner", "")
+                if owner.startswith("controller-test-"):
+                    continue  # Ignore test-owned containers
+
+                # Also ignore containers attached to test networks
+                networks = c.get("Networks") or []
+                is_test_network = any(
+                    net.startswith("silvasonic-test-") or net.startswith("silvasonic-hw-test-")
+                    for net in networks
+                )
+                if is_test_network:
+                    continue
+
+                names = c.get("Names") or [""]
+                running.append(names[0])
+
+        if running:
             conflict_ok = False
             conflict_detail = "conflict: " + ", ".join(running)
             icon = fail

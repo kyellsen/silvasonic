@@ -261,7 +261,7 @@ class TestProcessorCycles:
             return_value=MagicMock(
                 disk_usage_percent=45.5,
                 mode=RetentionMode.IDLE,
-                files_deleted=2,
+                recordings_deleted=2,
                 errors=0,
             ),
         ):

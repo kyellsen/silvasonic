@@ -20,6 +20,7 @@ from redis import Redis
 PROCESSOR_IMAGE = "localhost/silvasonic_processor:latest"
 DATABASE_IMAGE = "localhost/silvasonic_database:latest"
 REDIS_IMAGE = "docker.io/library/redis:7-alpine"
+BIRDNET_IMAGE = "localhost/silvasonic_birdnet:latest"
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +47,12 @@ def require_database_image() -> None:
     """Skip if the Database image is not built."""
     if not image_exists(DATABASE_IMAGE):
         pytest.skip("Database image not built (run 'just build' first)")
+
+
+def require_birdnet_image() -> None:
+    """Skip if the BirdNET image is not built."""
+    if not image_exists(BIRDNET_IMAGE):
+        pytest.skip("BirdNET image not built (run 'just build' first)")
 
 
 # ---------------------------------------------------------------------------
@@ -347,6 +354,80 @@ def seed_processor_config(
 def count_wav_files(workspace: Path) -> int:
     """Count WAV files recursively in a workspace directory."""
     return len(list(workspace.rglob("*.wav")))
+
+
+def wait_for_wavs(
+    directory: Path,
+    *,
+    min_count: int = 1,
+    timeout: float = 20,
+    poll_interval: float = 1.0,
+) -> list[Path]:
+    """Poll for WAV files with early return."""
+    deadline = time.monotonic() + timeout
+    files: list[Path] = []
+
+    while time.monotonic() < deadline:
+        files = list(directory.rglob("*.wav"))
+        if len(files) >= min_count:
+            return sorted(files)
+        time.sleep(poll_interval)
+
+    pytest.fail(f"Timeout waiting for {min_count} WAVs in {directory}. Found {len(files)}")
+
+
+def wait_for_db_rows(
+    db_container: str,
+    query: str,
+    *,
+    min_count: int = 1,
+    timeout: float = 20,
+    poll_interval: float = 1.0,
+) -> int:
+    """Poll database for a minimum row count."""
+    deadline = time.monotonic() + timeout
+    count = 0
+
+    while time.monotonic() < deadline:
+        try:
+            output = psql_query(db_container, query, retries=0).strip()
+            count = int(output) if output.isdigit() else 0
+            if count >= min_count:
+                return count
+        except Exception:
+            pass
+        time.sleep(poll_interval)
+
+    pytest.fail(f"Timeout waiting for >= {min_count} rows from query: {query}. Got {count}")
+
+
+def wait_for_detection(
+    db_container: str,
+    prefix_taxon: str,
+    *,
+    timeout: float = 40,
+    poll_interval: float = 2.0,
+) -> dict[str, str]:
+    """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
+    deadline = time.monotonic() + timeout
+
+    # Query fetches the detection id, label, and clip_path
+    query = (
+        "SELECT id, label, clip_path FROM detections "
+        f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' OFFSET 0 LIMIT 1"
+    )
+
+    while time.monotonic() < deadline:
+        try:
+            output = psql_query(db_container, query, retries=0).strip()
+            if output and "|" in output:
+                id_str, label, clip_path = output.split("|")
+                return {"id": id_str, "label": label, "clip_path": clip_path}
+        except Exception:
+            pass
+        time.sleep(poll_interval)
+
+    pytest.fail(f"Timeout waiting for BirdNET detection with label prefix '{prefix_taxon}'")
 
 
 # ---------------------------------------------------------------------------

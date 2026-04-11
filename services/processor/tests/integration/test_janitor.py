@@ -108,6 +108,39 @@ async def _seed_recording(
         return int(row[0])
 
 
+async def _seed_detection(
+    factory: async_sessionmaker[Any],
+    *,
+    recording_id: int,
+    worker: str = "birdnet",
+    clip_path: str = "clips/test.wav",
+) -> None:
+    """Insert a detection row referencing a recording."""
+    async with factory() as session:
+        await session.execute(
+            text("""
+                INSERT INTO detections (
+                    time, end_time, recording_id, worker, label, confidence, clip_path, details
+                ) VALUES (
+                    now(), 
+                    now() + interval '3 seconds', 
+                    :recording_id, 
+                    :worker, 
+                    'TestLabel', 
+                    0.9, 
+                    :clip_path, 
+                    '{}'::jsonb
+                )
+            """),
+            {
+                "recording_id": recording_id,
+                "worker": worker,
+                "clip_path": clip_path,
+            },
+        )
+        await session.commit()
+
+
 async def _enable_upload_config(factory: async_sessionmaker[Any]) -> None:
     """Simulate Cloud Sync enabled in system_config."""
     async with factory() as session:
@@ -201,7 +234,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert result.cloud_sync_fallback is False
         assert not del_proc.exists()
         assert kept_proc.exists()
@@ -216,6 +249,97 @@ class TestJanitorIntegration:
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": kept_id}
             )
             assert row_kept.scalar() is False
+
+        await engine.dispose()
+
+    async def test_housekeeping_deletes_worker_clips(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """75% disk + Cloud Sync → uploaded files deleted AND associated clips removed."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        await _seed_device(factory, "hk2-mic")
+        await _enable_upload_config(factory)
+
+        # 1. Provide recording
+        del_proc = tmp_path / "hk2-mic" / "data" / "processed" / "uploaded.wav"
+        del_raw = tmp_path / "hk2-mic" / "data" / "raw" / "uploaded.wav"
+        _create_wav(del_proc)
+        _create_wav(del_raw)
+
+        # 2. Provide the associated worker clip
+        # tmp_path represents the workspace_root (/data in container)
+        # Therefore: tmp_path / "birdnet" / "clips" / "mock.wav"
+        worker = "birdnet"
+        clip_path = "clips/mock.wav"
+        physical_clip = tmp_path / worker / clip_path
+        _create_wav(physical_clip)
+
+        rec_id = await _seed_recording(
+            factory,
+            sensor_id="hk2-mic",
+            file_raw="hk2-mic/data/raw/uploaded.wav",
+            file_processed="hk2-mic/data/processed/uploaded.wav",
+            uploaded=True,
+            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            time=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        # 3. Associate clip with recording
+        await _seed_detection(
+            factory,
+            recording_id=rec_id,
+            worker=worker,
+            clip_path=clip_path,
+        )
+
+        from silvasonic.core.schemas.system_config import ProcessorSettings
+
+        settings = ProcessorSettings()
+        with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
+            async with factory() as session:
+                # We need to simulate the execution environment of `run_cleanup`
+                # which gets the recordings directory (tmp_path / "recorder")
+                # Wait, the recordings_dir passed here is just `tmp_path`.
+                # If we pass `tmp_path` as recordings_dir, then `recordings_dir.parent`
+                # will be the parent of `tmp_path`, which breaks `delete_worker_clips`.
+                # So we simulate the directory layout better:
+                # `workspace_root` = tmp_path
+                # `recordings_dir` = tmp_path / "recorder"
+                pass  # Done outside the context manager to avoid deep nesting
+
+        # Create recordings dir properly inside tmp_path for accurate relative paths
+        recordings_dir = tmp_path / "recorder"
+
+        # Re-create files inside recordings_dir as expected by delete_files logic
+        # which appends `hk2-mic/data...` to `recordings_dir`
+        del_proc = recordings_dir / "hk2-mic" / "data" / "processed" / "uploaded.wav"
+        del_raw = recordings_dir / "hk2-mic" / "data" / "raw" / "uploaded.wav"
+        _create_wav(del_proc)
+        _create_wav(del_raw)
+
+        with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
+            async with factory() as session:
+                result = await run_cleanup(session, recordings_dir, settings)
+
+        assert result.mode == RetentionMode.HOUSEKEEPING
+        assert result.recordings_deleted == 1
+
+        # Assert underlying files are gone
+        assert not del_proc.exists()
+        assert not del_raw.exists()
+
+        # Assert clip is physically gone
+        assert not physical_clip.exists()
+
+        # Assert DB nullification
+        async with factory() as session:
+            row_clip = await session.execute(
+                text("SELECT clip_path FROM detections WHERE recording_id = :id"), {"id": rec_id}
+            )
+            assert row_clip.scalar() is None
 
         await engine.dispose()
 
@@ -254,7 +378,7 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.HOUSEKEEPING
         assert result.cloud_sync_fallback is True
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not proc.exists()
 
         # Verify soft-delete
@@ -298,7 +422,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.DEFENSIVE
-        assert result.files_deleted >= 1
+        assert result.recordings_deleted >= 1
         assert not proc.exists()
 
         # Verify soft-delete in DB
@@ -343,7 +467,7 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.DEFENSIVE
         assert result.cloud_sync_fallback is True
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not proc.exists()
 
         # Verify soft-delete
@@ -399,7 +523,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not old_proc.exists()  # Oldest deleted first
         assert new_proc.exists()  # Newer preserved (batch_size=1)
 
@@ -448,7 +572,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 2
+        assert result.recordings_deleted == 2
 
         # Verify exactly 2 rows soft-deleted, 3 remaining
         async with factory() as session:
@@ -483,7 +607,7 @@ class TestJanitorIntegration:
             f.write_bytes(b"\x00" * 100)
             os.utime(f, (1000 + i * 1000, 1000 + i * 1000))
 
-        deleted = panic_filesystem_fallback(tmp_path, batch_size=1)
+        deleted = await panic_filesystem_fallback(tmp_path, batch_size=1)
         assert deleted == 1
         assert not (sensor_dir / "old.wav").exists()
         assert (sensor_dir / "newer.wav").exists()
@@ -516,6 +640,96 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0
+
+        await engine.dispose()
+
+    async def test_partial_deletion_failure_does_not_abort_soft_delete(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """Partial deletion failure ensures DB strictly limits updates to successful unlinks."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        await _seed_device(factory, "partial-mic")
+        await _enable_upload_config(factory)
+
+        recordings_dir = tmp_path / "recorder"
+
+        # 1. Provide recording (raw & processed)
+        proc = recordings_dir / "partial-mic" / "data" / "processed" / "uploaded.wav"
+        raw = recordings_dir / "partial-mic" / "data" / "raw" / "uploaded.wav"
+        _create_wav(proc)
+        _create_wav(raw)
+
+        # 2. Provide TWO associated worker clips
+        worker = "birdnet"
+        clip_path_success = "clips/success.wav"
+        clip_path_fail = "clips/fail.wav"
+
+        physical_clip_success = tmp_path / worker / clip_path_success
+        _create_wav(physical_clip_success)
+
+        physical_clip_fail = tmp_path / worker / clip_path_fail
+        _create_wav(physical_clip_fail)
+
+        rec_id = await _seed_recording(
+            factory,
+            sensor_id="partial-mic",
+            file_raw="partial-mic/data/raw/uploaded.wav",
+            file_processed="partial-mic/data/processed/uploaded.wav",
+            uploaded=True,
+            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            time=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        await _seed_detection(
+            factory, recording_id=rec_id, worker=worker, clip_path=clip_path_success
+        )
+        await _seed_detection(factory, recording_id=rec_id, worker=worker, clip_path=clip_path_fail)
+
+        original_unlink = Path.unlink
+
+        def _mock_unlink(self_path: Path, *args: Any, **kwargs: Any) -> None:
+            if "fail.wav" in str(self_path):
+                raise PermissionError("Mock failure for fail.wav")
+            original_unlink(self_path, *args, **kwargs)
+
+        from silvasonic.core.schemas.system_config import ProcessorSettings
+
+        settings = ProcessorSettings()
+
+        with (
+            patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
+            patch.object(Path, "unlink", side_effect=_mock_unlink, autospec=True),
+        ):
+            async with factory() as session:
+                result = await run_cleanup(session, recordings_dir, settings)
+
+        assert result.mode == RetentionMode.HOUSEKEEPING
+        assert result.recordings_deleted == 1
+        assert result.errors == 1
+
+        # Assert successful clip is gone
+        assert not physical_clip_success.exists()
+        # Assert failed clip remains
+        assert physical_clip_fail.exists()
+
+        # Assert DB strictly limited NULL updates to successful clips
+        async with factory() as session:
+            rows = await session.execute(
+                text("SELECT clip_path FROM detections WHERE recording_id = :id"), {"id": rec_id}
+            )
+            clip_paths = [row[0] for row in rows.fetchall()]
+
+            assert clip_path_fail in clip_paths
+            assert None in clip_paths
+            assert clip_path_success not in clip_paths
+
+            row_rec = await session.execute(
+                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+            )
+            assert row_rec.scalar() is True
 
         await engine.dispose()

@@ -122,7 +122,7 @@ just ci              # Full CI pipeline (> 4m):
 - Each test session gets its own **isolated Podman network** (`silvasonic-hw-test-{id}`) via the `hw_redis` fixture.
 - Require a USB-Audio device connected (e.g., UltraMic 384K).
 - Skip automatically when no USB-Audio device is detected.
-- **Fully isolated from production** — can run while `just start` is active.
+- **Fully isolated via container network — but hardware-locked**. **Cannot** run while `just start` is active (ALSA device requires exclusive access).
 - **Never** included in CI pipelines — run manually via `just test-hw` or `just test-hw-manual`.
 
 ### Smoke Tests
@@ -142,7 +142,19 @@ just ci              # Full CI pipeline (> 4m):
 
 ---
 
-## 5. Test Quality & Anti-Patterns
+## 5. "Vertrauensanker" End-to-End Tests
+
+To guarantee that the entire cross-container data pipeline remains unbroken from ingestion to deep-learning inference, the CI suite includes two explicit "Vertrauensanker" (trust anchor) System Tests. These tests bypass unit-level mocking to confirm that real audio translates to real SQL insertions:
+
+1. **`test_birdnet_full_pipeline.py` (Marker: `.system`)**:
+   Runs automatically in the CI pipeline. It boots the `database` and `redis` containers, then starts the `recorder`, `processor`, and `birdnet` containers sequentially. It feeds a fixed fixture WAV into the recorder using a mock FFmpeg loop (`SILVASONIC_RECORDER_MOCK_SOURCE`), enforcing deterministic ingestion without hardware. It verifies the complete data flow: chunk creation, database indexation, BirdNET ML inference, label thresholding, and clip generation.
+
+2. **`test_hw_birdnet_full_pipeline.py` (Marker: `.system_hw_manual`)**:
+   An optional physical analog. Instead of mocking the file stream, it uses `ffplay` to output sound out of the workstation's physical speakers, capturing the waveform back through a connected USB microphone. This validates the host ALSA stack, hardware constraints, and the real-world acoustic transfer paths.
+
+---
+
+## 6. Test Quality & Anti-Patterns
 
 > **Status:** Normative (Mandatory)
 > This section defines the qualitative boundaries for tests. It is especially critical for AI-generated code.
@@ -236,19 +248,20 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ## 9. Parallel Execution & Isolation
 
-**Every test level is fully isolated.** All combinations can run in parallel — with each other and with `just start` (production stack).
+**Every test level is fully isolated.** Almost all combinations can run in parallel — with each other and with `just start` (production stack).
+**Exception**: `system_hw_auto` and `system_hw_manual` **cannot** run in parallel with `just start` due to the exclusive kernel-level lock on the ALSA audio device.
 
 ### Isolation by Level
 
-| Level | Container Infra | Network |
-| --- | --- | --- |
-| `unit` | None | None |
-| `integration` | `testcontainers` | Random (auto) |
-| `smoke` | `testcontainers` | `smoke_network` (random) |
-| `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) |
-| `system_hw_auto` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) |
-| `system_hw_manual` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) |
-| `just start` | Compose | `silvasonic-net` (fixed) |
+| Level | Container Infra | Network | ALSA Device |
+| --- | --- | --- | --- |
+| `unit` | None | None | Mocked |
+| `integration` | `testcontainers` | Random (auto) | Mocked |
+| `smoke` | `testcontainers` | `smoke_network` (random) | Mocked |
+| `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) | Mocked |
+| `system_hw_auto` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | **Locked (Exclusive)** |
+| `system_hw_manual` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | **Locked (Exclusive)** |
+| `just start` | Compose | `silvasonic-net` (fixed) | **Locked (Exclusive)** |
 
 ### Key Fixtures & Mechanisms
 

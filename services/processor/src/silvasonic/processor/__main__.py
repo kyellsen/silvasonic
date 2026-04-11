@@ -174,9 +174,9 @@ class ProcessorService(SilvaService):
                 self._disk_usage_percent = jr.disk_usage_percent
                 self._janitor_mode = jr.mode.value
                 self._cloud_sync_fallback = jr.cloud_sync_fallback
-                self._files_deleted_total += jr.files_deleted
+                self._files_deleted_total += jr.recordings_deleted
                 healthy = jr.errors == 0
-                detail = f"{jr.mode.value} - deleted {jr.files_deleted}"
+                detail = f"{jr.mode.value} - deleted {jr.recordings_deleted}"
                 self.health.update_status("janitor", healthy, detail)
             except Exception:
                 log.exception("processor.janitor_error")

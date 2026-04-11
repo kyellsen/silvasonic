@@ -107,6 +107,8 @@ services:
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/data/recorder:z
       # Processor workspace: RW — own workspace for internal state.
       - ${SILVASONIC_WORKSPACE_PATH}/processor:/data/processor:z
+      # Analysis Worker workspaces: RW — Janitor delete authority for clips (Issue 008)
+      - ${SILVASONIC_WORKSPACE_PATH}/birdnet:/data/birdnet:z
     depends_on:
       database:
         condition: service_healthy

@@ -116,6 +116,7 @@ class TestRecorderSettings:
         settings = RecorderSettings()
         assert settings.INSTANCE_ID == "recorder"
         assert settings.RECORDER_DEVICE == "hw:1,0"
+        assert settings.RECORDER_MOCK_FILE is None
         assert settings.RECORDER_CONFIG_JSON is None
         assert settings.FFMPEG_BINARY == "ffmpeg"
         assert settings.FFMPEG_LOGLEVEL == "warning"
@@ -128,6 +129,7 @@ class TestRecorderSettings:
                 "SILVASONIC_INSTANCE_ID": "mic-1",
                 "SILVASONIC_RECORDER_DEVICE": "hw:3,0",
                 "SILVASONIC_RECORDER_WORKSPACE": "/custom/workspace",
+                "SILVASONIC_RECORDER_MOCK_FILE": "/tmp/mock.wav",
             },
         ):
             from silvasonic.recorder.settings import RecorderSettings
@@ -136,6 +138,8 @@ class TestRecorderSettings:
             assert settings.INSTANCE_ID == "mic-1"
             assert settings.RECORDER_DEVICE == "hw:3,0"
             assert settings.workspace_path.as_posix() == "/custom/workspace"
+            assert settings.RECORDER_MOCK_FILE is not None
+            assert settings.RECORDER_MOCK_FILE.as_posix() == "/tmp/mock.wav"
 
     def test_parse_injected_config_none(self) -> None:
         """parse_injected_config() returns None when no config JSON is set."""

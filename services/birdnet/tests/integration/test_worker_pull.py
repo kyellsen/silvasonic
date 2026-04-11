@@ -84,9 +84,13 @@ async def test_worker_pull_concurrency(
 ) -> None:
     """Test that multiple workers can pull recordings simultaneously without lock collisions."""
     # Create two service instances with mocked Redis config
-    with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "w1"}):
+    with patch.dict(
+        "os.environ", {"SILVASONIC_INSTANCE_ID": "w1", "SILVASONIC_WORKSPACE_DIR": "/tmp"}
+    ):
         w1 = BirdNETService()
-    with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "w2"}):
+    with patch.dict(
+        "os.environ", {"SILVASONIC_INSTANCE_ID": "w2", "SILVASONIC_WORKSPACE_DIR": "/tmp"}
+    ):
         w2 = BirdNETService()
 
     await w1.load_config()
@@ -224,6 +228,7 @@ async def test_worker_resolves_relative_db_paths(
         {
             "SILVASONIC_INSTANCE_ID": "test-rel",
             "SILVASONIC_RECORDINGS_DIR": str(tmp_path),
+            "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
         },
     ):
         svc = BirdNETService()

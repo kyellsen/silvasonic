@@ -1,4 +1,4 @@
--- Silvasonic Initial Schema (Consolidated)
+-- Silvasonic Initial Schema (Consolidated, pls modifiy directly services/database/init/01-init-schema.sql, do use extra files for migrations)
 -- Replaces Alembic Migrations: 833e0e6f1e08, 20260202_varchar_text
 
 -- 0. Microphone Profiles (New)

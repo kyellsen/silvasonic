@@ -125,6 +125,7 @@ class RecorderService(SilvaService):
             workspace=workspace,
             device=device,
             mock_source=use_mock,
+            mock_file=self._cfg.RECORDER_MOCK_FILE,
             ffmpeg_binary=self._cfg.FFMPEG_BINARY,
             ffmpeg_loglevel=self._cfg.FFMPEG_LOGLEVEL,
             stats=stats,

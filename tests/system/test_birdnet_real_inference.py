@@ -76,6 +76,7 @@ def birdnet_model_dir() -> Path:
 async def test_native_tflite_inference(
     fixtures_dir: Path,
     birdnet_model_dir: Path,
+    tmp_path: Path,
 ) -> None:
     """Test actual TFLite inference using the real models against an explicit fixture.
 
@@ -83,7 +84,13 @@ async def test_native_tflite_inference(
     and boolean mask implementations, independently of the DB.
     """
     # 1. Provide temporary env for the service config (skipping DB)
-    with patch.dict("os.environ", {"SILVASONIC_INSTANCE_ID": "sys-w"}):
+    with patch.dict(
+        "os.environ",
+        {
+            "SILVASONIC_INSTANCE_ID": "sys-w",
+            "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
+        },
+    ):
         worker = BirdNETService()
 
     from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
