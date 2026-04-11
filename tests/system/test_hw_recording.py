@@ -56,6 +56,8 @@ from ._processor_helpers import (
     require_processor_image,
     seed_test_devices,
     wait_for_db,
+    wait_for_db_rows,
+    wait_for_wavs,
 )
 from .conftest import (
     PODMAN_SOCKET,
@@ -79,68 +81,6 @@ _USB_PRESENT = has_usb_audio_device()
 # ---------------------------------------------------------------------------
 # Polling helpers (replace fixed time.sleep)
 # ---------------------------------------------------------------------------
-
-
-def _wait_for_wavs(
-    directory: Path,
-    *,
-    min_count: int = 1,
-    timeout: float = 20,
-    poll_interval: float = 1.0,
-) -> list[Path]:
-    """Poll for WAV files with early return.
-
-    Args:
-        directory: Directory to scan for ``*.wav`` files.
-        min_count: Minimum number of files required.
-        timeout: Maximum seconds to wait.
-        poll_interval: Seconds between polls.
-
-    Returns:
-        List of found WAV file paths (may be fewer than *min_count*
-        if timeout is reached).
-    """
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        wavs = list(directory.glob("*.wav")) if directory.exists() else []
-        if len(wavs) >= min_count:
-            return wavs
-        time.sleep(poll_interval)
-    return list(directory.glob("*.wav")) if directory.exists() else []
-
-
-def _wait_for_db_rows(
-    db_container: str,
-    query: str,
-    *,
-    min_count: int = 1,
-    timeout: float = 20,
-    poll_interval: float = 2.0,
-) -> int:
-    """Poll a DB count query until *min_count* rows exist.
-
-    Args:
-        db_container: Name of the running database container.
-        query: SQL ``SELECT COUNT(*)`` query.
-        min_count: Minimum row count to satisfy.
-        timeout: Maximum seconds to wait.
-        poll_interval: Seconds between polls.
-
-    Returns:
-        Final row count.
-    """
-    deadline = time.monotonic() + timeout
-    count = 0
-    while time.monotonic() < deadline:
-        try:
-            count_str = psql_query(db_container, query)
-            count = int(count_str) if count_str else 0
-            if count >= min_count:
-                return count
-        except Exception:
-            pass
-        time.sleep(poll_interval)
-    return count
 
 
 def _ffprobe_wav(path: Path) -> tuple[int, int, str]:
@@ -274,7 +214,7 @@ class TestRealAudioCapture:
     """
 
     _SEGMENT_S = 3
-    _CAPTURE_S = 8
+    _CAPTURE_S = 3.5
 
     def _make_pipeline(
         self,
@@ -501,7 +441,7 @@ class TestFullHardwareLifecycle:
             # Step 6: Poll for WAV files (replaces fixed 20s sleep)
             data_dir = workspace / "data" / "raw"
             log.info("test.waiting_for_wavs", directory=str(data_dir), timeout_s=20)
-            _wait_for_wavs(data_dir, min_count=1, timeout=20)
+            wait_for_wavs(data_dir, min_count=1, timeout=20)
 
             # Step 7: Stop container gracefully (promotes final segment)
             mgr.stop(test_name, timeout=10)
@@ -682,8 +622,8 @@ class TestFullPipelineE2E:
             proc_data = workspace / "data" / "processed"
 
             log.info("test.waiting_for_wavs", directory=str(raw_data), timeout_s=20)
-            raw_wavs = _wait_for_wavs(raw_data, min_count=1, timeout=20)
-            proc_wavs = _wait_for_wavs(proc_data, min_count=1, timeout=5)
+            raw_wavs = wait_for_wavs(raw_data, min_count=1, timeout=20)
+            proc_wavs = wait_for_wavs(proc_data, min_count=1, timeout=5)
 
             if not raw_wavs and not proc_wavs:
                 _dump_container_logs(test_name)
@@ -952,7 +892,7 @@ class TestFullPipelineE2E:
             # ── Step 5: Poll for WAV segments (replaces fixed 20s sleep) ──
             proc_dir = device_dir / "data" / "processed"
             log.info("test.waiting_for_recorder", directory=str(proc_dir), timeout_s=20)
-            proc_wavs = _wait_for_wavs(proc_dir, min_count=1, timeout=20)
+            proc_wavs = wait_for_wavs(proc_dir, min_count=1, timeout=20)
 
             raw_dir = device_dir / "data" / "raw"
             raw_wavs = list(raw_dir.glob("*.wav")) if raw_dir.exists() else []
@@ -984,7 +924,7 @@ class TestFullPipelineE2E:
 
             # ── Step 7: Poll for recordings in DB (replaces fixed 15s sleep) ──
             log.info("test.waiting_for_indexer", timeout_s=20)
-            count = _wait_for_db_rows(
+            count = wait_for_db_rows(
                 db_name,
                 "SELECT COUNT(*) FROM recordings",
                 min_count=1,

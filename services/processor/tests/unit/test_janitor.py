@@ -252,7 +252,7 @@ class TestRunCleanupSafe:
             result = await run_cleanup_safe(Path("/data"), settings)
 
         assert result.mode == RetentionMode.IDLE
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0
 
     async def test_normal_flow_delegates_to_run_cleanup(self) -> None:
         """Above threshold + DB available → delegates to run_cleanup."""
@@ -277,7 +277,7 @@ class TestRunCleanupSafe:
             result = await run_cleanup_safe(Path("/data"), settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0
 
     async def test_db_failure_in_panic_triggers_filesystem_fallback(
         self,
@@ -303,7 +303,7 @@ class TestRunCleanupSafe:
             result = await run_cleanup_safe(tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not (sensor_dir / "old.wav").exists()
 
     async def test_db_failure_in_housekeeping_skips_safely(self) -> None:
@@ -322,7 +322,7 @@ class TestRunCleanupSafe:
             result = await run_cleanup_safe(Path("/data"), settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0
 
     async def test_db_failure_in_defensive_skips_safely(self) -> None:
         """DB failure during Defensive → skips cycle, no data loss."""
@@ -340,4 +340,4 @@ class TestRunCleanupSafe:
             result = await run_cleanup_safe(Path("/data"), settings)
 
         assert result.mode == RetentionMode.DEFENSIVE
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0

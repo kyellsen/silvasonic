@@ -142,7 +142,19 @@ just ci              # Full CI pipeline (> 4m):
 
 ---
 
-## 5. Test Quality & Anti-Patterns
+## 5. "Vertrauensanker" End-to-End Tests
+
+To guarantee that the entire cross-container data pipeline remains unbroken from ingestion to deep-learning inference, the CI suite includes two explicit "Vertrauensanker" (trust anchor) System Tests. These tests bypass unit-level mocking to confirm that real audio translates to real SQL insertions:
+
+1. **`test_birdnet_full_pipeline.py` (Marker: `.system`)**:
+   Runs automatically in the CI pipeline. It boots the `database` and `redis` containers, then starts the `recorder`, `processor`, and `birdnet` containers sequentially. It feeds a fixed fixture WAV into the recorder using a mock FFmpeg loop (`SILVASONIC_RECORDER_MOCK_SOURCE`), enforcing deterministic ingestion without hardware. It verifies the complete data flow: chunk creation, database indexation, BirdNET ML inference, label thresholding, and clip generation.
+
+2. **`test_hw_birdnet_full_pipeline.py` (Marker: `.system_hw_manual`)**:
+   An optional physical analog. Instead of mocking the file stream, it uses `ffplay` to output sound out of the workstation's physical speakers, capturing the waveform back through a connected USB microphone. This validates the host ALSA stack, hardware constraints, and the real-world acoustic transfer paths.
+
+---
+
+## 6. Test Quality & Anti-Patterns
 
 > **Status:** Normative (Mandatory)
 > This section defines the qualitative boundaries for tests. It is especially critical for AI-generated code.

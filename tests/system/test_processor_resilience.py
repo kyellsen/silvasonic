@@ -499,9 +499,11 @@ class TestProcessorResilience:
                     "python",
                     "-c",
                     (
+                        "import asyncio; "
                         "from silvasonic.processor.janitor import panic_filesystem_fallback; "
                         "from pathlib import Path; "
-                        "deleted = panic_filesystem_fallback(Path('/data/recorder'), 2); "
+                        "c = panic_filesystem_fallback(Path('/data/recorder'), 2); "
+                        "deleted = asyncio.run(c); "
                         "print(f'DELETED={deleted}')"
                     ),
                 ],

@@ -33,6 +33,7 @@ import structlog
 from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.processor.modules.janitor_stats import JanitorStats
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
@@ -53,7 +54,7 @@ class JanitorResult:
 
     mode: RetentionMode
     disk_usage_percent: float
-    files_deleted: int = 0
+    recordings_deleted: int = 0
     errors: int = 0
     cloud_sync_fallback: bool = False
     error_details: list[str] = field(default_factory=list)
@@ -134,6 +135,7 @@ async def find_deletable(
                 FROM recordings
                 WHERE local_deleted = false
                   AND uploaded = true
+                  AND analysis_state != '{}'::jsonb
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_each_text(analysis_state) AS kv
                       WHERE kv.value != 'true'
@@ -147,6 +149,7 @@ async def find_deletable(
                 SELECT id, file_raw, file_processed
                 FROM recordings
                 WHERE local_deleted = false
+                  AND analysis_state != '{}'::jsonb
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_each_text(analysis_state) AS kv
                       WHERE kv.value != 'true'
@@ -212,6 +215,8 @@ async def delete_files(
         for rel_path in filter(None, (file_raw, file_processed)):
             full = recordings_dir / rel_path
             try:
+                if not full.resolve().is_relative_to(recordings_dir.resolve()):
+                    continue
                 full.unlink()
                 removed += 1
             except FileNotFoundError:
@@ -260,6 +265,8 @@ async def delete_worker_clips(
             # Expected path format: /data/birdnet/clips/file.wav
             full_path = workspace_root / worker / clip_path
             try:
+                if not full_path.resolve().is_relative_to(workspace_root.resolve()):
+                    continue
                 full_path.unlink()
                 successful_clip_paths.append(clip_path)
             except FileNotFoundError:
@@ -332,29 +339,45 @@ async def panic_filesystem_fallback(
         import heapq
         from collections.abc import Iterator
 
-        def _generate_wav_mtimes() -> Iterator[tuple[float, Path]]:
+        def _generate_candidates() -> Iterator[tuple[float, list[Path]]]:
+            candidates: dict[str, list[Path]] = {}
             for wav_path in recordings_dir.glob("*/data/*/*.wav"):
                 try:
-                    yield (os.path.getmtime(wav_path), wav_path)
+                    sensor_name = wav_path.parts[-4]
+                    key = f"{sensor_name}/{wav_path.stem}"
+                    if key not in candidates:
+                        candidates[key] = []
+                    candidates[key].append(wav_path)
+                except IndexError:
+                    continue
+
+            for paths in candidates.values():
+                try:
+                    mtime = min(os.path.getmtime(p) for p in paths)
+                    yield (mtime, paths)
                 except OSError:
                     continue
 
-        oldest_wavs = heapq.nsmallest(batch_size, _generate_wav_mtimes(), key=lambda x: x[0])
+        oldest_candidates = heapq.nsmallest(batch_size, _generate_candidates(), key=lambda x: x[0])
 
         deleted = 0
-        for _, wav_path in oldest_wavs:
-            try:
-                wav_path.unlink()
+        for _, paths in oldest_candidates:
+            candidate_deleted = False
+            for wav_path in paths:
+                try:
+                    wav_path.unlink()
+                    candidate_deleted = True
+                    log.warning(
+                        "janitor.panic_fallback_deleted",
+                        file=str(wav_path.name),
+                        reason="panic_filesystem_fallback",
+                    )
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    log.exception("janitor.panic_fallback_error", file=str(wav_path.name))
+            if candidate_deleted:
                 deleted += 1
-                log.warning(
-                    "janitor.panic_fallback_deleted",
-                    file=str(wav_path.name),
-                    reason="panic_filesystem_fallback",
-                )
-            except FileNotFoundError:
-                pass
-            except OSError:
-                log.exception("janitor.panic_fallback_error", file=str(wav_path.name))
 
         return deleted
 
@@ -431,7 +454,7 @@ async def run_cleanup(
         try:
             await delete_files(recordings_dir, file_raw, file_processed)
             await soft_delete(session, rec_id)
-            result.files_deleted += 1
+            result.recordings_deleted += 1
             if stats:
                 stats.record_deleted(
                     recording_id=rec_id,
@@ -453,12 +476,26 @@ async def run_cleanup(
                 await delete_worker_clips(session, rec_id, workspace_root)
             except Exception:
                 result.errors += 1
-                result.error_details.append(file_processed if file_processed else "")
+                result.error_details.append(file_processed or file_raw)
                 if stats:
                     stats.record_error(rec_id, file_processed)
+                else:
+                    log.exception("janitor.worker_clip_delete_error", recording_id=rec_id)
+        except SQLAlchemyError as e:
+            log.exception(
+                "janitor.db_error",
+                recording_id=rec_id,
+                detail="Database error during cleanup, aborting cycle to prevent split-brain.",
+            )
+            result.errors += 1
+            result.error_details.append(file_processed or file_raw)
+            if stats:
+                stats.record_error(rec_id, file_processed)
+            await session.rollback()
+            raise e
         except Exception:
             result.errors += 1
-            result.error_details.append(file_processed if file_processed else "")
+            result.error_details.append(file_processed or file_raw)
             if stats:
                 stats.record_error(rec_id, file_processed)
             else:
@@ -469,13 +506,13 @@ async def run_cleanup(
                 )
 
     # Always commit to ensure any partial NULLs applied by delete_worker_clips are saved,
-    # even if files_deleted is 0 due to an exception aborting a soft_delete.
+    # even if recordings_deleted is 0 due to an exception aborting a soft_delete.
     await session.commit()
 
     log.info(
         "janitor.cycle_complete",
         mode=mode.value,
-        files_deleted=result.files_deleted,
+        recordings_deleted=result.recordings_deleted,
         errors=result.errors,
         disk_usage_percent=round(disk_pct, 1),
         cloud_sync_fallback=result.cloud_sync_fallback,
@@ -528,7 +565,7 @@ async def run_cleanup_safe(
             return JanitorResult(
                 mode=RetentionMode.PANIC,
                 disk_usage_percent=disk_pct,
-                files_deleted=deleted,
+                recordings_deleted=deleted,
             )
         # Non-panic: skip this cycle safely
         log.warning(

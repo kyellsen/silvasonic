@@ -46,8 +46,11 @@ class RecorderSettings(BaseSettings):
     # ALSA device string (injected by Controller, e.g. "hw:2,0").
     RECORDER_DEVICE: str = "hw:1,0"
 
-    # Use synthetic audio source (lavfi sine) instead of real hardware (CI testing).
+    # Use synthetic audio source instead of real hardware (CI testing).
     RECORDER_MOCK_SOURCE: bool = False
+
+    # Optional explicit wav file to use in mock source mode (e.g. tests/fixtures/audio/...)
+    RECORDER_MOCK_FILE: Path | None = None
 
     # Full microphone profile as JSON string (injected by Controller, ADR-0016).
     # Contains audio/processing/stream sections with sample rate, gain, etc.

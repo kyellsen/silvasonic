@@ -234,7 +234,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert result.cloud_sync_fallback is False
         assert not del_proc.exists()
         assert kept_proc.exists()
@@ -325,7 +325,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, recordings_dir, settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
 
         # Assert underlying files are gone
         assert not del_proc.exists()
@@ -378,7 +378,7 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.HOUSEKEEPING
         assert result.cloud_sync_fallback is True
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not proc.exists()
 
         # Verify soft-delete
@@ -422,7 +422,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.DEFENSIVE
-        assert result.files_deleted >= 1
+        assert result.recordings_deleted >= 1
         assert not proc.exists()
 
         # Verify soft-delete in DB
@@ -467,7 +467,7 @@ class TestJanitorIntegration:
 
         assert result.mode == RetentionMode.DEFENSIVE
         assert result.cloud_sync_fallback is True
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not proc.exists()
 
         # Verify soft-delete
@@ -523,7 +523,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert not old_proc.exists()  # Oldest deleted first
         assert new_proc.exists()  # Newer preserved (batch_size=1)
 
@@ -572,7 +572,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 2
+        assert result.recordings_deleted == 2
 
         # Verify exactly 2 rows soft-deleted, 3 remaining
         async with factory() as session:
@@ -640,7 +640,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, tmp_path, settings)
 
         assert result.mode == RetentionMode.PANIC
-        assert result.files_deleted == 0
+        assert result.recordings_deleted == 0
 
         await engine.dispose()
 
@@ -708,7 +708,7 @@ class TestJanitorIntegration:
                 result = await run_cleanup(session, recordings_dir, settings)
 
         assert result.mode == RetentionMode.HOUSEKEEPING
-        assert result.files_deleted == 1
+        assert result.recordings_deleted == 1
         assert result.errors == 1
 
         # Assert successful clip is gone

@@ -123,6 +123,7 @@ class FFmpegConfig(BaseModel):
         run_id: str,
         *,
         mock_source: bool = False,
+        mock_file: Path | None = None,
         ffmpeg_binary: str = "ffmpeg",
         loglevel: str = "warning",
     ) -> list[str]:
@@ -133,6 +134,8 @@ class FFmpegConfig(BaseModel):
             workspace: Workspace root path.
             run_id: Unique 8-character hex ID for collision-proof filenames.
             mock_source: Use lavfi sine generator instead of ALSA.
+            mock_file: Optional explicit wav file to use in mock source mode
+                (e.g. tests/fixtures/audio/...)
             ffmpeg_binary: Path to the FFmpeg binary.
             loglevel: FFmpeg log level.
 
@@ -149,15 +152,25 @@ class FFmpegConfig(BaseModel):
 
         # Input source
         if mock_source:
-            cmd.extend(
-                [
-                    "-re",  # Force real-time processing (lavfi has no I/O constraint)
-                    "-f",
-                    "lavfi",
-                    "-i",
-                    f"sine=frequency=440:sample_rate={self.sample_rate}:duration=86400",
-                ]
-            )
+            if mock_file:
+                cmd.extend(
+                    [
+                        "-stream_loop",
+                        "-1",
+                        "-i",
+                        str(mock_file),
+                    ]
+                )
+            else:
+                cmd.extend(
+                    [
+                        "-re",  # Force real-time processing (lavfi has no I/O constraint)
+                        "-f",
+                        "lavfi",
+                        "-i",
+                        f"sine=frequency=440:sample_rate={self.sample_rate}:duration=86400",
+                    ]
+                )
         else:
             cmd.extend(
                 [
@@ -442,6 +455,7 @@ class FFmpegPipeline:
         device: str = "hw:1,0",
         *,
         mock_source: bool = False,
+        mock_file: Path | None = None,
         ffmpeg_binary: str = "ffmpeg",
         ffmpeg_loglevel: str = "warning",
         stats: RecordingStats | None = None,
@@ -451,6 +465,7 @@ class FFmpegPipeline:
         self._workspace = workspace
         self._device = device
         self._mock_source = mock_source
+        self._mock_file = mock_file
         self._ffmpeg_binary = ffmpeg_binary
         self._ffmpeg_loglevel = ffmpeg_loglevel
         self._stats = stats
@@ -519,6 +534,7 @@ class FFmpegPipeline:
             workspace=self._workspace,
             run_id=self.run_id,
             mock_source=self._mock_source,
+            mock_file=self._mock_file,
             ffmpeg_binary=self._ffmpeg_binary,
             loglevel=self._ffmpeg_loglevel,
         )
