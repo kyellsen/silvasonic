@@ -283,3 +283,120 @@ async def test_process_batch_handles_encoding_oserror_gracefully(
 
     assert success is True
     mock_log.assert_called_once()  # Audit log should capture the failure
+
+
+# ────────────────────────────────────────────────────
+# _fetch_config()
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+async def test_fetch_config_defaults_when_no_db_entry(
+    worker: UploadWorker,
+) -> None:
+    """_fetch_config returns default station name when DB has no entry."""
+    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+    session.get = AsyncMock(return_value=None)
+
+    station, settings = await worker._fetch_config()
+
+    assert station == "silvasonic"
+    assert settings is None
+
+
+@pytest.mark.unit
+async def test_fetch_config_extracts_station_name(
+    worker: UploadWorker,
+) -> None:
+    """_fetch_config reads station_name from system config JSONB."""
+    sys_conf = MagicMock()
+    sys_conf.value = {"station_name": "waldstation-01"}
+
+    sync_conf = MagicMock()
+    sync_conf.value = {
+        "enabled": True,
+        "remote_type": "s3",
+        "remote_config": {
+            "access_key_id": "k",
+            "secret_access_key": "s",
+            "region": "eu",
+            "endpoint": "http://s3",
+            "acl": "private",
+        },
+    }
+
+    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+
+    async def fake_get(model: Any, key: str) -> Any:
+        if key == "system":
+            return sys_conf
+        if key == "cloud_sync":
+            return sync_conf
+        return None
+
+    session.get = AsyncMock(side_effect=fake_get)
+
+    station, settings = await worker._fetch_config()
+
+    assert station == "waldstation-01"
+    assert settings is not None
+    assert settings.enabled is True
+
+
+@pytest.mark.unit
+async def test_fetch_config_returns_none_for_invalid_cloud_sync(
+    worker: UploadWorker,
+) -> None:
+    """_fetch_config returns None settings when cloud_sync JSONB causes error."""
+    sync_conf = MagicMock()
+    # poll_interval must be int → dict triggers ValidationError
+    sync_conf.value = {"poll_interval": {"nested": "invalid"}}
+
+    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+
+    async def fake_get(model: Any, key: str) -> Any:
+        if key == "cloud_sync":
+            return sync_conf
+        return None
+
+    session.get = AsyncMock(side_effect=fake_get)
+
+    station, settings = await worker._fetch_config()
+
+    assert station == "silvasonic"
+    assert settings is None
+
+
+# ────────────────────────────────────────────────────
+# run() fatal error path + stop()
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+async def test_run_exits_on_missing_encryption_key(
+    tmp_path: Path,
+) -> None:
+    """run() exits immediately and reports fatal health on missing key."""
+    session_factory = MagicMock()
+    health = MagicMock()
+
+    w = UploadWorker(session_factory, health, tmp_path)
+
+    with patch(
+        "silvasonic.processor.upload_worker.load_encryption_key",
+        side_effect=RuntimeError("no key"),
+    ):
+        await w.run()
+
+    health.update_status.assert_called_once()
+    call_args = health.update_status.call_args
+    assert call_args[0][1] is False  # healthy=False
+    assert "fatal" in call_args[0][2].lower()
+
+
+@pytest.mark.unit
+async def test_stop_sets_shutdown_event(worker: UploadWorker) -> None:
+    """stop() sets the shutdown event so run() can exit."""
+    assert not worker._shutdown_event.is_set()
+    await worker.stop()
+    assert worker._shutdown_event.is_set()

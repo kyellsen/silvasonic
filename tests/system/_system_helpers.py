@@ -1,8 +1,7 @@
-"""Shared helpers for Processor system tests.
+"""Shared helpers for system tests.
 
-Container management, DB/Redis readiness checks, and device seeding
-used by both ``test_processor_lifecycle.py`` and
-``test_processor_resilience.py``.
+Container management, DB/Redis readiness checks, state-based polling
+waiters, and device seeding used across all ``tests/system/`` modules.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import contextlib
 import subprocess
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -21,6 +20,65 @@ PROCESSOR_IMAGE = "localhost/silvasonic_processor:latest"
 DATABASE_IMAGE = "localhost/silvasonic_database:latest"
 REDIS_IMAGE = "docker.io/library/redis:7-alpine"
 BIRDNET_IMAGE = "localhost/silvasonic_birdnet:latest"
+
+
+# ---------------------------------------------------------------------------
+# State-based polling
+# ---------------------------------------------------------------------------
+
+
+def wait_until[T](
+    description: str,
+    predicate: Callable[[], T],
+    *,
+    timeout: float = 30,
+    poll_interval: float = 1.0,
+) -> T:
+    """Poll *predicate* until it returns a truthy value or *timeout* expires.
+
+    Returns the truthy value on success.  Predicate exceptions are
+    swallowed (treated as "not yet ready").  On timeout the test is
+    failed via ``pytest.fail()`` with *description* for immediate
+    root-cause identification.
+    """
+    deadline = time.monotonic() + timeout
+    last_exc: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            result = predicate()
+            if result:
+                return result
+        except Exception as exc:
+            last_exc = exc
+        time.sleep(poll_interval)
+    detail = f" (last error: {last_exc})" if last_exc else ""
+    pytest.fail(f"Timeout: {description}{detail}")
+
+
+def wait_for_log_pattern(
+    container: str,
+    pattern: str,
+    *,
+    timeout: float = 25,
+    poll_interval: float = 1.0,
+) -> str:
+    """Poll container logs for *pattern*. Returns full logs on match.
+
+    **Diagnostic/fallback helper only.**  Must NOT be used for primary
+    business-logic assertions — use only where no observable external
+    state exists (e.g. verifying an internal skip/fallback code path).
+    """
+
+    def _check() -> str:
+        logs = podman_logs(container)
+        return logs if pattern in logs else ""
+
+    return wait_until(
+        f"log pattern '{pattern}' in {container}",
+        _check,
+        timeout=timeout,
+        poll_interval=poll_interval,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -364,16 +422,17 @@ def wait_for_wavs(
     poll_interval: float = 1.0,
 ) -> list[Path]:
     """Poll for WAV files with early return."""
-    deadline = time.monotonic() + timeout
-    files: list[Path] = []
 
-    while time.monotonic() < deadline:
-        files = list(directory.rglob("*.wav"))
-        if len(files) >= min_count:
-            return sorted(files)
-        time.sleep(poll_interval)
+    def _check() -> list[Path]:
+        files = sorted(directory.rglob("*.wav"))
+        return files if len(files) >= min_count else []
 
-    pytest.fail(f"Timeout waiting for {min_count} WAVs in {directory}. Found {len(files)}")
+    return wait_until(
+        f"{min_count} WAVs in {directory}",
+        _check,
+        timeout=timeout,
+        poll_interval=poll_interval,
+    )
 
 
 def wait_for_db_rows(
@@ -385,20 +444,18 @@ def wait_for_db_rows(
     poll_interval: float = 1.0,
 ) -> int:
     """Poll database for a minimum row count."""
-    deadline = time.monotonic() + timeout
-    count = 0
 
-    while time.monotonic() < deadline:
-        try:
-            output = psql_query(db_container, query, retries=0).strip()
-            count = int(output) if output.isdigit() else 0
-            if count >= min_count:
-                return count
-        except Exception:
-            pass
-        time.sleep(poll_interval)
+    def _check() -> int:
+        output = psql_query(db_container, query, retries=0).strip()
+        count = int(output) if output.isdigit() else 0
+        return count if count >= min_count else 0
 
-    pytest.fail(f"Timeout waiting for >= {min_count} rows from query: {query}. Got {count}")
+    return wait_until(
+        f">= {min_count} rows from: {query}",
+        _check,
+        timeout=timeout,
+        poll_interval=poll_interval,
+    )
 
 
 def wait_for_detection(
@@ -409,25 +466,24 @@ def wait_for_detection(
     poll_interval: float = 2.0,
 ) -> dict[str, str]:
     """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
-    deadline = time.monotonic() + timeout
-
-    # Query fetches the detection id, label, and clip_path
     query = (
         "SELECT id, label, clip_path FROM detections "
         f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' OFFSET 0 LIMIT 1"
     )
 
-    while time.monotonic() < deadline:
-        try:
-            output = psql_query(db_container, query, retries=0).strip()
-            if output and "|" in output:
-                id_str, label, clip_path = output.split("|")
-                return {"id": id_str, "label": label, "clip_path": clip_path}
-        except Exception:
-            pass
-        time.sleep(poll_interval)
+    def _check() -> dict[str, str]:
+        output = psql_query(db_container, query, retries=0).strip()
+        if output and "|" in output:
+            id_str, label, clip_path = output.split("|")
+            return {"id": id_str, "label": label, "clip_path": clip_path}
+        return {}
 
-    pytest.fail(f"Timeout waiting for BirdNET detection with label prefix '{prefix_taxon}'")
+    return wait_until(
+        f"BirdNET detection with prefix '{prefix_taxon}'",
+        _check,
+        timeout=timeout,
+        poll_interval=poll_interval,
+    )
 
 
 # ---------------------------------------------------------------------------

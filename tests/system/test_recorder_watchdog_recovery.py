@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from ._processor_helpers import (
+from ._system_helpers import (
     make_recorder_env,
     podman_logs,
     podman_run,

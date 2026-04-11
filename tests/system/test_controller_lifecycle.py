@@ -55,7 +55,7 @@ if PRIMARY_MIC is None:
 assert PRIMARY_MIC is not None
 
 # system_network and run_id fixtures are auto-discovered from conftest.py
-# (re-exported from _processor_helpers.py)
+# (re-exported from _system_helpers.py)
 
 pytestmark = [
     pytest.mark.system,

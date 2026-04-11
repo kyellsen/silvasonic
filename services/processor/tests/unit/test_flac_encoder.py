@@ -117,3 +117,48 @@ async def test_encode_raises_flac_error_on_permission_denied(
         pytest.raises(FlacEncodingError, match="ffmpeg"),
     ):
         await encode_wav_to_flac(dummy_wav, dummy_wav.parent)
+
+
+# ────────────────────────────────────────────────────
+# Edge cases: missing input / empty output
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+async def test_encode_raises_runtime_error_for_missing_input(
+    tmp_path: Path,
+) -> None:
+    """encode_wav_to_flac raises RuntimeError when input file doesn't exist.
+
+    Contract: callers receive a clear error type rather than an
+    opaque FileNotFoundError from ffmpeg subprocess.
+    """
+    missing = tmp_path / "nonexistent.wav"
+
+    with pytest.raises(RuntimeError, match="File not found"):
+        await encode_wav_to_flac(missing, tmp_path)
+
+
+@pytest.mark.unit
+async def test_encode_raises_for_empty_output(dummy_wav: Path) -> None:
+    """encode_wav_to_flac raises FlacEncodingError when ffmpeg exits 0 but output is empty.
+
+    Edge case: ffmpeg may succeed (exit 0) but produce a zero-byte file
+    due to a codec bug or truncated input.
+    """
+
+    async def mock_exec(*args: Any, **kwargs: Any) -> AsyncMock:
+        # Create empty output file (simulates broken ffmpeg)
+        out_path = Path(args[-1])
+        out_path.write_bytes(b"")
+
+        proc = AsyncMock()
+        proc.returncode = 0
+        proc.communicate.return_value = (b"", b"")
+        return proc
+
+    with (
+        patch("asyncio.create_subprocess_exec", side_effect=mock_exec),
+        pytest.raises(FlacEncodingError, match="missing or empty"),
+    ):
+        await encode_wav_to_flac(dummy_wav, dummy_wav.parent)
