@@ -122,7 +122,7 @@ just ci              # Full CI pipeline (> 4m):
 - Each test session gets its own **isolated Podman network** (`silvasonic-hw-test-{id}`) via the `hw_redis` fixture.
 - Require a USB-Audio device connected (e.g., UltraMic 384K).
 - Skip automatically when no USB-Audio device is detected.
-- **Fully isolated from production** — can run while `just start` is active.
+- **Fully isolated via container network — but hardware-locked**. **Cannot** run while `just start` is active (ALSA device requires exclusive access).
 - **Never** included in CI pipelines — run manually via `just test-hw` or `just test-hw-manual`.
 
 ### Smoke Tests
@@ -236,19 +236,20 @@ Test names should describe the **expected behavior**, not the implementation det
 
 ## 9. Parallel Execution & Isolation
 
-**Every test level is fully isolated.** All combinations can run in parallel — with each other and with `just start` (production stack).
+**Every test level is fully isolated.** Almost all combinations can run in parallel — with each other and with `just start` (production stack).
+**Exception**: `system_hw_auto` and `system_hw_manual` **cannot** run in parallel with `just start` due to the exclusive kernel-level lock on the ALSA audio device.
 
 ### Isolation by Level
 
-| Level | Container Infra | Network |
-| --- | --- | --- |
-| `unit` | None | None |
-| `integration` | `testcontainers` | Random (auto) |
-| `smoke` | `testcontainers` | `smoke_network` (random) |
-| `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) |
-| `system_hw_auto` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) |
-| `system_hw_manual` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) |
-| `just start` | Compose | `silvasonic-net` (fixed) |
+| Level | Container Infra | Network | ALSA Device |
+| --- | --- | --- | --- |
+| `unit` | None | None | Mocked |
+| `integration` | `testcontainers` | Random (auto) | Mocked |
+| `smoke` | `testcontainers` | `smoke_network` (random) | Mocked |
+| `system` | Podman CLI | `silvasonic-test-{run_id}` (per test) | Mocked |
+| `system_hw_auto` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | **Locked (Exclusive)** |
+| `system_hw_manual` | Podman CLI | `silvasonic-hw-test-{session_id}` (per session) | **Locked (Exclusive)** |
+| `just start` | Compose | `silvasonic-net` (fixed) | **Locked (Exclusive)** |
 
 ### Key Fixtures & Mechanisms
 
