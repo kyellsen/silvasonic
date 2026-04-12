@@ -4,8 +4,8 @@
 >
 > 📋 **User Stories:** `n/a` (Developer Tool)
 
-**AS-IS:** Developer UI for inspecting database tables and performing multi-format data exports (CSV, JSON, Parquet).
-**Target:** Stable background utility; UI layout and export functions completed.
+**AS-IS:** Developer UI for inspecting database tables, executing custom SQL queries, and performing multi-format data exports (CSV, JSON, Parquet).
+**Target:** Stable background utility; UI layout, custom SQL editor, and export functions completed.
 
 ---
 
@@ -38,7 +38,7 @@
 | Aspect           | Value / Rule                                                   |
 | ---------------- | -------------------------------------------------------------- |
 | **Immutable**    | Yes                                                            |
-| **DB Access**    | Read-Only                                                      |
+| **DB Access**    | Read / Write (Custom SQL)                                      |
 | **Concurrency**  | Uvicorn Asyncio Event Loop                                     |
 | **State**        | Stateless                                                      |
 | **Privileges**   | Rootless                                                       |
@@ -64,7 +64,6 @@
 
 ## 7. Out of Scope
 
-*   Write operations / Database mutation (Read-Only enforcement).
 *   Production End-User Access (this is an internal development and administrative tool).
 
 ## 8. Implementation Details (Domain Specific)

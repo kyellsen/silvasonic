@@ -1,0 +1,51 @@
+{% if not success %}
+<div class="p-6 w-full">
+    <div class="alert alert-error font-mono text-sm shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span>{{ error }}</span>
+    </div>
+</div>
+{% else %}
+    {% if returns_rows %}
+        {% if not rows %}
+        <div class="p-8 w-full text-center text-base-content/60 italic">
+            0 rows returned.
+        </div>
+        {% else %}
+        <table class="table table-sm table-pin-rows table-pin-cols w-full">
+            <thead>
+                <tr>
+                    <th class="bg-base-200 z-20 w-8 text-center text-xs text-base-content/50">#</th>
+                    {% for col in columns %}
+                    <th class="bg-base-200 z-20 text-xs font-bold uppercase tracking-wider">{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="hover">
+                    <th class="text-xs text-base-content/50 w-8 text-center">{{ loop.index }}</th>
+                    {% for col in columns %}
+                    <td class="font-mono text-sm max-w-xs truncate" title="{{ row[col] }}">
+                        {{ row[col] }}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    {% else %}
+        <div class="p-8 w-full flex justify-center items-center h-full">
+            <div class="flex flex-col items-center gap-4">
+                <div class="badge badge-success badge-lg p-6 font-bold text-lg gap-2 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Query Executed Successfully
+                </div>
+                <div class="text-base-content/70 font-mono bg-base-200 py-2 px-4 rounded-lg">
+                    {{ rowcount }} rows affected.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
