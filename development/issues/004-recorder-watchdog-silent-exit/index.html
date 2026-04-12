@@ -2637,10 +2637,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-steps-to-reproduce-if-applicable" class="md-nav__link">
+  <a href="#4-steps-to-reproduce-in-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Steps to Reproduce (If applicable)
+        4. Steps to Reproduce (In Test)
       
     </span>
   </a>
@@ -2702,52 +2702,33 @@
 
 <h1 id="bug-004-recorder-watchdog-gives-up-without-causing-a-container-level-failure">[BUG] 004: Recorder watchdog gives up without causing a container-level failure<a class="headerlink" href="#bug-004-recorder-watchdog-gives-up-without-causing-a-container-level-failure" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status:</strong> <code>open</code></p>
+<p><strong>Status:</strong> <code>closed</code></p>
 <p><strong>Priority:</strong> 10</p>
 <p><strong>Labels:</strong> <code>bug</code>, <code>architecture</code></p>
 <p><strong>Service(s) Affected:</strong> <code>recorder</code></p>
 </blockquote>
 <hr />
 <h2 id="1-description">1. Description<a class="headerlink" href="#1-description" title="Permanent link">&para;</a></h2>
-<p>When the Recorder watchdog exhausts its restart budget (<code>max_restarts</code>), it gives up and exits its watch loop. However, the service does not fail hard at the process level. Instead, the recorder container shuts down gracefully and the Python process exits with code 0. This weakens the intended multi-level recovery chain because Podman's <code>restart: on-failure</code> is never triggered when the exit code is 0.</p>
+<p><em>Update (v0.8.0): The core codebase logic for this issue is fixed. The watchdog now raises a <code>RuntimeError</code> upon exhaustion, causing the container to crash with exit code 1. This remaining work is to provide a behavioral system-level test to guarantee this contract.</em></p>
+<p>Originally, when the Recorder watchdog exhausted its restart budget (<code>max_restarts</code>), it gracefully exited the Python process with code 0 instead of failing hard. This incorrectly bypassed the Level 2 recovery mechanism (Podman's <code>restart: on-failure</code>).</p>
 <h2 id="2-context-root-cause-analysis">2. Context &amp; Root Cause Analysis<a class="headerlink" href="#2-context-root-cause-analysis" title="Permanent link">&para;</a></h2>
-<p>The failure occurs across three different architectural layers dealing with process execution and lifecycle management:</p>
-<ol>
-<li><code>services/recorder/src/silvasonic/recorder/watchdog.py</code>: Once <code>max_restarts</code> is exhausted, it sets <code>_giving_up = True</code> and uses <code>break</code> to exit the loop. It does not raise an exception.</li>
-<li><code>services/recorder/src/silvasonic/recorder/__main__.py</code>: <code>RecorderService.run()</code> awaits the watchdog. Because <code>watch()</code> returns normally, <code>run()</code> proceeds to the <code>finally</code> cleanup path, stopping the pipeline cleanly.</li>
-<li><code>packages/core/src/silvasonic/core/service.py</code>: <code>_main()</code> treats a clean return from <code>run()</code> as a successful, orderly shutdown (usually meant for SIGTERM). Because no exception propagates up, <code>service.py</code> exits cleanly without publishing a dying-gasp heartbeat, and the Python interpreter exits with <code>0</code>.</li>
-</ol>
-<p>This means the documented recovery chain is currently broken at the transition from Level 1 to Level 2:
-- Level 1: internal watchdog restart (Works)
-- <strong>Level 2: Podman <code>restart: on-failure</code> (FAILS due to clean exit)</strong>
-- Level 3: Controller recreation</p>
-<ul>
-<li><strong>Component:</strong> <code>RecordingWatchdog.watch</code>, <code>RecorderService.run</code>, <code>SilvaService._main</code></li>
-<li><strong>Mechanism:</strong> Watchdog "giving up" is represented as a clean control-flow exit (exit 0) instead of an explicit service failure (exit 1+).</li>
-</ul>
+<p>The failure occurred due to the watchdog setting a flag and breaking out of its evaluation loop rather than raising an exception. Because no exception propagated to <code>SilvaService._main()</code>, the Python interpreter exited with 0 and no dying-gasp heartbeat was published.</p>
+<p>This has been resolved in <code>RecordingWatchdog.watch</code> by explicitly raising a <code>RuntimeError</code> when restart budgets are exhausted. The exception successfully propagates up, forcing a container crash.</p>
 <h2 id="3-impact-consequences">3. Impact / Consequences<a class="headerlink" href="#3-impact-consequences" title="Permanent link">&para;</a></h2>
-<p>This is a critical flaw for the MVP and field reliability.
-* <strong>Data Capture Integrity:</strong> High risk. After repeated FFmpeg failures (e.g. from an unstable ALSA device), the recorder stops recovering automatically and the container shuts off. Recordings cease silently.
-* <strong>System Stability:</strong> Recovery behavior becomes inconsistent with the architecture and documentation.
-* <strong>Hardware Wear:</strong> Low direct wear, but continuous manual restarts reduce the systemic autonomy goal.</p>
-<h2 id="4-steps-to-reproduce-if-applicable">4. Steps to Reproduce (If applicable)<a class="headerlink" href="#4-steps-to-reproduce-if-applicable" title="Permanent link">&para;</a></h2>
+<p>Without a behavioral regression test, this critical recovery path remains functionally invisible to CI. If a future refactoring accidentally catches the exception or returns cleanly, the silent-exit bug could regress unobserved, compromising Data Capture Integrity.</p>
+<h2 id="4-steps-to-reproduce-in-test">4. Steps to Reproduce (In Test)<a class="headerlink" href="#4-steps-to-reproduce-in-test" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Force repeated FFmpeg startup or runtime failures (e.g., provide a nonexistent ALSA capture device or forcefully kill the <code>ffmpeg</code> subprocess multiple times).</li>
-<li>Let the watchdog consume all configured restart attempts (<code>max_restarts</code>).</li>
-<li>Observe that the watchdog logs <code>watchdog.giving_up</code>.</li>
-<li>Run <code>podman ps -a</code> and observe that the container exited, but the exit reason is success (0) rather than an error code. <code>restart: on-failure</code> is completely bypassed.</li>
+<li>Force repeated FFmpeg startup or runtime failures (by supplying a mock recording source that instantly crashes).</li>
+<li>Allow the watchdog to attempt restarts and consume the budget.</li>
+<li>Assert that the container exits with a non-zero code.</li>
 </ol>
 <h2 id="5-expected-behavior">5. Expected Behavior<a class="headerlink" href="#5-expected-behavior" title="Permanent link">&para;</a></h2>
-<p>When the watchdog can no longer recover the recording pipeline, the Recorder service should fail explicitly (throwing an exception or exiting with a non-zero code) so that Podman can correctly apply its container-level <code>restart: on-failure</code> policy.</p>
+<p>The system test <code>test_recorder_watchdog_recovery.py</code> runs a recorder container, forces recurring FFmpeg crashes, and asserts that the container explicitly exits with an error code rather than hanging or returning exit code 0.</p>
 <h2 id="6-proposed-solution">6. Proposed Solution<a class="headerlink" href="#6-proposed-solution" title="Permanent link">&para;</a></h2>
-<p>After the watchdog gives up, convert this state into an explicit service failure.</p>
 <p><strong>Implementation Plan:</strong>
-1. In <code>RecorderService.run</code> (<code>services/recorder/src/silvasonic/recorder/__main__.py</code>), after <code>await self._watchdog.watch(...)</code> returns, check <code>self._watchdog.is_giving_up</code>.
-2. If <code>True</code>, raise a dedicated, explicitly named exception (e.g., <code>WatchdogGiveUpError("Watchdog exhausted max restarts and gave up.")</code>).
-3. This exception will correctly bubble up into <code>SilvaService._main()</code>.
-4. <code>_main()</code> will catch it, log the crash, trigger the <code>_publish_dying_gasp</code> heartbeat, and cause the Python process to exit with a non-zero exit code.
-5. Podman's <code>restart: on-failure</code> will recognize the failure and execute a Level-2 container restart.</p>
-<p>No database schema or config changes are required.</p>
+1. Author <code>tests/system/test_recorder_watchdog_recovery.py</code>
+2. Validate the test in the <code>just test-system</code> pipeline.
+3. Close the issue.</p>
 <h2 id="7-relevant-documentation-links">7. Relevant Documentation Links<a class="headerlink" href="#7-relevant-documentation-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md">AGENTS.md</a></li>

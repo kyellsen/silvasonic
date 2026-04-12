@@ -2702,15 +2702,16 @@
 
 <h1 id="bug-006-controller-adopts-unhealthy-recorder-containers-and-never-self-heals-them">[BUG] 006: Controller adopts unhealthy Recorder containers and never self-heals them<a class="headerlink" href="#bug-006-controller-adopts-unhealthy-recorder-containers-and-never-self-heals-them" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status:</strong> <code>open</code></p>
+<p><strong>Status:</strong> <code>closed</code></p>
 <p><strong>Priority:</strong> 8</p>
 <p><strong>Labels:</strong> <code>bug</code> | <code>architecture</code></p>
 <p><strong>Service(s) Affected:</strong> <code>controller</code> | <code>recorder</code></p>
 </blockquote>
 <hr />
 <h2 id="1-description">1. Description<a class="headerlink" href="#1-description" title="Permanent link">&para;</a></h2>
-<p>The Controller currently reconciles Recorder containers based on container presence and config hash, but not on functional recording health. A Recorder container can remain running while not recording any audio, and the Controller will continue to adopt it as healthy desired state.</p>
-<p>This creates a silent failure mode: the system appears operational at the container layer, but Data Capture Integrity is already lost.</p>
+<p><em>Update (v0.8.0): Both the Recorder-side fail-fast and the Controller-side health-aware reconciliation are now implemented and verified by system tests.</em></p>
+<p>Originally, the Controller reconciled Recorder containers based on container presence and config hash only, but not on functional recording health. A Recorder container could remain running while not recording any audio, and the Controller would continue to adopt it as healthy desired state.</p>
+<p>This created a silent failure mode: the system appeared operational at the container layer, but Data Capture Integrity was already lost.</p>
 <h2 id="2-context-root-cause-analysis">2. Context &amp; Root Cause Analysis<a class="headerlink" href="#2-context-root-cause-analysis" title="Permanent link">&para;</a></h2>
 <p>The current reconciliation logic in <code>services/controller/src/silvasonic/controller/container_manager.py</code> only compares desired vs. actual containers using:
 - container name
@@ -2752,18 +2753,16 @@
 <p>If FFmpeg fails, the Watchdog restarts it (Level 1). If exhausted, the container exits and Podman <code>restart: on-failure</code> takes over (Level 2).</p>
 </li>
 <li>
-<p><strong>Controller-side health-aware reconciliation</strong></p>
+<p><strong>Controller-side health-aware reconciliation</strong> ✅ <strong>RESOLVED</strong></p>
 </li>
-<li>Extend Controller reconciliation to inspect Recorder health or a stronger runtime signal than container presence alone.</li>
-<li>Possible mechanisms:<ul>
-<li>poll <code>/healthy</code> from managed containers</li>
-<li>inspect health state from Podman if exposed</li>
-<li>use a Redis heartbeat freshness check per Recorder instance</li>
-<li>optionally define a label or metadata contract for “recording active”</li>
-</ul>
-</li>
+<li>The <code>ReconciliationLoop._reconcile_once()</code> now evaluates heartbeat freshness
+     via Redis (<code>silvasonic:status:&lt;device_id&gt;</code>) before executing <code>sync_state</code>.</li>
+<li>Containers with missing, stale (&gt;45s), or error-status heartbeats are
+     actively evicted via <code>ContainerManager.stop_and_remove()</code> and excluded
+     from the <code>actual</code> list, causing <code>sync_state</code> to recreate them.</li>
+<li>System test: <code>tests/system/test_controller_health_reconciliation.py</code>
+     validates the full zombie-detection-and-replacement cycle.</li>
 </ol>
-<p>No schema change is strictly required, but this may warrant an ADR or at least an architecture note because it changes the Controller’s reconciliation contract from “container exists” to “container is functionally healthy”.</p>
 <h2 id="7-relevant-documentation-links">7. Relevant Documentation Links<a class="headerlink" href="#7-relevant-documentation-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md">AGENTS.md</a></li>

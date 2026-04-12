@@ -3422,7 +3422,7 @@
 <h3 id="acceptance-criteria_6">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria_6" title="Permanent link">&para;</a></h3>
 <ul>
 <li>[ ] The processing order ("Oldest first" vs "Newest first") is adjustable via the web interface.</li>
-<li>[ ] This setting is technically modeled as a literal field (<code>processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"</code>) in the <code>BirdnetSettings</code> Pydantic schema, ensuring the web interface can automatically render a dropdown.</li>
+<li>[ ] This setting is constrained to strictly accept either "oldest_first" or "newest_first", ensuring the web interface can automatically render a dropdown.</li>
 <li>[ ] The BirdNET worker dynamically alters its database pull query (<code>ORDER BY time ASC</code> vs <code>DESC</code>) based on the active setting.</li>
 <li>[ ] Changes to the processing order are applied immediately or upon the next worker cycle.</li>
 </ul>

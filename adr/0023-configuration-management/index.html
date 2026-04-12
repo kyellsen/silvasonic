@@ -1837,6 +1837,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#231-local-developer-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.1 Local Developer Override
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#24-authentication-users-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2829,6 +2840,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#231-local-developer-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.1 Local Developer Override
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#24-authentication-users-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2995,8 +3017,8 @@
 <p>A version-controlled YAML file defines factory defaults for all <code>system_config</code> keys:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># config/defaults.yml — seeded into system_config on Controller startup</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">system</span><span class="p">:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">latitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53.55</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">longitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.99</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">latitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">longitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">max_recorders</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">station_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Silvasonic</span><span class="nv"> </span><span class="s">Dev&quot;</span>
@@ -3013,7 +3035,7 @@
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="c1"># uploader:                            # v0.6.0</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="c1">#   ...</span>
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># birdnet:                             # v0.8.0</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="c1">#   confidence_threshold: 0.25</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="c1">#   confidence_threshold: 0.65</span>
 </code></pre></div>
 <p><strong>Seeding behavior:</strong>
 1.  On every Controller startup, the YAML is loaded and validated against Pydantic schemas.
@@ -3021,6 +3043,10 @@
 3.  Existing user-modified values are <strong>never overwritten</strong>.
 4.  After a database reset, all defaults are restored automatically on the next Controller startup.
 5.  Service settings are only seeded once the corresponding service is implemented and uncommented in the YAML.</p>
+<h3 id="231-local-developer-override">2.3.1 Local Developer Override<a class="headerlink" href="#231-local-developer-override" title="Permanent link">&para;</a></h3>
+<p>To prevent "volatile DBs" (e.g. from frequent <code>just nuke</code> workflows) from repeatedly wiping developer customizations without polluting the Git tree with <code>.env</code> application state (which violates section 2.6):
+Developers may create a <code>config/defaults.override.yml</code> file. This file is ignored by <code>.gitignore</code>.
+If present during Controller startup, the ConfigSeeder performs a deep-merge of this override file <em>over</em> the <code>defaults.yml</code>. This ensures that local values consistently re-seed into fresh databases while maintaining strict ADR-0023 tier compliance.</p>
 <h3 id="24-authentication-users-table">2.4. Authentication — <code>users</code> Table<a class="headerlink" href="#24-authentication-users-table" title="Permanent link">&para;</a></h3>
 <p>Authentication credentials are stored in a <strong>dedicated <code>users</code> table</strong>, separate from <code>system_config</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="p">(</span>

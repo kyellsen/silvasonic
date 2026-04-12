@@ -2760,7 +2760,7 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tr>
 <tr>
 <td><strong>BirdNET</strong></td>
-<td>(Planned) Tier 2 on-device inference service (single instance) for avian species classification. Consumes Processed recordings (read-only).</td>
+<td>Tier 2 on-device inference service (single instance) for avian species classification using native TFLite. Consumes Processed recordings (read-only) and extracts Audio Clips.</td>
 </tr>
 <tr>
 <td><strong>Controller</strong></td>
@@ -2792,7 +2792,8 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 </tr>
 </tbody>
 </table>
-<p>| <strong>Weather</strong>       | (Planned) Tier 2 service (single instance). First downloads environmental data from external APIs (e.g. OpenMeteo) and stores it in the database, then correlates it with acoustic recordings.                                                                                                                                                                    |
+<p>| <strong>Singleton Worker</strong><br><strong>(Background Worker)</strong> | A Tier 2 service restricted to exactly one running instance across the entire system. Responsible for cluster-wide asynchronous processing like ML inference. Implements the Worker Pull pattern. Lifecycle is managed by the Controller via the <code>managed_services</code> table. |
+| <strong>Weather</strong>       | (Planned) Tier 2 service (single instance). First downloads environmental data from external APIs (e.g. OpenMeteo) and stores it in the database, then correlates it with acoustic recordings.                                                                                                                                                                    |
 | <strong>Web-Interface</strong> | (Planned) Tier 1 local management console targeting production use (single instance). Uses the Read+Subscribe Pattern (Redis SET+TTL + Pub/Sub) for real-time service status. Controls services via DB writes + <code>PUBLISH silvasonic:nudge "reconcile"</code> (State Reconciliation Pattern). |
 | <strong>Web-Mock</strong>      | Tier 1 development prototype and UI shell (single instance). FastAPI + Jinja2 + HTMX serving hardcoded mock data. Precursor to the full Web-Interface. Uses <code>ServiceContext</code> lifespan. Port 8001. |</p>
 <hr />
@@ -2846,6 +2847,14 @@ See also: <a href="../AGENTS/">AGENTS.md §2</a> — Domain Language Policy.</p>
 <tr>
 <td><strong>Actual State</strong></td>
 <td>Runtime health and activity of a service (healthy/degraded/crashed). Published to Redis by each service via the SilvaService heartbeat: <code>SET silvasonic:status:&lt;id&gt;</code> with TTL (current snapshot) + <code>PUBLISH silvasonic:status</code> (live updates). Web-Interface uses the Read+Subscribe Pattern. Not persisted in the database. See ADR-0017, ADR-0019.</td>
+</tr>
+<tr>
+<td><strong>Analysis Backlog</strong></td>
+<td>The logical queue of unprocessed recordings waiting for inference. Managed dynamically via atomic DB queries (<code>SELECT FOR UPDATE SKIP LOCKED</code>) where the row lacks the specific worker's key in its <code>analysis_state</code> JSON. Processed continuously by Singleton Workers.</td>
+</tr>
+<tr>
+<td><strong>Audio Clip</strong></td>
+<td>A short, extracted WAV file representing the exact time window of a specific biological Detection (e.g., a bird call) plus some configurable padding. Resides in the worker's workspace and is referenced by <code>detections.clip_path</code>. Used for user playback and manual verification.</td>
 </tr>
 <tr>
 <td><strong>Auto-Enrollment</strong></td>

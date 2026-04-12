@@ -3704,16 +3704,16 @@ See <a href="../../../adr/0027-birdnet-inference-engine/">ADR-0027</a>.</p>
 <strong>User Stories:</strong> Core backend implementations (US-B01, US-B03, US-B04, US-B07 logic) verified via DB-Viewer. UI-dependent stories (US-B02, US-B05, US-B06) deferred to v0.9.0 web interface.</p>
 <h3 id="tasks_6">Tasks<a class="headerlink" href="#tasks_6" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Verify <code>check-all</code> passes (lint, mypy, all tests up to smoke/system).</li>
-<li>[ ] Create <code>services/birdnet/README.md</code> using <code>services/_template_readme.md</code> boilerplate and convert <code>docs/services/birdnet.md</code> to a link-stub (per <code>STRUCTURE.md</code> §4).</li>
-<li>[ ] Update <code>docs/glossary.md</code> with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).</li>
-<li>[ ] Update <code>docs/index.md</code> to reflect the newly integrated BirdNET service and documentation structure.</li>
+<li>[x] Verify <code>check-all</code> passes (lint, mypy, all tests up to smoke/system).</li>
+<li>[x] Create <code>services/birdnet/README.md</code> using <code>services/_template_readme.md</code> boilerplate and convert <code>docs/services/birdnet.md</code> to a link-stub (per <code>STRUCTURE.md</code> §4).</li>
+<li>[x] Update <code>docs/glossary.md</code> with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).</li>
+<li>[x] Update <code>docs/index.md</code> to reflect the newly integrated BirdNET service and documentation structure.</li>
 <li>[x] <strong>Add</strong> <code>"detections"</code> to <code>_CLEANUP_TABLES</code> in <code>tests/integration/conftest.py</code>. (Resolved dynamically via <code>clean_database</code>)</li>
 </ul>
 <h3 id="testing-phase-7">Testing (Phase 7)<a class="headerlink" href="#testing-phase-7" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_pipeline.py</code>: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes <code>detections</code> and extracts clips.</li>
-<li>[ ] <strong><code>system_hw_manual</code></strong> — <code>tests/system/test_hw_birdnet_pipeline.py</code>: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via <code>enabled=true</code> system config setting.</li>
+<li>[x] <strong><code>system</code></strong> — <code>tests/system/test_birdnet_full_pipeline.py</code>: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes <code>detections</code> and extracts clips.</li>
+<li>[x] <strong><code>system_hw_manual</code></strong> — <code>tests/system/test_hw_birdnet_full_pipeline.py</code>: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via <code>enabled=true</code> system config setting.</li>
 </ul>
 <hr />
 <h2 id="phase-8-version-bump-release-v080-commit-8">Phase 8: Version Bump &amp; Release v0.8.0 (Commit 8)<a class="headerlink" href="#phase-8-version-bump-release-v080-commit-8" title="Permanent link">&para;</a></h2>

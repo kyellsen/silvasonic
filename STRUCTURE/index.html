@@ -2747,7 +2747,7 @@ To prevent documentation drift and maintain the DRY (Don't Repeat Yourself) prin
 <h2 id="2-mkdocs-integration-wrappers">2. MkDocs Integration Wrappers<a class="headerlink" href="#2-mkdocs-integration-wrappers" title="Permanent link">&para;</a></h2>
 <p>We use MkDocs for our documentation site. Since MkDocs cannot natively render markdown files originating outside the <code>docs/</code> folder, we use Jinja <strong>include wrappers</strong> (e.g., `# Silvasonic — Roadmap</p>
 <blockquote>
-<p><strong>Status:</strong> v0.7.1 — DB-Viewer &amp; System Stabilization ✅</p>
+<p><strong>Status:</strong> v0.8.0 — BirdNET ✅</p>
 </blockquote>
 <hr />
 <h2 id="milestone-roadmap">Milestone Roadmap<a class="headerlink" href="#milestone-roadmap" title="Permanent link">&para;</a></h2>
@@ -2812,18 +2812,18 @@ To prevent documentation drift and maintain the DRY (Don't Repeat Yourself) prin
 </tr>
 <tr>
 <td><strong>v0.7.1</strong></td>
-<td>DB-Viewer — Database inspector &amp; Data Export UI</td>
-<td>✅ Current</td>
+<td>DB-Viewer — Database inspector, Data Export UI &amp; Custom SQL Execution</td>
+<td>✅ Done</td>
 </tr>
 <tr>
 <td><strong>v0.8.0</strong></td>
 <td>BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)</td>
-<td>🔨 In Progress</td>
+<td>✅ Current</td>
 </tr>
 <tr>
 <td>v0.9.0</td>
 <td>Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge</td>
-<td>⏳ Planned</td>
+<td>🔨 In Progress</td>
 </tr>
 <tr>
 <td>v0.10.0</td>
@@ -2907,7 +2907,8 @@ To preserve GitHub root visibility while supporting MkDocs, these specific dupli
 - <strong><code>services/_template_readme.md</code></strong>: For the <code>README.md</code> of implemented services.</p>
 <h2 id="4-docs-as-code-service-readmes">4. Docs-as-Code: Service READMEs<a class="headerlink" href="#4-docs-as-code-service-readmes" title="Permanent link">&para;</a></h2>
 <p>Implemented services are documented strictly in their own directory (<code>services/&lt;svc&gt;/README.md</code>).
-<strong>CRITICAL RULE:</strong> A Service README must <strong>NEVER</strong> paraphrase source code. Do not list API endpoints, database columns, or Python classes. The code is the Source of Truth.</p>
+<strong>CRITICAL RULE 1:</strong> A Service README must <strong>NEVER</strong> paraphrase source code. Do not list API endpoints, database columns, or Python classes. The code is the Source of Truth.
+<strong>CRITICAL RULE 2:</strong> The "Configuration &amp; Environment" section must <strong>ONLY</strong> list Infrastructure variables (<code>.env</code> / <code>SILVASONIC_...</code>). Dynamic Application Settings (seeded via <code>config/defaults.yml</code>) must <strong>NOT</strong> be documented in markdown tables. Instead, refer to <code>config/defaults.override.yml</code> for developer overrides as defined in the template.</p>
 <p>A Service README is explicitly limited to the structured headers defined in <strong><code>services/_template_readme.md</code></strong>. You MUST follow this boilerplate exactly.</p>
 <p><em>(Note: <code>docs/services/&lt;svc&gt;.md</code> only exists for planned services. Once a service is implemented, this file must become a 1-sentence link-stub pointing to the actual Service README).</em></p>
 <h2 id="5-domain-documentation-docs">5. Domain Documentation (<code>docs/</code>)<a class="headerlink" href="#5-domain-documentation-docs" title="Permanent link">&para;</a></h2>
