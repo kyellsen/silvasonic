@@ -21,10 +21,15 @@
 
 ## Services
 
+### Implemented
 - [Controller](services/controller.md) · [Database](services/database.md) · [Recorder](services/recorder.md)
-- [Redis](services/redis.md) · [Web-Mock](services/web_mock.md) · [Processor](services/processor.md) · [Gateway](services/gateway.md)
-- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md) · [DB-Viewer](services/db_viewer.md)
-- [BirdNET](services/birdnet.md) · [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
+- [Processor](services/processor.md) · [BirdNET](services/birdnet.md)
+- [Redis](services/redis.md) · [Web-Mock](services/web_mock.md) · [DB-Viewer](services/db_viewer.md)
+- [Gateway](services/gateway.md) 
+
+### Planned
+- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md)
+- [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
 
 ## Deployment
 

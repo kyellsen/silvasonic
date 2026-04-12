@@ -393,7 +393,7 @@ class TestConfigSchemas:
     def test_birdnet_settings_defaults(self) -> None:
         """BirdnetSettings has correct defaults."""
         s = BirdnetSettings()
-        assert s.confidence_threshold == 0.25
+        assert s.confidence_threshold == 0.65
         assert s.clip_padding_seconds == 3.0
         assert s.overlap == 0.0
         assert s.sensitivity == 1.0

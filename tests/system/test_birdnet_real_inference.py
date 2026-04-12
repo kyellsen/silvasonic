@@ -96,7 +96,7 @@ async def test_native_tflite_inference(
     from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 
     worker.birdnet_config = BirdnetSettings(
-        confidence_threshold=0.25,
+        confidence_threshold=0.65,
         sensitivity=1.0,
         overlap=0.0,
         threads=1,

@@ -62,7 +62,7 @@ auth:
 # uploader:                            # v0.6.0
 #   ...
 # birdnet:                             # v0.8.0
-#   confidence_threshold: 0.25
+#   confidence_threshold: 0.65
 ```
 
 **Seeding behavior:**

@@ -85,7 +85,7 @@ class BirdnetSettings(BaseModel):
     Lifecycle toggle (``enabled``) is in ``managed_services`` (ADR-0029).
     """
 
-    confidence_threshold: float = 0.25
+    confidence_threshold: float = 0.65
     clip_padding_seconds: float = 3.0
     overlap: float = 0.0
     sensitivity: float = 1.0
