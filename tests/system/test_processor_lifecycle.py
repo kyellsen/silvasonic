@@ -271,12 +271,30 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            # Wait for upload worker to start
-            wait_for_log_pattern(
-                processor_name,
-                "upload_worker.started",
+            redis_host, redis_port, _ = system_redis
+            r = Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+            def is_upload_worker_registered() -> bool:
+                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                for key in keys:
+                    val = r.get(key)
+                    if val:
+                        try:
+                            data = json.loads(str(val))
+                            if data.get("service") == "processor":
+                                comp = data.get("health", {}).get("components", {})
+                                if "upload_worker" in comp:
+                                    return True
+                        except Exception:
+                            continue
+                return False
+
+            wait_until(
+                "Upload worker reported in Processor heartbeat",
+                is_upload_worker_registered,
                 timeout=25,
             )
+            r.close()
 
             print("\n  ✅ Upload worker start verified.")
         finally:
@@ -309,12 +327,33 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            logs = wait_for_log_pattern(
-                processor_name,
-                "upload_worker.started",
+            redis_host, redis_port, _ = system_redis
+            r = Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+            def is_upload_worker_disabled() -> bool:
+                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                for key in keys:
+                    val = r.get(key)
+                    if val:
+                        try:
+                            data = json.loads(str(val))
+                            if data.get("service") == "processor":
+                                comp = data.get("health", {}).get("components", {})
+                                uw = comp.get("upload_worker", {})
+                                if uw.get("details") == "state: disabled":
+                                    return True
+                        except Exception:
+                            continue
+                return False
+
+            wait_until(
+                "Upload worker reports disabled state in heartbeat",
+                is_upload_worker_disabled,
                 timeout=25,
             )
+            r.close()
 
+            logs = podman_logs(processor_name)
             assert "rclone" not in logs.lower(), (
                 f"Upload worker should not spawn rclone when disabled:\n{logs}"
             )
