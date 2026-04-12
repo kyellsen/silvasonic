@@ -17,8 +17,8 @@ from pydantic import BaseModel
 class SystemSettings(BaseModel):
     """System-wide settings (key: ``system``)."""
 
-    latitude: float = 53.55
-    longitude: float = 9.99
+    latitude: float | None = None
+    longitude: float | None = None
     max_recorders: int = 5
     station_name: str = "Silvasonic MVP"
     auto_enrollment: bool = True

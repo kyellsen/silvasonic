@@ -1023,9 +1023,9 @@ class TestGenericUsbFallback:
         # Copy the real generic_usb.yml
         import shutil
 
-        from silvasonic.controller.seeder import _find_service_root
+        from silvasonic.controller.seeder import _get_config_dir
 
-        real_profiles = _find_service_root() / "config" / "profiles"
+        real_profiles = _get_config_dir() / "profiles"
         shutil.copy(real_profiles / "generic_usb.yml", profiles_dir / "generic_usb.yml")
 
         # Also seed a known profile that does NOT match our device

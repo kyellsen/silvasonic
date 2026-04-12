@@ -253,10 +253,8 @@ def make_test_spec(name: str, device_id: str, workspace: Path, *, network: str) 
 # Hardware Mic Config (env-var driven, profile-YAML backed)
 # ---------------------------------------------------------------------------
 
-# Path to the profiles directory (relative to the controller service root)
-_PROFILES_DIR = (
-    Path(__file__).resolve().parents[2] / "services" / "controller" / "config" / "profiles"
-)
+# Path to the profiles directory (relative to the repository root)
+_PROFILES_DIR = Path(__file__).resolve().parents[2] / "config" / "profiles"
 
 
 @dataclass(frozen=True)

@@ -41,6 +41,21 @@ just start              # start all services
 
 ---
 
+## Configuration
+
+Silvasonic employs a strictly tiered configuration architecture:
+
+1. **Infrastructure (`.env`)**
+   Created from `.env.example`. This handles container-level infrastructure only: database credentials, Podman socket paths, and network configurations. It *never* contains application business logic or tuning parameters.
+2. **Application Defaults (`config/defaults.yml`)**
+   Version-controlled factory defaults for internal application logic (e.g., BirdNET confidence thresholds, janitor cleanup limits, UI toggles). Seeded into the database by the Controller on first startup.
+3. **Local Overrides (`config/defaults.override.yml`)**
+   For local development or volatile databases (e.g. after `just nuke`), create this file (it is ignored by Git). The Controller will deep-merge any keys defined here over the factory defaults on startup. *Example: Setting your local `latitude` / `longitude` here temporarily to test BirdNET location filtering.*
+4. **Container Overrides (`compose.override.yml`)**
+   Only use this (via standard Podman Compose mechanism) if you need to radically alter Tier-1 infrastructure for debugging, such as mounting temporary host directories or exposing internal database ports directly to your host machine.
+
+---
+
 ## Project Structure
 
 ```

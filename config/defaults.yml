@@ -22,8 +22,10 @@
 # --- Station Identity & Limits (key: "system") ---
 system:
   # GPS coordinates of the monitoring station (used for sunrise/sunset calculation)
-  latitude: 53.55
-  longitude: 9.99
+  # Default is null (disables location filtering). To set location during development
+  # without committing, create a config/defaults.override.yml file.
+  latitude: null
+  longitude: null
   max_recorders: 5
   # Human-readable name shown in the Web-UI header
   station_name: "Silvasonic MVP"

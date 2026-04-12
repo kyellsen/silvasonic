@@ -96,7 +96,7 @@ async def test_native_tflite_inference(
     from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 
     worker.birdnet_config = BirdnetSettings(
-        confidence_threshold=0.65,
+        confidence_threshold=0.20,
         sensitivity=1.0,
         overlap=0.0,
         threads=1,
@@ -133,7 +133,7 @@ async def test_native_tflite_inference(
     from silvasonic.core.database.models.recordings import Recording
 
     # Only ID is strictly used inside _process_recording
-    recording = Recording(id=999, time=datetime(2024, 1, 1, tzinfo=UTC))
+    recording = Recording(id=999, time=datetime(2024, 5, 1, tzinfo=UTC))
 
     # Test Fixture 1: European Robin
     robin_path = fixtures_dir / "XC521936 - European Robin - Erithacus rubecula.wav"

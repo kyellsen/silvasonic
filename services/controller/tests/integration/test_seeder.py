@@ -30,8 +30,8 @@ def _make_defaults_yml(tmp_path: Path) -> Path:
     yml.write_text(
         """
 system:
-  latitude: 53.55
-  longitude: 9.99
+  latitude: null
+  longitude: null
   max_recorders: 5
   station_name: "Integration Test Station"
   auto_enrollment: true

@@ -33,7 +33,8 @@ Each specific documentation group MUST provide a template to guarantee a consist
 ## 4. Docs-as-Code: Service READMEs
 
 Implemented services are documented strictly in their own directory (`services/<svc>/README.md`).
-**CRITICAL RULE:** A Service README must **NEVER** paraphrase source code. Do not list API endpoints, database columns, or Python classes. The code is the Source of Truth.
+**CRITICAL RULE 1:** A Service README must **NEVER** paraphrase source code. Do not list API endpoints, database columns, or Python classes. The code is the Source of Truth.
+**CRITICAL RULE 2:** The "Configuration & Environment" section must **ONLY** list Infrastructure variables (`.env` / `SILVASONIC_...`). Dynamic Application Settings (seeded via `config/defaults.yml`) must **NOT** be documented in markdown tables. Instead, refer to `config/defaults.override.yml` for developer overrides as defined in the template.
 
 A Service README is explicitly limited to the structured headers defined in **`services/_template_readme.md`**. You MUST follow this boilerplate exactly.
 

@@ -46,6 +46,9 @@
 
 ## 5. Configuration & Environment
 
+### Infrastructure (.env / Container Variables)
+*(Only list variables/mounts required before the container starts. Never list dynamic DB tuning parameters here).*
+
 | Environment Variable                         | Description                                            | Default / Example                  |
 | ------------------------------------------ | ------------------------------------------------------ | ---------------------------------- |
 | `SILVASONIC_CONTROLLER_PORT`               | Health endpoint port                                   | `9100`                             |
@@ -65,6 +68,11 @@
 | Podman socket                | Orchestrate Tier 2 containers             | `/var/run/container.sock` (with `podman` group)                   |
 | Controller workspace         | Read system config                        | `${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z`        |
 | Recorder workspace           | Read/provision recorder details           | `${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z` |
+
+### Application Settings (Dynamic)
+
+> [!NOTE]
+> Managed centrally via DB / Pydantic. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
 
 ---
 

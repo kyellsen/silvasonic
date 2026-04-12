@@ -58,7 +58,8 @@
 
 ## 5. Configuration & Environment
 
-### Static Environment Variables
+### Infrastructure (.env / Container Variables)
+*(Only list variables/mounts required before the container starts. Never list dynamic DB tuning parameters here).*
 
 | Variable / Mount            | Description                              | Default / Example     |
 | --------------------------- | ---------------------------------------- | --------------------- |
@@ -67,7 +68,10 @@
 | `SILVASONIC_RECORDINGS_DIR` | Path to Recorder workspace (Read-Write)  | `/data/recorder`      |
 | `SILVASONIC_PROCESSOR_DIR`  | Path to Processor workspace (Read-Write) | `/data/processor`     |
 
-*(Note: Dynamic configuration parameters like polling rates and retention thresholds are loaded directly from the database and can be configured through the Web-Interface).*
+### Application Settings (Dynamic)
+
+> [!NOTE]
+> Managed centrally via DB / Pydantic. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
 
 ## 6. Technology Stack
 

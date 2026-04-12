@@ -385,8 +385,8 @@ class TestConfigSchemas:
     def test_system_settings_defaults(self) -> None:
         """SystemSettings has correct defaults."""
         s = SystemSettings()
-        assert s.latitude == 53.55
-        assert s.longitude == 9.99
+        assert s.latitude is None
+        assert s.longitude is None
         assert s.max_recorders == 5
         assert s.station_name == "Silvasonic MVP"
 

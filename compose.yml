@@ -69,7 +69,7 @@ services:
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
       - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
-      - ./services/controller/config:/app/config:ro,z  # Factory defaults + microphone profiles
+      - ./config:/app/config:ro,z  # Factory defaults + microphone profiles
     depends_on:
       database:
         condition: service_healthy
