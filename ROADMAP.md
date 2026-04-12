@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.7.1 — DB-Viewer & System Stabilization ✅
+> **Status:** v0.8.0 — BirdNET ✅
 
 ---
 
@@ -18,9 +18,9 @@
 | **v0.5.3** | Cloud Sync Preparatory Refactoring — Uploader wipe, storage_remotes DB drop, Test Suite Fixes                                                                                                                                                                           | ✅ Done        |
 | **v0.6.0** | Processor Cloud Sync — Single-target Upload Worker (FLAC compression, rclone/rsync). Internal async worker within Processor (KISS, single-target)                                                                                                        | ✅ Done     |
 | **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ✅ Done        |
-| **v0.7.1** | DB-Viewer — Database inspector, Data Export UI & Custom SQL Execution                                                                                                                                                                                                     | ✅ Current     |
-| **v0.8.0** | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | 🔨 In Progress |
-| v0.9.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | ⏳ Planned     |
+| **v0.7.1** | DB-Viewer — Database inspector, Data Export UI & Custom SQL Execution                                                                                                                                                                                                     | ✅ Done        |
+| **v0.8.0** | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | ✅ Current     |
+| v0.9.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | 🔨 In Progress |
 | v0.10.0    | Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: `kyellsen/silvasonic.de`)                                                                                                                                             | ⏳ Planned     |
 | v1.0.0     | MVP — Production-ready field deployment, stabilization (Podman Quadlets, Ansible)                                                                                                                                                                                         | ⏳ Planned     |
 | v1.0.0+    |                                                                                                                                                                                                                                                                           |               |
