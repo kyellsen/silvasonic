@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from ._processor_helpers import (
+from ._system_helpers import (
     BIRDNET_IMAGE,
     PROCESSOR_IMAGE,
     make_processor_env,

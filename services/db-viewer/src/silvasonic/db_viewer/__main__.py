@@ -3,16 +3,29 @@ import os
 import tomllib
 import uuid
 from pathlib import Path
+from typing import Any, cast
 
 import polars as pl
 import uvicorn
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from silvasonic.core.database import get_db
-from sqlalchemy import text
+from sqlalchemy import CursorResult, text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+TABLES = [
+    "recordings",
+    "detections",
+    "uploads",
+    "devices",
+    "system_config",
+    "microphone_profiles",
+    "taxonomy",
+    "weather",
+    "users",
+]
 
 # Configure minimal logging
 logger = logging.getLogger("silvasonic.db_viewer")
@@ -75,21 +88,9 @@ async def index(
     limit: int = 50,
 ) -> HTMLResponse:
     """Render the main shell layout with the sidebar."""
-    tables = [
-        "recordings",
-        "detections",
-        "uploads",
-        "devices",
-        "system_config",
-        "microphone_profiles",
-        "taxonomy",
-        "weather",
-        "users",
-    ]
-
     # Default to first table if none selected or invalid
-    if not active_table or active_table not in tables:
-        active_table = tables[0]
+    if not active_table or active_table not in TABLES:
+        active_table = TABLES[0]
 
     return templates.TemplateResponse(
         request=request,
@@ -97,7 +98,7 @@ async def index(
         context={
             "app_title": app.title,
             "app_version": app.version,
-            "tables": tables,
+            "tables": TABLES,
             "active_table": active_table,
             "sort_by": sort_by or "",
             "sort_order": sort_order,
@@ -123,18 +124,7 @@ async def get_table_snippet(
     Returns only the HTML snippet for HTMX.
     """
     # Prevent basic SQL injection by validating table name against allowlist
-    allowlist = [
-        "recordings",
-        "detections",
-        "uploads",
-        "devices",
-        "system_config",
-        "microphone_profiles",
-        "taxonomy",
-        "weather",
-        "users",
-    ]
-    if table_name not in allowlist:
+    if table_name not in TABLES:
         return HTMLResponse(
             content="<div class='alert alert-error'>Invalid table</div>", status_code=400
         )
@@ -187,18 +177,7 @@ async def export_table(
     table_name: str, fmt: str = "csv", db: AsyncSession = Depends(get_db)
 ) -> Response:
     """Export the current table to CSV, JSON, or Parquet."""
-    allowlist = [
-        "recordings",
-        "detections",
-        "uploads",
-        "devices",
-        "system_config",
-        "microphone_profiles",
-        "taxonomy",
-        "weather",
-        "users",
-    ]
-    if table_name not in allowlist:
+    if table_name not in TABLES:
         return Response(content="Invalid table", status_code=400)
 
     if fmt not in ["csv", "json", "parquet"]:
@@ -249,6 +228,80 @@ async def export_table(
     except Exception as e:
         logger.error(f"Export error for {table_name}: {e}")
         return Response(content=f"Error exporting data: {e!s}", status_code=500)
+
+
+@app.get("/query", response_class=HTMLResponse)
+async def query_page(request: Request) -> HTMLResponse:
+    """Render the custom SQL query page."""
+    return templates.TemplateResponse(
+        request=request,
+        name="query.html",
+        context={
+            "app_title": app.title,
+            "app_version": app.version,
+            "tables": TABLES,
+            "root_path": request.scope.get("root_path", ""),
+        },
+    )
+
+
+@app.post("/query/execute", response_class=HTMLResponse)
+async def execute_query(
+    request: Request,
+    query: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Execute custom SQL and return the results snippet."""
+    if not query.strip():
+        return HTMLResponse(
+            content="<div class='alert alert-warning'>Empty query</div>", status_code=400
+        )
+
+    try:
+        sql_text = text(query)
+        result = await db.execute(sql_text)
+        await db.commit()
+
+        cursor = cast(CursorResult[Any], result)
+
+        # If the result returns rows (e.g. SELECT)
+        if cursor.returns_rows:
+            rows = cursor.mappings().all()
+            columns = list(cursor.keys()) if cursor.keys() else []
+            return templates.TemplateResponse(
+                request=request,
+                name="query_results.html",
+                context={
+                    "success": True,
+                    "returns_rows": True,
+                    "columns": columns,
+                    "rows": rows,
+                },
+            )
+        else:
+            # For UPDATE, INSERT, DELETE
+            rowcount = cursor.rowcount
+            return templates.TemplateResponse(
+                request=request,
+                name="query_results.html",
+                context={
+                    "success": True,
+                    "returns_rows": False,
+                    "rowcount": rowcount,
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"Error executing custom query: {e}")
+        await db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="query_results.html",
+            context={
+                "success": False,
+                "error": str(e),
+            },
+        )
 
 
 if __name__ == "__main__":

@@ -53,17 +53,11 @@ class TestPathResolvers:
         assert result == leaf.parent
 
     def test_get_config_dir(self) -> None:
-        """_get_config_dir returns service_root/config."""
+        """_get_config_dir returns the root config directory."""
         _get_config_dir.cache_clear()
-        try:
-            with patch(
-                "silvasonic.controller.seeder._find_service_root",
-                return_value=Path("/fake/root"),
-            ):
-                result = _get_config_dir()
-            assert result == Path("/fake/root/config")
-        finally:
-            _get_config_dir.cache_clear()
+        result = _get_config_dir()
+        assert result.name == "config"
+        assert result.parent.name in ("apps", "silvasonic", "silvasonic-api", "silvasonic-core", "")
 
     def test_get_defaults_yml(self) -> None:
         """_get_defaults_yml returns config_dir/defaults.yml."""
@@ -106,8 +100,8 @@ def _make_defaults_yml(tmp_path: Path) -> Path:
     yml.write_text(
         """
 system:
-  latitude: 53.55
-  longitude: 9.99
+  latitude: null
+  longitude: null
   max_recorders: 5
   station_name: "Test Station"
   auto_enrollment: true
@@ -246,7 +240,7 @@ class TestConfigSeeder:
             """
 system:
   latitude: "not_a_float"
-  longitude: 9.99
+  longitude: null
   max_recorders: 5
   station_name: "Test"
   auto_enrollment: true
@@ -291,6 +285,32 @@ custom_key:
         assert session.add.call_count == 1
         added = session.add.call_args[0][0]
         assert added.key == "custom_key"
+
+    async def test_deep_merges_override_yaml(self, tmp_path: Path) -> None:
+        """ConfigSeeder correctly deep merges defaults.override.yml over defaults.yml."""
+        yml = _make_defaults_yml(tmp_path)
+        override = tmp_path / "defaults.override.yml"
+        override.write_text(
+            """
+system:
+  latitude: 10.5
+  station_name: "Override Station"
+birdnet:
+  confidence_threshold: 0.99
+""",
+            encoding="utf-8",
+        )
+        seeder = ConfigSeeder(defaults_path=yml)
+        session = AsyncMock(add=MagicMock())
+        session.get = AsyncMock(return_value=None)
+
+        await seeder.seed(session)
+
+        added_by_key = {call[0][0].key: call[0][0].value for call in session.add.call_args_list}
+        assert added_by_key["system"]["latitude"] == 10.5
+        assert added_by_key["system"]["longitude"] is None  # Untouched by override
+        assert added_by_key["system"]["station_name"] == "Override Station"
+        assert added_by_key["birdnet"]["confidence_threshold"] == 0.99
 
 
 # ===================================================================
@@ -432,9 +452,9 @@ audio:
 
     async def test_generic_usb_profile_seeded(self) -> None:
         """Real generic_usb.yml is valid and seeds correctly."""
-        from silvasonic.controller.seeder import _find_service_root
+        from silvasonic.controller.seeder import _get_config_dir
 
-        profiles_dir = _find_service_root() / "config" / "profiles"
+        profiles_dir = _get_config_dir() / "profiles"
         assert (profiles_dir / "generic_usb.yml").exists(), "generic_usb.yml must exist"
 
         bootstrapper = ProfileBootstrapper(profiles_dir=profiles_dir)
@@ -468,16 +488,16 @@ class TestAllRealProfilesValid:
 
     @staticmethod
     def _real_profiles_dir() -> Path:
-        from silvasonic.controller.seeder import _find_service_root
+        from silvasonic.controller.seeder import _get_config_dir
 
-        return _find_service_root() / "config" / "profiles"
+        return _get_config_dir() / "profiles"
 
     @staticmethod
     def _collect_profile_ids() -> list[str]:
         """Discover all .yml basenames for parametrize IDs."""
-        from silvasonic.controller.seeder import _find_service_root
+        from silvasonic.controller.seeder import _get_config_dir
 
-        d = _find_service_root() / "config" / "profiles"
+        d = _get_config_dir() / "profiles"
         return sorted(p.name for p in d.glob("*.yml"))
 
     @pytest.mark.parametrize(
@@ -594,7 +614,7 @@ class TestAuthSeeder:
         yml.write_text(
             """
 system:
-  latitude: 53.55
+  latitude: null
 """,
             encoding="utf-8",
         )
@@ -844,8 +864,9 @@ class TestDefaultsYamlParity:
     @staticmethod
     def _load_real_defaults() -> dict[str, Any]:
         """Load the real config/defaults.yml from the service tree."""
-        config_dir = Path(__file__).resolve().parents[2] / "config"
-        defaults_path = config_dir / "defaults.yml"
+        from silvasonic.controller.seeder import _get_config_dir
+
+        defaults_path = _get_config_dir() / "defaults.yml"
         assert defaults_path.exists(), f"defaults.yml not found at {defaults_path}"
         with defaults_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)

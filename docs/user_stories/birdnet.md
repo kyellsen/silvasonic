@@ -150,7 +150,7 @@
 ### Acceptance Criteria
 
 - [ ] The processing order ("Oldest first" vs "Newest first") is adjustable via the web interface.
-- [ ] This setting is technically modeled as a literal field (`processing_order: Literal["oldest_first", "newest_first"] = "oldest_first"`) in the `BirdnetSettings` Pydantic schema, ensuring the web interface can automatically render a dropdown.
+- [ ] This setting is constrained to strictly accept either "oldest_first" or "newest_first", ensuring the web interface can automatically render a dropdown.
 - [ ] The BirdNET worker dynamically alters its database pull query (`ORDER BY time ASC` vs `DESC`) based on the active setting.
 - [ ] Changes to the processing order are applied immediately or upon the next worker cycle.
 

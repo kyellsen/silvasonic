@@ -22,8 +22,10 @@
 # --- Station Identity & Limits (key: "system") ---
 system:
   # GPS coordinates of the monitoring station (used for sunrise/sunset calculation)
-  latitude: 53.55
-  longitude: 9.99
+  # Default is null (disables location filtering). To set location during development
+  # without committing, create a config/defaults.override.yml file.
+  latitude: null
+  longitude: null
   max_recorders: 5
   # Human-readable name shown in the Web-UI header
   station_name: "Silvasonic MVP"
@@ -78,7 +80,7 @@ birdnet:
   # Minimum confidence score (0.0-1.0) to accept a species detection.
   # Lower = more detections (but more false positives).
   # Higher = fewer detections (but higher accuracy).
-  confidence_threshold: 0.25
+  confidence_threshold: 0.65
   # Padding around detection window for clip extraction
   clip_padding_seconds: 3.0
   # Overlap between analysis windows (0.0-3.0 seconds)

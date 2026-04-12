@@ -44,8 +44,8 @@ A version-controlled YAML file defines factory defaults for all `system_config` 
 ```yaml
 # config/defaults.yml — seeded into system_config on Controller startup
 system:
-  latitude: 53.55
-  longitude: 9.99
+  latitude: null
+  longitude: null
   max_recorders: 5
 
   station_name: "Silvasonic Dev"
@@ -62,7 +62,7 @@ auth:
 # uploader:                            # v0.6.0
 #   ...
 # birdnet:                             # v0.8.0
-#   confidence_threshold: 0.25
+#   confidence_threshold: 0.65
 ```
 
 **Seeding behavior:**
@@ -71,6 +71,12 @@ auth:
 3.  Existing user-modified values are **never overwritten**.
 4.  After a database reset, all defaults are restored automatically on the next Controller startup.
 5.  Service settings are only seeded once the corresponding service is implemented and uncommented in the YAML.
+
+### 2.3.1 Local Developer Override
+
+To prevent "volatile DBs" (e.g. from frequent `just nuke` workflows) from repeatedly wiping developer customizations without polluting the Git tree with `.env` application state (which violates section 2.6):
+Developers may create a `config/defaults.override.yml` file. This file is ignored by `.gitignore`.
+If present during Controller startup, the ConfigSeeder performs a deep-merge of this override file *over* the `defaults.yml`. This ensures that local values consistently re-seed into fresh databases while maintaining strict ADR-0023 tier compliance.
 
 ### 2.4. Authentication — `users` Table
 

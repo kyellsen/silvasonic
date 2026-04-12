@@ -2,7 +2,7 @@
 
 **Autonomous Bioacoustic Recording Station for Raspberry Pi 5**
 
-> **Status:** v0.7.1 — DB-Viewer & System Stabilization ✅
+> **Status:** v0.8.0 — BirdNET ✅
 
 ---
 
@@ -38,6 +38,21 @@ just init               # uv sync, pre-commit hooks, workspace directories
 just build              # build all container images
 just start              # start all services
 ```
+
+---
+
+## Configuration
+
+Silvasonic employs a strictly tiered configuration architecture:
+
+1. **Infrastructure (`.env`)**
+   Created from `.env.example`. This handles container-level infrastructure only: database credentials, Podman socket paths, and network configurations. It *never* contains application business logic or tuning parameters.
+2. **Application Defaults (`config/defaults.yml`)**
+   Version-controlled factory defaults for internal application logic (e.g., BirdNET confidence thresholds, janitor cleanup limits, UI toggles). Seeded into the database by the Controller on first startup.
+3. **Local Overrides (`config/defaults.override.yml`)**
+   For local development or volatile databases (e.g. after `just nuke`), create this file (it is ignored by Git). The Controller will deep-merge any keys defined here over the factory defaults on startup. *Example: Setting your local `latitude` / `longitude` here temporarily to test BirdNET location filtering.*
+4. **Container Overrides (`compose.override.yml`)**
+   Only use this (via standard Podman Compose mechanism) if you need to radically alter Tier-1 infrastructure for debugging, such as mounting temporary host directories or exposing internal database ports directly to your host machine.
 
 ---
 
@@ -84,7 +99,7 @@ silvasonic/
 | **gateway**    | 1    | Caddy reverse proxy — HTTPS termination and internal routing                             | ✅ Running  |
 | **processor**  | 1    | Data ingestion, metadata indexing, and retention management (Janitor)                    | ✅ Running  |
 | **web-mock**   | 1    | Dev UI shell — FastAPI + Jinja2, hardcoded mock data (precursor to Web-Interface) | ✅ Running  |
-| **db-viewer**  | 1    | Dev Data UI — Database inspector & analytical data export tool (toggle via `COMPOSE_PROFILES=db-viewer`) | ✅ Running  |
+| **db-viewer**  | 1    | Dev Data UI — Database inspector, custom SQL execution & analytical data export tool (toggle via `COMPOSE_PROFILES=db-viewer`) | ✅ Running  |
 | **recorder**   | 2    | Audio Capture — FFmpeg engine, dual-stream WAV output (ADR-0024)                          | ✅ Running  |
 
 > For the full target architecture (13 services across two tiers) see **[VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)**. For version milestones see **[ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)**.

@@ -165,6 +165,78 @@ class TestDeleteWorkerClips:
         update_call = session.execute.call_args_list[1]
         assert update_call[0][1] == {"id": 10, "clip_paths": ["clips/missing.wav"]}
 
+    async def test_path_traversal_blocked(self, tmp_path: Path) -> None:
+        """Path traversal clip_path is silently skipped, DB NOT nullified.
+
+        Security contract: A malicious clip_path like '../../etc/passwd'
+        must never resolve outside workspace_root. The guard MUST skip
+        the entry entirely — no unlink, no DB nullification.
+        """
+        from silvasonic.processor.janitor import delete_worker_clips
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        # Simulate a detection row with a path-traversal clip_path
+        mock_result.fetchall.return_value = [
+            ("birdnet", "../../etc/passwd"),
+        ]
+        session.execute.return_value = mock_result
+
+        removed = await delete_worker_clips(session, 99, tmp_path)
+
+        # Path traversal entry must be skipped entirely
+        assert removed == 0
+        # Only the SELECT query — NO UPDATE query must happen
+        assert session.execute.call_count == 1
+
+    async def test_oserror_causes_partial_nullify_and_raise(self, tmp_path: Path) -> None:
+        """OSError during unlink → partial DB nullification + re-raise.
+
+        Data-integrity contract: If clip A deletes successfully but clip B
+        hits an OSError, the DB must still be updated for clip A (partial
+        nullification), and the OSError must be re-raised so the caller
+        can count it as an error.
+        """
+        from silvasonic.processor.janitor import delete_worker_clips
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            ("birdnet", "clips/ok.wav"),
+            ("birdnet", "clips/broken.wav"),
+        ]
+        session.execute.return_value = mock_result
+
+        # Create first file (will succeed)
+        ok_file = tmp_path / "birdnet" / "clips" / "ok.wav"
+        ok_file.parent.mkdir(parents=True)
+        ok_file.write_bytes(b"\x00")
+
+        # Create second file but make it fail on unlink
+        broken_file = tmp_path / "birdnet" / "clips" / "broken.wav"
+        broken_file.write_bytes(b"\x00")
+
+        original_unlink = Path.unlink
+
+        def selective_unlink(
+            self_path: Path,
+            missing_ok: bool = False,
+        ) -> None:
+            if self_path.name == "broken.wav":
+                raise OSError("Permission denied")
+            original_unlink(self_path, missing_ok=missing_ok)
+
+        with (
+            patch.object(Path, "unlink", selective_unlink),
+            pytest.raises(OSError, match="Permission denied"),
+        ):
+            await delete_worker_clips(session, 42, tmp_path)
+
+        # Partial nullification: DB update was called for ok.wav only
+        assert session.execute.call_count == 2
+        update_call = session.execute.call_args_list[1]
+        assert update_call[0][1] == {"id": 42, "clip_paths": ["clips/ok.wav"]}
+
 
 # ---------------------------------------------------------------------------
 # Panic Filesystem Fallback
@@ -341,3 +413,186 @@ class TestRunCleanupSafe:
 
         assert result.mode == RetentionMode.DEFENSIVE
         assert result.recordings_deleted == 0
+
+
+# ---------------------------------------------------------------------------
+# run_cleanup — Deletion loop error handling
+# ---------------------------------------------------------------------------
+
+
+class TestRunCleanupErrorHandling:
+    """Tests for the three except-paths in run_cleanup's inner for-loop.
+
+    Domain invariants:
+    - SQLAlchemyError → rollback + re-raise (split-brain protection)
+    - Generic Exception → error counted, continue to next recording
+    - Worker-clip failure → error counted, recording deletion NOT aborted
+    """
+
+    def _mock_session(
+        self,
+        rows: list[tuple[int, str, str | None]],
+    ) -> AsyncMock:
+        """Create a mocked AsyncSession that returns given rows."""
+        session = AsyncMock()
+
+        # is_cloud_sync_enabled query → returns False
+        cloud_sync_result = MagicMock()
+        cloud_sync_result.fetchone.return_value = None
+        # find_deletable query → returns rows
+        find_result = MagicMock()
+        find_result.fetchall.return_value = rows
+
+        session.execute.side_effect = [cloud_sync_result, find_result]
+        return session
+
+    async def test_sqlalchemy_error_triggers_rollback_and_reraise(
+        self,
+    ) -> None:
+        """SQLAlchemyError during soft_delete → rollback + raise.
+
+        Split-brain protection: A DB error MUST abort the entire cycle
+        immediately and roll back the transaction to prevent inconsistency
+        between filesystem state and database state.
+        """
+        from silvasonic.processor.janitor import run_cleanup
+        from sqlalchemy.exc import SQLAlchemyError
+
+        session = self._mock_session([(1, "raw/a.wav", "proc/a.wav")])
+
+        with (
+            patch(
+                "silvasonic.processor.janitor.delete_files",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "silvasonic.processor.janitor.soft_delete",
+                new_callable=AsyncMock,
+                side_effect=SQLAlchemyError("DB gone"),
+            ),
+            pytest.raises(SQLAlchemyError),
+        ):
+            await run_cleanup(
+                session,
+                Path("/data/recorder"),
+                ProcessorSettings(),
+                mode=RetentionMode.HOUSEKEEPING,
+                disk_pct=75.0,
+            )
+
+        # Rollback MUST have been called
+        session.rollback.assert_awaited_once()
+        # Commit must NOT have been called (cycle aborted)
+        session.commit.assert_not_awaited()
+
+    async def test_generic_exception_counts_error_and_continues(
+        self,
+    ) -> None:
+        """Generic Exception during delete_files → count error, continue.
+
+        Fault-tolerance: A single recording failure (e.g., stale NFS
+        handle) must not prevent the remaining batch from being cleaned.
+        """
+        from silvasonic.processor.janitor import run_cleanup
+
+        session = self._mock_session(
+            [
+                (1, "raw/a.wav", "proc/a.wav"),
+                (2, "raw/b.wav", "proc/b.wav"),
+            ]
+        )
+        # Re-mock execute to handle all subsequent calls too
+        cloud_sync_result = MagicMock()
+        cloud_sync_result.fetchone.return_value = None
+        find_result = MagicMock()
+        find_result.fetchall.return_value = [
+            (1, "raw/a.wav", "proc/a.wav"),
+            (2, "raw/b.wav", "proc/b.wav"),
+        ]
+        # After find_deletable, soft_delete also calls execute
+        session.execute = AsyncMock(side_effect=[cloud_sync_result, find_result])
+
+        call_count = 0
+
+        async def failing_then_ok(*args: object, **kw: object) -> int:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("NFS stale handle")
+            return 1
+
+        with (
+            patch(
+                "silvasonic.processor.janitor.delete_files",
+                new_callable=AsyncMock,
+                side_effect=failing_then_ok,
+            ),
+            patch(
+                "silvasonic.processor.janitor.soft_delete",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "silvasonic.processor.janitor.delete_worker_clips",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            result = await run_cleanup(
+                session,
+                Path("/data/recorder"),
+                ProcessorSettings(),
+                mode=RetentionMode.HOUSEKEEPING,
+                disk_pct=75.0,
+            )
+
+        # First recording failed, second succeeded
+        assert result.recordings_deleted == 1
+        assert result.errors == 1
+        assert "proc/a.wav" in result.error_details
+        # Commit is called (partial progress saved)
+        session.commit.assert_awaited_once()
+
+    async def test_worker_clip_failure_does_not_abort_recording_deletion(
+        self,
+    ) -> None:
+        """Worker-clip error is counted but recording stays deleted.
+
+        Domain invariant: 'A broken worker clip must NEVER prevent
+        recording deletion'. The soft_delete already happened, so the
+        error is just logged and counted.
+        """
+        from silvasonic.processor.janitor import run_cleanup
+
+        session = self._mock_session([(1, "raw/a.wav", "proc/a.wav")])
+
+        with (
+            patch(
+                "silvasonic.processor.janitor.delete_files",
+                new_callable=AsyncMock,
+                return_value=2,
+            ),
+            patch(
+                "silvasonic.processor.janitor.soft_delete",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "silvasonic.processor.janitor.delete_worker_clips",
+                new_callable=AsyncMock,
+                side_effect=OSError("clip locked"),
+            ),
+        ):
+            result = await run_cleanup(
+                session,
+                Path("/data/recorder"),
+                ProcessorSettings(),
+                mode=RetentionMode.HOUSEKEEPING,
+                disk_pct=75.0,
+            )
+
+        # Recording WAS deleted despite clip error
+        assert result.recordings_deleted == 1
+        # But clip error was counted
+        assert result.errors == 1
+        assert "proc/a.wav" in result.error_details
+        # Commit is called — partial NULLs from clip deletion are preserved
+        session.commit.assert_awaited_once()

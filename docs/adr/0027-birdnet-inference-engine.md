@@ -61,7 +61,7 @@ Both produce **mathematically equivalent up to float precision limit**: same spe
 
 ### Decision Drivers (ordered by impact)
 
-1. **Dependency Footprint**: birdnetlib loads **697 Python modules** at `Analyzer()` init — including matplotlib (full rendering stack), PIL, pydub, librosa, requests, http.client, and 100+ encoding modules. **None of these are called by Silvasonic.** Native requires ~20 modules total (`tflite_runtime`, `numpy`, `soundfile`).
+1. **Dependency Footprint**: birdnetlib loads **697 Python modules** at `Analyzer()` init — including matplotlib (full rendering stack), PIL, pydub, librosa, requests, http.client, and 100+ encoding modules. **None of these are called by Silvasonic.** Native requires ~20 modules total (`ai-edge-litert`, `numpy`, `soundfile`).
 
 2. **Container Image Size**: birdnetlib pulls TensorFlow (~545 MB) as a transitive fallback dependency. Native uses only `ai-edge-litert` (lightweight wheel). Reduces container image significantly.
 

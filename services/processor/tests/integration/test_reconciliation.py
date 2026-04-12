@@ -103,7 +103,8 @@ class TestReconciliationIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        # Create the file on disk
+        # Create the files on disk
+        _create_wav(tmp_path / "mic-01" / "data" / "raw" / "exists.wav")
         _create_wav(tmp_path / "mic-01" / "data" / "processed" / "exists.wav")
 
         # Seed device and recording

@@ -37,6 +37,9 @@ When building the real web-interface, clone this service and replace `mock_data`
 
 ## 5. Configuration & Environment
 
+### Infrastructure (.env / Container Variables)
+*(Only list variables/mounts required before the container starts. Never list dynamic DB tuning parameters here).*
+
 | Variable / Mount                  | Description                                    | Default / Example    |
 | --------------------------------- | ---------------------------------------------- | -------------------- |
 | `SILVASONIC_WEB_MOCK_PORT`        | Internal application port                      | `8001`               |
@@ -47,6 +50,11 @@ When building the real web-interface, clone this service and replace `mock_data`
 | `POSTGRES_PASSWORD`               | Database password                              | `silvasonic`         |
 | `POSTGRES_DB`                     | Target database name                           | `silvasonic`         |
 | `SILVASONIC_API_ROOT_PATH`        | Path prefix for reverse proxy routing (FastAPI)| `/web-mock`          |
+
+### Application Settings (Dynamic)
+
+> [!NOTE]
+> Managed centrally via DB / Pydantic. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
 
 ## 6. Technology Stack
 

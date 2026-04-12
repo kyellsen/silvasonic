@@ -29,7 +29,14 @@
 
 
 {% block sidebar_menu %}
-<li class="menu-title text-base font-bold opacity-80">Tables</li>
+<li class="menu-title text-base font-bold opacity-80">Tools</li>
+<li>
+    <a href="{{ root_path }}/query" class="text-lg py-3">
+       Custom SQL
+    </a>
+</li>
+<div class="divider my-0 opacity-50"></div>
+<li class="menu-title text-base font-bold opacity-80 mt-2">Tables</li>
 {% for table in tables %}
 <li>
     <a href="{{ root_path }}/?active_table={{ table }}&interval={{ interval }}&limit={{ limit }}" 

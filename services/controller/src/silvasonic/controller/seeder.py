@@ -35,8 +35,10 @@ log = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths & Deep Update
 # ---------------------------------------------------------------------------
+
+
 def _find_service_root(start: Path = Path(__file__).resolve()) -> Path:
     """Walk up until pyproject.toml is found."""
     for parent in start.parents:
@@ -47,7 +49,16 @@ def _find_service_root(start: Path = Path(__file__).resolve()) -> Path:
 
 @cache
 def _get_config_dir() -> Path:
-    return _find_service_root() / "config"
+    """Resolve config directory (handles Docker /app/config and local dev)."""
+    if Path("/app/config").is_dir():
+        return Path("/app/config")
+
+    start = Path(__file__).resolve()
+    for parent in start.parents:
+        if (parent / "config" / "defaults.yml").exists():
+            return parent / "config"
+
+    return start.parent / "config"  # Fallback
 
 
 @cache
@@ -58,6 +69,15 @@ def _get_defaults_yml() -> Path:
 @cache
 def _get_profiles_dir() -> Path:
     return _get_config_dir() / "profiles"
+
+
+def _deep_update(base: dict[str, Any], override: dict[str, Any]) -> None:
+    """Recursively merge override dictionary into base."""
+    for k, v in override.items():
+        if isinstance(v, dict) and k in base and isinstance(base[k], dict):
+            _deep_update(base[k], v)
+        else:
+            base[k] = v
 
 
 def _load_defaults(path: Path) -> dict[str, Any] | None:
@@ -117,6 +137,14 @@ class ConfigSeeder:
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
             defaults = _load_defaults(defaults_path)
+
+            if defaults is not None:
+                override_path = defaults_path.with_name("defaults.override.yml")
+                overrides = _load_defaults(override_path)
+                if overrides is not None:
+                    _deep_update(defaults, overrides)
+                    log.info("seeder.config.override_applied", keys=list(overrides.keys()))
+
         if defaults is None:
             return
 

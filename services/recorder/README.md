@@ -68,6 +68,9 @@
 
 ## 5. Configuration & Environment
 
+### Infrastructure (.env / Container Variables)
+*(Only list variables/mounts required before the container starts. Never list dynamic DB tuning parameters here).*
+
 | Variable / Mount                    | Description                                        | Default / Example                                                      |
 | ----------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
 | `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
@@ -78,8 +81,11 @@
 | `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
 | Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |
 
+### Application Settings (Dynamic)
+
 > [!NOTE]
-> All `SILVASONIC_RECORDER_*` variables are injected by the Controller at container creation time (Profile Injection). The user never configures them manually — they are derived from the Microphone Profile assigned to the device. The full profile configuration parameters are managed centrally by the Controller (ADR-0016). The Recorder has **no database access** and **no YAML files**.
+> Managed centrally via DB / Pydantic. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
+> *(Note: The Recorder itself has no DB access and config is injected by the Controller via Profile Injection).*
 
 ---
 

@@ -91,6 +91,40 @@ def ensure_env_file() -> None:
         print_success("Auto-generated new SILVASONIC_ENCRYPTION_KEY in .env")
 
 
+def ensure_override_template() -> None:
+    """Ensure config/defaults.override.yml exists as a template if missing."""
+    override_file = PROJECT_ROOT / "config" / "defaults.override.yml"
+    defaults_file = PROJECT_ROOT / "config" / "defaults.yml"
+
+    if override_file.exists():
+        print_success(f"Override template already exists: {override_file}")
+        return
+
+    # Create directory just in case it's missing
+    override_file.parent.mkdir(parents=True, exist_ok=True)
+
+    header = """\
+# ==============================================================================
+# Local Override Configuration
+# ==============================================================================
+# This file is intentionally ignored by git (.gitignore).
+# Use it to safely override internal application defaults during local development,
+# without risking accidental commits of your local test settings.
+#
+# Uncomment and adjust the values below to activate overrides:
+# ==============================================================================
+
+"""
+
+    defaults_content = defaults_file.read_text(encoding="utf-8")
+    commented_defaults = "\n".join(
+        f"# {line}" if line.strip() else "" for line in defaults_content.splitlines()
+    )
+
+    override_file.write_text(header + commented_defaults + "\n", encoding="utf-8")
+    print_warning(f"Created local override template at {override_file.relative_to(PROJECT_ROOT)}")
+
+
 def check_container_engine() -> None:
     """Verify that Podman is available. Abort if not."""
     if shutil.which("podman"):
@@ -110,9 +144,10 @@ def main() -> None:
     print_banner()
     print_header("Initializing Silvasonic Development Environment")
 
-    # 1. Environment File
-    print_step("Checking .env file...")
+    # 1. Environment File & Config Templates
+    print_step("Checking .env file & Config overrides...")
     ensure_env_file()
+    ensure_override_template()
 
     # 2. Container Engine
     print_step("Checking container engine availability...")

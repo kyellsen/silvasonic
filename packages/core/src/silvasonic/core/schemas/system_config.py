@@ -17,8 +17,8 @@ from pydantic import BaseModel
 class SystemSettings(BaseModel):
     """System-wide settings (key: ``system``)."""
 
-    latitude: float = 53.55
-    longitude: float = 9.99
+    latitude: float | None = None
+    longitude: float | None = None
     max_recorders: int = 5
     station_name: str = "Silvasonic MVP"
     auto_enrollment: bool = True
@@ -85,7 +85,7 @@ class BirdnetSettings(BaseModel):
     Lifecycle toggle (``enabled``) is in ``managed_services`` (ADR-0029).
     """
 
-    confidence_threshold: float = 0.25
+    confidence_threshold: float = 0.65
     clip_padding_seconds: float = 3.0
     overlap: float = 0.0
     sensitivity: float = 1.0

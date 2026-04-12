@@ -253,10 +253,8 @@ def make_test_spec(name: str, device_id: str, workspace: Path, *, network: str) 
 # Hardware Mic Config (env-var driven, profile-YAML backed)
 # ---------------------------------------------------------------------------
 
-# Path to the profiles directory (relative to the controller service root)
-_PROFILES_DIR = (
-    Path(__file__).resolve().parents[2] / "services" / "controller" / "config" / "profiles"
-)
+# Path to the profiles directory (relative to the repository root)
+_PROFILES_DIR = Path(__file__).resolve().parents[2] / "config" / "profiles"
 
 
 @dataclass(frozen=True)
@@ -557,11 +555,11 @@ def primary_device(usb_devices: list[Any]) -> Any:
 # ---------------------------------------------------------------------------
 # Re-export shared Processor fixtures (pytest auto-discovers from conftest)
 # ---------------------------------------------------------------------------
-# These fixtures are defined in _processor_helpers.py and re-exported here
+# These fixtures are defined in _system_helpers.py and re-exported here
 # so that both test_processor_lifecycle.py and test_processor_resilience.py
 # can use them without direct fixture imports (which cause F811 lint errors).
 
-from ._processor_helpers import (  # noqa: E402, F401
+from ._system_helpers import (  # noqa: E402, F401
     run_id,
     system_db,
     system_network,

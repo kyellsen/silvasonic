@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="w-full flex-1 flex flex-col min-h-0 gap-6">
+    
+    <div class="flex justify-between items-center shrink-0">
+        <div>
+            <h1 class="text-xl font-bold">Custom SQL Query</h1>
+            <p class="text-sm opacity-70 mt-1">Execute raw SQL directly against the Silvasonic database. Use with caution.</p>
+        </div>
+    </div>
+
+    <!-- Query Input Area -->
+    <div class="card bg-base-100 shadow-sm border border-base-300 shrink-0">
+        <form hx-post="{{ root_path }}/query/execute" hx-target="#query-results" class="card-body p-4 md:p-6 flex flex-col gap-4">
+            <textarea 
+                name="query" 
+                class="textarea textarea-bordered font-mono w-full h-32 md:h-48 text-sm md:text-base leading-relaxed bg-base-200 focus:bg-base-100 transition-colors" 
+                placeholder="SELECT * FROM system_config;&#10;UPDATE system_config SET is_recording = true;"
+                required></textarea>
+            
+            <div class="card-actions justify-end">
+                <button type="submit" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                    </svg>
+                    Execute SQL
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Query Results Area -->
+    <div class="card bg-base-100 shadow-sm overflow-hidden w-full border border-base-300 flex-1 min-h-0 flex flex-col relative">
+        <!-- HTMX Indicator -->
+        <div class="htmx-indicator absolute inset-0 bg-base-100/50 backdrop-blur-sm z-10 flex items-center justify-center pointer-events-none">
+            <span class="loading loading-spinner text-primary loading-lg"></span>
+        </div>
+        
+        <div class="card-body p-0 flex-1 flex flex-col min-h-0">
+             <div id="query-results" class="overflow-auto flex-1 min-h-0 relative">
+                <div class="p-8 flex justify-center w-full text-base-content/50 italic h-full items-center">
+                    <span>Results will appear here...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+
+{% block sidebar_menu %}
+<li class="menu-title text-base font-bold opacity-80">Tools</li>
+<li>
+    <a href="{{ root_path }}/query" class="text-lg py-3 active">
+       Custom SQL
+    </a>
+</li>
+<div class="divider my-0 opacity-50"></div>
+<li class="menu-title text-base font-bold opacity-80 mt-2">Tables</li>
+{% for table in tables %}
+<li>
+    <a href="{{ root_path }}/?active_table={{ table }}&interval=5&limit=50" 
+       class="text-lg py-3 capitalize">
+       {{ table }}
+    </a>
+</li>
+{% endfor %}
+{% endblock %}

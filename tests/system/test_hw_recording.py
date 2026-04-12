@@ -44,7 +44,7 @@ from silvasonic.recorder.workspace import ensure_workspace
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ._hw_helpers import has_usb_audio_device
-from ._processor_helpers import (
+from ._system_helpers import (
     DATABASE_IMAGE,
     PROCESSOR_IMAGE,
     make_processor_env,

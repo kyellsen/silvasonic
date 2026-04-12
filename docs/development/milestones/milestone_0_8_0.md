@@ -181,15 +181,15 @@ The following structures already exist and MUST be reused or extended in-place:
 **User Stories:** Core backend implementations (US-B01, US-B03, US-B04, US-B07 logic) verified via DB-Viewer. UI-dependent stories (US-B02, US-B05, US-B06) deferred to v0.9.0 web interface.
 
 ### Tasks
-- [ ] Verify `check-all` passes (lint, mypy, all tests up to smoke/system).
-- [ ] Create `services/birdnet/README.md` using `services/_template_readme.md` boilerplate and convert `docs/services/birdnet.md` to a link-stub (per `STRUCTURE.md` §4).
-- [ ] Update `docs/glossary.md` with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).
-- [ ] Update `docs/index.md` to reflect the newly integrated BirdNET service and documentation structure.
+- [x] Verify `check-all` passes (lint, mypy, all tests up to smoke/system).
+- [x] Create `services/birdnet/README.md` using `services/_template_readme.md` boilerplate and convert `docs/services/birdnet.md` to a link-stub (per `STRUCTURE.md` §4).
+- [x] Update `docs/glossary.md` with new domain terms (Audio Clip, Analysis Backlog, Singleton/Background Worker).
+- [x] Update `docs/index.md` to reflect the newly integrated BirdNET service and documentation structure.
 - [x] **Add** `"detections"` to `_CLEANUP_TABLES` in `tests/integration/conftest.py`. (Resolved dynamically via `clean_database`)
 
 ### Testing (Phase 7)
-- [ ] **`system`** — `tests/system/test_birdnet_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` and extracts clips.
-- [ ] **`system_hw_manual`** — `tests/system/test_hw_birdnet_pipeline.py`: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via `enabled=true` system config setting.
+- [x] **`system`** — `tests/system/test_birdnet_full_pipeline.py`: Full pipeline integration: Recorder → Indexer → BirdNET claims, analyzes, writes `detections` and extracts clips.
+- [x] **`system_hw_manual`** — `tests/system/test_hw_birdnet_full_pipeline.py`: End-to-end acoustics test. Human plays bird sound near active UltraMic → system captures, indexer triggers, BirdNET detects. Enable via `enabled=true` system config setting.
 
 ---
 

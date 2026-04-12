@@ -24,6 +24,7 @@ MANIFEST
 
 # Environment
 compose.override.yml
+config/defaults.override.yml
 .env
 .venv
 .trash

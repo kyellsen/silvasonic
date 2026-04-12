@@ -25,7 +25,7 @@ import pytest
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import MountSpec, RestartPolicy, Tier2ServiceSpec
 
-from ._processor_helpers import (
+from ._system_helpers import (
     BIRDNET_IMAGE,
     PROCESSOR_IMAGE,
     make_processor_env,

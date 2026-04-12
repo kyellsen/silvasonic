@@ -123,3 +123,109 @@ async def test_rclone_failure_log_includes_error_kwarg(
         f"log.error missing 'error' kwarg. Got: {sorted(call_kwargs.keys())}"
     )
     assert error_text in call_kwargs["error"]
+
+
+# ────────────────────────────────────────────────────
+# Crypto contract: _decrypt_config()
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+class TestDecryptConfig:
+    """Tests for RcloneClient._decrypt_config() — the crypto boundary.
+
+    Data-integrity contract: enc: values must be decrypted exactly once,
+    plain values must pass through unmodified. If this breaks, either
+    cleartext credentials leak into rclone.conf, or encrypted values
+    get double-decrypted (garbled).
+    """
+
+    def test_plain_values_pass_through(
+        self,
+        settings: CloudSyncSettings,
+        encryption_key: bytes,
+    ) -> None:
+        """Config with only plain values passes through unchanged."""
+        client = RcloneClient(settings, encryption_key)
+
+        result = client._decrypt_config(
+            {
+                "endpoint": "https://s3.example.com",
+                "region": "eu-central-1",
+            }
+        )
+
+        assert result == {
+            "endpoint": "https://s3.example.com",
+            "region": "eu-central-1",
+        }
+
+    def test_encrypted_values_are_decrypted(
+        self,
+        settings: CloudSyncSettings,
+        encryption_key: bytes,
+    ) -> None:
+        """Config with enc:-prefixed values are decrypted to plaintext."""
+        from silvasonic.core.crypto import encrypt_value
+
+        secret = "my-s3-secret-key"
+        encrypted = encrypt_value(secret, encryption_key)
+
+        client = RcloneClient(settings, encryption_key)
+
+        result = client._decrypt_config(
+            {
+                "access_key_id": "AKIA1234",
+                "secret_access_key": encrypted,
+            }
+        )
+
+        assert result["access_key_id"] == "AKIA1234"
+        assert result["secret_access_key"] == secret
+
+    def test_mixed_plain_and_encrypted(
+        self,
+        settings: CloudSyncSettings,
+        encryption_key: bytes,
+    ) -> None:
+        """Mixed config: enc: values decrypted, plain values untouched."""
+        from silvasonic.core.crypto import encrypt_value
+
+        password = "WebDAV-P@ss!"
+        encrypted_pass = encrypt_value(password, encryption_key)
+
+        client = RcloneClient(settings, encryption_key)
+
+        result = client._decrypt_config(
+            {
+                "url": "https://dav.example.com/remote.php/webdav/",
+                "user": "admin",
+                "pass": encrypted_pass,
+                "vendor": "nextcloud",
+            }
+        )
+
+        assert result["url"] == "https://dav.example.com/remote.php/webdav/"
+        assert result["user"] == "admin"
+        assert result["pass"] == password
+        assert result["vendor"] == "nextcloud"
+
+    def test_non_string_values_pass_through(
+        self,
+        settings: CloudSyncSettings,
+        encryption_key: bytes,
+    ) -> None:
+        """Non-string values (int, bool) pass through without error."""
+        client = RcloneClient(settings, encryption_key)
+
+        result = client._decrypt_config(
+            {
+                "chunk_size": 5242880,
+                "disable_http2": True,
+                "endpoint": "https://s3.example.com",
+            }
+        )
+
+        assert result["chunk_size"] == 5242880
+        assert result["disable_http2"] is True
+        assert result["endpoint"] == "https://s3.example.com"

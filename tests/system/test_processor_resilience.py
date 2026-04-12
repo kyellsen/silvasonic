@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from ._processor_helpers import (
+from ._system_helpers import (
     PROCESSOR_IMAGE,
     count_wav_files,
     make_processor_env,
@@ -35,6 +35,9 @@ from ._processor_helpers import (
     psql_query,
     require_processor_image,
     seed_processor_config,
+    wait_for_db_rows,
+    wait_for_wavs,
+    wait_until,
 )
 from .conftest import (
     PODMAN_SOCKET,
@@ -113,18 +116,28 @@ class TestProcessorResilience:
             )
 
             # Wait for baseline: at least 1 recording indexed
-            time.sleep(25)
-            baseline_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
-            baseline = int(baseline_str) if baseline_str else 0
-            assert baseline >= 1, f"Baseline failed: {baseline} recordings before Redis stop"
+            baseline = wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=1,
+                timeout=30,
+            )
 
             # === KILL REDIS ===
             podman_stop(redis_container)
-            time.sleep(2)
-            assert not podman_is_running(redis_container), "Redis should be stopped"
+            wait_until(
+                "redis stopped",
+                lambda: not podman_is_running(redis_container),
+                timeout=10,
+            )
 
             # Wait for more WAV segments to be produced and indexed
-            time.sleep(25)
+            wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=baseline + 1,
+                timeout=30,
+            )
 
             # Verify Indexer continued working
             after_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
@@ -180,8 +193,11 @@ class TestProcessorResilience:
             )
 
             # Wait for Processor to settle
-            time.sleep(10)
-            assert podman_is_running(processor_name), "Processor did not start"
+            wait_until(
+                "processor running",
+                lambda: podman_is_running(processor_name),
+                timeout=15,
+            )
 
             # === KILL REDIS ===
             podman_stop(redis_container)
@@ -247,11 +263,8 @@ class TestProcessorResilience:
             )
 
             # Produce WAVs
-            time.sleep(25)
+            wait_for_wavs(recordings_root, min_count=2, timeout=30)
             podman_stop_rm(recorder_name)
-
-            baseline_wavs = count_wav_files(recordings_root)
-            assert baseline_wavs >= 2, f"Need at least 2 WAV files, got {baseline_wavs}"
 
             # Start Processor to index them
             podman_run(
@@ -261,7 +274,12 @@ class TestProcessorResilience:
                 volumes=[f"{recordings_root}:/data/recorder:z"],
                 network=system_network,
             )
-            time.sleep(15)
+            wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=1,
+                timeout=20,
+            )
 
             # Mark 1 recording as uploaded=false (should be default but just in case),
             # mark 1 as uploaded=true manually via exec.
@@ -292,6 +310,10 @@ class TestProcessorResilience:
             # Restart Processor so it reads the new config
             podman_stop_rm(processor_name)
             time.sleep(2)
+
+            # Recalculate baseline after indexing
+            baseline_wavs = count_wav_files(recordings_root)
+
             podman_run(
                 processor_name,
                 PROCESSOR_IMAGE,
@@ -300,7 +322,12 @@ class TestProcessorResilience:
                 network=system_network,
             )
 
-            time.sleep(15)  # Wait for Janitor to act
+            # Wait for Janitor to act — observe filesystem state change
+            wait_until(
+                "janitor deleted uploaded files",
+                lambda: count_wav_files(recordings_root) <= baseline_wavs - 2,
+                timeout=20,
+            )
 
             after_wavs = count_wav_files(recordings_root)
             if after_wavs != baseline_wavs - 2:
@@ -370,11 +397,11 @@ class TestProcessorResilience:
                 indexer_poll_interval=2.0,
             )
 
-            time.sleep(20)
+            # Wait for WAVs to be produced
+            wait_for_wavs(recordings_root, min_count=1, timeout=25)
 
             # Count WAV files on disk (baseline)
             baseline_wavs = count_wav_files(recordings_root)
-            assert baseline_wavs >= 1, f"No WAV files produced: {baseline_wavs}"
 
             # Start Processor — it reads config from DB
             podman_run(
@@ -384,13 +411,12 @@ class TestProcessorResilience:
                 volumes=[f"{recordings_root}:/data/recorder:z"],
                 network=system_network,
             )
-            time.sleep(5)  # Let Processor read config
 
             # === KILL DB ===
             podman_stop(db_container)
             time.sleep(2)
 
-            # Wait through Janitor cycle(s)
+            # Wait through Janitor cycle(s) — negative assertion: no files deleted
             time.sleep(15)
 
             # Verify no files were deleted
@@ -465,7 +491,8 @@ class TestProcessorResilience:
                 network=system_network,
             )
 
-            time.sleep(25)
+            # Wait for WAVs to be produced
+            wait_for_wavs(device_workspace, min_count=2, timeout=30)
 
             # Stop Recorder BEFORE measuring baseline
             podman_stop_rm(recorder_name)
@@ -483,7 +510,6 @@ class TestProcessorResilience:
                 volumes=[f"{recordings_root}:/data/recorder:z"],
                 network=system_network,
             )
-            time.sleep(3)  # Let container start
 
             # === INVOKE PANIC FALLBACK DIRECTLY ===
             # We exec into the container to run panic_filesystem_fallback()
@@ -599,12 +625,13 @@ class TestProcessorResilience:
                 network=system_network,
             )
 
-            time.sleep(25)
-
             # Verify recordings exist in DB
-            count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
-            count = int(count_str) if count_str else 0
-            assert count >= 2, f"Need at least 2 recordings in DB, got {count}"
+            wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=2,
+                timeout=30,
+            )
 
             # Get file paths from DB
             files_str = psql_query(
@@ -650,8 +677,21 @@ class TestProcessorResilience:
                 network=system_network,
             )
 
-            # Wait for Reconciliation Audit to run (it runs on startup)
-            time.sleep(15)
+            # Wait for Reconciliation Audit to heal orphaned rows
+            wait_until(
+                "reconciliation healed orphans",
+                lambda: (
+                    int(
+                        psql_query(
+                            db_container,
+                            "SELECT COUNT(*) FROM recordings WHERE local_deleted = true",
+                        )
+                        or "0"
+                    )
+                    >= 1
+                ),
+                timeout=20,
+            )
 
             # Verify healing: orphaned rows marked local_deleted=true
             healed_str = psql_query(

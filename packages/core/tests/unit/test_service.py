@@ -385,15 +385,15 @@ class TestConfigSchemas:
     def test_system_settings_defaults(self) -> None:
         """SystemSettings has correct defaults."""
         s = SystemSettings()
-        assert s.latitude == 53.55
-        assert s.longitude == 9.99
+        assert s.latitude is None
+        assert s.longitude is None
         assert s.max_recorders == 5
         assert s.station_name == "Silvasonic MVP"
 
     def test_birdnet_settings_defaults(self) -> None:
         """BirdnetSettings has correct defaults."""
         s = BirdnetSettings()
-        assert s.confidence_threshold == 0.25
+        assert s.confidence_threshold == 0.65
         assert s.clip_padding_seconds == 3.0
         assert s.overlap == 0.0
         assert s.sensitivity == 1.0

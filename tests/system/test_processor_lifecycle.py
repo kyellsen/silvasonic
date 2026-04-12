@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 from redis import Redis
 
-from ._processor_helpers import (
+from ._system_helpers import (
     PROCESSOR_IMAGE,
     make_processor_env,
     make_recorder_env,
@@ -39,6 +39,10 @@ from ._processor_helpers import (
     podman_stop_rm,
     psql_query,
     require_processor_image,
+    wait_for_db_rows,
+    wait_for_log_pattern,
+    wait_for_wavs,
+    wait_until,
 )
 from .conftest import (
     PODMAN_SOCKET,
@@ -108,18 +112,9 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            # Wait for Recorder to produce at least 2 promoted segments
-            time.sleep(25)
-
-            # Verify WAV files exist before starting Processor
+            # Wait for Recorder to produce at least 1 promoted segment
             data_dir = device_workspace / "data" / "processed"
-            wav_files = list(data_dir.glob("*.wav")) if data_dir.exists() else []
-            if not wav_files:
-                print(f"\n--- RECORDER LOGS ---\n{podman_logs(recorder_name)}")
-            assert len(wav_files) >= 1, (
-                f"Recorder did not produce WAV files in {device_workspace}. "
-                f"Contents: {list(device_workspace.rglob('*'))}"
-            )
+            wav_files = wait_for_wavs(data_dir, min_count=1, timeout=30)
 
             # Start Processor — recordings_root contains device subdirectories
             podman_run(
@@ -131,20 +126,11 @@ class TestProcessorLifecycle:
             )
 
             # Wait for Processor to index the files
-            time.sleep(15)
-
-            # Query DB via psql inside DB container
-            count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
-            count = int(count_str) if count_str else 0
-
-            if count == 0:
-                print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
-                print(f"\n--- RECORDER LOGS ---\n{podman_logs(recorder_name)}")
-
-            assert count >= 1, (
-                f"Processor did not index any recordings. "
-                f"WAV files on disk: {len(wav_files)}. "
-                f"Check Processor logs: podman logs {processor_name}"
+            count = wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=1,
+                timeout=30,
             )
 
             # Verify recording metadata
@@ -199,14 +185,13 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            # Wait for Processor to publish at least one heartbeat
-            time.sleep(12)
+            # Redis polling will serve as the timeout loop
 
             # Check Redis for heartbeat
             r = Redis(host=redis_host, port=redis_port, decode_responses=True)
             heartbeat_raw: str | None = None
 
-            for _ in range(20):
+            for _ in range(30):
                 keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
                 for key in keys:
                     val = r.get(key)
@@ -286,14 +271,30 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            # Wait for Processor to publish logs
-            time.sleep(18)
+            redis_host, redis_port, _ = system_redis
+            r = Redis(host=redis_host, port=redis_port, decode_responses=True)
 
-            logs = podman_logs(processor_name)
+            def is_upload_worker_registered() -> bool:
+                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                for key in keys:
+                    val = r.get(key)
+                    if val:
+                        try:
+                            data = json.loads(str(val))
+                            if data.get("service") == "processor":
+                                comp = data.get("health", {}).get("components", {})
+                                if "upload_worker" in comp:
+                                    return True
+                        except Exception:
+                            continue
+                return False
 
-            assert "upload_worker.started" in logs, (
-                f"Missing upload_worker.started in logs:\n{logs}"
+            wait_until(
+                "Upload worker reported in Processor heartbeat",
+                is_upload_worker_registered,
+                timeout=25,
             )
+            r.close()
 
             print("\n  ✅ Upload worker start verified.")
         finally:
@@ -326,11 +327,34 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            time.sleep(12)
+            redis_host, redis_port, _ = system_redis
+            r = Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+            def is_upload_worker_disabled() -> bool:
+                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                for key in keys:
+                    val = r.get(key)
+                    if val:
+                        try:
+                            data = json.loads(str(val))
+                            if data.get("service") == "processor":
+                                comp = data.get("health", {}).get("components", {})
+                                uw = comp.get("upload_worker", {})
+                                if uw.get("details") == "state: disabled":
+                                    return True
+                        except Exception:
+                            continue
+                return False
+
+            wait_until(
+                "Upload worker reports disabled state in heartbeat",
+                is_upload_worker_disabled,
+                timeout=25,
+            )
+            r.close()
 
             logs = podman_logs(processor_name)
-
-            assert "rclone" not in logs.lower() and "upload_worker.started" in logs, (
+            assert "rclone" not in logs.lower(), (
                 f"Upload worker should not spawn rclone when disabled:\n{logs}"
             )
 
@@ -375,7 +399,9 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            time.sleep(20)
+            # Wait for Recorder to produce WAV files
+            data_dir = device_workspace / "data" / "processed"
+            wait_for_wavs(data_dir, min_count=1, timeout=30)
 
             # Start Processor (first run)
             podman_run(
@@ -385,13 +411,13 @@ class TestProcessorLifecycle:
                 volumes=[f"{recordings_root}:/data/recorder:z"],
                 network=system_network,
             )
-            time.sleep(12)
-
-            # Count recordings after first run
-            count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
-            count_first = int(count_str) if count_str else 0
-
-            assert count_first >= 1, "First Processor run should index at least 1 recording"
+            # Wait for recordings
+            count_first = wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=1,
+                timeout=30,
+            )
 
             # Stop Processor
             podman_stop_rm(processor_name)
@@ -405,9 +431,12 @@ class TestProcessorLifecycle:
                 volumes=[f"{recordings_root}:/data/recorder:z"],
                 network=system_network,
             )
-            time.sleep(12)
-
-            # Count recordings after restart
+            # Wait for reconciliation to complete (ensures indexer ran)
+            wait_for_log_pattern(
+                processor_name,
+                "reconciliation.completed",
+                timeout=30,
+            )
             count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
             count_second = int(count_str) if count_str else 0
 
@@ -480,7 +509,11 @@ class TestProcessorLifecycle:
                 )
 
             # Wait for both to produce segments
-            time.sleep(25)
+            wait_until(
+                "WAVs from both recorders",
+                lambda: list(workspace_a.rglob("*.wav")) and list(workspace_b.rglob("*.wav")),
+                timeout=30,
+            )
 
             # Start Processor pointing to parent directory
             podman_run(
@@ -491,11 +524,13 @@ class TestProcessorLifecycle:
                 network=system_network,
             )
 
-            time.sleep(15)
-
-            # Query DB for recordings
-            count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
-            count = int(count_str) if count_str else 0
+            # Wait for Processor to index from both recorders
+            count = wait_for_db_rows(
+                db_container,
+                "SELECT COUNT(*) FROM recordings",
+                min_count=2,
+                timeout=30,
+            )
 
             sensor_str = psql_query(
                 db_container,
