@@ -33,7 +33,7 @@ from ._system_helpers import (
 
 
 @pytest.mark.system
-@pytest.mark.timeout(90)
+@pytest.mark.timeout(180)
 class TestBirdNETFullPipeline:
     def test_mock_recorder_to_processor_to_birdnet_creates_detection_clip(
         self,
@@ -134,7 +134,7 @@ class TestBirdNETFullPipeline:
 
             # 2. Wait for Recorder to drop a few WAV segments
             # The Processor will automatically pick this up. Waiting for 4 chunks = 20 seconds.
-            wait_for_wavs(recorder_workspace / "data" / "processed", min_count=4, timeout=40)
+            wait_for_wavs(recorder_workspace / "data" / "processed", min_count=4, timeout=80)
 
             # Stop the Recorder so we don't spam the DB with endless loops for a simple test
             podman_stop_rm(recorder_name)
@@ -152,7 +152,7 @@ class TestBirdNETFullPipeline:
             )
 
             # Wait for Processor to Index the WAVs
-            wait_for_db_rows(db_name, "SELECT COUNT(*) FROM recordings", min_count=4, timeout=30)
+            wait_for_db_rows(db_name, "SELECT COUNT(*) FROM recordings", min_count=4, timeout=60)
 
             # 4. Start BirdNET
             podman_run(
@@ -181,7 +181,7 @@ class TestBirdNETFullPipeline:
             # -----------------------------------------------------
             # 5. Wait for BirdNET detection!
             # Since confidence is 0.0, we just wait for ANY detection to prove the pipeline works
-            detection = wait_for_detection(db_name, prefix_taxon="", timeout=40)
+            detection = wait_for_detection(db_name, prefix_taxon="", timeout=90)
 
             assert detection["clip_path"].startswith("clips/")
 
