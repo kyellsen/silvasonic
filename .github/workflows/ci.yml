@@ -95,7 +95,7 @@ jobs:
           sed -i 's/^[[:space:]]*//' .env
 
       - name: Initialize Project
-        run: just init
+        run: just setup
 
       - name: Run Full Pipeline
         run: just ci
