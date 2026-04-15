@@ -209,13 +209,13 @@ def ensure_initialized() -> None:
         f"Running init automatically ..."
     )
 
-    init_script = Path(__file__).resolve().parent / "init.py"
-    result = subprocess.run([sys.executable, str(init_script)], cwd=_PROJECT_ROOT)
+    setup_script = Path(__file__).resolve().parent / "setup.py"
+    result = subprocess.run([sys.executable, str(setup_script)], cwd=_PROJECT_ROOT)
     if result.returncode != 0:
-        print_error("Auto-init failed! Please run 'just init' manually.")
+        print_error("Auto-setup failed! Please run 'just setup' manually.")
         sys.exit(result.returncode)
 
-    print_success("Auto-init completed successfully.\n")
+    print_success("Auto-setup completed successfully.\n")
 
 
 def fmt_duration(seconds: float) -> str:

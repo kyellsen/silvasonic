@@ -19,9 +19,9 @@ default:
     @just --list
 
 # 🛠️  Initialisiert das Projekt (uv sync, hooks, workspace)
-alias i := init
-init:
-    @{{ BOOTSTRAP_PYTHON }} scripts/init.py
+alias s := setup
+setup:
+    @{{ BOOTSTRAP_PYTHON }} scripts/setup.py
 
 # ==============================================================================
 # CONTAINER LIFECYCLE (Podman)
@@ -58,7 +58,7 @@ status:
     @{{ BOOTSTRAP_PYTHON }} scripts/status.py
 
 # 🧨 Factory Reset (Clean, Init, Build, Start)
-reset: clean init build start
+reset: clean setup build start
 
 # ==============================================================================
 # CODE QUALITY

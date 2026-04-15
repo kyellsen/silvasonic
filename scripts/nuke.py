@@ -162,7 +162,7 @@ def main() -> None:
     print_step("Removing Silvasonic container images...")
     remove_silvasonic_images()
 
-    print_success("☢️  Full nuclear reset done. Run 'just init' to rebuild.")
+    print_success("☢️  Full nuclear reset done. Run 'just setup' to rebuild.")
 
 
 if __name__ == "__main__":

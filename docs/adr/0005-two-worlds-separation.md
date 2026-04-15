@@ -39,4 +39,4 @@ All other services MUST use host bind mounts into the workspace.
     *   Clean `git pull` updates without data conflicts.
 *   **Negative:**
     *   Requires strict discipline in defining `compose.yml` volume mounts.
-    *   Slightly more complex initial setup (workspace directories must be created via `just init`).
+    *   Slightly more complex initial setup (workspace directories must be created via `just setup`).

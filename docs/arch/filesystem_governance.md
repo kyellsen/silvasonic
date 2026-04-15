@@ -104,7 +104,7 @@ As the host is Fedora with SELinux, all container definitions must adhere to the
 The filesystem state must not be left to chance ("container runtime creating folders as root").
 
 ### Init Process
-*   An initialization script (`scripts/init.py`) must run before containers start.
+*   An initialization script (`scripts/setup.py`) must run before containers start.
 *   This script creates the **service root directories** only (`controller/`, `recorder/`).
 *   Internal directory structures within each service are created dynamically by the Controller or the respective service at runtime.
 *   It must ensure all folders are owned by the host user and have `755` (`rwxr-xr-x`) permissions.

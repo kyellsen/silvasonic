@@ -34,7 +34,7 @@ For the long-term vision and design philosophy see **[VISION.md](https://github.
 git clone https://github.com/kyellsen/silvasonic.git
 cd silvasonic
 cp .env.example .env   # adjust settings as needed
-just init               # uv sync, pre-commit hooks, workspace directories
+just setup              # uv sync, pre-commit hooks, workspace directories
 just build              # build all container images
 just start              # start all services
 ```
@@ -114,7 +114,7 @@ Here are the most common daily commands:
 
 | Command                 | Description                                                    |
 | ----------------------- | -------------------------------------------------------------- |
-| `just init` (`i`)       | Initialize project (uv sync, pre-commit hooks, workspace)      |
+| `just setup` (`s`)      | Initialize project (uv sync, pre-commit hooks, workspace)      |
 | `just build` (`b`)      | Build all container images                                     |
 | `just start`            | Start all services                                             |
 | `just stop`             | Stop all services                                              |
