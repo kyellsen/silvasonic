@@ -123,6 +123,7 @@ class TestBuildRecorderSpec:
         assert spec.labels["io.silvasonic.device_id"] == "0869-0389-00000000034F"
         assert spec.oom_score_adj == -999  # Protected
         assert spec.privileged is True
+        assert spec.group_add == ["audio"]
         assert len(spec.devices) == 1
 
     def test_recorder_spec_suppresses_pulse_and_pipewire(self) -> None:

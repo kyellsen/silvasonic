@@ -10,6 +10,7 @@ No host-filesystem writes: workspace volumes use tmpfs.
 import subprocess
 import time
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 from silvasonic.test_utils.helpers import wait_for_http, wait_for_log
@@ -300,3 +301,51 @@ def db_viewer_container(
     wait_for_http(host, port)
     yield container
     container.stop()
+
+
+# ── Gateway (Caddy) ──────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def gateway_container(
+    smoke_network: Network,
+) -> Generator[DockerContainer]:
+    """Start an isolated Caddy gateway container with a networked web-mock backend.
+
+    Function-scoped: fresh container per test.
+    Spins up its own web-mock instance on the smoke_network with the alias
+    'web-mock' so that Caddy's reverse_proxy directive can resolve it.
+    Mounts the real Caddyfile to validate production routing config.
+    """
+    _require_image("caddy:2-alpine")
+    _require_image("silvasonic_web-mock")
+
+    # Start a web-mock backend that Caddy can proxy to
+    backend = (
+        DockerContainer("silvasonic_web-mock")
+        .with_exposed_ports(8001)
+        .with_network(smoke_network)
+        .with_network_aliases("web-mock")
+    )
+    backend.start()
+    bhost = backend.get_container_host_ip()
+    bport = int(backend.get_exposed_port(8001))
+    wait_for_http(bhost, bport)
+
+    caddyfile = str(Path(__file__).resolve().parents[2] / "services" / "gateway" / "Caddyfile")
+    container = (
+        DockerContainer("docker.io/library/caddy:2-alpine")
+        .with_exposed_ports(80)
+        .with_env("SILVASONIC_DOMAIN_NAME", "localhost")
+        .with_network(smoke_network)
+        .with_network_aliases("test-gateway")
+        .with_volume_mapping(caddyfile, "/etc/caddy/Caddyfile", "ro")
+    )
+    container.start()
+    wait_for_log(container, "serving initial configuration")
+
+    try:
+        yield container
+    finally:
+        container.stop()
+        backend.stop()

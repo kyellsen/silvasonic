@@ -77,7 +77,7 @@ class Tier2ServiceSpec(BaseModel):
     )
     privileged: bool = Field(
         default=False,
-        description="Privileged mode (ADR-0007 §6: Recorder = True)",
+        description="Privileged mode (ADR-0007 §6: Controller + Recorder)",
     )
     restart_policy: RestartPolicy = Field(
         default_factory=RestartPolicy,
@@ -277,7 +277,7 @@ def build_recorder_spec(
         ],
         devices=["/dev/snd:/dev/snd"],
         group_add=["audio"],
-        privileged=True,  # ADR-0007 §6
+        privileged=True,  # ADR-0007 §6 — Podman rootless is the security boundary
         restart_policy=RestartPolicy(max_retry_count=env.RECORDER_RESTART_MAX_RETRIES),
         memory_limit=memory_limit,
         cpu_limit=cpu_limit,

@@ -73,7 +73,9 @@ class TestHardwareBirdNETFullPipeline:
 
         target_alsa_device = primary_device.alsa_device
 
-        from .conftest import RECORDER_IMAGE
+        from .conftest import RECORDER_IMAGE, require_primary_mic
+
+        mic = require_primary_mic()
 
         db_name, run_id = system_db
         _, _, redis_name = system_redis
@@ -112,9 +114,11 @@ class TestHardwareBirdNETFullPipeline:
         recordings_root = tmp_path / "recordings"
         recorder_workspace = recordings_root / test_device
         recorder_workspace.mkdir(parents=True, exist_ok=True)
-        # Create .buffer to avoid PermissionErrror in recorder container
+        # Create .buffer to avoid PermissionError in recorder container
         (recorder_workspace / ".buffer" / "processed").mkdir(parents=True, exist_ok=True)
+        (recorder_workspace / ".buffer" / "raw").mkdir(parents=True, exist_ok=True)
         (recorder_workspace / "data" / "processed").mkdir(parents=True, exist_ok=True)
+        (recorder_workspace / "data" / "raw").mkdir(parents=True, exist_ok=True)
         (recorder_workspace / ".keep").touch()
 
         birdnet_workspace = tmp_path / "birdnet_workspace"
@@ -129,6 +133,23 @@ class TestHardwareBirdNETFullPipeline:
 
         try:
             # 1. Start Recorder using the Container Manager to handle device propagation safely
+            # Use the mic's native sample rate — the UltraMic 384K only supports 384kHz.
+            # Enable both streams: raw at native rate, processed downsampled to 48kHz for BirdNET.
+            config_json = json.dumps(
+                {
+                    "stream": {
+                        "segment_duration_s": 3,
+                        "raw_enabled": True,
+                        "processed_enabled": True,
+                    },
+                    "processing": {"gain_db": 0.0},
+                    "audio": {
+                        "sample_rate": mic.sample_rate,
+                        "channels": 1,
+                        "format": "S16LE",
+                    },
+                }
+            )
             spec = Tier2ServiceSpec(
                 name=recorder_name,
                 image=RECORDER_IMAGE,
@@ -137,17 +158,12 @@ class TestHardwareBirdNETFullPipeline:
                     "SILVASONIC_RECORDER_DEVICE": target_alsa_device,
                     "SILVASONIC_REDIS_URL": f"redis://{redis_name}:6379/0",
                     "SILVASONIC_RECORDER_WORKSPACE": "/app/workspace",
-                    "SILVASONIC_RECORDER_PROFILE_SLUG": "test_profile",
-                    "SILVASONIC_RECORDER_CONFIG_JSON": (
-                        '{"stream": {"segment_duration_s": 3, '
-                        '"raw_enabled": false, "processed_enabled": true}, '
-                        '"processing": {"gain_db": 0.0}, '
-                        '"audio": {"sample_rate": 48000, "channels": 1, "format": "S16LE"}}'
-                    ),
+                    "SILVASONIC_RECORDER_PROFILE_SLUG": mic.slug,
+                    "SILVASONIC_RECORDER_CONFIG_JSON": config_json,
                 },
                 restart_policy=RestartPolicy(name="no", max_retry_count=0),
-                memory_limit="128m",
-                cpu_limit=0.5,
+                memory_limit="256m",
+                cpu_limit=1.0,
                 oom_score_adj=-999,
                 mounts=[
                     MountSpec(
@@ -157,6 +173,8 @@ class TestHardwareBirdNETFullPipeline:
                     )
                 ],
                 devices=["/dev/snd"],
+                group_add=["audio"],
+                privileged=True,
                 network=system_network,
             )
             cid = mgr.start(spec)

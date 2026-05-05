@@ -22,11 +22,27 @@ For the long-term vision and design philosophy see **[VISION.md](https://github.
 
 ### Prerequisites
 
-- Linux (e.g., Debian or Fedora)
+- Linux (Fedora, Debian, Ubuntu, Aurora DX, Raspberry Pi OS)
 - **Python 3.13** (required, `>=3.13, <3.14`)
 - **uv** installed — Python package manager ([Installation](https://docs.astral.sh/uv/getting-started/installation/))
 - **just** installed — command runner ([Installation](https://github.com/casey/just#installation))
 - **Podman** & **podman-compose** installed
+
+### One-Time Hardware Setup
+
+If you plan to use real audio hardware (USB microphone), you need the `audio` group:
+
+```bash
+# 1. Add yourself to the audio group (once, requires sudo):
+sudo usermod -aG audio $USER
+
+# 2. Enable the Podman user socket (once, no sudo required):
+systemctl --user enable --now podman.socket
+
+# 3. Log out and back in (or reboot) to activate the group.
+```
+
+> **Note:** `just setup` will verify both requirements and tell you exactly what to fix if anything is missing. No other `sudo` commands are needed.
 
 ### Setup
 
@@ -34,7 +50,7 @@ For the long-term vision and design philosophy see **[VISION.md](https://github.
 git clone https://github.com/kyellsen/silvasonic.git
 cd silvasonic
 cp .env.example .env   # adjust settings as needed
-just setup              # uv sync, pre-commit hooks, workspace directories
+just setup              # uv sync, pre-commit hooks, workspace, hardware checks
 just build              # build all container images
 just start              # start all services
 ```

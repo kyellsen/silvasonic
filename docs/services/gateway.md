@@ -1,6 +1,6 @@
 # Gateway Service
 
-> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** 80 (HTTP), 443 (HTTPS)
+> **Status:** planned - Not implemented · **Tier:** 1 · **Instances:** Single · **Ports:** 8080 (HTTP dev) / 80 (prod), 8443 (HTTPS dev) / 443 (prod)
 >
 > [!WARNING]
 > **Drift Warning:** This is an illustrative TO-BE specification. Directory structures, ports, and Caddyfile details are placeholders and subject to change during actual implementation.
@@ -56,8 +56,8 @@
 
 | Variable / Mount                | Description                        | Default / Example                                            |
 | ------------------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| `SILVASONIC_GATEWAY_HTTP_PORT`  | Host-exposed HTTP port             | `80`                                                         |
-| `SILVASONIC_GATEWAY_HTTPS_PORT` | Host-exposed HTTPS port            | `443`                                                        |
+| `SILVASONIC_GATEWAY_HTTP_PORT`  | Host-exposed HTTP port             | `8080` (dev) / `80` (prod)                                   |
+| `SILVASONIC_GATEWAY_HTTPS_PORT` | Host-exposed HTTPS port            | `8443` (dev) / `443` (prod)                                  |
 | `SILVASONIC_DOMAIN_NAME`        | Hostname for the station           | `silvasonic.local`                                           |
 | Caddyfile mount                 | Caddy configuration (read-only)    | `./services/gateway/Caddyfile:/etc/caddy/Caddyfile:ro,z`     |
 | Named Volume                    | TLS certificates (ACME), persisted | `caddy_data:/data`                                           |
@@ -117,7 +117,7 @@
 
 ## 9. References
 
-*   [Port Allocation](../arch/port_allocation.md) — Gateway on ports 80/443
+*   [Port Allocation](../arch/port_allocation.md) — Gateway on ports 8080/8443 (dev), 80/443 (prod)
 *   [ADR-0003](../adr/0003-frontend-architecture.md) — Frontend Architecture
 *   [ADR-0006](../adr/0006-bind-mounts-over-volumes.md) — Bind Mounts vs. Named Volumes
 *   [Glossary: Gateway](../glossary.md) — canonical definition

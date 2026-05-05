@@ -59,7 +59,7 @@
 | **DB Access**    | **No** — the Recorder has zero database access (ADR-0013). Config via Profile Injection. |
 | **Concurrency**  | Multi-process — audio capture is isolated in an FFmpeg subprocess, Python wrapper handles orchestration |
 | **State**        | Stateless (no DB) but manages ALSA hardware locks and file handles at runtime            |
-| **Privileges**   | Privileged (`privileged: true`) — requires `/dev/snd` and ALSA access (ADR-0007)         |
+| **Privileges**   | Privileged (`privileged: true`) — `/dev/snd` ALSA access, Podman rootless is the sandbox (ADR-0007 §6) |
 | **Resources**    | Medium — continuous I/O to NVMe, FFmpeg resampling CPU usage scales with sample rate     |
 | **QoS Priority** | `oom_score_adj=-999` — **Protected**. OOM Killer kills this LAST. (ADR-0020)             |
 | **Retry Limit**  | Container restart limits apply to prevent infinite loops (managed by Controller)         |

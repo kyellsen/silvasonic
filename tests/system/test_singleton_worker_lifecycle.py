@@ -23,12 +23,14 @@ from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.reconciler import ReconciliationLoop
 from silvasonic.controller.seeder import ConfigSeeder
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
+from silvasonic.controller.worker_registry import SYSTEM_WORKERS
 from silvasonic.core.database.models.system import ManagedService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .conftest import (
     PODMAN_SOCKET,
     SOCKET_AVAILABLE,
+    TEST_RUN_ID,
     seed_test_defaults,
 )
 
@@ -71,6 +73,19 @@ class TestSingletonWorkerLifecycle:
         """Integration from DB to Podman for Tier 2 Background Worker."""
         require_birdnet_image()
 
+        # Isolate singleton worker name for parallel execution
+        isolated_worker_name = f"birdnet-{TEST_RUN_ID}"
+        container_name = f"silvasonic-{isolated_worker_name}"
+
+        # Worker 0 is always birdnet in SYSTEM_WORKERS registry.
+        # BackgroundWorker is a frozen dataclass, so we must replace the instance in the list.
+        import dataclasses
+
+        monkeypatch.setattr(
+            "silvasonic.controller.worker_evaluator.SYSTEM_WORKERS",
+            [dataclasses.replace(SYSTEM_WORKERS[0], name=isolated_worker_name)],
+        )
+
         # Phase 1: Setup test environment
         monkeypatch.setenv("SILVASONIC_NETWORK", system_network)
 
@@ -89,7 +104,7 @@ class TestSingletonWorkerLifecycle:
         client.connect()
 
         try:
-            mgr = ContainerManager(client, owner_profile="controller")
+            mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
 
             # Instantiate ReconciliationLoop with real SystemWorkerEvaluator, mock HW evaluator
             sys_evaluator = SystemWorkerEvaluator()
@@ -105,7 +120,7 @@ class TestSingletonWorkerLifecycle:
             # Phase 2: Start BirdNET via DB state
             # Insert ManagedService for BirdNET with enabled=True
             async with session_factory() as session:
-                session.add(ManagedService(name="birdnet", enabled=True))
+                session.add(ManagedService(name=isolated_worker_name, enabled=True))
                 await session.commit()
 
             from contextlib import asynccontextmanager
@@ -122,26 +137,25 @@ class TestSingletonWorkerLifecycle:
                 await loop._reconcile_once()
 
             # Assert: BirdNET container should now be running
-            worker_name = "silvasonic-birdnet"
-            running_info = mgr.get(worker_name)
+            running_info = mgr.get(container_name)
 
             assert running_info is not None, (
-                f"Container '{worker_name}' should be started by sync_state"
+                f"Container '{container_name}' should be started by sync_state"
             )
             assert running_info.get("status") == "running", (
-                f"Container '{worker_name}' must be running"
+                f"Container '{container_name}' must be running"
             )
 
             # Check that it has the correct network and labels
             labels = running_info.get("labels", {})
             assert isinstance(labels, dict)
             assert labels.get("io.silvasonic.tier") == "2"
-            assert labels.get("io.silvasonic.service") == "birdnet"
+            assert labels.get("io.silvasonic.service") == isolated_worker_name
 
             # Phase 3: Stop BirdNET via DB state
             # Update ManagedService to enabled=False
             async with session_factory() as session:
-                birdnet_svc = await session.get(ManagedService, "birdnet")
+                birdnet_svc = await session.get(ManagedService, isolated_worker_name)
                 assert birdnet_svc is not None
                 birdnet_svc.enabled = False
                 await session.commit()
@@ -153,13 +167,22 @@ class TestSingletonWorkerLifecycle:
                 await loop._reconcile_once()
 
             # Assert: BirdNET container should be stopped and removed
-            stopped_info = mgr.get(worker_name)
+            # Podman can be slow to update the API state after a force remove
+            import time
+
+            stopped_info = None
+            for _ in range(10):
+                stopped_info = mgr.get(container_name)
+                if stopped_info is None:
+                    break
+                time.sleep(0.5)
+
             assert stopped_info is None, (
-                f"Container '{worker_name}' should have been removed by sync_state"
+                f"Container '{container_name}' should have been removed by sync_state"
             )
 
         finally:
             # Cleanup safeguard if test fails midway
             with contextlib.suppress(Exception):
-                client.containers.get("silvasonic-birdnet").remove(force=True)
+                client.containers.get(container_name).remove(force=True)
             client.close()

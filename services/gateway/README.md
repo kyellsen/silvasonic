@@ -1,6 +1,6 @@
 # silvasonic-gateway
 
-> **Status:** Implemented (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 80 / 443
+> **Status:** Implemented (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Instances:** Single · **Port:** 8080 / 8443 (dev), 80 / 443 (prod)
 
 **AS-IS:** Unified Entry Point for all web services of the Silvasonic system, powered by Caddy. Routes web traffic and provides basic authentication.
 **Target:** Add TLS features and stream proxying to Icecast (v1.1.0).
@@ -46,8 +46,8 @@
 
 | Variable / Mount                  | Description                                    | Default / Example    |
 | --------------------------------- | ---------------------------------------------- | -------------------- |
-| `SILVASONIC_GATEWAY_HTTP_PORT`    | Public HTTP port exposed to the host           | `80`                 |
-| `SILVASONIC_GATEWAY_HTTPS_PORT`   | Public HTTPS port exposed to the host          | `443`                |
+| `SILVASONIC_GATEWAY_HTTP_PORT`    | Public HTTP port exposed to the host           | `8080` (dev) / `80` (prod) |
+| `SILVASONIC_GATEWAY_HTTPS_PORT`   | Public HTTPS port exposed to the host          | `8443` (dev) / `443` (prod) |
 | `SILVASONIC_DOMAIN_NAME`          | Base routing domain                            | `silvasonic.local`   |
 | `/etc/caddy/Caddyfile` (Mount)    | Caddy routing configuration file               | (Mapped from repo)   |
 | `caddy_data` (Volume)             | Persistence for Caddy certificates and certs   | (Named volume)       |

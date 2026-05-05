@@ -102,12 +102,36 @@ def ensure_dir(path: Path | str, mode: int = 0o755) -> Path:
     return p
 
 
-def check_group_membership(group_name: str, user: str | None = None) -> tuple[bool, bool]:
+def group_exists(group_name: str) -> bool:
+    """Check if a system group exists on this Linux distribution.
+
+    Uses ``grp.getgrnam()`` to query ``/etc/group``.
+    Returns False for groups that are distro-specific
+    (e.g. ``gpio`` exists on Raspberry Pi OS but not on Fedora).
+    """
+    try:
+        grp.getgrnam(group_name)
+        return True
+    except KeyError:
+        return False
+
+
+def check_group_membership(group_name: str, user: str | None = None) -> tuple[bool, bool, bool]:
     """Advanced Linux group check.
 
-    Returns a tuple: (is_in_database, is_active_in_shell).
-    This is vital to warn users if they need to reboot/re-login.
+    Returns a tuple: (exists_on_system, is_in_database, is_active_in_shell).
+
+    * ``exists_on_system``: Does the group exist in ``/etc/group``?
+    * ``is_in_database``: Is the user listed as a member in ``/etc/group``?
+    * ``is_active_in_shell``: Is the group active in the current shell session?
+
+    This three-state check is vital because:
+    * Not all groups exist on every distro (e.g. ``gpio`` is RPi-only).
+    * Users may need to reboot/re-login to activate a newly-added group.
     """
+    if not group_exists(group_name):
+        return False, False, False
+
     if user is None:
         user = os.environ.get("USER", pwd.getpwuid(os.getuid()).pw_name)
 
@@ -126,7 +150,7 @@ def check_group_membership(group_name: str, user: str | None = None) -> tuple[bo
     except KeyError:
         is_in_db = False
 
-    return is_in_db, is_active
+    return True, is_in_db, is_active
 
 
 # -- .env helpers ----------------------------------------------------------

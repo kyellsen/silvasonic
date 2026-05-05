@@ -12,8 +12,8 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "${SILVASONIC_GATEWAY_HTTP_PORT:-80}:80"
-      - "${SILVASONIC_GATEWAY_HTTPS_PORT:-443}:443"
+      - "${SILVASONIC_GATEWAY_HTTP_PORT:-8080}:80"
+      - "${SILVASONIC_GATEWAY_HTTPS_PORT:-8443}:443"
     volumes:
       - ./services/gateway/Caddyfile:/etc/caddy/Caddyfile:ro,z
       - caddy_data:/data
@@ -148,7 +148,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    # Hardware access (audio devices, GPIO)
+    # Hardware access (audio devices via ALSA)
+    # Privileged mode grants /dev/snd access on all Linux distros.
+    # Podman rootless user namespaces are the actual security boundary (ADR-0007).
     privileged: true
     devices:
       - /dev/snd:/dev/snd

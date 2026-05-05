@@ -4,8 +4,10 @@
 Relies on common.py for styling and OS-level operations.
 """
 
+import contextlib
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -90,6 +92,30 @@ def ensure_env_file() -> None:
         env_file.write_text(env_content, encoding="utf-8")
         print_success("Auto-generated new SILVASONIC_ENCRYPTION_KEY in .env")
 
+    # Cleanup stale host config variables
+    cleaned_env_content = env_content
+    for stale_var in ["HOST_AUDIO_GID", "HOST_SELINUX"]:
+        if re.search(rf"^{stale_var}=.*$", cleaned_env_content, re.MULTILINE):
+            cleaned_env_content = re.sub(
+                rf"^({stale_var}=.*)$",
+                r"# \1  # Removed by setup (deprecated)",
+                cleaned_env_content,
+                flags=re.MULTILINE,
+            )
+    if cleaned_env_content != env_content:
+        env_file.write_text(cleaned_env_content, encoding="utf-8")
+        print_warning("Cleaned up deprecated host configuration variables from .env")
+        env_content = cleaned_env_content
+
+    # Auto-patch UID in Podman socket paths (cross-distro portability)
+    # .env.example ships with UID 1000 as a reasonable default, but the
+    # actual UID may differ on enterprise distros or after user re-creation.
+    actual_uid = str(os.getuid())
+    if actual_uid != "1000" and "/run/user/1000/" in env_content:
+        patched = env_content.replace("/run/user/1000/", f"/run/user/{actual_uid}/")
+        env_file.write_text(patched, encoding="utf-8")
+        print_success(f"Patched Podman socket paths: UID 1000 → {actual_uid}")
+
 
 def ensure_override_template() -> None:
     """Ensure config/defaults.override.yml exists as a template if missing."""
@@ -127,16 +153,49 @@ def ensure_override_template() -> None:
 
 def check_container_engine() -> None:
     """Verify that Podman is available. Abort if not."""
-    if shutil.which("podman"):
-        print_success("Container engine 'podman' found.")
+    if not shutil.which("podman"):
+        print_error(
+            "Container engine 'podman' not found in PATH!\n"
+            "   Install podman: https://podman.io/docs/installation\n"
+            "   Container commands (just build/start/stop) require a working engine."
+        )
+        sys.exit(1)
+
+    print_success("Container engine 'podman' found.")
+
+    # Check version >= 4.0
+    try:
+        result = subprocess.run(["podman", "--version"], capture_output=True, text=True, check=True)
+        version_str = result.stdout.strip().split()[2]  # typically "podman version x.y.z"
+        major_version = int(version_str.split(".")[0])
+        if major_version < 4:
+            print_warning(
+                f"Podman version {version_str} is < 4.0. "
+                "This may cause issues with rootless privileged containers."
+            )
+    except Exception as e:
+        print_warning(f"Could not determine Podman version: {e}")
+
+
+def check_linger() -> None:
+    """Check if loginctl enable-linger is active."""
+    if not shutil.which("loginctl"):
         return
 
-    print_error(
-        "Container engine 'podman' not found in PATH!\n"
-        "   Install podman: https://podman.io/docs/installation\n"
-        "   Container commands (just build/start/stop) require a working engine."
-    )
-    sys.exit(1)
+    try:
+        result = subprocess.run(
+            ["loginctl", "show-user", os.environ.get("USER", "root"), "--property=Linger"],
+            capture_output=True,
+            text=True,
+        )
+        if "Linger=yes" not in result.stdout:
+            print_warning("User linger is not enabled. Background services will stop on logout.")
+            print_error("PLEASE FIX: Run the following command:")
+            print(f"{Colors.BOLD}loginctl enable-linger $USER{Colors.ENDC}")
+        else:
+            print_success("User linger is enabled.")
+    except Exception as e:
+        print_warning(f"Could not check linger status: {e}")
 
 
 def main() -> None:
@@ -152,6 +211,10 @@ def main() -> None:
     # 2. Container Engine
     print_step("Checking container engine availability...")
     check_container_engine()
+
+    # 2b. User Session Configuration
+    print_step("Checking User Session Configuration...")
+    check_linger()
 
     # 3. Dependency Sync (uv)
     print_step("Syncing dependencies (uv)...")
@@ -197,31 +260,58 @@ def main() -> None:
 
     print_success(f"Workspace ready at: {workspace_dir} (Permissions: 755)")
 
-    # 6. Hardware Access Verification (Raspberry Pi specific)
+    # 5b. Podman Socket Verification
+    # The socket file can vanish after service idle-timeout while systemd
+    # still reports the unit as "listening" (stale kernel FD).  A restart
+    # of the socket unit re-materialises the .sock file reliably.
+    print_step("Verifying Podman user socket...")
+    socket_path = Path(f"/run/user/{os.getuid()}/podman/podman.sock")
+
+    if not socket_path.exists() and shutil.which("systemctl"):
+        # Attempt to (re-)activate the socket unit
+        with contextlib.suppress(subprocess.TimeoutExpired, FileNotFoundError):
+            subprocess.run(
+                ["systemctl", "--user", "restart", "podman.socket"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            )
+
+    if socket_path.exists():
+        print_success(f"Podman socket active: {socket_path}")
+    else:
+        warn = Colors.WARNING
+        bold = Colors.BOLD
+        end = Colors.ENDC
+        print(f"   ⚠️  Podman user socket not found: {socket_path}")
+        print(f"      {warn}Required for integration tests and Tier 2 containers.{end}")
+        print(f"      {bold}Fix: systemctl --user enable --now podman.socket{end}")
+
+    # 6. Hardware Access Verification (cross-distro)
+    # Only audio (ALSA) and dialout (USB serial) are universally needed.
+    # RPi-specific groups like gpio/spi/i2c are NOT required by Silvasonic.
+    # With privileged containers, group membership is sufficient — no ACL probing needed.
     print_step("Verifying Hardware Access Groups...")
-    required_groups = ["audio", "gpio", "spi", "i2c", "dialout"]
+    required_groups = ["audio", "dialout"]
     not_configured = []
 
     user = os.environ.get("USER", "root")
 
     for group in required_groups:
-        is_in_db, is_active = check_group_membership(group, user)
+        exists, is_in_db, is_active = check_group_membership(group, user)
 
-        if is_active:
-            print(f"   ✅ User '{user}' is in '{group}' (active)")
-        elif is_in_db:
-            print(f"   🔄 User '{user}' is in '{group}' (database).")
-            warn = Colors.WARNING
-            end = Colors.ENDC
-            msg = f"      {warn}Action: Re-login or reboot required to activate!{end}"
-            print(msg)
+        if not exists:
+            print(f"   (i) Group '{group}' does not exist on this system (skipped)")
+        elif is_active or is_in_db:
+            print(f"   ✅ User '{user}' is in '{group}'")
         else:
             print(f"   ⚠️  WARNING: User '{user}' is NOT in '{group}'.")
             not_configured.append(group)
 
     if not_configured:
-        print_error("PLEASE FIX: Run the following command to add missing groups:")
+        print_error("PLEASE FIX: Run the following command, then re-login:")
         print(f"{Colors.BOLD}sudo usermod -aG {','.join(not_configured)} {user}{Colors.ENDC}")
+        print(f"   Then: {Colors.WARNING}Log out and log back in (or reboot){Colors.ENDC}")
     else:
         print_success("Hardware group verification passed.")
 

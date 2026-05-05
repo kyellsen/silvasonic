@@ -19,8 +19,8 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 | **BirdNET** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned     |
 | **BatDetect** (Health) | 9500          | —               | — (internal only)               | 📋 Planned     |
 | **Weather** (Health)   | 9500          | —               | — (internal only)               | 📋 Planned     |
-| Gateway (Caddy) HTTP   | 80            | 80              | `SILVASONIC_GATEWAY_HTTP_PORT`  | 📋 Planned     |
-| Gateway (Caddy) HTTPS  | 443           | 443             | `SILVASONIC_GATEWAY_HTTPS_PORT` | 📋 Planned     |
+| Gateway (Caddy) HTTP   | 80            | 8080            | `SILVASONIC_GATEWAY_HTTP_PORT`  | ✅ Implemented |
+| Gateway (Caddy) HTTPS  | 443           | 8443            | `SILVASONIC_GATEWAY_HTTPS_PORT` | ✅ Implemented |
 | **Icecast**            | 8080          | 8080            | `SILVASONIC_ICECAST_PORT`       | 📋 Planned     |
 
 > **Note:** Tailscale creates a VPN overlay — no dedicated ports needed.
@@ -43,5 +43,5 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 
 ## Production vs. Development
 
-- **Production**: Only Caddy exposes ports (80/443). All other services communicate via the internal `silvasonic-net` Podman network.
-- **Development**: Controller (9100), Web-Mock (8001), Database (5432), Redis (6379) exposed on localhost for debugging. Recorder has no host port.
+- **Production**: Only Caddy exposes ports (80/443 — requires `net.ipv4.ip_unprivileged_port_start=80` in `/etc/sysctl.conf` or override via `.env`). All other services communicate via the internal `silvasonic-net` Podman network.
+- **Development**: Gateway uses 8080/8443 (rootless-safe). Controller (9100), Web-Mock (8001), Database (5432), Redis (6379) exposed on localhost for debugging. Recorder has no host port.

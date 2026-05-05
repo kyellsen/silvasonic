@@ -74,6 +74,8 @@ class ContainerManager:
 
         try:
             self._ensure_mount_dirs(spec)
+            # Ensure the owner label matches this manager's identity (test isolation).
+            spec.labels["io.silvasonic.owner"] = self._owner_profile
             run_kwargs = self._build_run_kwargs(spec)
             container = self._podman.containers.run(**run_kwargs)
 
