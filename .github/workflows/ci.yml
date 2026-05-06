@@ -80,6 +80,7 @@ jobs:
           SILVASONIC_PODMAN_SOCKET=/run/user/${UID_VAL}/podman/podman.sock
           SILVASONIC_NETWORK=silvasonic-net
           DOCKER_HOST=unix:///run/user/${UID_VAL}/podman/podman.sock
+          TESTCONTAINERS_RYUK_DISABLED=true
           POSTGRES_USER=silvasonic
           POSTGRES_PASSWORD=silvasonic
           POSTGRES_DB=silvasonic
@@ -93,6 +94,15 @@ jobs:
           ENVEOF
           # Strip leading whitespace from each line (YAML indentation artifact)
           sed -i 's/^[[:space:]]*//' .env
+
+      - name: Pre-pull Test Container Images
+        run: |
+          # Pull large images upfront so testcontainers doesn't timeout
+          # during fixture setup (pytest-timeout = 30s).
+          podman pull docker.io/timescale/timescaledb:2.19.3-pg17 &
+          podman pull docker.io/library/redis:7.4-alpine &
+          podman pull docker.io/minio/minio:latest &
+          wait
 
       - name: Initialize Project
         run: just setup
