@@ -64,7 +64,7 @@ reset: clean setup build start
 # CODE QUALITY
 # ==============================================================================
 
-# 🔧 Führt Auto-Fixer aus (Ruff Format, Lint Fixes)
+# 🔧 Run the auto-fixers (ruff format, lint fixes)
 fix *args:
     @{{ BOOTSTRAP_PYTHON }} scripts/fix.py {{args}}
 
@@ -94,39 +94,39 @@ ci:
 # TESTING
 # ==============================================================================
 
-# 🧪 Führt schnelle Unit-Tests aus (Mocked, ohne externe Services)
+# 🧪 Run the fast unit tests (mocked, no external services)
 test-unit:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py unit
 
-# 🐢 Führt Integrationstests aus (Testcontainers startet DB automatisch!)
+# 🐢 Run the integration tests (testcontainers starts the DB automatically)
 test-int:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py integration
 
-# 💨 Smoke Tests (Testcontainers — self-contained, kein just start nötig)
+# 💨 Smoke tests (testcontainers — self-contained, no 'just start' needed)
 test-smoke:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py smoke
 
-# 🔧 System Lifecycle Tests (Podman + gebaute Images, keine Hardware nötig)
+# 🔧 System lifecycle tests (Podman + built images, no hardware needed)
 test-system:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py system
 
-# 🎤 Hardware System Tests (Automatisiert, ohne Input-Prompts)
+# 🎤 Hardware system tests (automated, no input prompts)
 test-hw:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_auto
 
-# 🔌 Interaktive Hardware System Tests (Manuelles Unplugging an der Konsole)
+# 🔌 Interactive hardware system tests (manual unplugging at the console)
 test-hw-manual:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_manual
 
-# 🤖 Alle Hardware Tests (Automatisiert + Manuell kombiniert)
+# 🤖 All hardware tests (automated and manual combined)
 test-hw-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py system_hw_all
 
-# 🧪 Quick Dev Tests (Unit + Integration, ohne System/Smoke/E2E)
+# 🧪 Quick dev tests (unit + integration, no system/smoke/e2e)
 test:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py test
 
-# 🏭 Alle Tests außer Hardware (Unit + Int + System + Smoke + E2E)
+# 🏭 All tests except hardware (unit + int + system + smoke + e2e)
 test-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py all
 
@@ -134,7 +134,7 @@ test-all:
 test-cov-all:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py cov-all
 
-# 🕸️  Führt End-to-End Playwright Tests aus
+# 🕸️  Run the end-to-end Playwright tests
 test-e2e:
     @{{ BOOTSTRAP_PYTHON }} scripts/test.py e2e
 
@@ -171,7 +171,7 @@ docs-build:
 # FRONTEND (Tailwind CSS)
 # ==============================================================================
 
-# 🎨 Baut das Tailwind CSS für web-mock (einmalig, minified)
+# 🎨 Build the Tailwind CSS for web-mock (one-shot, minified)
 css-build:
     @cd services/web-mock && npm run css:build
 

@@ -2,7 +2,7 @@
 
 > **Status:** `closed`
 >
-> **Priority:** 8/10 (Korrumpierte Time-Series und Crashes beim Cold Boot in the field. Unbedingt in MVP v1.0.0 oder früher fixen.)
+> **Priority:** 8/10 (Corrupted time series and crashes on a cold boot in the field. Must be fixed in MVP v1.0.0 at the latest.)
 >
 > **Labels:** `bug` | `architecture`
 >
@@ -11,36 +11,74 @@
 ---
 
 ## 1. Description
-Auf autonomen (Raspberry Pi) Geräten ohne Hardware-Echtzeituhr (RTC) startet der FFmpeg-Aufnahmeprozess im `recorder`-Container häufig *bevor* die Netzwerkverbindung (insbesondere via WLAN oder LTE) vollständig aufgebaut ist. Das System startet mit einer veralteten Uhrzeit (z.B. vom letzten `fake-hwclock` Shutdown). Sobald die Netzwerkverbindung nach z.B. 30-90 Sekunden steht, synchronisiert NTP die Systemuhr hart auf die echte Zeit.
 
-Dieser Zeitsprung (Time-Warp) passiert *während* FFmpeg bereits aktiv Audiodaten speichert und führt zu kollabierenden Segment-Berechnungen und korrupten Time-Series-Daten.
+On autonomous devices (Raspberry Pi) without a hardware real-time clock, the
+FFmpeg recording process in the `recorder` container frequently starts *before*
+the network connection — especially over WLAN or LTE — is fully up. The system
+boots with a stale clock (for example the one written at the last `fake-hwclock`
+shutdown). Once the network comes up after 30–90 seconds, NTP steps the system
+clock hard onto the real time.
 
-## 2. Context & Root Cause Analysis
-Die Architektur ist auf Plug&Play und Robustheit optimiert:
-* **Boot-Geschwindigkeit:** Tier 1 (DB, Redis) und Tier 2 (Controller) benötigen ca. 15-20 Sekunden für den Start. Sobald ein USB-Mikrofon erkannt wird, spawnt sofort der `recorder`-Container.
-* **Netzwerk-Verzögerung:** Eine mobile Einwahl (LTE) oder schwierige WLAN-Bedingungen (Outdoor) dauern oft weitaus länger (30-90 Sekunden). 
-* **Zeitsprung:** Der Pi lädt beim Startmangels Batterie-RTC die Uhrzeit des letzten regulären Shutdowns (über `fake-hwclock`). Wenn NTP schließlich greift, springt die Systemzeit schlagartig um Tage, Wochen oder Monate vorwärts – genau in dem Moment, in dem der FFmpeg-Segmenter läuft.
+That time warp happens *while* FFmpeg is already writing audio, and it collapses
+the segment calculations and corrupts the time-series data.
 
-## 3. Impact / Consequences
-* **Data Capture Integrity:** Der interne FFmpeg-Segmenter arbeitet mit Laufzeit-Berechnungen basierend auf der Systemzeit. Der Zeitchaos führt zu crashenden Prozessen oder zu .wav-Dateien, die intern behaupten, wochenlang zu sein ("50-Jahre-Sprung").
-* **System Stability:** Potentielle Container-Neustarts bei FFmpeg-Abstürzen.
-* **Data Layer:** Die Datenbank-Zeitserien (`start_time`, `end_time`) werden durch falsche oder überschneidende Timestamps komplett zerschossen, da die Zeit nicht monoton verläuft.
+## 2. Context & root cause analysis
 
-## 4. Steps to Reproduce (If applicable)
-1. Raspberry Pi (ohne Internet, ohne RTC-Modul) starten. Die Zeit ist veraltet (`fake-hwclock`).
-2. USB-Mikrofon anschließen (falls nicht schon verbunden). Der `recorder`-Container startet die FFmpeg-Aufnahme.
-3. Ein Netzwerkkabel anschließen (Hotplugging) oder auf den erfolgreichen, verzögerten Verbindungsaufbau eines UMTS/LTE-Sticks warten.
-4. `systemd-timesyncd` synchronisiert hart die Zeit (Zeitsprung) $\rightarrow$ FFmpeg crasht oder schreibt defekte Dateien in `.buffer/`.
+The architecture is optimised for plug-and-play operation and robustness:
 
-## 5. Expected Behavior
-Das System (insbesondere die FFmpeg-Aufnahme) muss robuste Laufzeitstabilität gegen fundamentale Zeitsprünge der underlying Systemuhr aufweisen. Weder darf der Prozess abstürzen, noch dürfen Segmente falsche Dauern reklamiert bekommen. Time-Warping muss durch das Architektur-Design fließend kompensiert werden können.
+* **Boot speed:** Tier 1 (database, Redis) and Tier 2 (controller) need roughly
+  15–20 seconds to come up. As soon as a USB microphone is detected, the
+  `recorder` container is spawned immediately.
+* **Network delay:** A mobile dial-up (LTE) or difficult WLAN conditions
+  (outdoors) often take far longer — 30 to 90 seconds.
+* **Time jump:** Lacking a battery-backed RTC, the Pi restores the time of its
+  last regular shutdown via `fake-hwclock`. When NTP finally takes hold, the
+  system clock jumps forward by days, weeks or months — at exactly the moment
+  the FFmpeg segmenter is running.
 
-## 6. Proposed Solution
-**Favorisierte Lösung: Robustheit in FFmpeg**
-Anstatt den Controller auf `time-sync.target` warten zu lassen (was den Offline-Use-Case im Wald unmöglich machen würde), muss die Aufzeichnungslogik isoliert werden:
-* **Audio-Hardware-Ticks statt System-Uhr:** FFmpeg darf nicht nach absoluter Systemzeit segmentieren, sondern sollte Segmente auf Basis nackter Hardware-Metriken trennen (z.B. Segmentierung nach strikter Sample-Anzahl oder generierten Datei-Bytes).
-* **Python-SegmentPromoter:** Die tatsächliche und finale Vergabe der "Echtzeit"-Zeitstempel für Segmente findet erst durch den Promoter statt, wenn er die Dateien von `.buffer/` nach `data/` verschiebt. Er überwacht, wann die Zeit "sinnvoll" (NTP-synchronisiert) wird und weist erst dann korrekte Epochen zu (oder vermerkt "un-synced" in den Metadaten).
+## 3. Impact / consequences
 
-## 7. Relevant Documentation Links
+* **Data capture integrity:** The internal FFmpeg segmenter works from runtime
+  calculations based on the system clock. The time chaos crashes processes or
+  produces `.wav` files that internally claim to be weeks long ("50-year jump").
+* **System stability:** Container restarts whenever FFmpeg dies.
+* **Data layer:** The database time series (`start_time`, `end_time`) are
+  destroyed by wrong or overlapping timestamps, because time no longer advances
+  monotonically.
+
+## 4. Steps to reproduce
+
+1. Boot a Raspberry Pi with no internet and no RTC module. The clock is stale
+   (`fake-hwclock`).
+2. Attach a USB microphone if one is not already connected. The `recorder`
+   container starts the FFmpeg recording.
+3. Plug in a network cable (hotplug), or wait for a UMTS/LTE stick to complete
+   its delayed connection.
+4. `systemd-timesyncd` steps the clock hard → FFmpeg crashes or writes broken
+   files into `.buffer/`.
+
+## 5. Expected behaviour
+
+The system, and the FFmpeg recording in particular, must stay stable across
+fundamental jumps of the underlying system clock. The process must neither crash
+nor attribute wrong durations to segments. Time warping has to be absorbed by
+the architecture.
+
+## 6. Proposed solution
+
+**Preferred solution: robustness inside FFmpeg.** Rather than making the
+controller wait for `time-sync.target` — which would make the offline use case in
+the forest impossible — the recording logic is isolated:
+
+* **Audio hardware ticks instead of the system clock:** FFmpeg must not segment
+  by absolute system time. Segments are cut on bare hardware metrics instead —
+  a strict sample count, or bytes written.
+* **Python segment promoter:** The final assignment of real-world timestamps
+  happens in the promoter, when it moves files from `.buffer/` to `data/`. It
+  watches for the clock becoming plausible (NTP-synchronised) and only then
+  assigns correct epochs, or records "un-synced" in the metadata.
+
+## 7. Relevant documentation links
+
 * [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
 * [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)

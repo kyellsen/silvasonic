@@ -2,7 +2,7 @@
 repos:
   - repo: local
     hooks:
-      # 1. FIX: Formatierung & Autofix (Läuft nur auf Git-Index)
+      # 1. FIX: formatting & autofix (runs on the git index only)
       - id: fix-local
         name: Fix (Format & Lint)
         entry: just fix
