@@ -133,6 +133,7 @@ strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src:services/birdnet/src"
+enable_error_code = ["ignore-without-code"]
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]
@@ -154,15 +155,6 @@ ignore_missing_imports = true
 # from the untyped-decorator check rather than pulling in non-upstream stub packages.
 module = ["silvasonic.web_mock.*"]
 disallow_untyped_decorators = false
-
-[[tool.mypy.overrides]]
-# Tests: relax strict typing to reduce friction when writing new tests.
-# No __init__.py in test dirs → mypy sees each file as top-level module.
-module = ["tests", "tests.*", "conftest"]
-disallow_untyped_defs = false
-disallow_untyped_decorators = false
-disallow_untyped_calls = false
-
 
 [tool.pytest.ini_options]
 minversion = "8.0"
