@@ -13,14 +13,15 @@ from __future__ import annotations
 
 import contextlib
 import subprocess
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
+from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
-from silvasonic.controller.reconciler import ReconciliationLoop
+from silvasonic.controller.reconciler import DeviceStateEvaluator, ReconciliationLoop
 from silvasonic.controller.seeder import ConfigSeeder
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
 from silvasonic.controller.worker_registry import SYSTEM_WORKERS
@@ -49,10 +50,10 @@ def require_birdnet_image() -> None:
         pytest.skip("BirdNET image not built (run 'just build' first)")
 
 
-class MockDeviceStateEvaluator:
+class MockDeviceStateEvaluator(DeviceStateEvaluator):
     """Mock Hardware evaluator to isolate testing to the SystemWorkerEvaluator."""
 
-    async def evaluate(self, session: AsyncSession) -> list[Any]:
+    async def evaluate(self, session: AsyncSession) -> list[Tier2ServiceSpec]:
         return []
 
 
@@ -112,7 +113,7 @@ class TestSingletonWorkerLifecycle:
 
             loop = ReconciliationLoop(
                 mgr,
-                hardware_evaluator=hw_evaluator,  # type: ignore
+                hardware_evaluator=hw_evaluator,
                 sys_evaluator=sys_evaluator,
                 interval=1.0,
             )
@@ -126,7 +127,7 @@ class TestSingletonWorkerLifecycle:
             from contextlib import asynccontextmanager
 
             @asynccontextmanager
-            async def mock_get_session():
+            async def mock_get_session() -> AsyncIterator[AsyncSession]:
                 async with session_factory() as s:
                     yield s
 
