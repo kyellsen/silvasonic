@@ -8,8 +8,8 @@ import numpy as np
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from typing import Any
 
-import birdnetlib  # type: ignore
-from ai_edge_litert.interpreter import Interpreter  # type: ignore
+import birdnetlib  # type: ignore[import-not-found]  # birdnetlib not installed in this venv; spike script
+from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 
 MODEL_DIR = os.path.join(os.path.dirname(birdnetlib.__file__), "models/analyzer")
 MODEL_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite")

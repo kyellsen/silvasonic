@@ -116,7 +116,7 @@ async def test_native_tflite_inference(
         labels = [line.strip() for line in f.readlines()]
 
     # We must explicitly import Interpreter here to test it natively
-    from ai_edge_litert.interpreter import Interpreter  # type: ignore
+    from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 
     interpreter = Interpreter(model_path=str(model_path), num_threads=1)
     interpreter.allocate_tensors()

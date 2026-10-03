@@ -8,9 +8,9 @@ import numpy as np
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from typing import Any
 
-import birdnetlib  # type: ignore
-import soundfile as sf  # type: ignore
-from ai_edge_litert.interpreter import Interpreter  # type: ignore
+import birdnetlib  # type: ignore[import-not-found]  # birdnetlib not installed in this venv; spike script
+import soundfile as sf  # type: ignore[import-untyped]
+from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 
 MODEL_DIR = os.path.join(os.path.dirname(birdnetlib.__file__), "models/analyzer")
 MODEL_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite")
@@ -75,8 +75,8 @@ for _ in range(N):
     times_native.append((time.perf_counter() - t0) * 1000)
 
 # ── BIRDNETLIB (RecordingBuffer) ─────────────────
-from birdnetlib.analyzer import Analyzer  # type: ignore  # noqa: E402
-from birdnetlib.main import RecordingBuffer  # type: ignore  # noqa: E402
+from birdnetlib.analyzer import Analyzer  # type: ignore[import-not-found]  # noqa: E402
+from birdnetlib.main import RecordingBuffer  # type: ignore[import-not-found]  # noqa: E402
 
 analyzer = Analyzer()
 

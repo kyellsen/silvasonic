@@ -31,7 +31,7 @@ from typing import Any
 
 import numpy as np
 import psutil
-import soundfile as sf  # type: ignore
+import soundfile as sf  # type: ignore[import-untyped]
 
 # ── Configuration (matching Silvasonic BirdnetSettings + SystemSettings) ──
 
@@ -62,7 +62,7 @@ FIXTURES = [
     },
 ]
 
-import birdnetlib  # type: ignore  # noqa: E402
+import birdnetlib  # type: ignore[import-not-found]  # noqa: E402  # birdnetlib not installed in this venv; spike script
 
 MODEL_DIR = os.path.join(os.path.dirname(birdnetlib.__file__), "models/analyzer")
 MODEL_PATH = os.path.join(MODEL_DIR, "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite")
@@ -164,7 +164,7 @@ def benchmark_native(reps: int = 3) -> dict[str, Any]:
             # ── Init ──
             init_start = time.perf_counter()
 
-            from ai_edge_litert.interpreter import Interpreter  # type: ignore
+            from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 
             interpreter = Interpreter(model_path=MODEL_PATH, num_threads=1)
             interpreter.allocate_tensors()
@@ -283,8 +283,8 @@ def benchmark_analyzer(reps: int = 3) -> dict[str, Any]:
             init_start = time.perf_counter()
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-            from birdnetlib.analyzer import Analyzer  # type: ignore
-            from birdnetlib.main import RecordingBuffer  # type: ignore
+            from birdnetlib.analyzer import Analyzer  # type: ignore[import-not-found]
+            from birdnetlib.main import RecordingBuffer  # type: ignore[import-not-found]
 
             analyzer = Analyzer()
 
