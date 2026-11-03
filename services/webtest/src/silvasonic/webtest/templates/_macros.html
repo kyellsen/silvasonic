@@ -1,0 +1,71 @@
+{#- ═══════════════════════════════════════════════════════════════
+Silvasonic — Reusable Jinja2 Macros
+Import via: {% from "_macros.html" import breadcrumb, page_header, status_badge, chart_placeholder %}
+═══════════════════════════════════════════════════════════════ -#}
+
+
+{#- ── Breadcrumb ─────────────────────────────────────────────
+Usage: {{ breadcrumb([('System',), ('Recorders', '/recorders'), ('Detail',)]) }}
+Each item is a tuple: (label,) for plain text or (label, url) for a link.
+-#}
+{% macro breadcrumb(items) %}
+<div class="breadcrumbs text-sm text-base-content/50 mb-2">
+    <ul>
+        {% for item in items %}
+        <li>
+            {%- if item | length > 1 and item[1] -%}
+            <a href="{{ item[1] }}" class="hover:text-base-content transition-colors">{{ item[0] }}</a>
+            {%- else -%}
+            {{ item[0] }}
+            {%- endif -%}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endmacro %}
+
+
+{#- ── Page Header ────────────────────────────────────────────
+Usage: {{ page_header('Dashboard', 'Real-time operations overview') }}
+-#}
+{% macro page_header(title, subtitle='') %}
+<div class="mb-5">
+    <h1 class="text-xl font-bold">{{ title }}</h1>
+    {% if subtitle %}
+    <p class="text-xs text-base-content/50 mt-0.5">{{ subtitle }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{#- ── Status Badge (dot + badge) ─────────────────────────────
+Usage: {{ status_badge('recording') }}
+{{ status_badge(rec.status) }}
+Supported statuses: recording, syncing, idle, throttled, error
+Additional optional parameter animate=true for pulsing dot.
+-#}
+{% macro status_badge(status) %}
+{%- set status_map = {
+'recording': ('error', 'REC', true),
+'syncing': ('info', 'SYNCING', true),
+'idle': ('success', 'IDLE', false),
+'throttled': ('warning', 'THROTTLED', false),
+'error': ('error', 'ERROR', false),
+'offline': ('warning', 'OFFLINE', false)
+} -%}
+{%- set color, label, animate = status_map.get(status, ('warning', status|upper, false)) -%}
+<span class="w-2.5 h-2.5 rounded-full bg-{{ color }} {% if animate %}level-animate{% endif %} inline-block"></span>
+<span class="badge badge-{{ color }} badge-sm">{{ label }}</span>
+{% endmacro %}
+
+
+{#- ── Chart Placeholder ──────────────────────────────────────
+Usage: {{ chart_placeholder('ECharts time-series chart — mock placeholder') }}
+{{ chart_placeholder('Chart Placeholder', 'h-36') }}
+-#}
+{% macro chart_placeholder(label='[ Chart Placeholder ]', height='h-28') %}
+<div
+    class="{{ height }} flex items-center justify-center text-xs text-base-content/30 font-mono border border-dashed border-base-content/10 rounded-xl">
+    {{ label }}
+</div>
+{% endmacro %}

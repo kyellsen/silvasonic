@@ -10,9 +10,11 @@ dependencies = [
     "silvasonic-processor",
     "silvasonic-recorder",
     "silvasonic-web-mock",
+    "silvasonic-webtest",
     "silvasonic-db-viewer",
     "silvasonic-birdnet",
 ]
+
 
 [tool.uv.workspace]
 # UV automatically discovers all Python packages in these directories
@@ -36,6 +38,7 @@ silvasonic-controller = { workspace = true }
 silvasonic-processor = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-web-mock = { workspace = true }
+silvasonic-webtest = { workspace = true }
 silvasonic-db-viewer = { workspace = true }
 silvasonic-birdnet = { workspace = true }
 silvasonic-test-utils = { workspace = true }
@@ -132,7 +135,7 @@ python_version = "3.13"
 strict = true
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src:services/birdnet/src"
+mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/webtest/src:services/db-viewer/src:services/birdnet/src"
 enable_error_code = ["ignore-without-code"]
 
 [[tool.mypy.overrides]]

@@ -1,0 +1,409 @@
+/*
+ * Silvasonic Web Test — Tailwind CSS v4 entry point.
+ *
+ * This file is compiled by `tailwindcss` into `output.css`.
+ * Run:  npm run css:build   (one-shot, minified)
+ *       npm run css:watch   (dev hot-reload)
+ */
+
+@import "tailwindcss";
+@source "../../../../../";
+@plugin "daisyui" {
+  themes: silvadark --default, silvalight;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Silvasonic DaisyUI Themes — silvadark / silvalight
+   Colors in OKLCH for perceptual uniformity.
+   ────────────────────────────────────────────────────────── */
+
+@plugin "daisyui/theme" {
+  name: "silvadark";
+  color-scheme: dark;
+  --color-base-100: oklch(18% 0.015 160);
+  --color-base-200: oklch(13% 0.015 160);
+  --color-base-300: oklch(29% 0.02 160);
+  --color-base-content: oklch(90% 0.01 160);
+
+  --color-primary: oklch(65% 0.18 160);
+  --color-primary-content: oklch(18% 0.05 160);
+  --color-secondary: oklch(75% 0.13 290);
+  --color-secondary-content: oklch(18% 0.05 290);
+  --color-accent: oklch(82% 0.17 85);
+  --color-accent-content: oklch(20% 0.05 85);
+
+  --color-neutral: oklch(35% 0.02 250);
+  --color-neutral-content: oklch(90% 0.01 250);
+
+  --color-info: oklch(73% 0.1 245);
+  --color-info-content: oklch(18% 0.05 245);
+  --color-success: oklch(73% 0.13 130);
+  --color-success-content: oklch(18% 0.05 130);
+  --color-warning: oklch(82% 0.17 85);
+  --color-warning-content: oklch(20% 0.05 85);
+  --color-error: oklch(68% 0.17 25);
+  --color-error-content: oklch(18% 0.05 25);
+
+  --radius-box: 1rem;
+  --radius-btn: 2rem;
+  --radius-field: 1rem;
+  --radius-selector: 2rem;
+  --border: 1px;
+}
+
+@plugin "daisyui/theme" {
+  name: "silvalight";
+  color-scheme: light;
+  --color-base-100: oklch(99.5% 0.002 160);  /* cards — near-white              */
+  --color-base-200: oklch(96% 0.005 160);    /* sidebar/header — very light     */
+  --color-base-300: oklch(93% 0.008 160);    /* body bg — soft warm white       */
+  --color-base-content: oklch(22% 0.02 250); /* text — slightly deeper          */
+
+  --color-primary: oklch(52% 0.17 160);
+  --color-primary-content: oklch(98% 0 0);
+  --color-secondary: oklch(60% 0.18 290);
+  --color-secondary-content: oklch(98% 0 0);
+  --color-accent: oklch(75% 0.22 85);
+  --color-accent-content: oklch(25% 0.05 85);
+
+  --color-neutral: oklch(30% 0.02 250);
+  --color-neutral-content: oklch(95% 0.01 250);
+
+  --color-info: oklch(65% 0.15 245);
+  --color-info-content: oklch(98% 0 0);
+  --color-success: oklch(65% 0.16 130);
+  --color-success-content: oklch(25% 0.05 130);
+  --color-warning: oklch(75% 0.22 85);
+  --color-warning-content: oklch(25% 0.05 85);
+  --color-error: oklch(58% 0.22 25);
+  --color-error-content: oklch(98% 0 0);
+
+  --radius-box: 1rem;
+  --radius-btn: 2rem;
+  --radius-field: 1rem;
+  --radius-selector: 2rem;
+  --border: 1px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Module accent colors — one per service module.
+   Usage:  bg-mod-recorder, text-mod-birds, border-mod-bats, etc.
+   ────────────────────────────────────────────────────────── */
+
+@theme {
+  /* ═══ Module Accent Colors — Oktett v3 Palette ═══
+     Each module uses its Oktett palette color.
+     Strong = dark-mode accents, sidebar dots, card borders.
+     Light  = hover/bg tints, light-mode accents.
+     Hue spacing:  25° → 85° → 130° → 160° → 200° → 245° → 290° → 335°
+  */
+
+  /* ── Strong variants ── */
+  --color-mod-recorder-strong:  oklch(58% 0.22 25);   /* scarlet     */
+  --color-mod-birds-strong:     oklch(75% 0.22 85);   /* gold        */
+  --color-mod-processor-strong: oklch(65% 0.16 130);  /* chartreuse  */
+  --color-mod-dashboard-strong: oklch(52% 0.17 160);  /* emerald     */
+  --color-mod-livesound-strong: oklch(61% 0.16 200);  /* teal        */
+  --color-mod-weather-strong:   oklch(65% 0.15 245);  /* cornflower  */
+  --color-mod-bats-strong:      oklch(60% 0.18 290);  /* violet      */
+  --color-mod-cloud-sync-strong: oklch(65% 0.20 335);  /* magenta     */
+  --color-mod-settings-strong:  oklch(55% 0.02 250);  /* slate       */
+
+  /* ── Light variants ── */
+  --color-mod-recorder:  oklch(75% 0.15 25);   /* scarlet-light     */
+  --color-mod-birds:     oklch(90% 0.17 85);   /* gold-light        */
+  --color-mod-processor: oklch(80% 0.10 130);  /* chartreuse-light  */
+  --color-mod-dashboard: oklch(67% 0.12 160);  /* emerald-light     */
+  --color-mod-livesound: oklch(76% 0.08 200);  /* teal-light        */
+  --color-mod-weather:   oklch(80% 0.10 245);  /* cornflower-light  */
+  --color-mod-bats:      oklch(75% 0.13 290);  /* violet-light      */
+  --color-mod-cloud-sync:    oklch(80% 0.15 335);  /* magenta-light     */
+  --color-mod-settings:  oklch(70% 0.01 250);  /* slate-light       */
+}
+
+/* ──────────────────────────────────────────────────────────
+   Self-hosted Geist fonts (no Google Fonts CDN)
+   ────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/static/fonts/geist-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/geist-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/static/fonts/geist-mono-latin-500-normal.woff2') format('woff2');
+}
+
+/* ──────────────────────────────────────────────────────────
+   Tailwind v4 Theme — fonts
+   ────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* ═══ Extended Palette — Oktett v3 + Amber ═══
+     9 chromatic + 1 achromatic, each with a light variant.
+     Usable as Tailwind utilities: bg-scarlet, text-gold, border-violet etc.
+  */
+
+  /* Chromatic */
+  --color-scarlet:    oklch(58% 0.22 25);
+  --color-amber:      oklch(55% 0.14 55);
+  --color-gold:       oklch(75% 0.22 85);
+  --color-chartreuse: oklch(65% 0.16 130);
+  --color-emerald:    oklch(52% 0.17 160);
+  --color-teal:       oklch(61% 0.16 200);
+  --color-cornflower: oklch(65% 0.15 245);
+  --color-violet:     oklch(60% 0.18 290);
+  --color-magenta:    oklch(65% 0.20 335);
+
+  /* Achromatic */
+  --color-slate:      oklch(55% 0.02 250);
+
+  /* Light variants */
+  --color-scarlet-light:    oklch(75% 0.15 25);
+  --color-amber-light:      oklch(70% 0.09 55);
+  --color-gold-light:       oklch(90% 0.17 85);
+  --color-chartreuse-light: oklch(80% 0.10 130);
+  --color-emerald-light:    oklch(67% 0.12 160);
+  --color-teal-light:       oklch(76% 0.08 200);
+  --color-cornflower-light: oklch(80% 0.10 245);
+  --color-violet-light:     oklch(75% 0.13 290);
+  --color-magenta-light:    oklch(80% 0.15 335);
+  --color-slate-light:      oklch(70% 0.01 250);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Custom component styles (migrated from base.html <style>)
+   ────────────────────────────────────────────────────────── */
+
+/* Scale all rem-based sizes up proportionally (default 16px → 18px).
+   Every Tailwind text-* utility uses rem, so this single rule
+   enlarges all typography consistently across the entire app. */
+html {
+  font-size: 18px;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Layout grid — five-zone IDE-style shell */
+.layout-grid {
+  display: grid;
+  grid-template-rows: 3.5rem 1fr 2.5rem;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "header header header"
+    "nav    main   inspector"
+    "footer footer footer";
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.zone-header    { grid-area: header; position: sticky; top: 0; z-index: 30; }
+.zone-nav       { grid-area: nav;    overflow-y: auto; }
+.zone-main      { grid-area: main;   overflow-y: auto; }
+.zone-inspector { grid-area: inspector; overflow-y: auto; }
+.zone-footer    { grid-area: footer; }
+
+/* Console overlay — slide-up panel above footer */
+.console-panel {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 0;
+  right: 0;
+  height: 14rem;
+  background: var(--color-base-200);
+  z-index: 50;
+  border-top: 1px solid var(--color-base-300);
+  transition: transform 0.2s ease;
+}
+
+.console-panel.hidden {
+  transform: translateY(100%);
+}
+
+/* Level bar pulse animation */
+@keyframes pulse-level {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .7; }
+}
+
+.level-animate {
+  animation: pulse-level 1.5s ease-in-out infinite;
+}
+
+/* Livesound waveform animation */
+@keyframes waveform {
+  0%, 100% { height: 10%; }
+  50% { height: 100%; }
+}
+
+.waveform-bar {
+  animation: waveform 1.2s ease-in-out infinite;
+  width: 100%;
+  transform-origin: bottom;
+}
+
+.waveform-bar:nth-child(2n)   { animation-duration: 0.9s; animation-delay: -0.2s; }
+.waveform-bar:nth-child(3n)   { animation-duration: 1.1s; animation-delay: -0.5s; }
+.waveform-bar:nth-child(5n)   { animation-duration: 0.8s; animation-delay: -0.1s; }
+.waveform-bar:nth-child(7n)   { animation-duration: 1.3s; animation-delay: -0.7s; }
+.waveform-bar:nth-child(11n)  { animation-duration: 1.0s; animation-delay: -0.4s; }
+.waveform-bar:nth-child(2n+1) { animation-duration: 0.7s; animation-delay: -0.9s; }
+
+/* ──────────────────────────────────────────────────────────
+   Module gradient backgrounds + accent variable
+   Applied to .zone-main via Jinja active variable.
+   --mod-accent powers all silva-card hover colors automatically.
+   ────────────────────────────────────────────────────────── */
+
+.gradient-dashboard  { --mod-accent: var(--color-mod-dashboard-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 6%) 0%, transparent 55%); }
+.gradient-recorders  { --mod-accent: var(--color-mod-recorder-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 6%) 0%, transparent 55%); }
+.gradient-processor  { --mod-accent: var(--color-mod-processor-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 6%) 0%, transparent 55%); }
+.gradient-cloud-sync { --mod-accent: var(--color-mod-cloud-sync-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 6%) 0%, transparent 55%); }
+.gradient-livesound  { --mod-accent: var(--color-mod-livesound-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 6%) 0%, transparent 55%); }
+.gradient-birds      { --mod-accent: var(--color-mod-birds-strong);      background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 6%) 0%, transparent 55%); }
+.gradient-bats       { --mod-accent: var(--color-mod-bats-strong);       background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 6%) 0%, transparent 55%); }
+.gradient-weather    { --mod-accent: var(--color-mod-weather-strong);    background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.15 245 / 6%) 0%, transparent 55%); }
+.gradient-settings   { --mod-accent: var(--color-mod-settings-strong);   background: radial-gradient(ellipse at 15% 10%, oklch(55% 0.02 250 / 6%) 0%, transparent 55%); }
+.gradient-about      { --mod-accent: var(--color-mod-dashboard-strong);  background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 6%) 0%, transparent 55%); }
+
+/* Dark mode: reduced glow */
+[data-theme="silvadark"] .gradient-dashboard  { background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-recorders  { background: radial-gradient(ellipse at 15% 10%, oklch(58% 0.22 25  / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-processor  { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.16 130 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-cloud-sync { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.20 335 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-livesound  { background: radial-gradient(ellipse at 15% 10%, oklch(61% 0.16 200 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-birds      { background: radial-gradient(ellipse at 15% 10%, oklch(75% 0.22 85  / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-bats       { background: radial-gradient(ellipse at 15% 10%, oklch(60% 0.18 290 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-weather    { background: radial-gradient(ellipse at 15% 10%, oklch(65% 0.15 245 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-settings   { background: radial-gradient(ellipse at 15% 10%, oklch(55% 0.02 250 / 4%) 0%, transparent 55%); }
+[data-theme="silvadark"] .gradient-about      { background: radial-gradient(ellipse at 15% 10%, oklch(52% 0.17 160 / 4%) 0%, transparent 55%); }
+
+/* ──────────────────────────────────────────────────────────
+   Silva Card Component Classes
+   Reusable card shells — hover colors auto-adapt to --mod-accent.
+   Usage in templates:
+     <div class="silva-card-interactive col-span-2">
+     <div class="silva-card-static">
+     <div class="silva-card-form">
+   ────────────────────────────────────────────────────────── */
+
+/* Shared base for all card variants */
+.silva-card,
+.silva-card-interactive,
+.silva-card-static,
+.silva-card-form {
+  @apply card bg-base-100 rounded-xl shadow-sm border border-base-content/5;
+}
+
+/* Interactive — clickable cards that lift on hover */
+.silva-card-interactive {
+  @apply cursor-pointer transition-all duration-300;
+}
+.silva-card-interactive:hover {
+  @apply -translate-y-1;
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 40%, transparent);
+  box-shadow:
+    0 10px 15px -3px color-mix(in oklch, var(--mod-accent, var(--color-primary)) 10%, transparent),
+    0 4px 6px -4px color-mix(in oklch, var(--mod-accent, var(--color-primary)) 6%, transparent);
+}
+
+/* Static — non-clickable with subtle border hover */
+.silva-card-static {
+  @apply transition-colors duration-200;
+}
+.silva-card-static:hover {
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 30%, transparent);
+}
+
+/* Form — settings/config cards with overflow-hidden */
+.silva-card-form {
+  @apply overflow-hidden transition-all;
+}
+.silva-card-form:hover {
+  border-color: color-mix(in oklch, var(--mod-accent, var(--color-primary)) 30%, transparent);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Silva Label — uppercase section headings inside cards
+   Usage:  <h2 class="silva-label mb-2">Section Name</h2>
+   Note:   Add mb-* as needed per context (mb-1, mb-2, mb-3).
+   ────────────────────────────────────────────────────────── */
+
+.silva-label {
+  @apply text-xs font-semibold text-base-content/60 uppercase tracking-wide;
+}
+
+/* ──────────────────────────────────────────────────────────
+   NOTE: DaisyUI form classes (input-bordered, select-bordered,
+   input-primary, select-primary) cannot be used with @apply
+   in Tailwind CSS v4. Use them directly in templates:
+     <input class="input input-bordered focus:input-primary transition-all" />
+     <select class="select select-bordered focus:select-primary transition-all">
+   ────────────────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────────
+   Accessibility: Reduced Motion
+   Respects user OS preference for reduced animations.
+   ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

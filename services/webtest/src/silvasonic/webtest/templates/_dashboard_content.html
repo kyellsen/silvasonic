@@ -1,0 +1,175 @@
+<div id="dashboard-main" hx-swap-oob="true">
+    <!-- Bento-Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
+
+        <!-- Row 1: Hero Status -->
+        <div class="silva-card col-span-2 lg:col-span-4 bg-gradient-to-r from-base-200 to-base-300 border-l-4 border-l-success">
+            <div class="card-body p-5 flex flex-row items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-1">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+                        </span>
+                        <h2 class="text-xl font-bold">All Systems Operational</h2>
+                    </div>
+                    <div class="text-sm text-base-content/60 font-mono">
+                        {{ station.name }} is running smoothly.
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-base-content/50 font-mono mb-1">Uptime</div>
+                    <div class="text-2xl font-bold font-mono">{{ metrics.uptime }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Core Metrics -->
+        <a href="{{ url_for('processor') }}" class="silva-card-interactive">
+            <div class="card-body p-5">
+                <div class="text-sm font-semibold text-base-content/60 mb-2">Recordings</div>
+                <div class="text-3xl font-bold mb-1">{{ total_recordings }}</div>
+                <div class="text-xs font-mono text-success">+{{ recordings_today }} today</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('birds') }}" class="silva-card-interactive">
+            <div class="card-body p-5">
+                <div class="text-sm font-semibold text-base-content/60 mb-2">Species</div>
+                <div class="text-3xl font-bold mb-1">{{ unique_species }}</div>
+                <div class="text-xs font-mono text-success">+{{ detections_today }} hits today</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('recorders') }}" class="silva-card-interactive">
+            <div class="card-body p-5">
+                <div class="text-sm font-semibold text-base-content/60 mb-2">Recorders</div>
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl font-bold">{{ active_recorders }}</div>
+                    <div class="text-xs font-mono text-base-content/50 px-2 py-1 bg-base-300 rounded">Active</div>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('upload') }}" class="silva-card-interactive">
+            <div class="card-body p-5">
+                <div class="text-sm font-semibold text-base-content/60 mb-2">Cloud Sync</div>
+                <div class="flex items-center justify-between">
+                    <div class="text-xl font-bold">{% if upload_enabled %}ON{% else %}OFF{% endif %}</div>
+                    <div class="text-xs font-mono {% if pending_uploads > 0 %}text-warning{% else %}text-success{% endif %}">{{ pending_uploads }} Pending</div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Row 3: System Resources -->
+        <div class="silva-card-static col-span-2">
+            <div class="card-body p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="silva-label">System Health</h2>
+                    <div class="text-xs font-mono text-base-content/50">{{ metrics.cpu_count }} Cores</div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span>CPU</span>
+                            <span>{{ metrics.cpu }}%</span>
+                        </div>
+                        <progress class="progress progress-primary w-full" value="{{ metrics.cpu }}" max="100"></progress>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span>RAM ({{ metrics.ram_used_mb }} / {{ metrics.ram_total_mb }} MB)</span>
+                            <span>{{ metrics.ram }}%</span>
+                        </div>
+                        <progress class="progress progress-info w-full" value="{{ metrics.ram }}" max="100"></progress>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="silva-card-static col-span-2">
+            <div class="card-body p-5 flex flex-row items-center justify-between">
+                <div class="flex flex-col justify-center h-full w-full">
+                    <h2 class="silva-label mb-2">Storage</h2>
+                    <div class="text-2xl font-bold mb-1">{{ metrics.disk_used_gb }} <span class="text-sm font-normal text-base-content/50">GB Used</span></div>
+                    <div class="text-sm text-base-content/50 font-mono">of {{ metrics.disk_total_gb }} GB Total</div>
+                </div>
+                <div class="shrink-0 flex flex-col items-center justify-center">
+                    <div class="radial-progress text-primary bg-base-200 border-4 border-base-200"
+                        style="--value:{{ metrics.disk }}; --size:6rem; --thickness: 0.7rem;" role="progressbar">
+                        <span class="text-xl font-bold text-primary">{{ metrics.disk }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Activity & Services -->
+        <div class="silva-card-static col-span-2">
+            <div class="card-body p-5">
+                <h2 class="silva-label mb-4">Recent Detections</h2>
+                <div class="space-y-3">
+                    {% if recent_detections %}
+                        {% for d in recent_detections %}
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="w-2 h-2 rounded-full bg-{{ d.color }}"></span>
+                                <span class="text-sm font-semibold">{{ d.label }}</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span class="text-xs font-mono text-base-content/50">{{ d.confidence }}</span>
+                                <span class="text-xs font-mono text-base-content/40">{{ d.time }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-xs text-base-content/40 italic py-2">No detections today.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="silva-card-static col-span-2">
+            <div class="card-body p-5">
+                <h2 class="silva-label mb-4">Service Status</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    {% for svc in service_statuses[:4] %}
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-2 h-2 rounded-full {% if svc.status == 'running' %}bg-success{% else %}bg-error{% endif %}"></span>
+                            <span class="text-sm font-bold">{{ svc.name }}</span>
+                        </div>
+                        <div class="text-xs font-mono text-base-content/50 uppercase">{{ svc.activity }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if service_statuses|length > 4 %}
+                <div class="text-xs text-base-content/40 mt-4 italic">+ {{ service_statuses|length - 4 }} more services</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="inspector-content" hx-swap-oob="true">
+    <div class="space-y-4">
+        {% for svc in service_statuses %}
+        <div class="border-b border-base-content/5 pb-3 last:border-0 last:pb-0">
+            <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full {% if svc.status == 'running' %}bg-success shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-success/50{% else %}bg-error shadow-[0_0_8px_rgba(0,0,0,0.5)] shadow-error/50{% endif %}"></div>
+                    <span class="font-bold text-sm text-base-content">{{ svc.name }}</span>
+                </div>
+                <span class="text-xs font-mono text-base-content/40">{{ svc.age_s }}s ago</span>
+            </div>
+            <div class="flex items-center justify-between pl-5">
+                <div class="text-[10px] font-mono text-base-content/50 uppercase">{{ svc.activity }}</div>
+                {% if svc.extra %}
+                <div class="text-[10px] font-mono text-info font-bold">{{ svc.extra }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>

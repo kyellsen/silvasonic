@@ -1,4 +1,4 @@
-http://{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
+http://{$SILVASONIC_DOMAIN_NAME:silvasonic.local}, http://localhost {
     #tls internal
 
     # Default: admin / 1234 (bcrypt, generated via `caddy hash-password`)
@@ -17,6 +17,12 @@ http://{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
     redir /web-mock /web-mock/
     handle_path /web-mock/* {
         reverse_proxy web-mock:8001
+    }
+
+    # Proxy to Web-Test
+    redir /webtest /webtest/
+    handle_path /webtest/* {
+        reverse_proxy webtest:8003
     }
 
     # Proxy to DB Viewer

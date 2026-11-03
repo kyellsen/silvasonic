@@ -13,6 +13,7 @@ members = [
     "silvasonic-recorder",
     "silvasonic-test-utils",
     "silvasonic-web-mock",
+    "silvasonic-webtest",
 ]
 
 [[package]]
@@ -1818,6 +1819,7 @@ dependencies = [
     { name = "silvasonic-processor" },
     { name = "silvasonic-recorder" },
     { name = "silvasonic-web-mock" },
+    { name = "silvasonic-webtest" },
 ]
 
 [package.dev-dependencies]
@@ -1865,6 +1867,7 @@ requires-dist = [
     { name = "silvasonic-processor", editable = "services/processor" },
     { name = "silvasonic-recorder", editable = "services/recorder" },
     { name = "silvasonic-web-mock", editable = "services/web-mock" },
+    { name = "silvasonic-webtest", editable = "services/webtest" },
 ]
 
 [package.metadata.requires-dev]
@@ -1908,6 +1911,7 @@ name = "silvasonic-birdnet"
 source = { editable = "services/birdnet" }
 dependencies = [
     { name = "ai-edge-litert" },
+    { name = "httpx" },
     { name = "numpy" },
     { name = "silvasonic-core" },
     { name = "soundfile" },
@@ -1916,6 +1920,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ai-edge-litert" },
+    { name = "httpx" },
     { name = "numpy" },
     { name = "silvasonic-core", editable = "packages/core" },
     { name = "soundfile" },
@@ -2058,6 +2063,32 @@ dependencies = [
 requires-dist = [
     { name = "cryptography", specifier = ">=46.0.5" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "silvasonic-core", editable = "packages/core" },
+    { name = "sse-starlette", specifier = ">=2.1.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
+]
+
+[[package]]
+name = "silvasonic-webtest"
+source = { editable = "services/webtest" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "jinja2" },
+    { name = "python-multipart" },
+    { name = "silvasonic-core" },
+    { name = "sse-starlette" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=46.0.5" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "silvasonic-core", editable = "packages/core" },

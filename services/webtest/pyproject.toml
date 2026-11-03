@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silvasonic-webtest"
+description = "Silvasonic Web UI mock — full UI shell with mock data, real DB for Settings persistence."
+readme = "README.md"
+requires-python = ">=3.13"
+dynamic = ["version"]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.9",
+    "sse-starlette>=2.1.0",
+    "cryptography>=46.0.5",
+    "httpx>=0.27.0",
+    "silvasonic-core",
+]
+
+[tool.hatch.version]
+path = "../../packages/core/src/silvasonic/core/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silvasonic"]

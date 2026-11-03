@@ -235,6 +235,40 @@ services:
       retries: 5
       start_period: 15s
 
+  # --- Web-Test (Tier 1 Dev UI — v0.9.0 MVP) ---
+  webtest:
+    container_name: silvasonic-webtest
+    build:
+      context: .
+      dockerfile: services/webtest/Containerfile
+    restart: unless-stopped
+    volumes:
+      - ${SILVASONIC_WORKSPACE_PATH}/webtest:/app/workspace:z
+      - ${SILVASONIC_WORKSPACE_PATH}/birdnet/wiki:/app/birdnet-wiki:ro,z  # Consumer Principle (ADR-0009)
+    env_file: .env
+    environment:
+      SILVASONIC_REDIS_URL: redis://redis:6379/0
+      SILVASONIC_DB_HOST: database
+      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+      SILVASONIC_API_ROOT_PATH: /webtest
+    ports:
+      - "${SILVASONIC_WEB_TEST_PORT:-8003}:8003"
+    depends_on:
+      redis:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    networks:
+      - silvasonic-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8003/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   # --- DB-Viewer (Tier 1 Dev UI — v0.7.1) ---
   # Minimal read-only database viewer for development.
   db-viewer:

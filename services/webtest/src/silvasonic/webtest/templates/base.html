@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en"
+  x-data="{ sidebarOpen: true, inspectorOpen: '{{ active }}' === 'dashboard', consoleOpen: false, darkMode: localStorage.getItem('silvasonic-dark-mode') !== 'false', activeService: '{{ log_services[0].id if log_services else 'controller' }}' }"
+  x-init="$watch('darkMode', val => document.documentElement.setAttribute('data-theme', val ? 'silvadark' : 'silvalight')); document.documentElement.setAttribute('data-theme', darkMode ? 'silvadark' : 'silvalight')"
+  :data-theme="darkMode ? 'silvadark' : 'silvalight'">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Silvasonic{% endblock %} — {{ station.name }}</title>
+  <meta name="description" content="Silvasonic local management console — {{ station.name }}" />
+
+  <!-- Compiled Tailwind CSS + DaisyUI (static build, no CDN) -->
+  <link href="{{ url_for('static', path='css/output.css') }}" rel="stylesheet" />
+
+  <!-- Alpine.js (vendored) -->
+  <script defer src="{{ url_for('static', path='js/alpine.min.js') }}"></script>
+  <!-- HTMX + SSE extension (vendored) -->
+  <script src="{{ url_for('static', path='js/htmx.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/htmx-ext-sse.js') }}"></script>
+
+</head>
+
+<body class="bg-base-300 text-base-content layout-grid">
+
+  <!-- ══════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════ -->
+  <header
+    class="zone-header flex items-center gap-3 px-4 h-14 border-b border-base-content/5 bg-base-200/80 backdrop-blur-md z-30">
+    <!-- Sidebar toggle -->
+    <button class="btn btn-ghost btn-sm btn-square" @click="sidebarOpen = !sidebarOpen" title="Toggle sidebar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <rect x="3" y="3" width="7" height="18" rx="0" />
+      </svg>
+    </button>
+
+    <!-- Logo + Name -->
+    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 font-semibold text-primary text-sm tracking-tight shrink-0">
+      <img src="{{ url_for('static', path='images/logo_no_text.webp') }}" alt="Silvasonic Logo" class="h-7 w-7 object-contain" />
+      <span class="text-base font-bold tracking-tight">Silvasonic</span>
+    </a>
+
+    <div class="flex-1"></div>
+
+    <!-- Status pills & Notifications -->
+    <div class="flex items-center gap-3 text-xs font-mono">
+      <!-- Notifications Dropdown -->
+      <div class="dropdown dropdown-bottom dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle relative" title="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </svg>
+          {% if alerts %}
+          <span class="absolute top-1 right-1 flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
+          </span>
+          {% endif %}
+        </div>
+        <ul tabindex="0"
+          class="dropdown-content z-100 menu p-3 shadow-xl bg-base-100 rounded-box w-[calc(100vw-2rem)] sm:w-96 max-w-sm sm:max-w-md mt-4 max-h-[85vh] overflow-y-auto border border-base-content/10">
+          <li>
+            <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-2 px-1">Notifications</span>
+          </li>
+          {% if alerts %}
+          {% for alert in alerts %}
+          <li>
+            <a class="flex flex-col items-start gap-1 p-3">
+              <div class="flex items-start gap-3 w-full">
+                <span
+                  class="w-2.5 h-2.5 rounded-full mt-1 {% if alert.level == 'error' %}bg-error{% elif alert.level == 'warn' %}bg-warning{% else %}bg-info{% endif %} shrink-0"></span>
+                <span class="text-sm font-medium leading-relaxed whitespace-normal">{{ alert.message }}</span>
+              </div>
+              <span class="text-xs text-base-content/50 ml-6">{{ alert.ts }}</span>
+            </a>
+          </li>
+          {% endfor %}
+          {% else %}
+          <li><a class="text-sm text-base-content/50 italic pointer-events-none p-3">No new alerts</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      {% if active_recorders > 0 %}
+      <span class="flex items-center gap-1 text-error font-semibold level-animate">
+        <span class="w-2 h-2 rounded-full bg-error inline-block"></span>
+        REC {{ active_recorders }}
+      </span>
+      {% endif %}
+      {% if upload_enabled %}
+      <span class="flex items-center gap-1 text-info" title="Cloud Sync Enabled">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 16 12 12 8 16" />
+          <line x1="12" y1="12" x2="12" y2="21" />
+          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+        </svg>
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="divider divider-horizontal mx-1"></div>
+
+    <!-- Dark mode toggle -->
+    <button class="btn btn-ghost btn-sm btn-square"
+      @click="darkMode = !darkMode; localStorage.setItem('silvasonic-dark-mode', darkMode)"
+      :title="darkMode ? 'Light mode' : 'Dark mode'">
+      <svg x-show="darkMode" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5" />
+        <line x1="12" y1="1" x2="12" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="23" />
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+        <line x1="1" y1="12" x2="3" y2="12" />
+        <line x1="21" y1="12" x2="23" y2="12" />
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+      </svg>
+      <svg x-show="!darkMode" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    </button>
+
+    <!-- Inspector toggle -->
+    <button class="btn btn-ghost btn-sm btn-square" @click="inspectorOpen = !inspectorOpen" title="Toggle inspector">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <rect x="14" y="3" width="7" height="18" rx="0" />
+      </svg>
+    </button>
+
+    <!-- User Profile Dropdown -->
+    <div class="relative" x-data="{ userMenuOpen: false }">
+      <button @click="userMenuOpen = !userMenuOpen" @click.outside="userMenuOpen = false"
+        class="btn btn-ghost btn-circle avatar avatar-placeholder">
+        <div
+          class="bg-primary text-primary-content w-7 rounded-full text-xs font-bold flex items-center justify-center">S
+        </div>
+      </button>
+      <ul x-show="userMenuOpen" x-transition.opacity.duration.150ms style="display: none;"
+        class="absolute right-0 top-full mt-2 w-52 bg-base-100 rounded-box shadow-lg border border-base-content/10 p-2 z-50 menu menu-sm">
+        <li><span class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">SIGNED IN AS</span></li>
+        <li><a href="{{ url_for('settings') }}" @click="userMenuOpen = false">User Settings</a></li>
+        <div class="divider my-0"></div>
+        <li><a href="#" class="text-error" @click="userMenuOpen = false">Sign Out</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+     SIDEBAR NAV
+══════════════════════════════════════════════════════════ -->
+  <nav
+    class="zone-nav flex flex-col bg-base-200/90 backdrop-blur-sm border-r border-base-content/5 pt-3 pb-2 transition-all duration-200"
+    :class="sidebarOpen ? 'w-max pr-2' : 'w-14'">
+
+    <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest px-4 mb-2" x-show="sidebarOpen">
+      System</div>
+
+    {% set nav_items = [
+    (url_for('dashboard'), 'dashboard', 'Dashboard', 'hover:ring-1 hover:ring-inset hover:ring-mod-dashboard-strong',
+    'bg-mod-dashboard-strong/15 text-mod-dashboard-strong font-semibold', '
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />'),
+    (url_for('recorders'), 'recorders', 'Recorders', 'hover:ring-1 hover:ring-inset hover:ring-mod-recorder-strong',
+    'bg-mod-recorder-strong/15 text-mod-recorder-strong font-semibold', '
+    <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+    <line x1="8" y1="23" x2="16" y2="23" />'),
+    (url_for('processor'), 'processor', 'Processor', 'hover:ring-1 hover:ring-inset hover:ring-mod-processor-strong',
+    'bg-mod-processor-strong/15 text-mod-processor-strong font-semibold', '
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />'),
+    (url_for('upload'), 'upload', 'Cloud Sync', 'hover:ring-1 hover:ring-inset hover:ring-mod-cloud-sync-strong',
+    'bg-mod-cloud-sync-strong/15 text-mod-cloud-sync-strong font-semibold', '
+    <polyline points="16 16 12 12 8 16" />
+    <line x1="12" y1="12" x2="12" y2="21" />
+    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />'),
+    ] %}
+
+    {% for href, id, label, hover_class, active_class, icon_path in nav_items %}
+    <a href="{{ href }}"
+      class="flex items-center gap-3 px-4 py-2 text-sm rounded-lg mx-2 mb-1 transition-colors
+            {% if active == id %}{{ active_class }}{% else %}text-base-content/70 hover:bg-base-100 hover:text-base-content {{ hover_class }}{% endif %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">{{
+        icon_path | safe }}</svg>
+      <span x-show="sidebarOpen" class="truncate">{{ label }}</span>
+    </a>
+    {% endfor %}
+
+    <div class="text-xs font-semibold text-base-content/40 uppercase tracking-widest px-4 mt-3 mb-2"
+      x-show="sidebarOpen">Modules</div>
+
+    {% set module_items = [] %}
+    
+    {% if ui_settings.get('show_livesound', False) %}
+    {% set _ = module_items.append((url_for('livesound'), 'livesound', 'Livesound', 'hover:ring-1 hover:ring-inset hover:ring-mod-livesound-strong',
+    'bg-mod-livesound-strong/15 text-mod-livesound-strong font-semibold', '
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />')) %}
+    {% endif %}
+
+    {% set _ = module_items.append((url_for('birds'), 'birds', 'Birds', 'hover:ring-1 hover:ring-inset hover:ring-mod-birds-strong', 'bg-mod-birds-strong/15
+    text-mod-birds-strong font-semibold', '
+    <path d="M16 7h.01" />
+    <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+    <path d="m20 7 2 .5-2 .5" />
+    <path d="M10 18v3" />
+    <path d="M14 17.75V21" />
+    <path d="M7 18a6 6 0 0 0 3.84-10.61" />
+    ')) %}
+
+    {% if ui_settings.get('show_bats', False) %}
+    {% set _ = module_items.append((url_for('bats'), 'bats', 'Bats', 'hover:ring-1 hover:ring-inset hover:ring-mod-bats-strong', 'bg-mod-bats-strong/15
+    text-mod-bats-strong font-semibold', '
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />')) %}
+    {% endif %}
+
+    {% if ui_settings.get('show_weather', False) %}
+    {% set _ = module_items.append((url_for('weather'), 'weather', 'Weather', 'hover:ring-1 hover:ring-inset hover:ring-mod-weather-strong',
+    'bg-mod-weather-strong/15 text-mod-weather-strong font-semibold', '
+    <path d="M12 2v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="M20 12h2" />
+    <path d="m19.07 4.93-1.41 1.41" />
+    <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" />
+    <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" />')) %}
+    {% endif %}
+
+    {% for href, id, label, hover_class, active_class, icon_path in module_items %}
+    <a href="{{ href }}"
+      class="flex items-center gap-3 px-4 py-2 text-sm rounded-lg mx-2 mb-1 transition-colors
+            {% if active == id %}{{ active_class }}{% else %}text-base-content/70 hover:bg-base-100 hover:text-base-content {{ hover_class }}{% endif %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">{{
+        icon_path | safe }}</svg>
+      <span x-show="sidebarOpen" class="truncate">{{ label }}</span>
+    </a>
+    {% endfor %}
+
+    <!-- Pinned bottom links -->
+    <div class="flex-1"></div>
+    <div class="border-t border-base-content/5 pt-2 mx-2">
+      <a href="{{ url_for('settings') }}"
+        class="flex items-center gap-3 px-2 py-2 text-sm rounded-lg transition-colors {% if active == 'settings' %}text-primary{% else %}text-base-content/50 hover:text-base-content hover:bg-base-100{% endif %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+        </svg>
+        <span x-show="sidebarOpen">Settings</span>
+      </a>
+      <a href="{{ url_for('about') }}"
+        class="flex items-center gap-3 px-2 py-2 text-sm rounded-lg transition-colors {% if active == 'about' %}text-primary{% else %}text-base-content/50 hover:text-base-content hover:bg-base-100{% endif %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span x-show="sidebarOpen">About</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════════════ -->
+  <main class="zone-main p-6 gradient-{{ active }}">
+    {% block breadcrumb %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════════
+     INSPECTOR (right panel)
+══════════════════════════════════════════════════════════ -->
+  <aside
+    class="zone-inspector bg-base-200/80 backdrop-blur-md border-l border-base-content/5 transition-all duration-200 overflow-y-auto"
+    :class="inspectorOpen ? 'w-72' : 'w-0 overflow-hidden border-0'">
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm">Inspector</h3>
+        <button class="btn btn-ghost btn-xs btn-square" @click="inspectorOpen = false">✕</button>
+      </div>
+      <div id="inspector-content">
+        {% block inspector %}
+        <p class="text-xs text-base-content/50">Select an item to inspect.</p>
+        {% endblock %}
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════════
+     FOOTER STATUS STRIP
+══════════════════════════════════════════════════════════ -->
+  <footer
+    class="zone-footer flex items-center gap-4 px-4 text-xs font-mono bg-base-200 border-t border-base-content/5 z-20">
+
+
+    <!-- Console toggle (ganz links, neben Alerts) -->
+    <button class="flex items-center gap-1.5 text-base-content/60 hover:text-base-content transition-colors mr-auto"
+      @click="consoleOpen = !consoleOpen">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline :points="consoleOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'" />
+      </svg>
+      Console
+    </button>
+
+    <!-- Mittig: Storage, CPU, RAM, Temperatur, UpTime -->
+    <span class="text-base-content/60 hidden md:inline">
+      Storage <span
+        class="{% if metrics.disk > 80 %}text-error{% elif metrics.disk > 65 %}text-warning{% else %}text-success{% endif %}">{{
+        metrics.disk }}%</span>
+    </span>
+
+    <span class="text-base-content/60 hidden md:inline">
+      CPU <span
+        class="{% if metrics.cpu > 85 %}text-error{% elif metrics.cpu > 70 %}text-warning{% else %}text-success{% endif %}">{{
+        metrics.cpu }}%</span>
+    </span>
+
+    <span class="text-base-content/60 hidden md:inline">
+      RAM <span
+        class="{% if metrics.ram > 85 %}text-error{% elif metrics.ram > 70 %}text-warning{% else %}text-success{% endif %}">{{
+        metrics.ram }}%</span>
+    </span>
+
+    <span class="text-base-content/60 hidden sm:inline">
+      Temp <span
+        class="{% if metrics.temp > 75 %}text-error{% elif metrics.temp > 60 %}text-warning{% else %}text-success{% endif %}">{{
+        metrics.temp }}°C</span>
+    </span>
+
+    <span class="text-base-content/40 hidden sm:inline">status: {{ metrics.status }}</span>
+
+    <!-- Ganz rechts: Device, Version -->
+    <span class="text-base-content/50 hidden sm:inline ml-auto">Device: {{ station.name }}</span>
+    <span class="text-base-content/40">v{{ version }}</span>
+  </footer>
+
+  <!-- ══════════════════════════════════════════════════════════
+     CONSOLE PANEL (slide-up overlay)
+══════════════════════════════════════════════════════════ -->
+  <div class="console-panel" :class="{ 'hidden': !consoleOpen }">
+    <div class="flex items-center gap-3 px-4 py-2 border-b border-white/10">
+      <span class="text-xs text-base-content/50 font-mono">Service:</span>
+      <select class="select select-xs select-bordered font-mono text-xs w-44" x-model="activeService"
+        @change="$refs.logContainer.innerHTML = ''">
+        {% for svc in log_services %}
+        <option value="{{ svc.id }}">{{ svc.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="flex-1"></div>
+      <button class="btn btn-ghost btn-xs btn-square" @click="consoleOpen = false">✕</button>
+    </div>
+
+    <!-- SSE log stream -->
+    <div class="h-40 overflow-y-auto px-4 py-2 font-mono text-xs text-green-400 space-y-0.5" x-ref="logContainer"
+      hx-ext="sse" :sse-connect="'{{ url_for('console_events') }}?service=' + activeService" hx-swap="beforeend" hx-target="this">
+      <div sse-swap="message" hx-swap="beforeend scroll:#console-log:bottom">
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

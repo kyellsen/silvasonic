@@ -13,6 +13,7 @@ import soundfile as sf  # type: ignore[import-untyped]
 import structlog
 from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
+from silvasonic.birdnet.wiki_enricher import enrich_if_needed
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.session import get_session
@@ -417,6 +418,24 @@ class BirdNETService(SilvaService):
                         await session.commit()
                         elapsed = time.perf_counter() - start_time
                         self.stats.record_analyzed(recording.id, elapsed, len(detections))
+
+                        # Wiki-Enrichment for new species (best-effort, non-blocking)
+                        if detections:
+                            enriched_labels: set[str] = set()
+                            for det in detections:
+                                if det.label not in enriched_labels:
+                                    enriched_labels.add(det.label)
+                                    try:
+                                        await enrich_if_needed(
+                                            det.label,
+                                            session,
+                                            Path(self.env_settings.WORKSPACE_DIR),
+                                        )
+                                    except Exception:
+                                        log.warning(
+                                            "wiki_enrichment_failed",
+                                            label=det.label,
+                                        )
 
                     except Exception as e:
                         self.stats.record_error(recording.id, e)

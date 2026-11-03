@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% from "_macros.html" import breadcrumb %}
+{% block title %}{{ species.species_en }} - Birds{% endblock %}
+
+{% block breadcrumb %}
+{{ breadcrumb([('Modules',), ('Birds', '/birds'), ('Discovery',), (species.species_en,)]) }}
+{% endblock %}
+
+{% block content %}
+
+<!-- Header Card: Image banner + Stats grid -->
+<div class="silva-card overflow-hidden mb-6">
+    {% if species.image_url %}
+    <figure class="w-full h-32 md:h-48 bg-base-200 relative">
+        <img id="wiki-hero-img" src="{{ species.image_url }}" alt="{{ species.species_en }}"
+            class="w-full h-full object-cover opacity-90" loading="lazy" />
+        {% if species.image_source %}
+        <div class="absolute bottom-2 right-2 text-[9px] text-white/60 bg-black/40 rounded px-1.5 py-0.5 backdrop-blur-sm">
+            📷 Wikimedia Commons
+        </div>
+        {% endif %}
+    </figure>
+    {% else %}
+    <!-- Fallback if no image -->
+    <figure id="wiki-hero-fallback" class="w-full h-32 md:h-48 bg-base-200 relative flex items-center justify-center">
+        <span class="text-6xl opacity-50">🐦</span>
+    </figure>
+    {% endif %}
+
+    <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-base-content/10">
+        <div class="flex flex-col items-center justify-center p-6 text-center">
+            <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">Total
+                Detections</span>
+            <span class="text-3xl font-bold">{{ species.count }}</span>
+        </div>
+        <div class="flex flex-col items-center justify-center p-6 text-center">
+            <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">Max
+                Confidence</span>
+            {% if species.max_confidence %}
+            <span class="text-3xl font-bold text-mod-birds-strong">{{ "%.1f"|format(species.max_confidence * 100) }}%</span>
+            {% else %}
+            <span class="text-3xl font-bold text-base-content/30">—</span>
+            {% endif %}
+        </div>
+        <div class="flex flex-col items-center justify-center p-6 text-center">
+            <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">First Seen</span>
+            {% if species.first_seen %}
+            <span class="text-xl font-bold">{{ species.first_seen[8:10] }}.{{ species.first_seen[5:7] }}.{{
+                species.first_seen[0:4] }}</span>
+            {% else %}
+            <span class="text-xl font-bold text-base-content/30">—</span>
+            {% endif %}
+        </div>
+        <div class="flex flex-col items-center justify-center p-6 text-center">
+            <span class="text-xs font-semibold tracking-widest text-base-content/50 uppercase mb-2">Last Seen</span>
+            {% if species.last_seen %}
+            <span class="text-xl font-bold text-base-content">{{ species.last_seen[8:10] }}.{{ species.last_seen[5:7] }}.{{
+                species.last_seen[0:4] }}</span>
+            {% else %}
+            <span class="text-xl font-bold text-base-content/30">—</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 2-Column: Taxonomy Info + About This Species -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+    <!-- Left: Taxonomy Info Box -->
+    <div class="silva-card relative overflow-hidden group">
+        <div class="card-body p-5">
+            <h2 class="card-title flex items-center gap-2 mb-4 text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-mod-birds-strong" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Taxonomy
+            </h2>
+
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-start">
+                    <span class="text-base-content/50 shrink-0">Scientific Name</span>
+                    <span class="font-mono font-medium text-right italic">{{ species.species_sci }}</span>
+                </div>
+
+                {% if species.common_names %}
+                {% if species.common_names.en %}
+                <div class="flex justify-between items-start">
+                    <span class="text-base-content/50 shrink-0">English</span>
+                    <span class="font-medium text-right">{{ species.common_names.en }}</span>
+                </div>
+                {% endif %}
+                {% if species.common_names.de %}
+                <div class="flex justify-between items-start">
+                    <span class="text-base-content/50 shrink-0">Deutsch</span>
+                    <span class="font-medium text-right">{{ species.common_names.de }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if species.conservation_status %}
+                <div class="divider my-1"></div>
+                <div class="flex justify-between items-center">
+                    <span class="text-base-content/50">Conservation</span>
+                    <span class="badge badge-sm
+                        {% if species.conservation_status == 'LC' %}badge-success
+                        {% elif species.conservation_status == 'NT' %}badge-warning
+                        {% elif species.conservation_status in ('VU', 'EN', 'CR') %}badge-error
+                        {% else %}badge-ghost{% endif %}">
+                        {{ species.conservation_status }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: About This Species (2/3 width) -->
+    <div class="silva-card lg:col-span-2 relative overflow-hidden group">
+        <div
+            class="absolute right-8 top-1/2 -translate-y-1/2 text-9xl opacity-[0.03] font-serif select-none pointer-events-none transition-transform group-hover:scale-110 group-hover:opacity-5">
+            i</div>
+
+        <div class="card-body p-5">
+            <h2 class="card-title flex items-center gap-2 mb-4 text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-mod-birds-strong" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                About This Species
+            </h2>
+
+            {% if species.description_html %}
+            <!-- Server-rendered from DB cache (enriched by birdnet/wiki_enricher) -->
+            <div id="wiki-content" data-cached="true"
+                class="text-base-content/80 text-sm leading-relaxed max-w-4xl relative z-10">
+                {{ species.description_html | safe }}
+            </div>
+            {% else %}
+            <!-- No description yet — enrichment pending (next BirdNet detection cycle) -->
+            <div id="wiki-content"
+                class="text-base-content/80 text-sm leading-relaxed max-w-4xl relative z-10">
+                <p class="text-base-content/50 italic">
+                    Species information will be available after the next detection.
+                </p>
+            </div>
+            {% endif %}
+
+            <div class="mt-4 relative z-10 flex items-center gap-4">
+                {% if species.wiki_url %}
+                <a id="wiki-link" href="{{ species.wiki_url }}" target="_blank"
+                    class="text-sm text-secondary hover:text-secondary-focus transition-colors inline-flex items-center gap-1">
+                    Read more on Wikipedia
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </a>
+                {% else %}
+                <a id="wiki-link" href="#" target="_blank"
+                    class="text-sm text-secondary hover:text-secondary-focus transition-colors hidden inline-flex items-center gap-1">
+                    Read more on Wikipedia
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </a>
+                {% endif %}
+
+                {% if species.image_source %}
+                <span class="text-[10px] text-base-content/40">
+                    Image source: Wikimedia Commons
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2-Column Grid for Charts & Sightings -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: Daily Activity Pattern -->
+    <div class="lg:col-span-2 flex flex-col gap-6">
+        <div class="silva-card h-full">
+            <div class="card-body p-5">
+                <h2 class="card-title flex items-center gap-2 mb-4 text-base">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-mod-birds-strong" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Daily Activity Pattern
+                </h2>
+
+                <div
+                    class="w-full h-[300px] bg-base-200 rounded-lg flex items-center justify-center">
+                    <span class="text-base-content/30 text-sm">[ECharts activity chart — coming soon]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Recent Sightings -->
+    <div class="lg:col-span-1 flex flex-col gap-6">
+        <div class="silva-card h-full">
+            <div class="card-body p-5">
+                <h2 class="card-title mb-4 text-base">Recent Sightings</h2>
+
+                <div class="space-y-3">
+                    {% for d in detections %}
+                    <div
+                        class="bg-base-200 hover:bg-base-300 transition-colors rounded-lg p-4 border border-base-content/5 flex items-center justify-between group">
+                        <div>
+                            {% if d.ts %}
+                            <div class="font-medium text-sm mb-1 text-base-content/90">{{ d.ts[8:10] }}.{{ d.ts[5:7]
+                                }}.{{ d.ts[0:4] }}, {{ d.ts[11:16] }}</div>
+                            {% else %}
+                            <div class="font-medium text-sm mb-1 text-base-content/50">Unknown time</div>
+                            {% endif %}
+                            <div class="text-xs text-base-content/50">
+                                Confidence: <span class="font-mono text-base-content/70">{{ "%.0f"|format(d.confidence *
+                                    100) }}%</span>
+                            </div>
+                        </div>
+                        <button
+                            class="btn btn-circle btn-sm btn-ghost border border-base-content/10 group-hover:border-base-content/30 text-base-content/50 group-hover:text-base-content"
+                            aria-label="Play recording">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-base-content/50 py-8 text-sm">
+                        No recent sightings.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

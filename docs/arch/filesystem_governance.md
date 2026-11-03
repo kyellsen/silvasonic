@@ -51,9 +51,10 @@ The root of the Workspace must contain only folders matching the service names d
 *   **`birdnet/`**:
     *   Owned by the BirdNET analysis worker (Tier 2).
     *   Contains `clips/` — short audio excerpts of detections, extracted from processed recordings.
-    *   Naming convention: `{recording_id}_{start_ms}_{end_ms}_{label}.wav`
+    *   Contains `wiki/img/` — cached Wikipedia species images (800px JPEG/PNG), downloaded by the `wiki_enricher` module.
+    *   Naming convention for clips: `{recording_id}_{start_ms}_{end_ms}_{label}.wav`
     *   Internal structure is created by the BirdNET service at startup.
-    *   The Web-Interface (v0.9.0) mounts this directory as `:ro` for media serving.
+    *   The Web-Interface (v0.9.0) mounts `birdnet/wiki/` as `:ro` for media serving (Consumer Principle, ADR-0009).
 
 > **NOTE:** `database` uses a **Named Volume** and does not reside in the user-accessible Workspace to prevent permission errors and accidental corruption.
 
