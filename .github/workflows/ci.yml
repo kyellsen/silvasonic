@@ -101,7 +101,9 @@ jobs:
           # during fixture setup (pytest-timeout = 30s).
           podman pull docker.io/timescale/timescaledb:2.19.3-pg17 &
           podman pull docker.io/library/redis:7.4-alpine &
-          podman pull docker.io/minio/minio:latest &
+          # MinIO's own image is gone; the reference is test_rclone_minio.py's
+          # MINIO_IMAGE, Chainguard's build pinned by digest.
+          podman pull cgr.dev/chainguard/minio@sha256:053a21cc9dcf3db9f997b5f77f5b5b2973a754631e5369d27aea6341e151d790 &
           wait
 
       - name: Initialize Project

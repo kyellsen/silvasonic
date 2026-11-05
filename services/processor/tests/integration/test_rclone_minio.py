@@ -22,11 +22,22 @@ log = structlog.get_logger()
 # Minio bucket name for the test
 BUCKET_NAME = "silvasonic-bucket"
 
+# MinIO publishes no server image any more: docker.io/minio/minio is gone and
+# quay.io/minio/minio wants a login. Chainguard builds MinIO from its source
+# (RELEASE.2026-10-23T20-06-51Z here) with the minio binary as entrypoint, so
+# MinioContainer's `server /data` runs unchanged. Its free tier tags only
+# `latest`, hence the digest: a moved tag must not change a test run. The CI
+# workflow pre-pulls the same reference (.github/workflows/ci.yml).
+MINIO_IMAGE = (
+    "cgr.dev/chainguard/minio"
+    "@sha256:053a21cc9dcf3db9f997b5f77f5b5b2973a754631e5369d27aea6341e151d790"
+)
+
 
 @pytest.fixture(scope="session")
 def minio_container() -> Generator[MinioContainer]:
     """Provide a real, ephemeral MinIO S3 bucket for the session."""
-    with MinioContainer(image="docker.io/minio/minio:latest") as container:
+    with MinioContainer(image=MINIO_IMAGE) as container:
         container.get_client().make_bucket(BUCKET_NAME)
         yield container
 
