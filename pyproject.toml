@@ -54,7 +54,7 @@ dev = [
     "ruff>=0.8.0",
     # The type checker, pinned to one release: a 0.0 checker changes its
     # findings between releases, so an upgrade is a commit of its own.
-    "ty==0.0.97",
+    "ty==0.0.98",
     "yamlfix>=1.19.1",
 
     # -- Testing Core --
@@ -168,7 +168,7 @@ missing-type-argument = "error"
 blanket-ignore-comment = "error"
 # unsound-return-statement (strict's warn_return_any) stays off: its findings
 # depend on the order ty checks the files (astral-sh/ty#4221), and it is wrong
-# on sorted(..., key=lambda ...) (astral-sh/ty#4311), both open in 0.0.97.
+# on sorted(..., key=lambda ...) (astral-sh/ty#4311), both open in 0.0.98.
 
 [tool.ty.terminal]
 # ty's default, stated because the gate relies on it: a warning (deprecated, an
