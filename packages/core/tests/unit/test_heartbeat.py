@@ -41,7 +41,7 @@ class TestHeartbeatPayload:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            HeartbeatPayload(service="test")  # type: ignore[call-arg]
+            HeartbeatPayload(service="test")  # ty: ignore[missing-argument]
 
 
 @pytest.mark.unit

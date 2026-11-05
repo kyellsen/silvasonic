@@ -116,7 +116,7 @@ def _poll_redis_key(redis_client: Redis, key: str, timeout: float = 30.0) -> dic
     while time.monotonic() < deadline:
         raw = redis_client.get(key)
         if raw is not None:
-            return json.loads(str(raw))  # type: ignore[no-any-return]
+            return json.loads(str(raw))
         time.sleep(2)
     msg = f"Redis key '{key}' not found within {timeout}s"
     raise TimeoutError(msg)

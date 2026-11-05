@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from typing import cast
 
 import pytest
 from redis import Redis
@@ -192,7 +193,7 @@ class TestProcessorLifecycle:
             heartbeat_raw: str | None = None
 
             for _ in range(30):
-                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                keys = cast("list[str]", r.keys("silvasonic:status:*"))
                 for key in keys:
                     val = r.get(key)
                     if val is not None:
@@ -275,7 +276,7 @@ class TestProcessorLifecycle:
             r = Redis(host=redis_host, port=redis_port, decode_responses=True)
 
             def is_upload_worker_registered() -> bool:
-                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                keys = cast("list[str]", r.keys("silvasonic:status:*"))
                 for key in keys:
                     val = r.get(key)
                     if val:
@@ -331,7 +332,7 @@ class TestProcessorLifecycle:
             r = Redis(host=redis_host, port=redis_port, decode_responses=True)
 
             def is_upload_worker_disabled() -> bool:
-                keys: list[str] = list(r.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                keys = cast("list[str]", r.keys("silvasonic:status:*"))
                 for key in keys:
                     val = r.get(key)
                     if val:

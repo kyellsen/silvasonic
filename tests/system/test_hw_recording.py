@@ -26,6 +26,7 @@ import contextlib
 import subprocess
 import time
 from pathlib import Path
+from typing import cast
 
 import pytest
 import structlog
@@ -681,7 +682,7 @@ class TestFullPipelineE2E:
             # Poll for heartbeat (recorder writes every ~2s)
             heartbeat_raw: str | None = None
             for _ in range(15):
-                keys: list[str] = list(redis_client.keys("silvasonic:status:*"))  # type: ignore[arg-type]
+                keys = cast("list[str]", redis_client.keys("silvasonic:status:*"))
                 for key in keys:
                     val = redis_client.get(key)
                     if val is not None:
@@ -698,7 +699,7 @@ class TestFullPipelineE2E:
 
             assert heartbeat_raw is not None, (
                 "No recorder heartbeat found in Redis after 15s. "
-                f"Keys present: {list(redis_client.keys('silvasonic:*'))}"  # type: ignore[arg-type]
+                f"Keys present: {redis_client.keys('silvasonic:*')}"
             )
 
             payload: dict[str, Any] = json.loads(heartbeat_raw)

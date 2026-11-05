@@ -79,7 +79,7 @@ class TestFFmpegConfig:
     def test_alsa_format(self) -> None:
         """ALSA format map is consistent."""
         for fmt, expected in _ALSA_FORMAT_MAP.items():
-            cfg = FFmpegConfig(format=fmt)
+            cfg = FFmpegConfig.model_validate({"format": fmt})
             assert cfg.alsa_format == expected
 
     def test_volume_filter_zero_gain(self) -> None:

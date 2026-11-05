@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -295,7 +295,7 @@ async def test_fetch_config_defaults_when_no_db_entry(
     worker: UploadWorker,
 ) -> None:
     """_fetch_config returns default station name when DB has no entry."""
-    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+    session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
     session.get = AsyncMock(return_value=None)
 
     station, settings = await worker._fetch_config()
@@ -325,7 +325,7 @@ async def test_fetch_config_extracts_station_name(
         },
     }
 
-    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+    session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
 
     async def fake_get(model: Any, key: str) -> Any:
         if key == "system":
@@ -352,7 +352,7 @@ async def test_fetch_config_returns_none_for_invalid_cloud_sync(
     # poll_interval must be int → dict triggers ValidationError
     sync_conf.value = {"poll_interval": {"nested": "invalid"}}
 
-    session = worker.session_factory().__aenter__.return_value  # type: ignore[attr-defined]
+    session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
 
     async def fake_get(model: Any, key: str) -> Any:
         if key == "cloud_sync":

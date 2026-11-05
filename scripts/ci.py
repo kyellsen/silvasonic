@@ -7,16 +7,16 @@ Dep Audit runs pip-audit to check for known vulnerabilities in dependencies.
 Usage:
     python3 scripts/ci.py
 
-Orchestrates 12 stages in order and prints a unified final summary
+Orchestrates 13 stages in order and prints a unified final summary
 with colored pass/fail indicators.
 
 Non-critical stages (Lock-File Check, Dep Audit, Containerfile Lint)
 may fail without aborting the pipeline; their results are still
 reported in the summary and affect the exit code.
 
-Ruff Lint and Mypy always both run so the developer gets full
-lint+type feedback in a single pass.  If either fails the pipeline
-aborts before moving on to the test stages.
+Ruff Lint, Type-ignore Syntax and ty always all run so the developer
+gets full lint+type feedback in a single pass.  If any fails the
+pipeline aborts before moving on to the test stages.
 
 Smoke tests are self-contained via testcontainers — no need to
 start/stop the real compose stack.
@@ -28,6 +28,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from check import check_type_ignores
 from common import Colors, ensure_initialized
 from test import cmd_e2e, cmd_integration, cmd_smoke, cmd_system, cmd_unit
 
@@ -41,7 +42,7 @@ NON_CRITICAL_STAGES: set[str] = {"Lock-File Check", "Dep Audit", "Containerfile 
 # Stages that always run even if a sibling fails.
 # After all ALWAYS_RUN stages have executed, the pipeline aborts if
 # any of them failed.
-ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Mypy"}
+ALWAYS_RUN_STAGES: set[str] = {"Ruff Lint", "Type-ignore Syntax", "ty"}
 
 # Stages that are skipped by default (dev convenience).
 # Remove a stage name from this set to re-enable it.
@@ -106,9 +107,9 @@ def _stage_ruff() -> None:
         sys.exit(result.returncode)
 
 
-def _stage_mypy() -> None:
-    """Stage 4: Mypy strict type checking (incl. services + packages)."""
-    result = subprocess.run(["uv", "run", "mypy", "."], cwd=PROJECT_ROOT)
+def _stage_ty() -> None:
+    """Stage 4: ty over the workspace ([tool.ty] in pyproject.toml)."""
+    result = subprocess.run(["uv", "run", "ty", "check"], cwd=PROJECT_ROOT)
     if result.returncode != 0:
         sys.exit(result.returncode)
 
@@ -221,7 +222,8 @@ def main() -> None:
         ("Dep Audit", _stage_dep_audit),
         ("Containerfile Lint", _stage_containerfile_lint),
         ("Ruff Lint", _stage_ruff),
-        ("Mypy", _stage_mypy),
+        ("Type-ignore Syntax", check_type_ignores),
+        ("ty", _stage_ty),
         ("Unit Tests", _stage_unit_tests),
         ("Integration Tests", _stage_integration_tests),
         ("Clear", _stage_clear),

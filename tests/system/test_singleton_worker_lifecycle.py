@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import subprocess
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -127,7 +127,7 @@ class TestSingletonWorkerLifecycle:
             from contextlib import asynccontextmanager
 
             @asynccontextmanager
-            async def mock_get_session() -> AsyncIterator[AsyncSession]:
+            async def mock_get_session() -> AsyncGenerator[AsyncSession]:
                 async with session_factory() as s:
                     yield s
 

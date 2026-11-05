@@ -150,8 +150,10 @@ class TestControllerStatsSteadyState:
             summary = stats.get_summary_if_due()
 
         assert summary is not None
-        started_names: list[str] = summary["interval_started_names"]  # type: ignore[assignment]
-        stopped_names: list[str] = summary["interval_stopped_names"]  # type: ignore[assignment]
+        started_names = summary["interval_started_names"]
+        stopped_names = summary["interval_stopped_names"]
+        assert isinstance(started_names, list)
+        assert isinstance(stopped_names, list)
         assert "c1" in started_names
         assert "c2" in stopped_names
 
@@ -165,7 +167,9 @@ class TestControllerStatsSteadyState:
 
         assert summary is not None
         assert "uptime_s" in summary
-        assert float(summary["uptime_s"]) >= 0  # type: ignore[arg-type]
+        uptime_s = summary["uptime_s"]
+        assert isinstance(uptime_s, float)
+        assert uptime_s >= 0
 
 
 @pytest.mark.unit

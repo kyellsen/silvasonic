@@ -64,7 +64,7 @@ just ci
 This includes:
 
 - **Ruff** — Linting & Formatting
-- **Mypy** — Type Checking
+- **ty** — Type Checking
 - **pytest** — Unit, Integration, System & Smoke Tests
 - **pip-audit** — Dependency Security Audit
 - **uv lock --check** — Lock File Consistency

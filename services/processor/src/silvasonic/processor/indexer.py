@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-import soundfile as sf  # type: ignore[import-untyped]
+import soundfile as sf
 import structlog
 from silvasonic.processor.modules.indexer_stats import IndexerStats
 from sqlalchemy import text

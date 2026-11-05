@@ -78,8 +78,8 @@ class TestConfigureLogging:
         orig_stdout = _sys.stdout
         orig_rich = _sys.modules.get("rich.logging")
         try:
-            _sys.stdout = TtyStdout()  # type: ignore[assignment,unused-ignore]
-            _sys.modules["rich.logging"] = fake_rich_mod  # type: ignore[assignment,unused-ignore]
+            _sys.stdout = TtyStdout()
+            _sys.modules["rich.logging"] = fake_rich_mod
             with patch.dict(os.environ, {"SILVASONIC_DEVELOPMENT_MODE": "true"}):
                 configure_logging("rich-test")
         finally:
@@ -118,7 +118,8 @@ class TestConfigureLogging:
         orig_rich = _sys.modules.get("rich.logging")
         try:
             _sys.stdout = TtyStdout()
-            _sys.modules["rich.logging"] = None  # type: ignore[assignment]
+            # A None entry makes `import rich.logging` raise ImportError.
+            _sys.modules["rich.logging"] = None  # ty: ignore[invalid-assignment]
             with patch.dict(os.environ, {"SILVASONIC_DEVELOPMENT_MODE": "true"}):
                 configure_logging("fallback-test")
         finally:
@@ -141,7 +142,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_timestamp
 
         ed: dict[str, object] = {"timestamp": "2026-03-29T10:01:58.119872Z"}
-        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_timestamp(logging.getLogger(), "", ed)
         assert result["timestamp"] == "10:01:58"
 
     def test_shorten_timestamp_no_subseconds(self) -> None:
@@ -149,7 +150,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_timestamp
 
         ed: dict[str, object] = {"timestamp": "2026-03-29T10:01:58Z"}
-        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_timestamp(logging.getLogger(), "", ed)
         assert result["timestamp"] == "10:01:58"
 
     def test_shorten_timestamp_missing_key(self) -> None:
@@ -157,7 +158,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_timestamp
 
         ed: dict[str, object] = {"event": "test"}
-        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_timestamp(logging.getLogger(), "", ed)
         assert "timestamp" not in result
 
     def test_shorten_timestamp_non_string(self) -> None:
@@ -165,7 +166,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_timestamp
 
         ed: dict[str, object] = {"timestamp": 12345}
-        result = _shorten_timestamp(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_timestamp(logging.getLogger(), "", ed)
         assert result["timestamp"] == 12345
 
     def test_shorten_logger_name_dotted(self) -> None:
@@ -173,7 +174,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_logger_name
 
         ed: dict[str, object] = {"logger_name": "silvasonic.controller.seeder"}
-        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_logger_name(logging.getLogger(), "", ed)
         assert result["logger_name"] == "seeder"
 
     def test_shorten_logger_name_simple(self) -> None:
@@ -181,7 +182,7 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_logger_name
 
         ed: dict[str, object] = {"logger_name": "__main__"}
-        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_logger_name(logging.getLogger(), "", ed)
         assert result["logger_name"] == "__main__"
 
     def test_shorten_logger_name_missing(self) -> None:
@@ -189,5 +190,5 @@ class TestDevModeProcessors:
         from silvasonic.core.logging import _shorten_logger_name
 
         ed: dict[str, object] = {"event": "test"}
-        result = _shorten_logger_name(None, "", ed)  # type: ignore[arg-type]
+        result = _shorten_logger_name(logging.getLogger(), "", ed)
         assert "logger_name" not in result

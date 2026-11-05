@@ -33,7 +33,7 @@ The Controller's `ReconciliationLoop` executes both evaluators sequentially, saf
 1. **Architecture Extensibility (Open-Closed Principle):** Adding `batdetect` later requires zero changes to the Controller's logic. A developer only needs to append a new `BackgroundWorker` definition to the `SYSTEM_WORKERS` Python list and insert a row into `managed_services`.
 2. **Crash Isolation:** If evaluating the `birdnet` database configuration yields a crash, catching it explicitly prevents the `recorder` specs from being lost. The `sync_state` engine still successfully keeps microphones recording.
 3. **Data Integrity:** This strictly enforces the "Data Capture Integrity is paramount" directive by shielding the hardware capturing pipeline from backend AI worker failures.
-4. **Type-Safety:** Using a static Python list in `worker_registry.py` provides full `mypy` type validation, preventing misspelled container flags without needing to parse or validate external JSON/YAML templates.
+4. **Type-Safety:** Using a static Python list in `worker_registry.py` provides full static type validation, preventing misspelled container flags without needing to parse or validate external JSON/YAML templates.
 5. **Atomic Toggles:** A simple `UPDATE managed_services SET enabled = false WHERE name = 'birdnet'` is atomic — no JSONB Read-Modify-Write cycle, no race conditions from concurrent Web-UI users.
 
 ## Consequences

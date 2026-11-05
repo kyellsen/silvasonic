@@ -21,7 +21,7 @@ Example (conftest.py)::
 """
 
 import os
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from functools import lru_cache
 
@@ -115,7 +115,7 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncIterator[AsyncSession]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """Context manager for background tasks/scripts."""
     async with _get_session_factory()() as session:  # pragma: no cover — integration-tested
         try:

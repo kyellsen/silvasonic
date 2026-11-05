@@ -47,7 +47,8 @@ async def get_redis_connection(
             decode_responses=decode_responses,
             socket_connect_timeout=socket_connect_timeout,
         )
-        await redis.ping()  # type: ignore[misc]
+        # redis-py types ping() for its sync and async client at once.
+        await redis.ping()  # ty: ignore[invalid-await]
         logger.info("redis_connected", url=url)
         return redis
     except (ConnectionError, OSError, TimeoutError) as exc:

@@ -38,7 +38,7 @@ class TestAudioConfig:
     def test_missing_sample_rate_raises(self) -> None:
         """sample_rate is required — omitting it raises ValidationError."""
         with pytest.raises(ValidationError):
-            AudioConfig()  # type: ignore[call-arg]
+            AudioConfig()  # ty: ignore[missing-argument]
 
     def test_custom_format(self) -> None:
         """Accepts valid literal format values."""
@@ -99,7 +99,7 @@ class TestMicrophoneProfile:
     def test_missing_required_fields_raises(self) -> None:
         """slug, name, and audio are required."""
         with pytest.raises(ValidationError):
-            MicrophoneProfile()  # type: ignore[call-arg]
+            MicrophoneProfile()  # ty: ignore[missing-argument]
 
     def test_model_dump(self) -> None:
         """Serialization to dict works correctly."""
@@ -131,7 +131,7 @@ class TestS3Config:
     def test_missing_required_raises(self) -> None:
         """Missing access_key_id raises ValidationError."""
         with pytest.raises(ValidationError):
-            S3Config()  # type: ignore[call-arg]
+            S3Config()  # ty: ignore[missing-argument]
 
     def test_extra_fields_allowed(self) -> None:
         """BaseRcloneConfig allows extra rclone flags."""
@@ -158,7 +158,7 @@ class TestWebDAVConfig:
     def test_missing_required_raises(self) -> None:
         """Missing required fields raises ValidationError."""
         with pytest.raises(ValidationError):
-            WebDAVConfig()  # type: ignore[call-arg]
+            WebDAVConfig()  # ty: ignore[missing-argument]
 
 
 @pytest.mark.unit

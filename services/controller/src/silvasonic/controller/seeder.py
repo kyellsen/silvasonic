@@ -98,7 +98,7 @@ def _load_defaults(path: Path) -> dict[str, Any] | None:
 
 
 class Seeder(Protocol):
-    """Uniform interface for startup seeders (static typing via mypy)."""
+    """Uniform interface for startup seeders (checked by the type checker only)."""
 
     name: str
 

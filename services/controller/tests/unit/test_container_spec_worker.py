@@ -25,7 +25,7 @@ def _make_worker(**overrides: object) -> BackgroundWorker:
         "needs_own_workspace": False,
     }
     defaults.update(overrides)
-    return BackgroundWorker(**defaults)  # type: ignore[arg-type]
+    return BackgroundWorker(**defaults)
 
 
 @pytest.mark.unit

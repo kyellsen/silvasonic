@@ -258,5 +258,5 @@ class TestServiceContextPubSub:
         assert payload["instance_id"] == "ps-01"
 
         await pubsub.unsubscribe("silvasonic:status")
-        await pubsub.aclose()  # type: ignore[no-untyped-call]
+        await pubsub.aclose()
         await subscriber.aclose()

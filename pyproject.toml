@@ -48,11 +48,13 @@ dev = [
     # -- Code Quality & Formatting --
     "beautysh>=6.4.2",
     "djlint>=1.36.4",
-    "mypy>=1.14.0",
     "pre-commit>=4.0.0",
     "pip-audit>=2.7.0",
     "rich>=13.0.0",               # Pretty logging in interactive dev terminals (not needed in prod containers)
     "ruff>=0.8.0",
+    # The type checker, pinned to one release: a 0.0 checker changes its
+    # findings between releases, so an upgrade is a commit of its own.
+    "ty==0.0.97",
     "yamlfix>=1.19.1",
 
     # -- Testing Core --
@@ -111,12 +113,16 @@ select = [
     "D",   # pydocstyle
     "SIM", # flake8-simplify
     "RUF", # ruff-specific rules
+    # Every function annotated, which mypy's strict mode enforced and ty does
+    # not check.
+    "ANN", # flake8-annotations
 ]
 ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D106", # Missing docstring in public nested class
     "B008", # Do not perform function call in argument defaults
+    "ANN401", # Strict mode refused an implicit Any, never a written one
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -126,35 +132,48 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.flake8-annotations]
+# An __init__ with an annotated argument needs no `-> None`, as in mypy.
+mypy-init-return = true
 
-[tool.mypy]
-python_version = "3.13"
-strict = true
-explicit_package_bases = true
-plugins = ["pydantic.mypy"]
-mypy_path = "scripts:packages/core/src:packages/test-utils/src:services/controller/src:services/processor/src:services/recorder/src:services/web-mock/src:services/db-viewer/src:services/birdnet/src"
-enable_error_code = ["ignore-without-code"]
 
-[[tool.mypy.overrides]]
-module = ["testcontainers.*", "podman", "podman.*", "bcrypt", "yaml"]
-ignore_missing_imports = true
+# ty over the whole workspace, as mypy checked `.`; scripts/check.py and
+# scripts/ci.py run it ("ty"). The Python version follows requires-python.
+# pydantic needs no plugin: ty reads a model's fields itself, so a constructor
+# call is checked for missing, unknown and aliased fields, frozen models and
+# (in pydantic's lax mode) the argument types.
+[tool.ty.src]
+include = ["conftest.py", "packages", "scripts", "services", "tests"]
 
-[[tool.mypy.overrides]]
-module = [
-    "uvicorn",
-    "uvicorn.*",
-    "fastapi",
-    "fastapi.*",
-    "sse_starlette",
-    "sse_starlette.*",
-]
-ignore_missing_imports = true
+[tool.ty.environment]
+# scripts/ import their siblings by bare name (`from common import ...`), as
+# Python puts a script's folder on sys.path, and tests/unit imports them the
+# same way. The packages and services need no entry: uv installs every
+# workspace member editable, and ty follows those installs into the shared
+# `silvasonic` namespace, a new service included.
+extra-paths = ["scripts"]
 
-[[tool.mypy.overrides]]
-# FastAPI app.get() decorators return Any when stubs are absent; exempt web-mock
-# from the untyped-decorator check rather than pulling in non-upstream stub packages.
-module = ["silvasonic.web_mock.*"]
-disallow_untyped_decorators = false
+[tool.ty.analysis]
+# The BirdNET spikes (scripts/spikes/birdnet/) import birdnetlib, which the
+# workspace does not install.
+allowed-unresolved-imports = ["birdnetlib.**"]
+
+[tool.ty.rules]
+# Off in ty's defaults, on in mypy's strict mode: a name bound on some paths
+# only, and a generic without its type arguments (disallow_any_generics).
+possibly-unresolved-reference = "error"
+missing-type-argument = "error"
+# A `ty: ignore` names the rule it silences, so it cannot hide a second finding
+# on its line (scripts/check.py refuses `type: ignore` for the same reason).
+blanket-ignore-comment = "error"
+# unsound-return-statement (strict's warn_return_any) stays off: its findings
+# depend on the order ty checks the files (astral-sh/ty#4221), and it is wrong
+# on sorted(..., key=lambda ...) (astral-sh/ty#4311), both open in 0.0.97.
+
+[tool.ty.terminal]
+# ty's default, stated because the gate relies on it: a warning (deprecated, an
+# unused `ty: ignore`) fails the check like an error.
+error-on-warning = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"

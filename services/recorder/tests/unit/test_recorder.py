@@ -29,7 +29,7 @@ def bare_service() -> "RecorderService":
     """Create a bare RecorderService without triggering SilvaService.__init__.
 
     Sets up a mock _ctx with a real HealthMonitor so the `svc.health` property
-    works without mypy complaints.
+    works without type-checker complaints.
     """
     from silvasonic.recorder.__main__ import RecorderService
     from silvasonic.recorder.ffmpeg_pipeline import FFmpegConfig
@@ -267,7 +267,8 @@ class TestRecorderServiceRun:
     ) -> None:
         """run() starts pipeline and exits when shutdown_event is set."""
         bare_service._shutdown_event = asyncio.Event()
-        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
+        # _cfg is the fixture's MagicMock, so the read-only property can be set.
+        bare_service._cfg.workspace_path = tmp_path  # ty: ignore[invalid-assignment]
 
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = True
@@ -298,7 +299,8 @@ class TestRecorderServiceRun:
     ) -> None:
         """run() crashes when pipeline fails to start (Level-2 Recovery)."""
         bare_service._shutdown_event = asyncio.Event()
-        bare_service._cfg.workspace_path = tmp_path  # type: ignore[misc]
+        # _cfg is the fixture's MagicMock, so the read-only property can be set.
+        bare_service._cfg.workspace_path = tmp_path  # ty: ignore[invalid-assignment]
 
         mock_pipeline = MagicMock()
         mock_pipeline.start.side_effect = RuntimeError("No audio device")

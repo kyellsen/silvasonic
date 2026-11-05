@@ -29,10 +29,10 @@ def _make_bare_service() -> Any:
     """Create a bare ProcessorService without triggering SilvaService.__init__.
 
     Sets up a mock _ctx with a real HealthMonitor so the ``svc.health`` property
-    works without mypy complaints.
+    works without type-checker complaints.
 
     Returns ``Any`` so mock attributes (return_value, assert_called, etc.)
-    are accessible without mypy ``attr-defined`` errors.
+    are accessible without the type checker's ``unresolved-attribute`` errors.
     """
     svc = ProcessorService.__new__(ProcessorService)
     svc._ctx = MagicMock()

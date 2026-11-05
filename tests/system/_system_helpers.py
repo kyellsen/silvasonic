@@ -281,7 +281,8 @@ def psql_query(
         last_err = RuntimeError(f"psql query failed: {result.stderr}")
         if attempt < retries:
             time.sleep(retry_delay)
-    raise last_err  # type: ignore[misc]
+    assert last_err is not None  # range(1 + retries) runs at least once
+    raise last_err
 
 
 def wait_for_db(db_container: str, timeout: float = 30) -> None:

@@ -79,7 +79,7 @@ silvasonic/
 ├── AGENTS.md            # AI agent rules (binding for all AI tools)
 ├── VISION.md            # Long-term vision & architecture
 ├── ROADMAP.md           # Milestone roadmap (version targets & status)
-├── pyproject.toml       # Workspace root, tooling config (Ruff, Mypy, Pytest)
+├── pyproject.toml       # Workspace root, tooling config (Ruff, ty, Pytest)
 ├── compose.yml          # Container orchestration (Podman Compose)
 ├── justfile             # Developer commands (init, build, start, stop, check, test, …)
 ├── mkdocs.yml           # Documentation site configuration (MkDocs Material)

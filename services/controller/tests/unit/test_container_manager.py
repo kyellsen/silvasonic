@@ -76,7 +76,7 @@ class TestTier2ServiceSpec:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            Tier2ServiceSpec(image="test:latest", name="test")  # type: ignore[call-arg]
+            Tier2ServiceSpec(image="test:latest", name="test")  # ty: ignore[missing-argument]
 
 
 # ===================================================================

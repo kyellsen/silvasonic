@@ -66,7 +66,7 @@ Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs
 | Data     | `numpy`, `polars` (**no** `pandas`)                                       |
 | Audio    | `ffmpeg` (capture & resample — ADR-0024), `soundfile` (analysis services only)    |
 | Test     | `pytest`, `pytest-xdist`, `playwright`, `testcontainers`, `polyfactory`    |
-| Tools    | `uv`, `hatchling`, `ruff`, `mypy`, `pre-commit`                           |
+| Tools    | `uv`, `hatchling`, `ruff`, `ty`, `pre-commit`                             |
 
 ## 6. Testing Rules
 1. **Explicit Markers:** Every test MUST have `@pytest.mark.unit`, `.integration`, `.system`, `.system_hw_auto`, `.system_hw_manual`, `.e2e`, or `.smoke`.

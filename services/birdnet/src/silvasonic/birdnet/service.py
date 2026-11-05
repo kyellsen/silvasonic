@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import soundfile as sf  # type: ignore[import-untyped]
+import soundfile as sf
 import structlog
-from ai_edge_litert.interpreter import Interpreter  # type: ignore[import-untyped]
+from ai_edge_litert.interpreter import Interpreter
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
@@ -46,7 +46,7 @@ def _derive_model_version(filename: str) -> str:
 def _flat_sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
     """BirdNET sigmoid calculation (negative sensitivity matches birdnetlib/analyzer)."""
     res = 1.0 / (1.0 + np.exp(sensitivity * np.clip(x, -15, 15)))
-    return res  # type: ignore[no-any-return]
+    return res
 
 
 class BirdNETService(SilvaService):
@@ -182,7 +182,7 @@ class BirdNETService(SilvaService):
                 )
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
-            return audio  # type: ignore[no-any-return]
+            return audio
 
         audio = await loop.run_in_executor(None, _load)
 
@@ -214,7 +214,7 @@ class BirdNETService(SilvaService):
             def _infer(c: np.ndarray = chunk) -> np.ndarray:
                 interpreter.set_tensor(input_idx, c.reshape(1, WINDOW_SAMPLES))
                 interpreter.invoke()
-                return interpreter.get_tensor(output_idx)[0]  # type: ignore[no-any-return]
+                return interpreter.get_tensor(output_idx)[0]
 
             raw = await loop.run_in_executor(None, _infer)
             scores = _flat_sigmoid(raw, sensitivity=-adj_sens)

@@ -69,7 +69,7 @@ just test-cov-all    # Combined coverage map (Unit+Int+System+Smoke+E2E)
 
 ```bash
 just c               # Fast dev check (< 10s):
-                     #   Lock + Ruff + Mypy + Unit Tests
+                     #   Lock + Ruff + ty + Unit Tests
 just v               # Verify for push (~ 35s):
                      #   Fast Check + DB-Integration Tests
 just ci              # Full CI pipeline (> 4m):
@@ -209,7 +209,8 @@ The `just ci` command runs these stages in order:
 | Dep Audit          | No       | `pip-audit` (skipped by default in dev)           |
 | Containerfile Lint | No       | Hadolint + `podman-compose config` validation    |
 | Ruff Lint          | Yes      | Linting + formatting                              |
-| Mypy               | Yes      | Static type checking                              |
+| Type-ignore Syntax | Yes      | No `# type: ignore`; ty's is `# ty: ignore[rule]` |
+| ty                 | Yes      | Static type checking (`[tool.ty]`)                |
 | Unit Tests         | Yes      | `@pytest.mark.unit` (parallel, coverage)          |
 | Integration Tests  | Yes      | `@pytest.mark.integration` (testcontainers)       |
 | Clear              | Always   | Clean workspace                                   |

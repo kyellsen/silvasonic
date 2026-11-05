@@ -133,7 +133,7 @@ async def clean_database(container: PostgresContainer) -> None:
     Args:
         container: A running ``PostgresContainer`` instance.
     """
-    import asyncpg  # type: ignore[import-untyped]
+    import asyncpg
 
     host = container.get_container_host_ip()
     port = int(container.get_exposed_port(5432))

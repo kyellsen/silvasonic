@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import soundfile as sf  # type: ignore[import-untyped]
+import soundfile as sf
 from silvasonic.processor.modules.flac_encoder import encode_wav_to_flac
 
 

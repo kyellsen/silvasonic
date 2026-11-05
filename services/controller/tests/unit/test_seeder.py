@@ -502,7 +502,7 @@ class TestAllRealProfilesValid:
 
     @pytest.mark.parametrize(
         "yml_name",
-        _collect_profile_ids.__func__(),  # type: ignore[attr-defined]
+        _collect_profile_ids.__func__(),
         ids=lambda n: n.removesuffix(".yml"),
     )
     def test_profile_passes_pydantic_validation(self, yml_name: str) -> None:
@@ -525,7 +525,7 @@ class TestAllRealProfilesValid:
 
     @pytest.mark.parametrize(
         "yml_name",
-        _collect_profile_ids.__func__(),  # type: ignore[attr-defined]
+        _collect_profile_ids.__func__(),
         ids=lambda n: n.removesuffix(".yml"),
     )
     async def test_profile_seeds_to_db(self, yml_name: str) -> None:

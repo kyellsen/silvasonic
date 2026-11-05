@@ -6,6 +6,7 @@ missing encryption key, and WebDAV auto-vendor detection.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -122,7 +123,7 @@ class TestCloudSyncSeeder:
         session.add.assert_not_called()
 
         # Existing value should be updated with merged values
-        merged = existing.value
+        merged: dict[str, Any] = existing.value
         assert merged["enabled"] is True
         assert merged["remote_type"] == "s3"
         assert merged["remote_config"]["user"].startswith("enc:")

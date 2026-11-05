@@ -168,7 +168,7 @@ async def test_worker_resolves_relative_db_paths(
     instead of the configured RECORDINGS_DIR mount point.
     """
     import numpy as np
-    import soundfile as sf  # type: ignore[import-untyped]
+    import soundfile as sf
 
     # Create a real WAV in the correct directory structure
     workspace = "test-mic-001"

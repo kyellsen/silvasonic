@@ -75,6 +75,8 @@ class FakeResult:
 
 
 class FakeSession:
+    """Structural double of AsyncSession, no subclass, hence evaluate()'s `ty: ignore`."""
+
     def __init__(self, devices: list[Any], profile: Any = None) -> None:
         """Initialize FakeSession with static devices and profile."""
         self._devices = devices
@@ -96,7 +98,7 @@ class TestDeviceStateEvaluator:
         session = FakeSession(devices=[])
 
         evaluator = DeviceStateEvaluator()
-        specs = await evaluator.evaluate(session)  # type: ignore[arg-type]  # FakeSession is a structural double, not an AsyncSession subclass
+        specs = await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
 
         assert len(specs) == 0
 
@@ -110,7 +112,7 @@ class TestDeviceStateEvaluator:
         session = FakeSession(devices=[device], profile=None)
 
         evaluator = DeviceStateEvaluator()
-        specs = await evaluator.evaluate(session)  # type: ignore[arg-type]  # FakeSession is a structural double, not an AsyncSession subclass
+        specs = await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
 
         assert len(specs) == 0
 
@@ -127,13 +129,13 @@ class TestDeviceStateEvaluator:
 
         # First call — should log warning
         with patch("silvasonic.controller.reconciler.log") as mock_log:
-            await evaluator.evaluate(session)  # type: ignore[arg-type]  # FakeSession is a structural double, not an AsyncSession subclass
+            await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
             mock_log.warning.assert_called_once()
             mock_log.debug.assert_called_once()  # reconciler.evaluated
 
         # Second call — same device+slug → debug only, no new warning
         with patch("silvasonic.controller.reconciler.log") as mock_log:
-            await evaluator.evaluate(session)  # type: ignore[arg-type]  # FakeSession is a structural double, not an AsyncSession subclass
+            await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
             mock_log.warning.assert_not_called()
             # 2 debug calls: missing_profile (rate-limited) + reconciler.evaluated
             assert mock_log.debug.call_count == 2
@@ -158,7 +160,7 @@ class TestDeviceStateEvaluator:
             "silvasonic.controller.reconciler.build_recorder_spec",
             side_effect=ValueError("invalid config"),
         ):
-            specs = await evaluator.evaluate(session)  # type: ignore[arg-type]  # FakeSession is a structural double, not an AsyncSession subclass
+            specs = await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
 
         assert len(specs) == 0
 
