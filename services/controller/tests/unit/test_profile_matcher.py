@@ -4,7 +4,7 @@ import pytest
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.profile_matcher import GENERIC_USB_SLUG, ProfileMatcher
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import SystemConfig
+from silvasonic.core.database.models.system import SettingsSection
 
 
 @pytest.mark.unit
@@ -141,8 +141,8 @@ class TestProfileMatcherMatch:
 
         session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value={"auto_enrollment": True}
+        mock_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value={"auto_enrollment": True}
         )
         session.execute.return_value = mock_result
 
@@ -160,8 +160,8 @@ class TestProfileMatcherMatch:
 
         session = AsyncMock()
         mock_exec_result = MagicMock()
-        mock_exec_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value={"auto_enrollment": False}
+        mock_exec_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value={"auto_enrollment": False}
         )
         session.execute.return_value = mock_exec_result
 
@@ -180,8 +180,8 @@ class TestProfileMatcherMatch:
 
         session = AsyncMock()
         mock_exec_result = MagicMock()
-        mock_exec_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value={"auto_enrollment": False}
+        mock_exec_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value={"auto_enrollment": False}
         )
         session.execute.return_value = mock_exec_result
         session.get.return_value = None
@@ -223,8 +223,8 @@ class TestProfileMatcherGetAutoEnrollment:
         matcher = ProfileMatcher()
         session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value={"auto_enrollment": True}
+        mock_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value={"auto_enrollment": True}
         )
         session.execute.return_value = mock_result
 
@@ -234,8 +234,8 @@ class TestProfileMatcherGetAutoEnrollment:
         matcher = ProfileMatcher()
         session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value={"auto_enrollment": False}
+        mock_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value={"auto_enrollment": False}
         )
         session.execute.return_value = mock_result
 
@@ -254,8 +254,8 @@ class TestProfileMatcherGetAutoEnrollment:
         matcher = ProfileMatcher()
         session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = SystemConfig(
-            key="system", value="invalid_string"
+        mock_result.scalar_one_or_none.return_value = SettingsSection(
+            section="recording", value="invalid_string"
         )
         session.execute.return_value = mock_result
 

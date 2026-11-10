@@ -26,7 +26,7 @@
 
 ### Processing
 
-*   **Relational Storage:** System Config, Devices, Microphone Profiles, Managed Services, Taxonomy, Users.
+*   **Relational Storage:** Settings, Microphones, Microphone Profiles, Modules, Species, Users.
 *   **Time-Ordered Storage:** Recordings, Detections, Weather Observations and Uploads, indexed by time.
 
 ### Outputs
@@ -85,7 +85,7 @@ Every connection gets the same pragmas from `silvasonic.core.database.session`: 
 | **Sync**  | Every change to the DDL **must** be mirrored in the SQLAlchemy models (`packages/core/…/models/`) and vice-versa.         |
 | **Version** | A file with another `user_version` stops every service: the schema needs a migration, and the migration tool is decided before v1.0.0 (ADR-0033). |
 
-Deleting `database/` keeps the recordings on disk (the Indexer finds them again) but loses detections and upload history.
+Deleting `database/` keeps the recordings on disk (the Indexer finds them again) but loses detections and upload history. A database from before ADR-0033 and ADR-0037 (TimescaleDB, old table names) cannot be converted: start with an empty `database/`.
 
 ### Inspecting and Backing Up
 
@@ -103,13 +103,13 @@ Never copy the file with `cp` while services run: the latest commits may still s
 
 | Category        | Type in `schema.sql`                       | In Python                                |
 | :-------------- | :----------------------------------------- | :--------------------------------------- |
-| Identifiers     | `INTEGER PRIMARY KEY`                      | `int`                                    |
+| Identifiers     | `TEXT`, a UUIDv7 as 32 hex digits for rows created at runtime; readable slugs for authored entities | `uuid.UUID` via SQLAlchemy `Uuid` |
 | Timestamps      | `INTEGER`, microseconds since the epoch (UTC) | aware `datetime` via `UTCDateTime`     |
 | Booleans        | `INTEGER` 0/1 with a `CHECK`               | `bool`                                   |
 | Strings         | `TEXT`                                     | `str`                                    |
 | Structured data | `TEXT` with `CHECK (json_valid(…))`        | `dict` via SQLAlchemy `JSON`             |
 
-Every table is `STRICT`, so SQLite rejects a value of the wrong type. Raw SQL (`text()`) bypasses the Python types: bind times with `to_epoch_us()` and expect JSON as text and booleans as 0/1.
+Every table is `STRICT`, so SQLite rejects a value of the wrong type. The ORM generates UUIDv7 ids (`silvasonic.core.ids.uuid7`); the column default builds an equivalent one for raw SQL that leaves `id` out. Raw SQL (`text()`) bypasses the Python types: `silvasonic.core.database` registers adapters so a bound `uuid.UUID` or `datetime` is stored as the ORM stores it, but values read back come as stored — UUIDs as hex text, times as epoch microseconds, JSON as text, booleans as 0/1.
 
 ### Writing Without Blocking Others
 

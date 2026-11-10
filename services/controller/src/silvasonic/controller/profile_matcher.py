@@ -14,7 +14,7 @@ import structlog
 from pydantic import BaseModel, Field
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import SystemConfig
+from silvasonic.core.database.models.system import SettingsSection
 from sqlalchemy import select
 
 if TYPE_CHECKING:
@@ -146,11 +146,13 @@ class ProfileMatcher:
         return 0
 
     async def _get_auto_enrollment(self, session: AsyncSession) -> bool:
-        """Read the ``auto_enrollment`` flag from ``system_config``.
+        """Read ``auto_enrollment`` from the ``recording`` settings section.
 
         Defaults to ``True`` if not set (per user decision).
         """
-        result = await session.execute(select(SystemConfig).where(SystemConfig.key == "system"))
+        result = await session.execute(
+            select(SettingsSection).where(SettingsSection.section == "recording")
+        )
         config = result.scalar_one_or_none()
         if config and isinstance(config.value, dict):
             return bool(config.value.get("auto_enrollment", True))

@@ -13,7 +13,7 @@ import pytest
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.core.database.models.profiles import MicrophoneProfile
-from silvasonic.core.database.models.system import SystemConfig
+from silvasonic.core.database.models.system import SettingsSection
 from silvasonic.core.database.session import create_station_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -53,7 +53,7 @@ async def seed_profile(
 
 async def seed_auto_enrollment(session: AsyncSession, enabled: bool) -> None:
     """Helper to seed auto_enrollment config."""
-    config = SystemConfig(key="system", value={"auto_enrollment": enabled})
+    config = SettingsSection(section="recording", value={"auto_enrollment": enabled})
     session.add(config)
 
 
@@ -136,7 +136,7 @@ class TestProfileMatcher:
     async def test_auto_enrollment_false(
         self, session_factory: async_sessionmaker[AsyncSession], device_info: DeviceInfo
     ) -> None:
-        """auto_enrollment=false in system_config -> no auto-enroll even with score 100."""
+        """auto_enrollment=false in the recording settings -> no auto-enroll even with score 100."""
         async with session_factory() as session:
             await seed_profile(
                 session, "ultramic_384_evo", {"usb_vendor_id": "16d0", "usb_product_id": "0b40"}

@@ -18,6 +18,7 @@
 - [Microphone Profiles](arch/microphone_profiles.md)
 - [Lifecycle Configuration](arch/lifecycle-configuration.md)
 - [Frontend Feature Specs](arch/frontend_features.md) · [Frontend Design System](arch/frontend_design_system.md)
+- [Station API contract](api/index.md) *(draft)*
 
 ## Services
 
@@ -28,7 +29,7 @@
 - [Gateway](services/gateway.md) 
 
 ### Planned
-- [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md)
+- [API](services/api.md) · [Web-Interface](services/web_interface.md) · [Icecast](services/icecast.md)
 - [BatDetect](services/batdetect.md) · [Weather](services/weather.md) · [Tailscale](services/tailscale.md)
 
 ## Deployment
@@ -68,6 +69,11 @@
 - [ADR-0030: Database Runtime Resilience (Soft-Fail Loops)](adr/0030-database-resilience.md)
 - [ADR-0030: Logging Cadence & Stats Extensibility](adr/0030-logging-cadence-and-stats.md)
 - [ADR-0031: Runtime Tuning via DB Snapshot Refresh](adr/0031-runtime-tuning-snapshot-refresh.md)
+- [ADR-0032: API-First Station Contract](adr/0032-api-first-station-contract.md) *(proposed)*
+- [ADR-0033: Unified Naming and Global Identifiers](adr/0033-unified-naming-and-global-identifiers.md)
+- [ADR-0034: Authentication and Authorization](adr/0034-authentication-and-authorization.md) *(proposed)*
+- [ADR-0035: HTTPS and Certificates](adr/0035-https-and-certificates.md) *(proposed)*
+- [ADR-0036: Svelte Single-Page Application on the Station API](adr/0036-svelte-spa-frontend.md) *(proposed)*
 - [ADR-0037: SQLite as the Station Database](adr/0037-sqlite-station-database.md)
 - [ADR-0038: Connection Classes and the Upload Path](adr/0038-connection-classes-and-upload-path.md) *(proposed)*
 
@@ -98,6 +104,7 @@
 - [Processor](user_stories/processor.md) · [Gateway](user_stories/gateway.md)
 - [Icecast](user_stories/icecast.md) · [Cloud Sync](user_stories/cloud_sync.md)
 - [Web-Interface](user_stories/web_interface.md)
+- [Dashboard](user_stories/dashboard.md) · [API](user_stories/api.md)
 
 ## Hardware
 

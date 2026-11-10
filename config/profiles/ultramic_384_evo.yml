@@ -1,23 +1,23 @@
 ---
 # Dodotronic Ultramic 384 EVO Profile
 # High-frequency ultrasound microphone for bat detection.
-schema_version: "1.0"
+schema_version: "2.0"
 slug: ultramic_384_evo
 name: Dodotronic Ultramic 384 EVO
 description: High-performance ultrasonic microphone (up to 190kHz) for bioacoustics.
 manufacturer: Dodotronic
 model: Ultramic 384 EVO
 audio:
-  sample_rate: 384000
+  sample_rate_hz: 384000
   channels: 1
-  format: S16LE # Hardware native
+  sample_format: S16LE # Hardware native
   match:
     usb_vendor_id: "0869"
     usb_product_id: "0389"
     alsa_name_contains: "ultramic"
 processing:
   gain_db: 12.0 # Often needs boost for distant bats
-  chunk_size: 8192
+  chunk_frames: 8192
   highpass_filter_hz: 1000.0 # Cut rumble
 stream:
   raw_enabled: true # Archive full 384kHz

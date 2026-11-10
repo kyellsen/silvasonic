@@ -11,7 +11,7 @@
 ---
 
 ## 1. Description
-The Janitor's "Panic-mode" filesystem fallback (triggered when NVMe is >90% full and the DB is unreachable) deletes the oldest `.wav` files individually based on `mtime`. It fails to respect the "Recording Pair" relationship introduced in v0.4.0 (Dual Stream). This can cause a `.raw.wav` file to be deleted while its `.processed.wav` counterpart remains. When the database comes back online, the Reconciliation Loop only verifies if the primary file (`file_processed`) exists. As a result, the database incorrectly asserts that the `.raw.wav` file is still available (Split-Brain state).
+The Janitor's "Panic-mode" filesystem fallback (triggered when NVMe is >90% full and the DB is unreachable) deletes the oldest `.wav` files individually based on `mtime`. It fails to respect the "Recording Pair" relationship introduced in v0.4.0 (Dual Stream). This can cause a `.raw.wav` file to be deleted while its `.processed.wav` counterpart remains. When the database comes back online, the Reconciliation Loop only verifies if the primary file (`processed_path`) exists. As a result, the database incorrectly asserts that the `.raw.wav` file is still available (Split-Brain state).
 
 ## 2. Context & Root Cause Analysis
 This is caused by a blind spot for paired audio files during extreme error recovery modes.
@@ -19,7 +19,7 @@ This is caused by a blind spot for paired audio files during extreme error recov
 * **Component:** `janitor.panic_filesystem_fallback` and `reconciliation.run_audit`
 * **Mechanism:**
   * `janitor.py`: Runs `recordings_dir.glob("*/data/*/*.wav")` and unlinks `batch_size` items sequentially by `mtime`. Raw and processed streams are treated as completely independent files.
-  * `reconciliation.py`: The audit query uses `SELECT id, COALESCE(file_processed, file_raw) AS check_file`. For a dual-stream device, `check_file` evaluates to `file_processed`. It therefore only checks if the processed file exists on disk, ignoring the fact that the original raw recording has been wiped by the Janitor fallback.
+  * `reconciliation.py`: The audit query uses `SELECT id, COALESCE(processed_path, raw_path) AS check_file`. For a dual-stream device, `check_file` evaluates to `processed_path`. It therefore only checks if the processed file exists on disk, ignoring the fact that the original raw recording has been wiped by the Janitor fallback.
 
 ## 3. Impact / Consequences
 This occurs only during a "double-failure" scenario (disk >90% + DB offline) but has severe cascading effects:
@@ -34,14 +34,14 @@ This occurs only during a "double-failure" scenario (disk >90% + DB offline) but
 4. Observe that only one file of a Dual-Stream pair might be deleted (e.g., `.raw.wav` is gone, `.processed.wav` remains).
 5. Restart the database (`podman start silvasonic-db`).
 6. Restart the `Processor` to force the Reconciliation Audit.
-7. Observe that the DB still flags `local_deleted = false` for the affected row and lists both `file_raw` and `file_processed` paths.
+7. Observe that the DB still flags `deleted_at IS NULL` for the affected row and lists both `raw_path` and `processed_path` paths.
 
 ## 5. Expected Behavior
-Even under Panic Fallback conditions, the system should delete both paired streams simultaneously. Upon DB recovery, the Reconciliation Loop must proactively verify the physical existence of *both* files for dual-stream recordings. If *either* file is missing, the row must be marked with `local_deleted = true` to preserve the Split-Brain consistency.
+Even under Panic Fallback conditions, the system should delete both paired streams simultaneously. Upon DB recovery, the Reconciliation Loop must proactively verify the physical existence of *both* files for dual-stream recordings. If *either* file is missing, the row must be marked with `deleted_at IS NOT NULL` to preserve the Split-Brain consistency.
 
 ## 6. Proposed Solution
 1. **Enhance `panic_filesystem_fallback`:** Instead of doing a blind `unlink()` on the returned paths, isolate the file stem (e.g., stripping `.raw.wav` or `.processed.wav`). When one stream is marked for deletion, explicitly execute a deletion on its coupled counterpart.
-2. **Enhance `run_audit`:** Modify the SQL query to explicitly fetch both `file_processed` and `file_raw`. In Python, evaluate both `Path` conditions. The row should only be considered "healthy" if both (non-NULL) paths physically exist.
+2. **Enhance `run_audit`:** Modify the SQL query to explicitly fetch both `processed_path` and `raw_path`. In Python, evaluate both `Path` conditions. The row should only be considered "healthy" if both (non-NULL) paths physically exist.
 
 No database schema change is required. No ADR is required.
 

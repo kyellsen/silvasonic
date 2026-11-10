@@ -2,8 +2,8 @@
 
 Infrastructure-level settings read from environment variables (Tier 1, .env).
 Runtime-tunable settings (Janitor thresholds, Indexer intervals) are read
-from the ``system_config`` table via ``ProcessorSettings`` (schemas/system_config.py)
-on startup — see ``ProcessorService.load_config()``.
+from the ``storage`` section of the ``settings`` table via ``StorageSettings``
+(schemas/settings.py) on startup — see ``ProcessorService.load_config()``.
 """
 
 from pydantic_settings import BaseSettings

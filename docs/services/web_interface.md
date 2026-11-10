@@ -19,7 +19,7 @@ The frontend follows the **"Fast & Light" philosophy** ([ADR-0003](../adr/0003-f
 | ---------- | ---------------------------------- |
 | Framework  | FastAPI + Uvicorn                  |
 | Templating | Jinja2                             |
-| Database   | SQLAlchemy 2.0+ (async), asyncpg   |
+| Database   | SQLAlchemy 2.0+ (async), aiosqlite |
 | API Docs   | Swagger / OpenAPI (auto-generated) |
 
 ### 1.3 Frontend Stack

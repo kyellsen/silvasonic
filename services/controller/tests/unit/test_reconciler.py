@@ -1,4 +1,4 @@
-"""Unit tests for DeviceStateEvaluator, ReconciliationLoop, and NudgeSubscriber.
+"""Unit tests for MicrophoneStateEvaluator, ReconciliationLoop, and NudgeSubscriber.
 
 Covers device eligibility evaluation, reconciliation triggering, and Redis
 pub/sub message handling.
@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.reconciler import (
-    DeviceStateEvaluator,
+    MicrophoneStateEvaluator,
     ReconciliationLoop,
 )
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
@@ -38,7 +38,7 @@ def _make_spec(**overrides: Any) -> Tier2ServiceSpec:
     return Tier2ServiceSpec(**defaults)
 
 
-class FakeEvaluator(DeviceStateEvaluator, SystemWorkerEvaluator):
+class FakeEvaluator(MicrophoneStateEvaluator, SystemWorkerEvaluator):
     """Fake evaluator to replace heavy mocking, per testing.md."""
 
     def __new__(cls, *args: Any, **kwargs: Any) -> Any:
@@ -58,7 +58,7 @@ class FakeEvaluator(DeviceStateEvaluator, SystemWorkerEvaluator):
 
 
 # ===================================================================
-# DeviceStateEvaluator
+# MicrophoneStateEvaluator
 # ===================================================================
 
 
@@ -77,27 +77,27 @@ class FakeResult:
 class FakeSession:
     """Structural double of AsyncSession, no subclass, hence evaluate()'s `ty: ignore`."""
 
-    def __init__(self, devices: list[Any], profile: Any = None) -> None:
-        """Initialize FakeSession with static devices and profile."""
-        self._devices = devices
+    def __init__(self, microphones: list[Any], profile: Any = None) -> None:
+        """Initialize FakeSession with static microphones and profile."""
+        self._microphones = microphones
         self._profile = profile
 
     async def execute(self, stmt: Any) -> FakeResult:
-        return FakeResult(self._devices)
+        return FakeResult(self._microphones)
 
     async def get(self, model: Any, ident: Any) -> Any:
         return self._profile
 
 
 @pytest.mark.unit
-class TestDeviceStateEvaluator:
-    """Tests for DeviceStateEvaluator edge cases using FakeSession doubles."""
+class TestMicrophoneStateEvaluator:
+    """Tests for MicrophoneStateEvaluator edge cases using FakeSession doubles."""
 
-    async def test_evaluate_no_eligible_devices(self) -> None:
-        """evaluate() returns empty list when no devices match criteria."""
-        session = FakeSession(devices=[])
+    async def test_evaluate_no_eligible_microphones(self) -> None:
+        """evaluate() returns empty list when no microphones match criteria."""
+        session = FakeSession(microphones=[])
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         specs = await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
 
         assert len(specs) == 0
@@ -105,13 +105,13 @@ class TestDeviceStateEvaluator:
     async def test_evaluate_missing_profile(self) -> None:
         """evaluate() skips device when linked profile is missing."""
         device = MagicMock()
-        device.name = "mic-02"
+        device.hardware_id = "mic-02"
         device.profile_slug = "nonexistent"
-        device.config = {}
+        device.hardware = {}
 
-        session = FakeSession(devices=[device], profile=None)
+        session = FakeSession(microphones=[device], profile=None)
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         specs = await evaluator.evaluate(session)  # ty: ignore[invalid-argument-type]
 
         assert len(specs) == 0
@@ -119,13 +119,13 @@ class TestDeviceStateEvaluator:
     async def test_evaluate_missing_profile_rate_limited(self) -> None:
         """Second call for same device+slug logs debug instead of warning."""
         device = MagicMock()
-        device.name = "mic-02"
+        device.hardware_id = "mic-02"
         device.profile_slug = "nonexistent"
-        device.config = {}
+        device.hardware = {}
 
-        session = FakeSession(devices=[device], profile=None)
+        session = FakeSession(microphones=[device], profile=None)
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
 
         # First call — should log warning
         with patch("silvasonic.controller.reconciler.log") as mock_log:
@@ -141,20 +141,20 @@ class TestDeviceStateEvaluator:
             assert mock_log.debug.call_count == 2
 
     async def test_spec_build_failed_skips_device(self) -> None:
-        """Evaluator skips devices where build_recorder_spec raises."""
+        """Evaluator skips microphones where build_recorder_spec raises."""
         device = MagicMock()
-        device.name = "broken-mic"
-        device.status = "online"
+        device.hardware_id = "broken-mic"
+        device.connection_state = "connected"
         device.enabled = True
-        device.enrollment_status = "enrolled"
+        device.enrollment_state = "enrolled"
         device.profile_slug = "broken_profile"
 
         profile = MagicMock()
         profile.slug = "broken_profile"
 
-        session = FakeSession(devices=[device], profile=profile)
+        session = FakeSession(microphones=[device], profile=profile)
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
 
         with patch(
             "silvasonic.controller.reconciler.build_recorder_spec",
@@ -276,7 +276,7 @@ class TestReconciliationLoop:
         )
 
         mock_session = AsyncMock()
-        # Mock online devices query for offline-marking
+        # Mock connected microphones query for disconnect-marking
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -286,9 +286,9 @@ class TestReconciliationLoop:
                 "silvasonic.controller.reconciler.get_session",
             ) as mock_get_session,
             patch(
-                "silvasonic.controller.reconciler.upsert_device",
+                "silvasonic.controller.reconciler.upsert_microphone",
                 new_callable=AsyncMock,
-                return_value=MagicMock(config={}),
+                return_value=MagicMock(hardware={}),
             ) as mock_upsert,
             patch(
                 "silvasonic.controller.reconciler.asyncio.to_thread",
@@ -304,13 +304,13 @@ class TestReconciliationLoop:
         # Should have been called with profile_slug from matcher
         call_kwargs = mock_upsert.call_args
         assert call_kwargs.kwargs["profile_slug"] == "ultramic_384"
-        assert call_kwargs.kwargs["enrollment_status"] == "enrolled"
+        assert call_kwargs.kwargs["enrollment_state"] == "enrolled"
 
     async def test_rescan_hardware_sets_workspace_name(self) -> None:
-        """_rescan_hardware persists workspace_name on enrolled devices.
+        """_rescan_hardware persists workspace_name on enrolled microphones.
 
         Regression test for Bug #1: The Controller must compute and store
-        ``devices.workspace_name`` during enrollment. The Processor Indexer
+        ``microphones.workspace_name`` during enrollment. The Processor Indexer
         uses this column to resolve filesystem paths to the device's identity.
 
         If this test fails, the cross-service contract is broken and the
@@ -356,8 +356,8 @@ class TestReconciliationLoop:
 
         # Mock device returned by upsert — starts without workspace_name
         mock_device = MagicMock()
-        mock_device.name = "0869-0389-00000000034F"
-        mock_device.config = {
+        mock_device.hardware_id = "0869-0389-00000000034F"
+        mock_device.hardware = {
             "usb_serial": "00000000034F",
             "usb_vendor_id": "0869",
             "usb_product_id": "0389",
@@ -370,7 +370,7 @@ class TestReconciliationLoop:
                 "silvasonic.controller.reconciler.get_session",
             ) as mock_get_session,
             patch(
-                "silvasonic.controller.reconciler.upsert_device",
+                "silvasonic.controller.reconciler.upsert_microphone",
                 new_callable=AsyncMock,
                 return_value=mock_device,
             ),
@@ -387,12 +387,12 @@ class TestReconciliationLoop:
         # Critical assertion: workspace_name must be set
         assert mock_device.workspace_name == "ultramic-384-evo-034f", (
             f"Contract violation: Reconciler did not set workspace_name. "
-            f"Device '{mock_device.name}' has workspace_name="
+            f"Microphone '{mock_device.hardware_id}' has workspace_name="
             f"{mock_device.workspace_name!r} instead of 'ultramic-384-evo-034f'."
         )
 
     async def test_rescan_hardware_respects_manual_enrollment_workspace_name(self) -> None:
-        """_rescan_hardware persists workspace_name on manually enrolled devices.
+        """_rescan_hardware persists workspace_name on manually enrolled microphones.
 
         Regression test: When auto_enroll is False, but the device object loaded
         from DB already contains a profile_slug, generate_workspace_name must still
@@ -437,8 +437,8 @@ class TestReconciliationLoop:
 
         # Mock device returned by upsert — starts without workspace_name, but HAS a profile_slug!
         mock_device = MagicMock()
-        mock_device.name = "0869-0389-00000000034F"
-        mock_device.config = {
+        mock_device.hardware_id = "0869-0389-00000000034F"
+        mock_device.hardware = {
             "usb_serial": "00000000034F",
             "usb_vendor_id": "0869",
             "usb_product_id": "0389",
@@ -451,7 +451,7 @@ class TestReconciliationLoop:
                 "silvasonic.controller.reconciler.get_session",
             ) as mock_get_session,
             patch(
-                "silvasonic.controller.reconciler.upsert_device",
+                "silvasonic.controller.reconciler.upsert_microphone",
                 new_callable=AsyncMock,
                 return_value=mock_device,
             ),
@@ -468,12 +468,12 @@ class TestReconciliationLoop:
         # Critical assertion: workspace_name must be set, because mock_device.profile_slug is truthy
         assert mock_device.workspace_name == "ultramic-384-evo-034f", (
             f"Contract violation: Reconciler did not set workspace_name for manually "
-            f"enrolled device. Device '{mock_device.name}' has workspace_name="
+            f"enrolled device. Microphone '{mock_device.hardware_id}' has workspace_name="
             f"{mock_device.workspace_name!r} instead of 'ultramic-384-evo-034f'."
         )
 
     async def test_rescan_hardware_without_matcher(self) -> None:
-        """_rescan_hardware upserts devices with pending status when no matcher."""
+        """_rescan_hardware upserts microphones with pending state when no matcher."""
         from silvasonic.controller.device_scanner import DeviceInfo
 
         mgr = MagicMock()
@@ -507,7 +507,7 @@ class TestReconciliationLoop:
                 "silvasonic.controller.reconciler.get_session",
             ) as mock_get_session,
             patch(
-                "silvasonic.controller.reconciler.upsert_device",
+                "silvasonic.controller.reconciler.upsert_microphone",
                 new_callable=AsyncMock,
                 return_value=mock_device,
             ) as mock_upsert,
@@ -523,10 +523,10 @@ class TestReconciliationLoop:
 
         call_kwargs = mock_upsert.call_args
         assert call_kwargs.kwargs["profile_slug"] is None
-        assert call_kwargs.kwargs["enrollment_status"] == "pending"
+        assert call_kwargs.kwargs["enrollment_state"] == "pending"
 
     async def test_rescan_hardware_ignores_missing_within_grace_period(self) -> None:
-        """_rescan_hardware does not mark devices offline if within grace period."""
+        """_rescan_hardware does not mark microphones disconnected if within grace period."""
         mgr = MagicMock()
         scanner = MagicMock()
         scanner.scan_all.return_value = []  # No devices found
@@ -540,8 +540,8 @@ class TestReconciliationLoop:
         )
 
         mock_device = MagicMock()
-        mock_device.name = "old-device-001"
-        mock_device.status = "online"
+        mock_device.hardware_id = "old-device-001"
+        mock_device.connection_state = "connected"
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
@@ -562,19 +562,19 @@ class TestReconciliationLoop:
             mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_get_session.return_value.__aexit__ = AsyncMock()
 
-            # Initial scan, device missing -> records time but keeps online
+            # Initial scan, device missing -> records time but keeps connected
             await loop._rescan_hardware()
-            assert mock_device.status == "online"
-            assert "old-device-001" in loop._missing_devices
-            assert loop._missing_devices["old-device-001"] == 100.0
+            assert mock_device.connection_state == "connected"
+            assert "old-device-001" in loop._missing_microphones
+            assert loop._missing_microphones["old-device-001"] == 100.0
 
-            # Second scan 2 seconds later -> still online
+            # Second scan 2 seconds later -> still connected
             with patch("time.monotonic", return_value=102.0):
                 await loop._rescan_hardware()
-            assert mock_device.status == "online"
+            assert mock_device.connection_state == "connected"
 
-    async def test_rescan_hardware_marks_offline_after_grace_period(self) -> None:
-        """_rescan_hardware marks devices offline after grace period expires."""
+    async def test_rescan_hardware_marks_disconnected_after_grace_period(self) -> None:
+        """_rescan_hardware marks microphones disconnected after grace period expires."""
         mgr = MagicMock()
         scanner = MagicMock()
         scanner.scan_all.return_value = []
@@ -587,11 +587,11 @@ class TestReconciliationLoop:
             grace_period_s=3.0,
         )
         # Device already missing since t=100.0
-        loop._missing_devices["old-device-001"] = 100.0
+        loop._missing_microphones["old-device-001"] = 100.0
 
         mock_device = MagicMock()
-        mock_device.name = "old-device-001"
-        mock_device.status = "online"
+        mock_device.hardware_id = "old-device-001"
+        mock_device.connection_state = "connected"
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
@@ -614,9 +614,9 @@ class TestReconciliationLoop:
 
             await loop._rescan_hardware()
 
-        assert mock_device.status == "offline"
+        assert mock_device.connection_state == "disconnected"
         mock_session.commit.assert_awaited_once()
-        assert "old-device-001" not in loop._missing_devices
+        assert "old-device-001" not in loop._missing_microphones
 
     async def test_rescan_hardware_clears_tracker_if_reconnected(self) -> None:
         """_rescan_hardware removes device from missing tracker if it reconnects during grace."""
@@ -624,7 +624,7 @@ class TestReconciliationLoop:
         scanner = MagicMock()
 
         loop = ReconciliationLoop(mgr, device_scanner=scanner, interval=1.0)
-        loop._missing_devices["old-device-001"] = 100.0
+        loop._missing_microphones["old-device-001"] = 100.0
 
         mock_device = MagicMock()
         mock_device.stable_device_id = "old-device-001"
@@ -642,7 +642,7 @@ class TestReconciliationLoop:
         with (
             patch("silvasonic.controller.reconciler.get_session") as mock_get_session,
             patch(
-                "silvasonic.controller.reconciler.upsert_device",
+                "silvasonic.controller.reconciler.upsert_microphone",
                 new_callable=AsyncMock,
                 return_value=mock_upserted_device,
             ),
@@ -657,7 +657,7 @@ class TestReconciliationLoop:
 
             await loop._rescan_hardware()
 
-        assert "old-device-001" not in loop._missing_devices
+        assert "old-device-001" not in loop._missing_microphones
 
     async def test_rescan_hardware_no_scanner(self) -> None:
         """_rescan_hardware is a no-op when scanner is None."""

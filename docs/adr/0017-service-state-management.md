@@ -4,7 +4,7 @@
 
 ## 1. Context & Problem
 
-The `managed_services` table tracks Tier-2 singleton containers whose lifecycle is orchestrated by the Controller via Podman. Without a clear split between desired and actual state, the system conflates configuration with observation, making it impossible to detect drift (e.g., a service *should* be active but has crashed).
+The `modules` table tracks Tier-2 singleton containers whose lifecycle is orchestrated by the Controller via Podman. Without a clear split between desired and actual state, the system conflates configuration with observation, making it impossible to detect drift (e.g., a service *should* be active but has crashed).
 
 Additionally, the Web-Interface needs real-time visibility into service health. Polling the database for runtime state introduces latency, couples the UI to the DB, and forces every service to write frequent status updates into a transactional store — a poor fit for ephemeral heartbeat data.
 
@@ -18,12 +18,12 @@ Additionally, the Web-Interface needs real-time visibility into service health. 
 
 Desired state is persisted in the **database**, not in Redis. The Controller reads it on every reconciliation cycle to determine what *should* be running. There are two sources of desired state, depending on the service type:
 
-*   **Tier-2 singletons** (BirdNET, BatDetect, Weather): `managed_services` table — see [ADR-0029](0029-system-worker-orchestration.md) for schema and rationale.
-*   **Recorder** (multi-instance): Derived from `devices` + `microphone_profiles` (one Recorder per enrolled device).
+*   **Tier-2 singletons** (BirdNET, BatDetect, Weather): `modules` table — see [ADR-0029](0029-system-worker-orchestration.md) for schema and rationale.
+*   **Recorder** (multi-instance): Derived from `microphones` + `microphone_profiles` (one Recorder per enrolled microphone).
 
 Tier 1 services (Processor, Controller, Web-Interface) are managed externally via Compose and are **not** tracked in any desired-state table.
 
-> **Note:** Upload desired state is managed via `system_config` key `"cloud_sync"` (`CloudSyncSettings.enabled`), not via a separate domain table.
+> **Note:** Upload desired state is the `cloud_sync` row of the `modules` table; its tuning (polling, bandwidth, window, remote target) is the `settings` section `sync`.
 
 ### Actual State → Redis (v0.2.0)
 
@@ -50,7 +50,7 @@ This is the **Read + Subscribe Pattern:** The Web-Interface reads all `silvasoni
 
 Control flows through the **Database** (desired state), not through HTTP API or Redis commands:
 
-1.  The Web-Interface writes the desired state to the database (e.g., `enabled=false` in `managed_services`).
+1.  The Web-Interface writes the desired state to the database (e.g., `enabled=false` in `modules`).
 2.  A simple `PUBLISH silvasonic:nudge "reconcile"` wakes the Controller immediately (instead of waiting for the reconciliation timer).
 3.  The Controller reads the DB, compares desired vs. actual state, and acts via `podman-py`.
 
@@ -73,8 +73,8 @@ A dedicated Monitor service was rejected as over-engineering for a single-node e
 
 ## 3. Options Considered
 
-*   **Database-only (status + last_seen column):** Rejected. Requires DB polling for UI, adds write load for heartbeats, and mixes ephemeral runtime data with persistent configuration.
-*   **Redis-only (remove managed_services):** Rejected. Desired state must survive Redis restarts. DB is the right home for configuration.
+*   **Database-only (connection_state + last_seen_at column):** Rejected. Requires DB polling for UI, adds write load for heartbeats, and mixes ephemeral runtime data with persistent configuration.
+*   **Redis-only (remove modules):** Rejected. Desired state must survive Redis restarts. DB is the right home for configuration.
 *   **Separate Monitor service:** Rejected. Adds complexity without proportional value on a single-node device.
 *   **Redis Streams for lifecycle/control/audit:** Rejected. Lifecycle events are derivable from heartbeats, control flows through DB + Nudge, and business events (recording finished, upload completed) are already tracked in the DB. Four separate channels add complexity without proportional value — one Pub/Sub channel + key-value pattern + nudge covers all needs.
 *   **Controller HTTP API for control commands:** Rejected. Imperative commands ("stop now!") can be lost if the Controller restarts. The State Reconciliation pattern (DB write + nudge) is more robust: desired state is always persisted, and reconciliation is idempotent.
@@ -87,7 +87,7 @@ A dedicated Monitor service was rejected as over-engineering for a single-node e
     *   **Unified pattern:** Every service uses the same `SilvaService` heartbeat — no special cases.
     *   Web-Interface gets real-time status from day one (v0.9.0) via Read + Subscribe — no DB polling, no missed heartbeats.
     *   No separate Monitor service — fewer containers, less complexity.
-    *   `managed_services` table provides a clean, strictly-typed schema for Tier-2 lifecycle orchestration.
+    *   `modules` table provides a clean, strictly-typed schema for Tier-2 lifecycle orchestration.
     *   Minimal Redis footprint: one Pub/Sub channel + N keys with TTL. No Streams, no Consumer Groups.
 *   **Negative:**
     *   Redis becomes a dependency for live status visibility (but not for recording, analysis, or data integrity).

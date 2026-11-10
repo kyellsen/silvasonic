@@ -1,18 +1,18 @@
 """Cross-service contract test: Controller workspace naming vs. Processor indexing.
 
 Validates the implicit contract between Controller and Processor:
-the workspace directory name must be stored in ``devices.workspace_name``
-so the Processor can resolve it to the device's stable identity.
+the workspace directory name must be stored in ``microphones.workspace_name``
+so the Processor can resolve it to the microphone's ``id``.
 
 This test reproduces the exact production flow:
-  1. Controller creates a Device row via ``upsert_device()``
+  1. Controller creates a Microphone row via ``upsert_microphone()``
   2. Controller computes workspace_name via ``generate_workspace_name()``
   3. Controller derives workspace dir via ``build_recorder_spec()``
   4. Recorder writes WAV files into that workspace dir
   5. Processor's ``index_recordings()`` looks up by workspace_name
 
 If the contract holds, recordings are indexed.
-If not, the Processor silently skips every file (``device_not_registered``).
+If not, the Processor silently skips every file (``microphone_not_registered``).
 
 See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
 """
@@ -24,8 +24,8 @@ from pathlib import Path
 
 import pytest
 from silvasonic.controller.container_spec import build_recorder_spec, generate_workspace_name
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.core.database.session import (
     _get_engine,
     _get_session_factory,
@@ -48,13 +48,13 @@ def _create_wav(path: Path, *, duration_s: float = 10.0, sample_rate: int = 4800
 
 
 @pytest.mark.integration
-class TestWorkspaceDeviceContract:
-    """Contract test: workspace_name must bridge workspace dir to devices.name.
+class TestWorkspaceMicrophoneContract:
+    """Contract test: workspace_name must bridge workspace dir to microphones.id.
 
     This test simulates the exact production flow:
 
     1. Scan a USB device (simulated DeviceInfo)
-    2. Upsert it into the devices table (Controller's device_repository)
+    2. Upsert it into the microphones table (Controller's microphone_repository)
     3. Compute workspace_name (Controller's generate_workspace_name)
     4. Build a Recorder container spec (Controller's container_spec)
     5. Create WAV files in the workspace dir derived from the spec
@@ -92,39 +92,40 @@ class TestWorkspaceDeviceContract:
             usb_bus_path="3-6",
         )
 
-        # --- Step 2: Controller upserts device + seeds profile ---
+        # --- Step 2: Controller upserts microphone + seeds profile ---
         async with factory() as session:
             # Seed the microphone profile (like the real Seeder does)
             await session.execute(
                 text("""
-                    INSERT INTO microphone_profiles (slug, name, config, is_system)
+                    INSERT INTO microphone_profiles (slug, name, config, built_in)
                     VALUES (:slug, :name, :config, TRUE)
                     ON CONFLICT (slug) DO NOTHING
                 """),
                 {
                     "slug": "ultramic_384_evo",
                     "name": "Ultramic 384 EVO",
-                    "config": '{"audio": {"sample_rate": 384000, "channels": 1}}',
+                    "config": '{"audio": {"sample_rate_hz": 384000, "channels": 1}}',
                 },
             )
             await session.commit()
 
-            # Upsert device (like the real Controller does)
-            device = await upsert_device(
+            # Upsert microphone (like the real Controller does)
+            microphone = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug="ultramic_384_evo",
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
 
             # Simulate what the reconciler does: compute and persist workspace_name
-            ws = generate_workspace_name("ultramic_384_evo", device)
-            device.workspace_name = ws
+            ws = generate_workspace_name("ultramic_384_evo", microphone)
+            microphone.workspace_name = ws
             await session.commit()
 
             # Capture what the Controller stored
-            db_device_name = device.name
-            db_workspace_name = device.workspace_name
+            db_microphone_id = microphone.id
+            db_hardware_id = microphone.hardware_id
+            db_workspace_name = microphone.workspace_name
 
         # --- Step 3: Controller builds the Recorder spec ---
         async with factory() as session:
@@ -135,12 +136,12 @@ class TestWorkspaceDeviceContract:
             profile = await session.get(MicProfileDB, "ultramic_384_evo")
             assert profile is not None
 
-            from silvasonic.core.database.models.system import Device
+            from silvasonic.core.database.models.system import Microphone
 
-            device_row = await session.get(Device, db_device_name)
-            assert device_row is not None
+            microphone_row = await session.get(Microphone, db_microphone_id)
+            assert microphone_row is not None
 
-            spec = build_recorder_spec(device_row, profile)
+            spec = build_recorder_spec(microphone_row, profile)
             workspace_dir = spec.name.removeprefix("silvasonic-recorder-")
 
         # --- Step 4: Recorder creates WAV files in the workspace ---
@@ -156,16 +157,19 @@ class TestWorkspaceDeviceContract:
         # --- Step 6: Assert contract ---
         assert result.new >= 1, (
             f"Contract violation: Processor failed to index recordings. "
-            f"devices.name={db_device_name!r}, "
-            f"devices.workspace_name={db_workspace_name!r}, "
+            f"microphones.hardware_id={db_hardware_id!r}, "
+            f"microphones.workspace_name={db_workspace_name!r}, "
             f"workspace_dir={workspace_dir!r}, "
             f"result={result}"
         )
 
         # Verify the recording is actually in the DB
         async with factory() as session:
-            rows = await session.execute(text("SELECT COUNT(*) FROM recordings"))
+            rows = await session.execute(
+                text("SELECT COUNT(*) FROM recordings WHERE microphone_id = :mid"),
+                {"mid": db_microphone_id},
+            )
             count = rows.scalar() or 0
-            assert count >= 1, f"Expected at least 1 recording in DB, got {count}"
+            assert count >= 1, f"Expected at least 1 recording of the microphone, got {count}"
 
         await engine.dispose()

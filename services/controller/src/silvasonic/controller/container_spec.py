@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from silvasonic.controller.worker_registry import BackgroundWorker
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
 from silvasonic.core.settings import DEFAULT_DB_PATH, DatabaseSettings
 
@@ -135,8 +135,8 @@ class RecorderEnvConfig(BaseSettings):
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
-def _short_suffix(device: Device) -> str:
-    """Derive a short, unique suffix from the device's hardware identity.
+def _short_suffix(microphone: Microphone) -> str:
+    """Derive a short, unique suffix from the microphone's hardware identity.
 
     Priority:
     1. Last 4 hex chars of USB serial — globally unique per device.
@@ -146,43 +146,43 @@ def _short_suffix(device: Device) -> str:
     Returns:
         4-character lowercase string, e.g. ``"034f"``, ``"p1d3"``, ``"c002"``.
     """
-    serial = device.config.get("usb_serial", "") or ""
+    serial = microphone.hardware.get("usb_serial", "") or ""
     if serial:
         return serial[-4:].lower()
 
-    bus = device.config.get("usb_bus_path", "") or ""
+    bus = microphone.hardware.get("usb_bus_path", "") or ""
     if bus:
         # "1-3.2" → "p1d3" (p=port, d=delimiter replacement)
         return ("p" + bus.replace("-", "d").replace(".", "d"))[:4]
 
-    card_idx = device.config.get("alsa_card_index", 0)
+    card_idx = microphone.hardware.get("alsa_card_index", 0)
     return f"c{card_idx:03d}"
 
 
-def generate_workspace_name(profile_slug: str, device: Device) -> str:
+def generate_workspace_name(profile_slug: str, microphone: Microphone) -> str:
     """Generate a human-readable workspace directory name.
 
     Combines the profile slug with a short hardware-derived suffix.
     This name is used as the Recorder workspace directory on disk
-    and stored in ``devices.workspace_name`` for the Processor Indexer
-    to resolve ``sensor_id`` from filesystem paths.
+    and stored in ``microphones.workspace_name`` for the Processor Indexer
+    to resolve ``microphone_id`` from filesystem paths.
 
     Examples::
 
-        >>> generate_workspace_name("ultramic_384_evo", device_with_serial)
+        >>> generate_workspace_name("ultramic_384_evo", microphone_with_serial)
         'ultramic-384-evo-034f'
-        >>> generate_workspace_name("rode_nt_usb", device_with_bus_path)
+        >>> generate_workspace_name("rode_nt_usb", microphone_with_bus_path)
         'rode-nt-usb-p3d6'
 
     Args:
         profile_slug: Microphone profile slug (e.g. ``"ultramic_384_evo"``).
-        device: Device row with ``config`` containing hardware identity.
+        microphone: Microphone row with ``hardware`` containing its identity.
 
     Returns:
         Podman-safe, human-readable name (lowercase alphanumeric + hyphens).
     """
     safe_slug = _SLUG_RE.sub("-", profile_slug.lower()).strip("-")
-    safe_suffix = _SLUG_RE.sub("", _short_suffix(device).lower())
+    safe_suffix = _SLUG_RE.sub("", _short_suffix(microphone).lower())
     return f"{safe_slug}-{safe_suffix}"
 
 
@@ -202,7 +202,7 @@ def generate_recorder_container_name(workspace_name: str) -> str:
 
 
 def build_recorder_spec(
-    device: Device,
+    microphone: Microphone,
     profile: MicProfileDB,
     *,
     network: str | None = None,
@@ -216,7 +216,7 @@ def build_recorder_spec(
     so that ``monkeypatch.setenv()`` works in tests without module reload.
 
     Args:
-        device: Device row from the ``devices`` table.
+        microphone: Microphone row from the ``microphones`` table.
         profile: MicrophoneProfile row from the ``microphone_profiles`` table.
         network: Override for ``SILVASONIC_NETWORK`` (default from env).
         workspace_path: Override for ``SILVASONIC_WORKSPACE_PATH`` (default from env).
@@ -239,8 +239,9 @@ def build_recorder_spec(
     # In tests/dev: falls back to workspace_path/recorder (direct host path).
     recorder_local = env.RECORDER_WORKSPACE_LOCAL or str(Path(workspace_path) / "recorder")
 
-    device_id = device.name
-    workspace_dir = generate_workspace_name(profile.slug, device)
+    # Runtime identifier (instance id, device_id label) is the Stable Device ID
+    device_id = microphone.hardware_id
+    workspace_dir = generate_workspace_name(profile.slug, microphone)
     container_name = generate_recorder_container_name(workspace_dir)
 
     runtime_payload = RecorderRuntimeConfig.model_validate(profile.config)
@@ -250,7 +251,7 @@ def build_recorder_spec(
         name=container_name,
         network=network,
         environment={
-            "SILVASONIC_RECORDER_DEVICE": device.config.get("alsa_device", "hw:1,0"),
+            "SILVASONIC_RECORDER_DEVICE": microphone.hardware.get("alsa_device", "hw:1,0"),
             "SILVASONIC_RECORDER_PROFILE_SLUG": profile.slug,
             "SILVASONIC_RECORDER_CONFIG_JSON": runtime_payload.model_dump_json(),
             "SILVASONIC_REDIS_URL": env.REDIS_URL,

@@ -1,7 +1,7 @@
 """Unit tests for DeviceScanner — device detection and parsing.
 
 All hardware (sysfs, /proc/asound) dependencies are mocked.
-DB upsert tests are in test_device_repository.py.
+DB upsert tests are in test_microphone_repository.py.
 """
 
 from __future__ import annotations

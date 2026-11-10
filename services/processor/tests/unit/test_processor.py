@@ -3,7 +3,7 @@
 Covers the ProcessorService (SilvaService subclass) including:
 - Package import
 - Service configuration (port from env)
-- ProcessorSettings Pydantic defaults
+- StorageSettings Pydantic defaults
 - load_config() DB reading hook
 - run() lifecycle with shutdown event
 - get_extra_meta() placeholder
@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from silvasonic.core.health import HealthMonitor
-from silvasonic.core.schemas.system_config import ProcessorSettings
+from silvasonic.core.schemas.settings import StorageSettings
 from silvasonic.processor.__main__ import ProcessorService
 from silvasonic.processor.janitor import RetentionMode
 
@@ -37,7 +37,7 @@ def _make_bare_service() -> Any:
     svc = ProcessorService.__new__(ProcessorService)
     svc._ctx = MagicMock()
     svc._ctx.health = HealthMonitor()
-    svc._settings = ProcessorSettings()
+    svc._settings = StorageSettings()
     svc._shutdown_event = asyncio.Event()
     # Phase 3: Indexer attributes
     svc._recordings_dir = Path("/data/recorder")
@@ -89,27 +89,27 @@ class TestProcessorEnvSettings:
 
 
 # ---------------------------------------------------------------------------
-# ProcessorSettings (Pydantic defaults)
+# StorageSettings (Pydantic defaults)
 # ---------------------------------------------------------------------------
 @pytest.mark.unit
-class TestProcessorSettings:
-    """Tests for ProcessorSettings config schema defaults."""
+class TestStorageSettings:
+    """Tests for StorageSettings config schema defaults."""
 
     def test_settings_defaults(self) -> None:
-        """ProcessorSettings() defaults match config/defaults.yml values."""
-        s = ProcessorSettings()
-        assert s.janitor_threshold_warning == 70.0
-        assert s.janitor_threshold_critical == 80.0
-        assert s.janitor_threshold_emergency == 90.0
-        assert s.janitor_interval_seconds == 60
-        assert s.janitor_batch_size == 50
-        assert s.indexer_poll_interval == 2.0
+        """StorageSettings() defaults match config/defaults.yml values."""
+        s = StorageSettings()
+        assert s.warning_percent == 70.0
+        assert s.critical_percent == 80.0
+        assert s.emergency_percent == 90.0
+        assert s.cleanup_interval_s == 60
+        assert s.cleanup_batch_files == 50
+        assert s.index_interval_s == 2.0
 
     def test_settings_round_trip(self) -> None:
         """Serialize to JSON → deserialize → identical model."""
-        original = ProcessorSettings()
+        original = StorageSettings()
         serialized = original.model_dump_json()
-        restored = ProcessorSettings(**json.loads(serialized))
+        restored = StorageSettings(**json.loads(serialized))
         assert restored == original
 
 
@@ -121,17 +121,17 @@ class TestProcessorLoadConfig:
     """Tests for the load_config() hook (DB reading)."""
 
     async def test_load_config_reads_db(self) -> None:
-        """load_config() reads ProcessorSettings from system_config table."""
+        """load_config() reads StorageSettings from the storage settings section."""
         svc = _make_bare_service()
 
         mock_row = MagicMock()
         mock_row.value = {
-            "janitor_threshold_warning": 65.0,
-            "janitor_threshold_critical": 75.0,
-            "janitor_threshold_emergency": 85.0,
-            "janitor_interval_seconds": 30,
-            "janitor_batch_size": 25,
-            "indexer_poll_interval": 1.0,
+            "warning_percent": 65.0,
+            "critical_percent": 75.0,
+            "emergency_percent": 85.0,
+            "cleanup_interval_s": 30,
+            "cleanup_batch_files": 25,
+            "index_interval_s": 1.0,
         }
 
         with patch(
@@ -144,14 +144,14 @@ class TestProcessorLoadConfig:
 
             await svc.load_config()
 
-        assert svc._settings.janitor_threshold_warning == 65.0
-        assert svc._settings.janitor_batch_size == 25
-        assert svc._settings.indexer_poll_interval == 1.0
+        assert svc._settings.warning_percent == 65.0
+        assert svc._settings.cleanup_batch_files == 25
+        assert svc._settings.index_interval_s == 1.0
 
     async def test_load_config_uses_defaults_when_no_row(self) -> None:
         """load_config() keeps Pydantic defaults when DB row is absent."""
         svc = _make_bare_service()
-        original_settings = ProcessorSettings()
+        original_settings = StorageSettings()
 
         with patch(
             "silvasonic.processor.__main__.get_session",

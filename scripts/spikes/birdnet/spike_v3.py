@@ -33,7 +33,7 @@ import numpy as np
 import psutil
 import soundfile as sf
 
-# ── Configuration (matching Silvasonic BirdnetSettings + SystemSettings) ──
+# ── Configuration (matching Silvasonic BirdnetSettings + StationSettings) ──
 
 FIXTURES = [
     {

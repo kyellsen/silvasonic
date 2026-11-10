@@ -69,7 +69,7 @@ services:
 
   # --- Processor (Data Ingestion & Storage Retention) ---
   # Tier 1 — Immutable Container pattern (ADR-0019).
-  # Config read from system_config on startup; restart to reconfigure.
+  # Config read from the settings table on startup; restart to reconfigure.
   processor:
     container_name: silvasonic-processor
     build:

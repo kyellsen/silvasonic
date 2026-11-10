@@ -1,12 +1,14 @@
 """Unit tests for the main UploadWorker."""
 
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.database.models.system import Module, SettingsSection
+from silvasonic.core.schemas.settings import SyncSettings, TimeWindow
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.modules.work_poller import PendingUpload
 from silvasonic.processor.upload_worker import UploadWorker, _is_within_window
@@ -14,24 +16,38 @@ from silvasonic.processor.upload_worker import UploadWorker, _is_within_window
 
 @pytest.mark.unit
 def test_within_window() -> None:
-    """Test time window constraints."""
+    """A window crossing midnight (22:00-06:00) is evaluated in UTC."""
+    window = TimeWindow(start="22:00", end="06:00")
     with patch("silvasonic.processor.upload_worker.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2024, 1, 1, 23, tzinfo=UTC)
-        assert _is_within_window(22, 6) is True
+        assert _is_within_window(window) is True
 
         mock_dt.now.return_value = datetime(2024, 1, 1, 12, tzinfo=UTC)
-        assert _is_within_window(22, 6) is False
+        assert _is_within_window(window) is False
 
         mock_dt.now.return_value = datetime(2024, 1, 1, 3, tzinfo=UTC)
-        assert _is_within_window(22, 6) is True
+        assert _is_within_window(window) is True
 
 
 @pytest.mark.unit
-def test_null_schedule_always_active() -> None:
-    """Test null schedule means always active."""
-    assert _is_within_window(None, None) is True
-    assert _is_within_window(22, None) is True
-    assert _is_within_window(None, 6) is True
+def test_window_has_minute_resolution() -> None:
+    """Window bounds are HH:MM; start is inclusive, end exclusive."""
+    window = TimeWindow(start="08:30", end="17:45")
+    with patch("silvasonic.processor.upload_worker.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2024, 1, 1, 8, 29, tzinfo=UTC)
+        assert _is_within_window(window) is False
+        mock_dt.now.return_value = datetime(2024, 1, 1, 8, 30, tzinfo=UTC)
+        assert _is_within_window(window) is True
+        mock_dt.now.return_value = datetime(2024, 1, 1, 17, 44, tzinfo=UTC)
+        assert _is_within_window(window) is True
+        mock_dt.now.return_value = datetime(2024, 1, 1, 17, 45, tzinfo=UTC)
+        assert _is_within_window(window) is False
+
+
+@pytest.mark.unit
+def test_null_window_always_active() -> None:
+    """No window means always active."""
+    assert _is_within_window(None) is True
 
 
 @pytest.fixture
@@ -73,11 +89,11 @@ async def test_poll_loop_processes_pending(
     dummy_wav.write_bytes(b"data")
 
     pending = PendingUpload(
-        recording_id=1,
-        file_raw=dummy_wav,
-        sensor_id="mic1",
+        recording_id=uuid.UUID(int=1),
+        raw_path=dummy_wav,
+        hardware_id="mic1",
         station_name="",
-        time=datetime.now(UTC),
+        started_at=datetime.now(UTC),
         profile_slug="prof1",
     )
     mock_find.return_value = [pending]
@@ -103,7 +119,7 @@ async def test_poll_loop_processes_pending(
         "endpoint": "d",
         "acl": "private",
     }
-    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    settings = SyncSettings(remote_type="s3", remote_config=conf)
 
     success = await worker._process_batch("my-station", settings, b"dummy-key")
 
@@ -131,8 +147,8 @@ async def test_connection_error_aborts_batch(
     dummy_wav = tmp_path / "test.wav"
     dummy_wav.touch()
 
-    p1 = PendingUpload(1, dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
-    p2 = PendingUpload(2, dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
+    p1 = PendingUpload(uuid.UUID(int=1), dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
+    p2 = PendingUpload(uuid.UUID(int=2), dummy_wav, "mic1", "", datetime.now(UTC), "prof1")
     mock_find.return_value = [p1, p2]
 
     dummy_flac = tmp_path / "test.flac"
@@ -156,7 +172,7 @@ async def test_connection_error_aborts_batch(
         "endpoint": "d",
         "acl": "private",
     }
-    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    settings = SyncSettings(remote_type="s3", remote_config=conf)
     success = await worker._process_batch("my-station", settings, b"dummy-key")
 
     assert success is False
@@ -177,7 +193,7 @@ async def test_missing_file_skipped(
 ) -> None:
     """Test that missing WAV files are skipped gracefully."""
     missing_wav = tmp_path / "missing.wav"
-    p1 = PendingUpload(1, missing_wav, "mic1", "", datetime.now(UTC), "prof1")
+    p1 = PendingUpload(uuid.UUID(int=1), missing_wav, "mic1", "", datetime.now(UTC), "prof1")
     mock_find.return_value = [p1]
 
     conf = {
@@ -187,7 +203,7 @@ async def test_missing_file_skipped(
         "endpoint": "d",
         "acl": "private",
     }
-    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    settings = SyncSettings(remote_type="s3", remote_config=conf)
     success = await worker._process_batch("my-station", settings, b"dummy-key")
 
     assert success is True
@@ -219,7 +235,7 @@ async def test_process_batch_passes_recordings_dir(
         "endpoint": "d",
         "acl": "private",
     }
-    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    settings = SyncSettings(remote_type="s3", remote_config=conf)
     await worker._process_batch("my-station", settings, b"dummy-key")
 
     mock_find.assert_called_once()
@@ -257,11 +273,11 @@ async def test_process_batch_handles_encoding_oserror_gracefully(
     dummy_wav.write_bytes(b"data")
 
     pending = PendingUpload(
-        recording_id=1,
-        file_raw=dummy_wav,
-        sensor_id="mic1",
+        recording_id=uuid.UUID(int=1),
+        raw_path=dummy_wav,
+        hardware_id="mic1",
         station_name="",
-        time=datetime.now(UTC),
+        started_at=datetime.now(UTC),
         profile_slug="prof1",
     )
     mock_find.return_value = [pending]
@@ -276,7 +292,7 @@ async def test_process_batch_handles_encoding_oserror_gracefully(
         "endpoint": "d",
         "acl": "private",
     }
-    settings = CloudSyncSettings(enabled=True, remote_type="s3", remote_config=conf)
+    settings = SyncSettings(remote_type="s3", remote_config=conf)
 
     # Must NOT raise — should handle gracefully and return True
     success = await worker._process_batch("my-station", settings, b"dummy-key")
@@ -298,23 +314,26 @@ async def test_fetch_config_defaults_when_no_db_entry(
     session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
     session.get = AsyncMock(return_value=None)
 
-    station, settings = await worker._fetch_config()
+    station, settings, enabled = await worker._fetch_config()
 
     assert station == "silvasonic"
     assert settings is None
+    assert enabled is False  # no cloud_sync module row → switched off
 
 
 @pytest.mark.unit
 async def test_fetch_config_extracts_station_name(
     worker: UploadWorker,
 ) -> None:
-    """_fetch_config reads station_name from system config JSONB."""
-    sys_conf = MagicMock()
-    sys_conf.value = {"station_name": "waldstation-01"}
+    """_fetch_config reads the station name, sync settings and the module switch."""
+    station_conf = MagicMock()
+    station_conf.value = {"name": "waldstation-01"}
+
+    module = MagicMock(spec=Module)
+    module.enabled = True
 
     sync_conf = MagicMock()
     sync_conf.value = {
-        "enabled": True,
         "remote_type": "s3",
         "remote_config": {
             "access_key_id": "k",
@@ -328,40 +347,43 @@ async def test_fetch_config_extracts_station_name(
     session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
 
     async def fake_get(model: Any, key: str) -> Any:
-        if key == "system":
-            return sys_conf
-        if key == "cloud_sync":
+        if model is SettingsSection and key == "station":
+            return station_conf
+        if model is SettingsSection and key == "sync":
             return sync_conf
+        if model is Module and key == "cloud_sync":
+            return module
         return None
 
     session.get = AsyncMock(side_effect=fake_get)
 
-    station, settings = await worker._fetch_config()
+    station, settings, enabled = await worker._fetch_config()
 
     assert station == "waldstation-01"
     assert settings is not None
-    assert settings.enabled is True
+    assert settings.remote_type == "s3"
+    assert enabled is True
 
 
 @pytest.mark.unit
 async def test_fetch_config_returns_none_for_invalid_cloud_sync(
     worker: UploadWorker,
 ) -> None:
-    """_fetch_config returns None settings when cloud_sync JSONB causes error."""
+    """_fetch_config returns None settings when the sync JSONB causes error."""
     sync_conf = MagicMock()
-    # poll_interval must be int → dict triggers ValidationError
-    sync_conf.value = {"poll_interval": {"nested": "invalid"}}
+    # poll_interval_s must be int → dict triggers ValidationError
+    sync_conf.value = {"poll_interval_s": {"nested": "invalid"}}
 
     session = cast("MagicMock", worker.session_factory)().__aenter__.return_value
 
     async def fake_get(model: Any, key: str) -> Any:
-        if key == "cloud_sync":
+        if model is SettingsSection and key == "sync":
             return sync_conf
         return None
 
     session.get = AsyncMock(side_effect=fake_get)
 
-    station, settings = await worker._fetch_config()
+    station, settings, _enabled = await worker._fetch_config()
 
     assert station == "silvasonic"
     assert settings is None
@@ -392,6 +414,45 @@ async def test_run_exits_on_missing_encryption_key(
     call_args = health.update_status.call_args
     assert call_args[0][1] is False  # healthy=False
     assert "fatal" in call_args[0][2].lower()
+
+
+# ────────────────────────────────────────────────────
+# The cloud_sync module switch gates the upload loop
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("enabled", "expected_batches"), [(False, 0), (True, 1)])
+async def test_module_switch_gates_uploads(
+    worker: UploadWorker, enabled: bool, expected_batches: int
+) -> None:
+    """Disabled cloud_sync module → no batch; enabled → the batch runs."""
+    settings = SyncSettings(remote_type="s3")
+    batches: list[str] = []
+
+    async def fake_batch(station: str, _settings: SyncSettings, _key: bytes) -> bool:
+        batches.append(station)
+        return True
+
+    async def stop_after_sleep(_seconds: int) -> None:
+        worker._shutdown_event.set()
+
+    with (
+        patch.object(
+            worker,
+            "_fetch_config",
+            new_callable=AsyncMock,
+            return_value=("station", settings, enabled),
+        ),
+        patch.object(worker, "_process_batch", side_effect=fake_batch),
+        patch.object(worker, "_sleep", side_effect=stop_after_sleep),
+    ):
+        await worker.run()
+
+    assert len(batches) == expected_batches
+    if not enabled:
+        health = cast("MagicMock", worker.health)
+        health.update_status.assert_any_call("upload_worker", True, "state: disabled")
 
 
 @pytest.mark.unit

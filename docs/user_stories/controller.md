@@ -19,8 +19,8 @@
 
 #### Plugging In & Removal
 - [x] **Reaction time ≤ 1 second** — the reconciliation loop polls for changes every 1 second.
-- [x] A newly detected microphone is automatically created in the device list as `pending` / `status=online`.
-- [x] Temporary removal of a microphone (USB Flapping) is bridged via a grace period. A longer disconnect sets `status=offline` and cleanly stops the associated recording.
+- [x] A newly detected microphone is automatically created in the device list as `pending` / `connection_state=connected`.
+- [x] Temporary removal of a microphone (USB Flapping) is bridged via a grace period. A longer disconnect sets `connection_state=disconnected` and cleanly stops the associated recording.
 
 #### Stable Re-recognition
 - [x] A re-plugged microphone is recognized by its stable device ID (Vendor-ID + Product-ID + Serial, or Port-Fallback).
@@ -76,7 +76,7 @@
 ### Acceptance Criteria
 
 - [x] The Controller reacts to change signals and immediately reads the desired state from the database.
-- [x] Desired state from `managed_services` (Tier-2 singletons) and `devices` (Recorders) is correctly evaluated.
+- [x] Desired state from `modules` (Tier-2 singletons) and `microphones` (Recorders) is correctly evaluated.
 - [x] Services are started or stopped based on the `enabled` flag.
 - [x] On configuration change: stop service and restart with new settings.
 - [x] If a signal is lost (e.g., Controller restart), the reconciliation timer catches the change as a fallback.
@@ -237,7 +237,7 @@
 #### Auto-Fallback Profile
 - [x] A `generic_usb` system profile is seeded on startup (48 kHz, 1 ch, S16LE, Gain 0 dB).
 - [x] If no profile match (score 0) is found, the Controller automatically assigns `generic_usb`.
-- [x] The device receives `enrollment_status=enrolled` and `profile_slug=generic_usb`.
+- [x] The device receives `enrollment_state=enrolled` and `profile_slug=generic_usb`.
 - [x] The recorder starts immediately with standard settings.
 
 #### Upgrade Path

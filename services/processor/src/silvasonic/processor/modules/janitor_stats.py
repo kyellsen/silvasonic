@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import structlog
 from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
 from silvasonic.core.two_phase import TwoPhaseWindow
@@ -36,8 +38,8 @@ class JanitorStats:
 
     def record_deleted(
         self,
-        recording_id: int,
-        file_processed: str | None,
+        recording_id: uuid.UUID,
+        processed_path: str | None,
         mode: str,
         cloud_sync_fallback: bool,
     ) -> None:
@@ -46,19 +48,19 @@ class JanitorStats:
         if self.is_startup_phase:
             log.info(
                 "janitor.deleted",
-                recording_id=recording_id,
-                file_processed=file_processed,
+                recording_id=str(recording_id),
+                processed_path=processed_path,
                 mode=mode,
                 cloud_sync_fallback=cloud_sync_fallback,
             )
 
-    def record_error(self, recording_id: int, file_processed: str | None) -> None:
+    def record_error(self, recording_id: uuid.UUID, processed_path: str | None) -> None:
         """Record a deletion error."""
         self.total_errors += 1
         log.exception(
             "janitor.delete_error",
-            recording_id=recording_id,
-            file_processed=file_processed,
+            recording_id=str(recording_id),
+            processed_path=processed_path,
         )
 
     def maybe_emit_summary(

@@ -9,21 +9,21 @@ from silvasonic.birdnet.service import BirdNETService
 from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.database.session import get_session
 
 T0 = datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
 
 
-def _recording(sensor: str, start: datetime, rel: str) -> Recording:
+def _recording(microphone: Microphone, start: datetime, rel: str) -> Recording:
     return Recording(
-        time=start,
-        sensor_id=sensor,
-        file_raw=rel,
-        file_processed=rel,
-        duration=10.0,
-        sample_rate=48000,
-        filesize_raw=100,
+        started_at=start,
+        microphone_id=microphone.id,
+        raw_path=rel,
+        processed_path=rel,
+        duration_s=10.0,
+        sample_rate_hz=48000,
+        raw_size_bytes=100,
         analysis_state={},
     )
 
@@ -38,14 +38,19 @@ async def test_previous_segment_lookup(station_db: Path, tmp_path: Path) -> None
 
     async with get_session() as session:
         session.add(MicrophoneProfile(slug="prof", name="prof", config={}))
-        session.add(Device(name="mic-a", serial_number="a", model="m", profile_slug="prof"))
-        session.add(Device(name="mic-b", serial_number="b", model="m", profile_slug="prof"))
+        mic_a = Microphone(
+            hardware_id="mic-a", name="m", serial_number="a", model="m", profile_slug="prof"
+        )
+        mic_b = Microphone(
+            hardware_id="mic-b", name="m", serial_number="b", model="m", profile_slug="prof"
+        )
+        session.add_all([mic_a, mic_b])
         await session.flush()
-        first = _recording("mic-a", T0, "mic-a/first.wav")
-        second = _recording("mic-a", T0 + timedelta(seconds=10), "mic-a/second.wav")
-        after_gap = _recording("mic-a", T0 + timedelta(seconds=40), "mic-a/late.wav")
+        first = _recording(mic_a, T0, "mic-a/first.wav")
+        second = _recording(mic_a, T0 + timedelta(seconds=10), "mic-a/second.wav")
+        after_gap = _recording(mic_a, T0 + timedelta(seconds=40), "mic-a/late.wav")
         # Another device's segment, closer in time than mic-a's predecessor
-        other = _recording("mic-b", T0 + timedelta(seconds=5), "mic-b/other.wav")
+        other = _recording(mic_b, T0 + timedelta(seconds=5), "mic-b/other.wav")
         session.add_all([first, second, after_gap, other])
         await session.commit()
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import structlog
 from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
 from silvasonic.core.two_phase import TwoPhaseWindow
@@ -37,7 +39,7 @@ class BirdnetStats:
         """Return True if still in the initial verbose startup phase."""
         return self._window.is_startup_phase
 
-    def record_analyzed(self, recording_id: int, duration: float, hits: int) -> None:
+    def record_analyzed(self, recording_id: uuid.UUID, duration: float, hits: int) -> None:
         """Record a successfully analyzed recording."""
         self.total_analyzed += 1
         self.total_hits += hits
@@ -51,7 +53,7 @@ class BirdnetStats:
                 hits=hits,
             )
 
-    def record_error(self, recording_id: int, exc: Exception) -> None:
+    def record_error(self, recording_id: uuid.UUID, exc: Exception) -> None:
         """Record an inference error."""
         self.total_errors += 1
         log.error(

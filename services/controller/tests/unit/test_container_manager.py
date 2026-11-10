@@ -89,21 +89,21 @@ class TestBuildRecorderSpec:
     """Tests for the build_recorder_spec factory function."""
 
     def test_build_recorder_spec(self) -> None:
-        """build_recorder_spec creates a valid spec from Device + Profile."""
+        """build_recorder_spec creates a valid spec from Microphone + Profile."""
         import json
 
-        device = MagicMock()
-        device.name = "0869-0389-00000000034F"
-        device.config = {
+        microphone = MagicMock()
+        microphone.hardware_id = "0869-0389-00000000034F"
+        microphone.hardware = {
             "alsa_device": "hw:2,0",
             "usb_serial": "00000000034F",
         }
 
         profile = MagicMock()
         profile.slug = "ultramic_384_evo"
-        profile.config = {"audio": {"sample_rate": 384000, "channels": 1}}
+        profile.config = {"audio": {"sample_rate_hz": 384000, "channels": 1}}
 
-        spec = build_recorder_spec(device, profile)
+        spec = build_recorder_spec(microphone, profile)
 
         # Human-readable name: slug + last 4 hex of serial
         assert spec.name == "silvasonic-recorder-ultramic-384-evo-034f"
@@ -113,13 +113,13 @@ class TestBuildRecorderSpec:
         # CONFIG_JSON contains the full profile config (ADR-0016, Option C)
         assert "SILVASONIC_RECORDER_CONFIG_JSON" in spec.environment
         parsed = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
-        assert parsed["audio"]["sample_rate"] == 384000
+        assert parsed["audio"]["sample_rate_hz"] == 384000
         assert parsed["audio"]["channels"] == 1
-        assert parsed["audio"]["format"] == "S16LE"
+        assert parsed["audio"]["sample_format"] == "S16LE"
         assert "processing" in parsed
         assert "stream" in parsed
         assert spec.labels["io.silvasonic.service"] == "recorder"
-        # device_id label still uses stable_device_id (DB primary key)
+        # device_id label still carries the stable_device_id (microphones.hardware_id)
         assert spec.labels["io.silvasonic.device_id"] == "0869-0389-00000000034F"
         assert spec.oom_score_adj == -999  # Protected
         assert spec.privileged is True
@@ -128,15 +128,15 @@ class TestBuildRecorderSpec:
 
     def test_recorder_spec_suppresses_pulse_and_pipewire(self) -> None:
         """Recorder spec sets PULSE_SERVER='' and PIPEWIRE_RUNTIME_DIR='' to force ALSA."""
-        device = MagicMock()
-        device.name = "test-device"
-        device.config = {"alsa_device": "hw:1,0", "usb_serial": "1234"}
+        microphone = MagicMock()
+        microphone.hardware_id = "test-device"
+        microphone.hardware = {"alsa_device": "hw:1,0", "usb_serial": "1234"}
 
         profile = MagicMock()
         profile.slug = "test_mic"
-        profile.config = {"audio": {"sample_rate": 48000}}
+        profile.config = {"audio": {"sample_rate_hz": 48000}}
 
-        spec = build_recorder_spec(device, profile)
+        spec = build_recorder_spec(microphone, profile)
 
         assert spec.environment["PULSE_SERVER"] == ""
         assert spec.environment["PIPEWIRE_RUNTIME_DIR"] == ""
@@ -144,43 +144,43 @@ class TestBuildRecorderSpec:
 
 @pytest.mark.unit
 class TestShortSuffix:
-    """Tests for _short_suffix() — device identity suffix generation."""
+    """Tests for _short_suffix() — microphone identity suffix generation."""
 
     def test_serial_suffix(self) -> None:
         """Uses last 4 hex chars of USB serial."""
-        device = MagicMock()
-        device.config = {"usb_serial": "00000000034F"}
-        assert _short_suffix(device) == "034f"
+        microphone = MagicMock()
+        microphone.hardware = {"usb_serial": "00000000034F"}
+        assert _short_suffix(microphone) == "034f"
 
     def test_serial_uppercase_to_lower(self) -> None:
         """Serial suffix is always lowercase."""
-        device = MagicMock()
-        device.config = {"usb_serial": "AABB1234CDEF"}
-        assert _short_suffix(device) == "cdef"
+        microphone = MagicMock()
+        microphone.hardware = {"usb_serial": "AABB1234CDEF"}
+        assert _short_suffix(microphone) == "cdef"
 
     def test_bus_path_suffix(self) -> None:
         """Falls back to USB bus path when no serial."""
-        device = MagicMock()
-        device.config = {"usb_serial": None, "usb_bus_path": "1-3.2"}
-        assert _short_suffix(device) == "p1d3"
+        microphone = MagicMock()
+        microphone.hardware = {"usb_serial": None, "usb_bus_path": "1-3.2"}
+        assert _short_suffix(microphone) == "p1d3"
 
     def test_bus_path_no_serial_key(self) -> None:
         """Works when serial key is missing entirely."""
-        device = MagicMock()
-        device.config = {"usb_bus_path": "2-1"}
-        assert _short_suffix(device) == "p2d1"
+        microphone = MagicMock()
+        microphone.hardware = {"usb_bus_path": "2-1"}
+        assert _short_suffix(microphone) == "p2d1"
 
     def test_card_index_fallback(self) -> None:
         """Falls back to ALSA card index when no USB info."""
-        device = MagicMock()
-        device.config = {"alsa_card_index": 3}
-        assert _short_suffix(device) == "c003"
+        microphone = MagicMock()
+        microphone.hardware = {"alsa_card_index": 3}
+        assert _short_suffix(microphone) == "c003"
 
     def test_empty_config_fallback(self) -> None:
         """Returns c000 when config is empty."""
-        device = MagicMock()
-        device.config = {}
-        assert _short_suffix(device) == "c000"
+        microphone = MagicMock()
+        microphone.hardware = {}
+        assert _short_suffix(microphone) == "c000"
 
 
 @pytest.mark.unit
@@ -797,7 +797,7 @@ class TestContainerManager:
 
 
 # ===================================================================
-# Workspace-to-Device Name Contract (Bug #1: Name-Mismatch)
+# Workspace-to-Microphone Name Contract (Bug #1: Name-Mismatch)
 # ===================================================================
 
 
@@ -806,11 +806,11 @@ class TestWorkspaceNameContract:
     """Verify generate_workspace_name contract with build_recorder_spec.
 
     The function must produce a consistent name that can be stored in
-    ``devices.workspace_name`` and matches the workspace directory
+    ``microphones.workspace_name`` and matches the workspace directory
     derived from ``build_recorder_spec``.
 
     The Processor Indexer extracts workspace_dir from the filesystem and
-    queries ``SELECT name FROM devices WHERE workspace_name = :ws_name``.
+    queries ``SELECT id FROM microphones WHERE workspace_name = :ws_name``.
     The ``workspace_name`` column is set by the Controller during enrollment.
 
     See: Log Analysis Report 2026-03-30 — Bug #1 (Name-Mismatch).
@@ -820,13 +820,13 @@ class TestWorkspaceNameContract:
         """generate_workspace_name matches build_recorder_spec workspace dir.
 
         Production scenario: Ultramic 384K EVO with USB serial.
-        - device.name (stable_device_id) = "0869-0389-00000000034F"
+        - microphone.hardware_id (stable_device_id) = "0869-0389-00000000034F"
         - workspace_name = "ultramic-384-evo-034f" (stored in DB)
         - container_name = "silvasonic-recorder-ultramic-384-evo-034f"
         """
-        device = MagicMock()
-        device.name = "0869-0389-00000000034F"
-        device.config = {
+        microphone = MagicMock()
+        microphone.hardware_id = "0869-0389-00000000034F"
+        microphone.hardware = {
             "alsa_device": "hw:2,0",
             "usb_serial": "00000000034F",
             "usb_vendor_id": "0869",
@@ -835,10 +835,10 @@ class TestWorkspaceNameContract:
 
         profile = MagicMock()
         profile.slug = "ultramic_384_evo"
-        profile.config = {"audio": {"sample_rate": 384000, "channels": 1}}
+        profile.config = {"audio": {"sample_rate_hz": 384000, "channels": 1}}
 
-        ws = generate_workspace_name(profile.slug, device)
-        spec = build_recorder_spec(device, profile)
+        ws = generate_workspace_name(profile.slug, microphone)
+        spec = build_recorder_spec(microphone, profile)
         workspace_dir = spec.name.removeprefix("silvasonic-recorder-")
 
         assert ws == workspace_dir, (
@@ -851,12 +851,12 @@ class TestWorkspaceNameContract:
         """generate_workspace_name matches build_recorder_spec workspace dir.
 
         Production scenario: Rode NT-USB without serial (uses bus path).
-        - device.name (stable_device_id) = "19f7-0003-port3-6"
+        - microphone.hardware_id (stable_device_id) = "19f7-0003-port3-6"
         - workspace_name = "rode-nt-usb-p3d6" (stored in DB)
         """
-        device = MagicMock()
-        device.name = "19f7-0003-port3-6"
-        device.config = {
+        microphone = MagicMock()
+        microphone.hardware_id = "19f7-0003-port3-6"
+        microphone.hardware = {
             "alsa_device": "hw:1,0",
             "usb_vendor_id": "19f7",
             "usb_product_id": "0003",
@@ -865,10 +865,10 @@ class TestWorkspaceNameContract:
 
         profile = MagicMock()
         profile.slug = "rode_nt_usb"
-        profile.config = {"audio": {"sample_rate": 48000, "channels": 2}}
+        profile.config = {"audio": {"sample_rate_hz": 48000, "channels": 2}}
 
-        ws = generate_workspace_name(profile.slug, device)
-        spec = build_recorder_spec(device, profile)
+        ws = generate_workspace_name(profile.slug, microphone)
+        spec = build_recorder_spec(microphone, profile)
         workspace_dir = spec.name.removeprefix("silvasonic-recorder-")
 
         assert ws == workspace_dir, (

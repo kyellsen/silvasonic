@@ -43,7 +43,7 @@ class TestWebMockDatabaseConnectivity:
 
     async def test_read_write_db(self) -> None:
         """Test writing to the DB via /api/test-db and reading it back."""
-        payload = {"key": "test_integration_key", "value": {"hello": "world"}}
+        payload = {"section": "test_integration_section", "value": {"hello": "world"}}
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/api/test-db", json=payload)
@@ -51,12 +51,12 @@ class TestWebMockDatabaseConnectivity:
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "success"
-            assert data["key"] == "test_integration_key"
+            assert data["section"] == "test_integration_section"
             assert data["value"] == {"hello": "world"}
 
     async def test_save_general_settings(self) -> None:
         """Test the HTML form submission endpoint for saving station name."""
-        form_data = {"station_name": "My-Awesome-Station-007"}
+        form_data = {"name": "My-Awesome-Station-007"}
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Send POST request

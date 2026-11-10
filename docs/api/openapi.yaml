@@ -1,0 +1,2405 @@
+openapi: 3.1.0
+info:
+  title: Silvasonic Station API
+  version: 1.0.0-draft.1
+  summary: The one contract through which any client reads or changes a Silvasonic station.
+  description: |
+    **Status: TO-BE — design draft.** No service implements this contract yet
+    (ADR-0032, Proposed). Once the `api` service exists, this file is generated
+    from it and the gate rejects drift and breaking changes.
+
+    The dashboard, the fleet server, scripts and third-party tools all use this
+    API and nothing else: no client reads the database, Redis or the filesystem.
+    The resources are domain terms (recording, detection, species, microphone),
+    so the contract outlives the storage engine and the language behind it.
+
+    ## Maturity
+
+    Every operation carries `x-maturity`:
+
+    - `core` — part of the first implementation; the local dashboard needs it.
+    - `planned` — name and shape are reserved so that the feature fits when its
+      backend exists. A station that lacks the feature answers `404` with
+      problem code `module_unavailable`.
+
+    `GET /info` lists what a station supports. `x-required-role` names the
+    lowest role an operation accepts (`public`, `viewer`, `operator`, `admin`).
+
+    ## Conventions
+
+    - **Names** are `snake_case`; paths are plural nouns in `kebab-case`. A
+      field has the same name here, in the database and in the code (ADR-0033).
+    - **Identifiers** are opaque strings. Runtime entities use UUIDv7, unique
+      across all stations; authored entities use slugs. Never parse an ID.
+    - **Time** is RFC 3339 in UTC (`2026-11-10T06:30:00Z`) in fields ending in
+      `_at`. Ranges are `from` (inclusive) and `to` (exclusive). A recording
+      made while the station clock was unsynchronised has `clock_synced: false`.
+    - **Units** are part of the name: `_s` seconds, `_ms`, `_hz`, `_bytes`,
+      `_percent` (0–100), `_c`, `_m`. Confidence is 0–1.
+    - **Media** is always a URL field (`audio_url`, `clip_url`, `image_url`),
+      relative to the origin. Filesystem paths never appear.
+    - **Lists** return `{items, next_cursor}`. Pass `next_cursor` back as
+      `cursor`; `null` means the end. `limit` defaults to 50, maximum 500.
+    - **Localisation:** `Accept-Language` selects `common_name` and
+      `description`; the full dictionaries are in `common_names` and
+      `descriptions`. Alerts and events carry a `code` plus `params`; the
+      client owns the wording.
+    - **Enums are open:** a client must tolerate unknown enum values and
+      unknown fields. Adding either is not a breaking change.
+    - **Writes** to `/station` and `/settings/*` require `If-Match` with the
+      `ETag` of the version that was read: `428` without it, `412` when it is
+      stale. `PATCH` bodies are JSON Merge Patch (RFC 7396).
+    - **Errors** are RFC 9457 problem documents with a stable `code`.
+    - **Tracing:** every response carries `X-Request-Id`; a client may supply
+      its own.
+    - **Rate limits** answer `429` with `Retry-After`.
+
+    ## Authentication
+
+    Browsers authenticate with a server-side session cookie, everything else
+    with an API token (ADR-0034). A cookie-authenticated request with an unsafe
+    method must send `X-Silvasonic-Csrf: 1` and comes from the station's own
+    origin, or it is rejected with `403` and code `csrf_rejected`. Token
+    requests carry no ambient credentials and are exempt.
+
+    ## Compatibility
+
+    Within `/api/v1` changes are additive: new operations, new optional
+    fields, new enum values. Removing or renaming anything needs `/api/v2`. A
+    deprecated operation announces it with the `Deprecation` and `Sunset`
+    response headers before it disappears in the next major version.
+
+    ## Fleet
+
+    A fleet server serves the same resource schemas under
+    `/api/v1/stations/{station_id}/…` and adds its own fleet resources. A
+    client written against a station works against a station viewed through
+    the fleet.
+  license:
+    name: See LICENCE in the repository
+    url: https://github.com/kyellsen/silvasonic/blob/main/LICENCE
+servers:
+  - url: /api/v1
+    description: Same origin as the dashboard
+tags:
+  - {name: Meta, description: Discovery and liveness}
+  - {name: Setup, description: First-boot claim of an unprovisioned station}
+  - {name: Auth, description: 'Sessions, credentials and API tokens'}
+  - {name: Users, description: Accounts and roles}
+  - {name: Station, description: 'Identity, location and live status of the station'}
+  - {name: Events, description: 'Domain events, alerts and the audit log'}
+  - {name: Microphones, description: Microphones and their recording state}
+  - {name: Microphone Profiles, description: Capture configuration per microphone type}
+  - {name: Recordings, description: Recorded audio segments}
+  - {name: Detections, description: Classification results and their review}
+  - {name: Species, description: 'Everything an analyzer can detect, with detection statistics'}
+  - {name: Statistics, description: Aggregations for charts}
+  - {name: Storage, description: Disk usage and retention}
+  - {name: Sync, description: Upload of recordings to a remote target}
+  - {name: Modules, description: Optional features and their lifecycle}
+  - {name: Settings, description: User-facing configuration}
+  - {name: Logs, description: Component logs}
+  - {name: Weather, description: Environmental observations}
+  - {name: Exports, description: Bulk data exports}
+  - {name: System, description: 'Updates, power, network and diagnostics'}
+security:
+  - sessionCookie: []
+  - bearerToken: []
+
+paths:
+  # ─────────────────────────────── Meta ───────────────────────────────
+  /info:
+    get:
+      tags: [Meta]
+      operationId: getInfo
+      summary: What this station speaks and whether it still needs setup
+      x-maturity: core
+      x-required-role: public
+      security: []
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Info'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /health:
+    get:
+      tags: [Meta]
+      operationId: getHealth
+      summary: Liveness of the API itself
+      description: Answers `200` while the API process can serve requests. It says nothing about recording; use `/station/status` for that.
+      x-maturity: core
+      x-required-role: public
+      security: []
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Health'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Setup ───────────────────────────────
+  /setup:
+    post:
+      tags: [Setup]
+      operationId: completeSetup
+      summary: Claim a fresh station and create its first administrator
+      description: |
+        Works only while `GET /info` reports `setup_required: true`; afterwards
+        it answers `409` with code `setup_completed`. The `setup_code` is unique
+        per station and proves physical possession. A station has no default
+        credentials.
+      x-maturity: core
+      x-required-role: public
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SetupRequest'}}}}
+      responses:
+        '201':
+          description: Station claimed; the response sets the session cookie
+          headers: {Set-Cookie: {$ref: '#/components/headers/SessionCookie'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Session'}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Auth ───────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Start a session with username and password
+      description: Wrong username, wrong password and a wrong or missing second factor all answer the same `401` with code `invalid_credentials`.
+      x-maturity: core
+      x-required-role: public
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      responses:
+        '200':
+          description: Session started; the response sets the session cookie
+          headers: {Set-Cookie: {$ref: '#/components/headers/SessionCookie'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Session'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: End the current session
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '204': {description: Session ended and cookie cleared}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/session:
+    get:
+      tags: [Auth]
+      operationId: getCurrentSession
+      summary: Who am I, and until when
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Session'}}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: The signed-in user's sessions on all their devices
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SessionPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/sessions/{session_id}:
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Sign a session out
+      description: A user revokes their own sessions; an administrator revokes anyone's.
+      x-maturity: core
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/SessionId'}]
+      responses:
+        '204': {description: Revoked}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/password:
+    put:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change the signed-in user's password
+      description: Ends every other session of the user.
+      x-maturity: core
+      x-required-role: viewer
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PasswordChange'}}}}
+      responses:
+        '204': {description: Password changed}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/totp:
+    post:
+      tags: [Auth]
+      operationId: beginTotpEnrollment
+      summary: Start enrolling a time-based one-time password
+      x-maturity: planned
+      x-required-role: viewer
+      responses:
+        '200': {description: Secret to load into an authenticator app, content: {application/json: {schema: {$ref: '#/components/schemas/TotpEnrollment'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+    put:
+      tags: [Auth]
+      operationId: confirmTotpEnrollment
+      summary: Confirm enrollment with a first code
+      x-maturity: planned
+      x-required-role: viewer
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TotpConfirmation'}}}}
+      responses:
+        '200': {description: Second factor active; recovery codes are shown once, content: {application/json: {schema: {$ref: '#/components/schemas/RecoveryCodes'}}}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Auth]
+      operationId: disableTotp
+      summary: Remove the second factor
+      x-maturity: planned
+      x-required-role: viewer
+      responses:
+        '204': {description: Removed}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/tokens:
+    get:
+      tags: [Auth]
+      operationId: listApiTokens
+      summary: API tokens of the signed-in user
+      description: An administrator sees all tokens with `owner=all`.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: owner, in: query, schema: {type: string, enum: [me, all], default: me}}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ApiTokenPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [Auth]
+      operationId: createApiToken
+      summary: Create an API token for a script or another service
+      description: Needs a session; a token cannot create tokens. The secret is in this response only.
+      x-maturity: core
+      x-required-role: viewer
+      security: [{sessionCookie: []}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ApiTokenCreate'}}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/ApiTokenCreated'}}}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /auth/tokens/{token_id}:
+    delete:
+      tags: [Auth]
+      operationId: revokeApiToken
+      summary: Revoke an API token
+      x-maturity: core
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/TokenId'}]
+      responses:
+        '204': {description: Revoked}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Users ───────────────────────────────
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: All accounts
+      x-maturity: core
+      x-required-role: admin
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Cursor'}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/UserPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create an account
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserCreate'}}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /users/{user_id}:
+    parameters: [{$ref: '#/components/parameters/UserId'}]
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: One account
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Change role, state, language or reset the password
+      description: The last active administrator can be neither demoted nor deactivated (`409`).
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/UserUpdate'}}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Delete an account with its sessions and tokens
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Station ───────────────────────────────
+  /station:
+    get:
+      tags: [Station]
+      operationId: getStation
+      summary: Identity, location and software of the station
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200':
+          description: OK
+          headers: {ETag: {$ref: '#/components/headers/ETag'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Station'}}}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Station]
+      operationId: updateStation
+      summary: Rename the station or change its location, time zone or language
+      description: The location feeds the seasonal species filter of the analyzers.
+      x-maturity: core
+      x-required-role: admin
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/StationUpdate'}}}}
+      responses:
+        '200':
+          description: Updated
+          headers: {ETag: {$ref: '#/components/headers/ETag'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/Station'}}}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+        default: {$ref: '#/components/responses/Problem'}
+  /station/status:
+    get:
+      tags: [Station]
+      operationId: getStationStatus
+      summary: Is everything running — one snapshot for the dashboard
+      description: The same document arrives as event `station.status` on `/events/stream` whenever it changes.
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/StationStatus'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /station/metrics:
+    get:
+      tags: [Station]
+      operationId: getStationMetrics
+      summary: Resource usage over time
+      x-maturity: planned
+      x-required-role: viewer
+      parameters:
+        - name: metric
+          in: query
+          required: true
+          schema: {type: array, items: {type: string, enum: [cpu_percent, memory_used_bytes, temperature_c, storage_used_bytes, analysis_pending_count]}}
+          style: form
+          explode: false
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {name: resolution_s, in: query, schema: {type: integer, minimum: 10, default: 300}}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/MetricSeriesList'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Events ───────────────────────────────
+  /events:
+    get:
+      tags: [Events]
+      operationId: listEvents
+      summary: What happened on the station, newest first
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: type, in: query, description: 'Event type or prefix, e.g. `recording.` or `microphone.connected`', schema: {type: array, items: {type: string}}, style: form, explode: false}
+        - {name: min_severity, in: query, schema: {$ref: '#/components/schemas/Severity'}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/EventPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /events/stream:
+    get:
+      tags: [Events]
+      operationId: streamEvents
+      summary: Live events as Server-Sent Events
+      description: |
+        Each SSE message has `event:` set to the event type, `id:` to the event
+        ID and `data:` to one `Event` as JSON. Reconnect with `Last-Event-ID`
+        to receive what was missed; if that event is no longer retained the
+        stream starts with `stream.reset` and the client reloads its state. A
+        comment line every 15 s keeps the connection open.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: type, in: query, description: Event types or prefixes to receive; all when absent, schema: {type: array, items: {type: string}}, style: form, explode: false}
+        - {name: Last-Event-ID, in: header, schema: {type: string}}
+      responses:
+        '200': {description: Event stream, content: {text/event-stream: {schema: {$ref: '#/components/schemas/Event'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /alerts:
+    get:
+      tags: [Events]
+      operationId: listAlerts
+      summary: Conditions that need attention
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: state, in: query, schema: {type: array, items: {$ref: '#/components/schemas/AlertState'}}, style: form, explode: false}
+        - {name: min_severity, in: query, schema: {$ref: '#/components/schemas/Severity'}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AlertPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /alerts/{alert_id}/acknowledge:
+    post:
+      tags: [Events]
+      operationId: acknowledgeAlert
+      summary: Mark an alert as seen
+      description: The alert stays until its condition clears; acknowledging stops notifications for it.
+      x-maturity: core
+      x-required-role: operator
+      parameters: [{$ref: '#/components/parameters/AlertId'}]
+      responses:
+        '200': {description: Acknowledged, content: {application/json: {schema: {$ref: '#/components/schemas/Alert'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /audit-log:
+    get:
+      tags: [Events]
+      operationId: listAuditLog
+      summary: Who changed or accessed what
+      x-maturity: core
+      x-required-role: admin
+      parameters:
+        - {name: actor_id, in: query, schema: {type: string}}
+        - {name: action, in: query, description: 'Action or prefix, e.g. `settings.`', schema: {type: string}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/AuditEntryPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Microphones ───────────────────────────────
+  /microphones:
+    get:
+      tags: [Microphones]
+      operationId: listMicrophones
+      summary: Every microphone the station has seen
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: enrollment_state, in: query, schema: {$ref: '#/components/schemas/EnrollmentState'}}
+        - {name: connection_state, in: query, schema: {$ref: '#/components/schemas/ConnectionState'}}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophonePage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /microphones/{microphone_id}:
+    parameters: [{$ref: '#/components/parameters/MicrophoneId'}]
+    get:
+      tags: [Microphones]
+      operationId: getMicrophone
+      summary: One microphone with its recording state
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Microphone'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Microphones]
+      operationId: updateMicrophone
+      summary: Rename, switch on or off, enrol, or assign a profile
+      description: |
+        Writes the desired state; recording follows within seconds. Setting
+        `enabled: false` stops recording at once. Changing `profile_slug`
+        restarts the recording of this microphone only.
+      x-maturity: core
+      x-required-role: operator
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/MicrophoneUpdate'}}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/Microphone'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Microphones]
+      operationId: forgetMicrophone
+      summary: Forget a disconnected microphone
+      description: Refused with `409` while the microphone is connected or recordings refer to it.
+      x-maturity: planned
+      x-required-role: admin
+      responses:
+        '204': {description: Forgotten}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+  /microphones/{microphone_id}/live-audio:
+    get:
+      tags: [Microphones]
+      operationId: getMicrophoneLiveAudio
+      summary: Listen to a microphone live
+      description: An Opus stream that never ends. Best effort; it never competes with recording.
+      x-maturity: planned
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/MicrophoneId'}]
+      responses:
+        '200': {description: Live stream, content: {audio/ogg: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Microphone profiles ───────────────────────────────
+  /microphone-profiles:
+    get:
+      tags: [Microphone Profiles]
+      operationId: listMicrophoneProfiles
+      summary: Built-in and custom profiles
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfilePage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [Microphone Profiles]
+      operationId: createMicrophoneProfile
+      summary: Add a custom profile
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfile'}}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfile'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /microphone-profiles/{profile_slug}:
+    parameters: [{$ref: '#/components/parameters/ProfileSlug'}]
+    get:
+      tags: [Microphone Profiles]
+      operationId: getMicrophoneProfile
+      summary: One profile
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfile'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    put:
+      tags: [Microphone Profiles]
+      operationId: replaceMicrophoneProfile
+      summary: Replace a custom profile
+      description: Built-in profiles are read-only (`409`). Microphones using the profile restart their recording.
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfile'}}}}
+      responses:
+        '200': {description: Replaced, content: {application/json: {schema: {$ref: '#/components/schemas/MicrophoneProfile'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Microphone Profiles]
+      operationId: deleteMicrophoneProfile
+      summary: Delete a custom profile no microphone uses
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Recordings ───────────────────────────────
+  /recordings:
+    get:
+      tags: [Recordings]
+      operationId: listRecordings
+      summary: Recorded segments
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: microphone_id, in: query, schema: {$ref: '#/components/schemas/Uuid'}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {name: has_detections, in: query, schema: {type: boolean}}
+        - {name: uploaded, in: query, schema: {type: boolean}}
+        - {name: deleted, in: query, description: '`exclude` hides recordings whose audio was deleted, `only` lists just those (the deletion log), `include` shows both', schema: {type: string, enum: [exclude, only, include], default: exclude}}
+        - {name: clock_synced, in: query, schema: {type: boolean}}
+        - {name: sort, in: query, schema: {type: string, enum: [started_at, -started_at, -deleted_at], default: -started_at}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/RecordingPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /recordings/{recording_id}:
+    parameters: [{$ref: '#/components/parameters/RecordingId'}]
+    get:
+      tags: [Recordings]
+      operationId: getRecording
+      summary: One recording
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Recording'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Recordings]
+      operationId: deleteRecording
+      summary: Delete the audio of a recording, its clips and detections
+      description: 'For recordings that must not be kept, such as captured speech. The entry remains with `deleted_at` and `deletion_reason: manual`. A copy already uploaded is not touched.'
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /recordings/{recording_id}/audio:
+    get:
+      tags: [Recordings]
+      operationId: getRecordingAudio
+      summary: The audio of a recording
+      description: Supports `Range` requests. Answers `410` with code `media_unavailable` once the local file is deleted.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/RecordingId'}
+        - {name: stream, in: query, description: '`processed` is 48 kHz for listening and analysis, `raw` is the native rate of the microphone', schema: {$ref: '#/components/schemas/StreamKind'}}
+        - {name: Range, in: header, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Audio'}
+        '206': {$ref: '#/components/responses/Audio'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Gone'}
+        default: {$ref: '#/components/responses/Problem'}
+  /recordings/{recording_id}/spectrogram:
+    get:
+      tags: [Recordings]
+      operationId: getRecordingSpectrogram
+      summary: A rendered spectrogram image
+      description: For audio the browser cannot decode itself, such as ultrasound. The dashboard draws ordinary spectrograms from the audio.
+      x-maturity: planned
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/RecordingId'}
+        - {name: stream, in: query, schema: {$ref: '#/components/schemas/StreamKind'}}
+        - {name: width, in: query, schema: {type: integer, minimum: 100, maximum: 4000, default: 1200}}
+        - {name: height, in: query, schema: {type: integer, minimum: 50, maximum: 2000, default: 400}}
+      responses:
+        '200': {description: Image, content: {image/png: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Gone'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Detections ───────────────────────────────
+  /detections:
+    get:
+      tags: [Detections]
+      operationId: listDetections
+      summary: Classification results
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/SpeciesFilter'}
+        - {$ref: '#/components/parameters/AnalyzerFilter'}
+        - {$ref: '#/components/parameters/MicrophoneFilter'}
+        - {name: recording_id, in: query, schema: {$ref: '#/components/schemas/Uuid'}}
+        - {$ref: '#/components/parameters/MinConfidence'}
+        - {$ref: '#/components/parameters/ReviewStateFilter'}
+        - {name: sort, in: query, schema: {type: string, enum: [-started_at, started_at, -confidence], default: -started_at}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+        - {$ref: '#/components/parameters/AcceptLanguage'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/DetectionPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /detections/export:
+    get:
+      tags: [Detections]
+      operationId: exportDetections
+      summary: Download detections as a file
+      description: Streams every detection matching the filters, without paging. Works as a plain link in the dashboard.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: format, in: query, required: true, schema: {type: string, enum: [csv, ndjson]}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/SpeciesFilter'}
+        - {$ref: '#/components/parameters/AnalyzerFilter'}
+        - {$ref: '#/components/parameters/MicrophoneFilter'}
+        - {$ref: '#/components/parameters/MinConfidence'}
+        - {$ref: '#/components/parameters/ReviewStateFilter'}
+        - {$ref: '#/components/parameters/AcceptLanguage'}
+      responses:
+        '200':
+          description: File download
+          headers: {Content-Disposition: {schema: {type: string}, description: '`attachment` with a dated filename'}}
+          content:
+            text/csv: {schema: {type: string}}
+            application/x-ndjson: {schema: {type: string}}
+        default: {$ref: '#/components/responses/Problem'}
+  /detections/{detection_id}:
+    parameters: [{$ref: '#/components/parameters/DetectionId'}]
+    get:
+      tags: [Detections]
+      operationId: getDetection
+      summary: One detection
+      x-maturity: core
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/AcceptLanguage'}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Detection'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Detections]
+      operationId: reviewDetection
+      summary: Confirm, reject or correct a detection
+      x-maturity: core
+      x-required-role: operator
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/DetectionUpdate'}}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/Detection'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /detections/{detection_id}/clip:
+    get:
+      tags: [Detections]
+      operationId: getDetectionClip
+      summary: The audio clip of a detection, with padding before and after
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/DetectionId'}
+        - {name: Range, in: header, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Audio'}
+        '206': {$ref: '#/components/responses/Audio'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Gone'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Species ───────────────────────────────
+  /species:
+    get:
+      tags: [Species]
+      operationId: listSpecies
+      summary: Species with their detection statistics
+      description: With `from`/`to`, `stats` covers that window; without, the whole history. `detected=true` leaves out species never detected in the window.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: detected, in: query, schema: {type: boolean, default: true}}
+        - {name: q, in: query, description: Search in scientific and common names, schema: {type: string}}
+        - {name: category, in: query, schema: {type: array, items: {$ref: '#/components/schemas/SpeciesCategory'}}, style: form, explode: false}
+        - {$ref: '#/components/parameters/AnalyzerFilter'}
+        - {name: watched, in: query, schema: {type: boolean}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/MinConfidence'}
+        - {name: sort, in: query, schema: {type: string, enum: [-detection_count, -last_detected_at, -first_detected_at, name], default: -last_detected_at}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+        - {$ref: '#/components/parameters/AcceptLanguage'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SpeciesPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /species/{species_id}:
+    parameters: [{$ref: '#/components/parameters/SpeciesId'}]
+    get:
+      tags: [Species]
+      operationId: getSpecies
+      summary: Portrait of one species
+      x-maturity: core
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/AcceptLanguage'}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Species'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Species]
+      operationId: updateSpecies
+      summary: Put a species on the watchlist or take it off
+      x-maturity: planned
+      x-required-role: operator
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/SpeciesUpdate'}}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/Species'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /species/{species_id}/image:
+    get:
+      tags: [Species]
+      operationId: getSpeciesImage
+      summary: Picture of a species, served from the station
+      description: Stored locally so the dashboard works without internet. Attribution is in `Species.image_attribution`.
+      x-maturity: core
+      x-required-role: viewer
+      parameters: [{$ref: '#/components/parameters/SpeciesId'}]
+      responses:
+        '200': {description: Image, content: {image/*: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Statistics ───────────────────────────────
+  /stats/summary:
+    get:
+      tags: [Statistics]
+      operationId: getStatsSummary
+      summary: Headline numbers for a time window
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/MinConfidence'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/StatsSummary'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /stats/detections/timeline:
+    get:
+      tags: [Statistics]
+      operationId: getDetectionTimeline
+      summary: Detections and species per time bucket
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: bucket, in: query, required: true, schema: {type: string, enum: [hour, day, week, month]}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Timezone'}
+        - {$ref: '#/components/parameters/SpeciesFilter'}
+        - {$ref: '#/components/parameters/AnalyzerFilter'}
+        - {$ref: '#/components/parameters/MicrophoneFilter'}
+        - {$ref: '#/components/parameters/MinConfidence'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/DetectionTimeline'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /stats/detections/heatmap:
+    get:
+      tags: [Statistics]
+      operationId: getDetectionHeatmap
+      summary: Detections by hour of day and date
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Timezone'}
+        - {$ref: '#/components/parameters/SpeciesFilter'}
+        - {$ref: '#/components/parameters/AnalyzerFilter'}
+        - {$ref: '#/components/parameters/MicrophoneFilter'}
+        - {$ref: '#/components/parameters/MinConfidence'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/DetectionHeatmap'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /stats/recordings/coverage:
+    get:
+      tags: [Statistics]
+      operationId: getRecordingCoverage
+      summary: How much of each period was actually recorded
+      description: Shows gaps in the record, per microphone. A dataset is only as good as its coverage.
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: bucket, in: query, required: true, schema: {type: string, enum: [hour, day]}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Timezone'}
+        - {$ref: '#/components/parameters/MicrophoneFilter'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/RecordingCoverage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Storage ───────────────────────────────
+  /storage:
+    get:
+      tags: [Storage]
+      operationId: getStorage
+      summary: Disk usage, retention level and forecast
+      description: What retention deleted is `GET /recordings?deleted=only&sort=-deleted_at`.
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Storage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Sync ───────────────────────────────
+  /sync:
+    get:
+      tags: [Sync]
+      operationId: getSyncStatus
+      summary: Upload state, queue and target
+      description: Switch uploading on and off through `PATCH /modules/cloud_sync`.
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SyncStatus'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /sync/uploads:
+    get:
+      tags: [Sync]
+      operationId: listUploads
+      summary: Every upload attempt, newest first
+      x-maturity: core
+      x-required-role: viewer
+      parameters:
+        - {name: success, in: query, schema: {type: boolean}}
+        - {name: recording_id, in: query, schema: {$ref: '#/components/schemas/Uuid'}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/UploadPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /sync/target:
+    get:
+      tags: [Sync]
+      operationId: getSyncTarget
+      summary: The configured remote target, without its secret
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/SyncTarget'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    put:
+      tags: [Sync]
+      operationId: replaceSyncTarget
+      summary: Configure the remote target
+      description: Omit `secret` to keep the stored one.
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SyncTargetInput'}}}}
+      responses:
+        '200': {description: Saved, content: {application/json: {schema: {$ref: '#/components/schemas/SyncTarget'}}}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Sync]
+      operationId: deleteSyncTarget
+      summary: Remove the remote target and its secret
+      x-maturity: core
+      x-required-role: admin
+      responses:
+        '204': {description: Removed}
+        default: {$ref: '#/components/responses/Problem'}
+  /sync/target/test:
+    post:
+      tags: [Sync]
+      operationId: testSyncTarget
+      summary: Check that the target is reachable and writable
+      description: Tests the body if one is sent, otherwise the stored target. Changes nothing.
+      x-maturity: core
+      x-required-role: admin
+      requestBody: {required: false, content: {application/json: {schema: {$ref: '#/components/schemas/SyncTargetInput'}}}}
+      responses:
+        '200': {description: Test finished; `ok` says how, content: {application/json: {schema: {$ref: '#/components/schemas/SyncTestResult'}}}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /sync/run:
+    post:
+      tags: [Sync]
+      operationId: runSyncNow
+      summary: Start uploading now, outside the upload window
+      x-maturity: planned
+      x-required-role: operator
+      responses:
+        '202': {description: Accepted}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Modules ───────────────────────────────
+  /modules:
+    get:
+      tags: [Modules]
+      operationId: listModules
+      summary: Optional features, whether they are wanted and what they are doing
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ModulePage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /modules/{module_id}:
+    parameters: [{$ref: '#/components/parameters/ModuleId'}]
+    get:
+      tags: [Modules]
+      operationId: getModule
+      summary: One module
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Module'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Modules]
+      operationId: updateModule
+      summary: Switch a module on or off
+      description: 'Writes the desired state; `state` follows. A module the station cannot run (`available: false`) answers `409`.'
+      x-maturity: core
+      x-required-role: operator
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/ModuleUpdate'}}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/Module'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Settings ───────────────────────────────
+  /settings:
+    get:
+      tags: [Settings]
+      operationId: getSettings
+      summary: All sections at once
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Settings'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /settings/{section}:
+    parameters: [{$ref: '#/components/parameters/SettingsSection'}]
+    get:
+      tags: [Settings]
+      operationId: getSettingsSection
+      summary: One section
+      x-maturity: core
+      x-required-role: viewer
+      responses:
+        '200':
+          description: OK
+          headers: {ETag: {$ref: '#/components/headers/ETag'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/SettingsSectionValue'}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [Settings]
+      operationId: updateSettingsSection
+      summary: Change fields of one section
+      description: Takes effect without interrupting recording. The whole section is validated; an invalid combination changes nothing.
+      x-maturity: core
+      x-required-role: admin
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody: {required: true, content: {application/merge-patch+json: {schema: {$ref: '#/components/schemas/SettingsSectionValue'}}}}
+      responses:
+        '200':
+          description: Updated
+          headers: {ETag: {$ref: '#/components/headers/ETag'}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/SettingsSectionValue'}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Logs ───────────────────────────────
+  /logs/stream:
+    get:
+      tags: [Logs]
+      operationId: streamLogs
+      summary: Live log lines as Server-Sent Events
+      description: Each SSE message carries one `LogLine` as JSON. Nothing is replayed on reconnect.
+      x-maturity: core
+      x-required-role: operator
+      parameters:
+        - {name: component_id, in: query, schema: {type: array, items: {type: string}}, style: form, explode: false}
+        - {name: min_level, in: query, schema: {$ref: '#/components/schemas/LogLevel'}}
+      responses:
+        '200': {description: Log stream, content: {text/event-stream: {schema: {$ref: '#/components/schemas/LogLine'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /logs:
+    get:
+      tags: [Logs]
+      operationId: listLogs
+      summary: Stored log lines
+      x-maturity: planned
+      x-required-role: operator
+      parameters:
+        - {name: component_id, in: query, schema: {type: array, items: {type: string}}, style: form, explode: false}
+        - {name: min_level, in: query, schema: {$ref: '#/components/schemas/LogLevel'}}
+        - {name: q, in: query, schema: {type: string}}
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/LogLinePage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Weather ───────────────────────────────
+  /weather/current:
+    get:
+      tags: [Weather]
+      operationId: getCurrentWeather
+      summary: The latest observation
+      x-maturity: planned
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/WeatherObservation'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /weather/observations:
+    get:
+      tags: [Weather]
+      operationId: listWeatherObservations
+      summary: Observations over time, for charts and correlation with detections
+      x-maturity: planned
+      x-required-role: viewer
+      parameters:
+        - {$ref: '#/components/parameters/From'}
+        - {$ref: '#/components/parameters/To'}
+        - {name: source, in: query, schema: {type: string}}
+        - {name: forecast, in: query, schema: {type: boolean, default: false}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/WeatherObservationPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── Exports ───────────────────────────────
+  /exports:
+    get:
+      tags: [Exports]
+      operationId: listExports
+      summary: Export jobs
+      x-maturity: planned
+      x-required-role: operator
+      parameters: [{$ref: '#/components/parameters/Limit'}, {$ref: '#/components/parameters/Cursor'}]
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/ExportPage'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [Exports]
+      operationId: createExport
+      summary: Start a bulk export, such as a Parquet snapshot
+      x-maturity: planned
+      x-required-role: operator
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ExportCreate'}}}}
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/Export'}}}}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /exports/{export_id}:
+    parameters: [{$ref: '#/components/parameters/ExportId'}]
+    get:
+      tags: [Exports]
+      operationId: getExport
+      summary: State of one export
+      x-maturity: planned
+      x-required-role: operator
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Export'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Exports]
+      operationId: deleteExport
+      summary: Cancel an export or delete its file
+      x-maturity: planned
+      x-required-role: operator
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        default: {$ref: '#/components/responses/Problem'}
+  /exports/{export_id}/download:
+    get:
+      tags: [Exports]
+      operationId: downloadExport
+      summary: The finished export file
+      x-maturity: planned
+      x-required-role: operator
+      parameters: [{$ref: '#/components/parameters/ExportId'}]
+      responses:
+        '200': {description: File, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+
+  # ─────────────────────────────── System ───────────────────────────────
+  /system/network:
+    get:
+      tags: [System]
+      operationId: getNetwork
+      summary: How the station is reachable and under which names
+      description: Lets the dashboard point the user at the address with a trusted certificate (ADR-0035).
+      x-maturity: planned
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Network'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /system/update:
+    get:
+      tags: [System]
+      operationId: getUpdateStatus
+      summary: Installed version and whether an update waits
+      x-maturity: planned
+      x-required-role: viewer
+      responses:
+        '200': {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateStatus'}}}}
+        default: {$ref: '#/components/responses/Problem'}
+  /system/update/install:
+    post:
+      tags: [System]
+      operationId: installUpdate
+      summary: Install the available update
+      description: Refused with `409` when a fleet manages the station's updates or none is available.
+      x-maturity: planned
+      x-required-role: admin
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {description: Started, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateStatus'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        default: {$ref: '#/components/responses/Problem'}
+  /system/power:
+    post:
+      tags: [System]
+      operationId: requestPowerAction
+      summary: Restart the software, reboot or shut down
+      description: Recording stops cleanly first; the last segments are kept.
+      x-maturity: planned
+      x-required-role: admin
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PowerAction'}}}}
+      responses:
+        '202': {description: Accepted}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        default: {$ref: '#/components/responses/Problem'}
+  /system/support-bundle:
+    get:
+      tags: [System]
+      operationId: getSupportBundle
+      summary: Diagnostics archive for remote support
+      description: Status, settings without secrets and recent logs. No audio.
+      x-maturity: planned
+      x-required-role: admin
+      responses:
+        '200': {description: Archive, content: {application/gzip: {schema: {type: string, format: binary}}}}
+        default: {$ref: '#/components/responses/Problem'}
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-Http-silvasonic_session
+      description: |
+        Opaque server-side session for browsers, set by `POST /auth/login` and
+        `POST /setup` as `Secure; HttpOnly; SameSite=Strict; Path=/`. Unsafe
+        methods must send `X-Silvasonic-Csrf: 1`.
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: 'API token created with `POST /auth/tokens`, sent as `Authorization: Bearer sst_…`. Carries a role of its own, never above its owner''s.'
+
+  headers:
+    ETag: {description: Version of the representation; send it back in `If-Match`, schema: {type: string}}
+    SessionCookie: {description: The session cookie, schema: {type: string}}
+    RetryAfter: {description: Seconds to wait before retrying, schema: {type: integer}}
+
+  parameters:
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 50}}
+    Cursor: {name: cursor, in: query, description: The `next_cursor` of the previous page, schema: {type: string}}
+    From: {name: from, in: query, description: 'Start of the time range, inclusive', schema: {type: string, format: date-time}}
+    To: {name: to, in: query, description: 'End of the time range, exclusive', schema: {type: string, format: date-time}}
+    Timezone: {name: timezone, in: query, description: IANA time zone for bucketing; the station's when absent, schema: {type: string, examples: [Europe/Berlin]}}
+    MinConfidence: {name: min_confidence, in: query, schema: {type: number, minimum: 0, maximum: 1}}
+    SpeciesFilter: {name: species_id, in: query, schema: {type: array, items: {type: string}}, style: form, explode: false}
+    AnalyzerFilter: {name: analyzer, in: query, schema: {type: array, items: {$ref: '#/components/schemas/Analyzer'}}, style: form, explode: false}
+    MicrophoneFilter: {name: microphone_id, in: query, schema: {type: array, items: {$ref: '#/components/schemas/Uuid'}}, style: form, explode: false}
+    ReviewStateFilter: {name: review_state, in: query, schema: {type: array, items: {$ref: '#/components/schemas/ReviewState'}}, style: form, explode: false}
+    AcceptLanguage: {name: Accept-Language, in: header, description: Language for `common_name` and `description`; the station's when absent, schema: {type: string, examples: [de]}}
+    IfMatch: {name: If-Match, in: header, required: true, description: The `ETag` of the version this change is based on, schema: {type: string}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, description: A client-chosen key; a repeated request with the same key has no second effect, schema: {type: string, maxLength: 128}}
+    SessionId: {name: session_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    TokenId: {name: token_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    UserId: {name: user_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    AlertId: {name: alert_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    MicrophoneId: {name: microphone_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    RecordingId: {name: recording_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    DetectionId: {name: detection_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    ExportId: {name: export_id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+    SpeciesId: {name: species_id, in: path, required: true, schema: {$ref: '#/components/schemas/Slug'}}
+    ProfileSlug: {name: profile_slug, in: path, required: true, schema: {$ref: '#/components/schemas/Slug'}}
+    ModuleId: {name: module_id, in: path, required: true, schema: {$ref: '#/components/schemas/ModuleId'}}
+    SettingsSection: {name: section, in: path, required: true, schema: {$ref: '#/components/schemas/SettingsSectionName'}}
+
+  responses:
+    Problem:
+      description: Any error, as an RFC 9457 problem document. `401`, `403` and `429` can come from every authenticated operation.
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Unauthenticated:
+      description: No valid session or token (`unauthenticated`), or wrong credentials (`invalid_credentials`)
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    NotFound:
+      description: No such resource (`not_found`), or the feature is absent on this station (`module_unavailable`)
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Conflict:
+      description: The request contradicts the current state (`conflict`, `setup_completed`, `module_unavailable`)
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Gone:
+      description: The entry exists but its media was deleted (`media_unavailable`)
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    PreconditionFailed:
+      description: The resource changed since it was read (`precondition_failed`); read it again
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    PreconditionRequired:
+      description: '`If-Match` is missing (`precondition_required`)'
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    ValidationFailed:
+      description: The body or a parameter is invalid (`validation_failed`); `errors` names each field
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    RateLimited:
+      description: Too many requests or too many failed sign-ins (`rate_limited`)
+      headers: {Retry-After: {$ref: '#/components/headers/RetryAfter'}}
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Audio:
+      description: Audio data; `206` for a byte range
+      headers:
+        Accept-Ranges: {schema: {type: string, const: bytes}}
+        Content-Range: {schema: {type: string}}
+      content:
+        audio/wav: {schema: {type: string, format: binary}}
+
+  schemas:
+    # ───── primitives ─────
+    Uuid: {type: string, format: uuid, description: UUIDv7. Opaque; unique across all stations., examples: ['0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f']}
+    Slug: {type: string, pattern: '^[a-z0-9]+(?:[-_][a-z0-9]+)*$', maxLength: 100, examples: [turdus-merula]}
+    Cursor: {type: [string, 'null'], description: Pass back as `cursor` for the next page; `null` at the end}
+    Timestamp: {type: string, format: date-time, examples: ['2026-11-10T06:30:00Z']}
+    NullableTimestamp: {type: [string, 'null'], format: date-time}
+    LocalTime: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', description: Wall-clock time in the station's time zone, examples: ['21:30']}
+    LanguageTag: {type: string, description: BCP 47 language tag, examples: [de, en]}
+    LocalizedText: {type: object, description: Text by language tag, additionalProperties: {type: string}, examples: [{en: Eurasian Blackbird, de: Amsel}]}
+    Role:
+      type: string
+      enum: [viewer, operator, admin]
+      description: '`viewer` reads and listens. `operator` also controls microphones and modules and reviews detections. `admin` also changes settings, users, tokens and the system.'
+    Severity: {type: string, enum: [info, warning, critical]}
+    Analyzer: {type: string, enum: [birdnet, batdetect], description: Open enum; the analysis module that produced a result}
+    ModuleId: {type: string, enum: [birdnet, batdetect, weather, cloud_sync, live_audio, remote_access], description: Open enum}
+    StreamKind: {type: string, enum: [processed, raw], default: processed}
+    SettingsSectionName: {type: string, enum: [recording, storage, sync, birdnet, batdetect, weather, notifications], description: Open enum}
+    EnrollmentState: {type: string, enum: [pending, enrolled, ignored]}
+    ConnectionState: {type: string, enum: [connected, disconnected]}
+    ReviewState: {type: string, enum: [unreviewed, confirmed, rejected]}
+    AlertState: {type: string, enum: [active, acknowledged, resolved]}
+    LogLevel: {type: string, enum: [debug, info, warning, error, critical]}
+    RetentionLevel:
+      type: string
+      enum: [normal, warning, critical, emergency]
+      description: '`normal`: nothing is deleted. From `warning` on the oldest recordings go first, with rising urgency.'
+    SpeciesCategory:
+      type: string
+      enum: [bird, bat, mammal, amphibian, insect, human, environment, other]
+      description: Open enum. `human` and `environment` are sound classes an analyzer reports that are not species, such as speech or engines.
+
+    # ───── errors ─────
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: {type: string, format: uri-reference, examples: ['https://docs.silvasonic.de/api/problems#validation_failed']}
+        title: {type: string}
+        status: {type: integer}
+        code:
+          type: string
+          description: Stable machine-readable code; open enum
+          examples: [unauthenticated, invalid_credentials, forbidden, csrf_rejected, not_found, module_unavailable, conflict, setup_completed, media_unavailable, precondition_failed, precondition_required, validation_failed, rate_limited, internal_error]
+        detail: {type: string}
+        instance: {type: string, format: uri-reference}
+        request_id: {type: string}
+        errors:
+          type: array
+          description: One entry per invalid field
+          items:
+            type: object
+            required: [pointer, code]
+            properties:
+              pointer: {type: string, description: 'JSON Pointer into the request body, or the parameter name', examples: [/min_confidence]}
+              code: {type: string, examples: [out_of_range]}
+              detail: {type: string}
+
+    # ───── meta ─────
+    Info:
+      type: object
+      required: [api_version, software_version, setup_required, auth_methods, capabilities]
+      properties:
+        api_version: {type: string, description: Version of this contract the station implements, examples: ['1.0.0']}
+        software_version: {type: string}
+        setup_required: {type: boolean, description: '`true` until `POST /setup` succeeded'}
+        auth_methods: {type: array, items: {type: string, enum: [password, totp, passkey, oidc]}, description: Open enum; ways to sign in on this station}
+        capabilities: {type: array, items: {type: string}, description: 'Planned features this station implements, e.g. `live_audio`, `weather`, `exports`', examples: [[birdnet, cloud_sync]]}
+        trusted_origins: {type: array, items: {type: string, format: uri}, description: Origins under which the station presents a publicly trusted certificate}
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, const: ok}
+
+    # ───── setup & auth ─────
+    Password: {type: string, format: password, minLength: 12, maxLength: 256, writeOnly: true, description: At least 12 characters; any characters allowed; common and leaked passwords are refused}
+    SetupRequest:
+      type: object
+      required: [setup_code, admin, station]
+      properties:
+        setup_code: {type: string, description: Printed on the station or shown on its console at first boot}
+        admin:
+          type: object
+          required: [username, password]
+          properties:
+            username: {type: string, minLength: 1, maxLength: 64}
+            password: {$ref: '#/components/schemas/Password'}
+        station: {$ref: '#/components/schemas/StationUpdate'}
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: {type: string}
+        password: {type: string, format: password, writeOnly: true}
+        totp_code: {type: string, description: Required when the account has a second factor; a recovery code is accepted too}
+    Session:
+      type: object
+      required: [id, user, auth_method, created_at, expires_at, current]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        user: {$ref: '#/components/schemas/User'}
+        auth_method: {type: string, enum: [password, totp, passkey, oidc], description: Open enum; strongest method used}
+        created_at: {$ref: '#/components/schemas/Timestamp'}
+        last_used_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        expires_at: {$ref: '#/components/schemas/Timestamp'}
+        current: {type: boolean, description: This is the session making the request}
+        client:
+          type: object
+          properties:
+            user_agent: {type: [string, 'null']}
+            ip: {type: [string, 'null']}
+    SessionPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Session'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    PasswordChange:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, format: password, writeOnly: true}
+        new_password: {$ref: '#/components/schemas/Password'}
+    TotpEnrollment:
+      type: object
+      required: [secret, otpauth_uri]
+      properties:
+        secret: {type: string}
+        otpauth_uri: {type: string, format: uri, description: For a QR code}
+    TotpConfirmation:
+      type: object
+      required: [code]
+      properties:
+        code: {type: string}
+    RecoveryCodes:
+      type: object
+      required: [recovery_codes]
+      properties:
+        recovery_codes: {type: array, items: {type: string}}
+    ApiToken:
+      type: object
+      required: [id, name, role, token_prefix, owner_id, created_at]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        name: {type: string, examples: [Home Assistant]}
+        role: {$ref: '#/components/schemas/Role'}
+        token_prefix: {type: string, description: 'First characters of the secret, to recognise it', examples: [sst_4f9a]}
+        owner_id: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/Timestamp'}
+        expires_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        last_used_at: {$ref: '#/components/schemas/NullableTimestamp'}
+    ApiTokenCreate:
+      type: object
+      required: [name, role]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        role: {$ref: '#/components/schemas/Role'}
+        expires_at: {$ref: '#/components/schemas/NullableTimestamp'}
+    ApiTokenCreated:
+      allOf:
+        - {$ref: '#/components/schemas/ApiToken'}
+        - type: object
+          required: [token]
+          properties:
+            token: {type: string, description: The secret. Shown once; the station keeps only a hash.}
+    ApiTokenPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ApiToken'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    User:
+      type: object
+      required: [id, username, role, active, created_at]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        username: {type: string}
+        display_name: {type: [string, 'null']}
+        role: {$ref: '#/components/schemas/Role'}
+        active: {type: boolean}
+        language: {anyOf: [{$ref: '#/components/schemas/LanguageTag'}, {type: 'null'}], description: Preferred language; the station's when `null`}
+        totp_enabled: {type: boolean}
+        created_at: {$ref: '#/components/schemas/Timestamp'}
+        last_login_at: {$ref: '#/components/schemas/NullableTimestamp'}
+    UserCreate:
+      type: object
+      required: [username, password, role]
+      properties:
+        username: {type: string, minLength: 1, maxLength: 64}
+        password: {$ref: '#/components/schemas/Password'}
+        display_name: {type: [string, 'null']}
+        role: {$ref: '#/components/schemas/Role'}
+        language: {$ref: '#/components/schemas/LanguageTag'}
+    UserUpdate:
+      type: object
+      properties:
+        display_name: {type: [string, 'null']}
+        role: {$ref: '#/components/schemas/Role'}
+        active: {type: boolean}
+        language: {anyOf: [{$ref: '#/components/schemas/LanguageTag'}, {type: 'null'}]}
+        password: {$ref: '#/components/schemas/Password'}
+    UserPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/User'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── station ─────
+    Location:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: {type: number, minimum: -90, maximum: 90}
+        longitude: {type: number, minimum: -180, maximum: 180}
+        elevation_m: {type: [number, 'null']}
+    Station:
+      type: object
+      required: [id, name, timezone, language, software, created_at]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        name: {type: string, examples: [Garten Nord]}
+        location: {anyOf: [{$ref: '#/components/schemas/Location'}, {type: 'null'}]}
+        timezone: {type: string, description: IANA time zone, examples: [Europe/Berlin]}
+        language: {$ref: '#/components/schemas/LanguageTag'}
+        software:
+          type: object
+          required: [version, api_version]
+          properties:
+            version: {type: string}
+            api_version: {type: string}
+        hardware:
+          type: object
+          properties:
+            model: {type: [string, 'null'], examples: [Raspberry Pi 5 Model B Rev 1.0]}
+            architecture: {type: [string, 'null'], examples: [aarch64]}
+            serial_number: {type: [string, 'null']}
+        created_at: {$ref: '#/components/schemas/Timestamp', description: When the station was set up}
+    StationUpdate:
+      type: object
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        location: {anyOf: [{$ref: '#/components/schemas/Location'}, {type: 'null'}]}
+        timezone: {type: string}
+        language: {$ref: '#/components/schemas/LanguageTag'}
+    StorageUsage:
+      type: object
+      required: [total_bytes, used_bytes, free_bytes, used_percent, retention_level]
+      properties:
+        total_bytes: {type: integer, format: int64}
+        used_bytes: {type: integer, format: int64}
+        free_bytes: {type: integer, format: int64}
+        used_percent: {type: number}
+        retention_level: {$ref: '#/components/schemas/RetentionLevel'}
+    ComponentStatus:
+      type: object
+      required: [id, kind, state, updated_at]
+      properties:
+        id: {type: string, description: 'Stable name, e.g. `capture:<microphone_id>`, `indexing`, `retention`, `sync`, `birdnet`. New ones may appear.'}
+        kind: {type: string, enum: [capture, indexing, retention, sync, analysis, orchestration, database, api, weather, live_audio], description: Open enum}
+        state: {type: string, enum: [running, idle, starting, stopped, failed, unknown]}
+        message: {type: [string, 'null']}
+        microphone_id: {anyOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        updated_at: {$ref: '#/components/schemas/Timestamp'}
+    StationStatus:
+      type: object
+      required: [state, time, clock, uptime_s, resources, storage, recording, analysis, alerts, components]
+      properties:
+        state: {type: string, enum: [ok, degraded, error], description: '`ok`: every expected microphone records and no critical alert is active'}
+        time: {$ref: '#/components/schemas/Timestamp', description: The station clock}
+        clock:
+          type: object
+          required: [synced]
+          properties:
+            synced: {type: [boolean, 'null'], description: Whether the clock is disciplined by a time source; `null` when unknown}
+        uptime_s: {type: integer}
+        resources:
+          type: object
+          required: [cpu_percent, cpu_count, memory_total_bytes, memory_used_bytes]
+          properties:
+            cpu_percent: {type: number}
+            cpu_count: {type: integer}
+            memory_total_bytes: {type: integer, format: int64}
+            memory_used_bytes: {type: integer, format: int64}
+            temperature_c: {type: [number, 'null']}
+        storage: {$ref: '#/components/schemas/StorageUsage'}
+        recording:
+          type: object
+          required: [recording_count, expected_count]
+          properties:
+            recording_count: {type: integer, description: Microphones recording right now}
+            expected_count: {type: integer, description: 'Microphones that are connected, enrolled and enabled'}
+            last_segment_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        analysis:
+          type: object
+          required: [pending_count]
+          properties:
+            pending_count: {type: integer, description: Recordings waiting for at least one enabled analyzer}
+        sync:
+          type: object
+          properties:
+            state: {type: string}
+            pending_count: {type: integer}
+        alerts:
+          type: object
+          required: [critical_count, warning_count]
+          properties:
+            critical_count: {type: integer}
+            warning_count: {type: integer}
+        components: {type: array, items: {$ref: '#/components/schemas/ComponentStatus'}}
+    MetricSeriesList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [metric, resolution_s, points]
+            properties:
+              metric: {type: string}
+              resolution_s: {type: integer}
+              points:
+                type: array
+                items:
+                  type: object
+                  required: [time, value]
+                  properties:
+                    time: {$ref: '#/components/schemas/Timestamp'}
+                    value: {type: [number, 'null']}
+
+    # ───── events ─────
+    ResourceRef:
+      type: object
+      required: [type, id]
+      properties:
+        type: {type: string, examples: [microphone, recording, detection, species, module, user]}
+        id: {type: string}
+    Event:
+      type: object
+      required: [id, type, time, severity, data]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        type:
+          type: string
+          description: '`<resource>.<what happened>`; open enum'
+          examples: [station.status, microphone.connected, microphone.disconnected, microphone.updated, recording.created, recording.deleted, detection.created, species.first_detected, module.updated, storage.level_changed, sync.upload_failed, alert.raised, alert.resolved, settings.updated, stream.reset]
+        time: {$ref: '#/components/schemas/Timestamp'}
+        severity: {$ref: '#/components/schemas/Severity'}
+        subject: {anyOf: [{$ref: '#/components/schemas/ResourceRef'}, {type: 'null'}]}
+        data: {type: object, description: 'The affected resource in its current form, or event-specific fields', additionalProperties: true}
+    EventPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Event'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    Alert:
+      type: object
+      required: [id, code, severity, state, params, raised_at]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        code:
+          type: string
+          description: What is wrong; open enum. The client owns the wording.
+          examples: [recording.stalled, microphone.disconnected, clock.unsynced, storage.warning, storage.critical, analysis.backlog, sync.failing, module.failed, update.available]
+        severity: {$ref: '#/components/schemas/Severity'}
+        state: {$ref: '#/components/schemas/AlertState'}
+        subject: {anyOf: [{$ref: '#/components/schemas/ResourceRef'}, {type: 'null'}]}
+        params: {type: object, additionalProperties: true, description: Values for the message, examples: [{used_percent: 82.4}]}
+        raised_at: {$ref: '#/components/schemas/Timestamp'}
+        acknowledged_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        acknowledged_by: {anyOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        resolved_at: {$ref: '#/components/schemas/NullableTimestamp'}
+    AlertPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Alert'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    AuditEntry:
+      type: object
+      required: [id, time, actor, action, outcome]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        time: {$ref: '#/components/schemas/Timestamp'}
+        actor:
+          type: object
+          required: [type]
+          properties:
+            type: {type: string, enum: [user, token, system, fleet]}
+            id: {type: [string, 'null']}
+            name: {type: [string, 'null']}
+        action: {type: string, examples: [auth.login, auth.login_failed, settings.updated, microphone.updated, recording.deleted, token.created, user.created]}
+        target: {anyOf: [{$ref: '#/components/schemas/ResourceRef'}, {type: 'null'}]}
+        outcome: {type: string, enum: [success, denied, failed]}
+        client_ip: {type: [string, 'null']}
+        request_id: {type: [string, 'null']}
+        changes: {type: [object, 'null'], additionalProperties: true, description: 'Changed fields, never secrets'}
+    AuditEntryPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AuditEntry'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── microphones ─────
+    CaptureConfig:
+      type: object
+      description: What the assigned profile makes the microphone record
+      required: [sample_rate_hz, channels, sample_format, segment_duration_s, raw_enabled, processed_enabled]
+      properties:
+        sample_rate_hz: {type: integer, examples: [384000]}
+        channels: {type: integer}
+        sample_format: {type: string, enum: [S16LE, S24LE, S32LE]}
+        segment_duration_s: {type: integer}
+        raw_enabled: {type: boolean}
+        processed_enabled: {type: boolean}
+        gain_db: {type: number}
+    RecordingActivity:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [recording, starting, stopped, failed, unknown]
+          description: '`stopped` covers disabled, not enrolled and disconnected; the microphone fields say which'
+        since: {$ref: '#/components/schemas/NullableTimestamp'}
+        last_segment_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        segment_count: {type: integer, description: Segments since recording last started}
+        restart_count: {type: integer, description: Automatic recoveries since recording last started}
+        restart_limit: {type: integer}
+        failure_reason: {type: [string, 'null']}
+        level_dbfs: {type: [number, 'null'], description: Recent peak level; `null` until the station measures it}
+    Microphone:
+      type: object
+      required: [id, hardware_id, name, model, connection_state, enrollment_state, enabled, recording]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        hardware_id: {type: string, description: 'What makes the station recognise this microphone again: USB vendor, product and serial, or the USB port when it has no serial', examples: ['0869-0389-00000000034F']}
+        name: {type: string, description: Label chosen by the user; the model until then, examples: [Teich]}
+        model: {type: string, examples: [UltraMic 384K EVO]}
+        serial_number: {type: [string, 'null']}
+        connection_state: {$ref: '#/components/schemas/ConnectionState'}
+        first_seen_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        last_seen_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        enrollment_state: {$ref: '#/components/schemas/EnrollmentState'}
+        enabled: {type: boolean, description: Desired state. `false` stops recording at once.}
+        profile_slug: {anyOf: [{$ref: '#/components/schemas/Slug'}, {type: 'null'}]}
+        capture: {anyOf: [{$ref: '#/components/schemas/CaptureConfig'}, {type: 'null'}]}
+        recording: {$ref: '#/components/schemas/RecordingActivity'}
+        hardware: {type: object, additionalProperties: true, description: 'Facts the station read from the device, e.g. USB IDs and the ALSA name'}
+    MicrophoneUpdate:
+      type: object
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+        enabled: {type: boolean}
+        enrollment_state: {$ref: '#/components/schemas/EnrollmentState'}
+        profile_slug: {anyOf: [{$ref: '#/components/schemas/Slug'}, {type: 'null'}]}
+    MicrophonePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Microphone'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    MicrophoneProfile:
+      type: object
+      required: [slug, name, audio]
+      properties:
+        slug: {$ref: '#/components/schemas/Slug'}
+        name: {type: string}
+        description: {type: [string, 'null']}
+        manufacturer: {type: [string, 'null']}
+        model: {type: [string, 'null']}
+        built_in: {type: boolean, readOnly: true, description: Shipped with the software; read-only}
+        in_use: {type: boolean, readOnly: true}
+        audio:
+          type: object
+          required: [sample_rate_hz]
+          properties:
+            sample_rate_hz: {type: integer, minimum: 1}
+            channels: {type: integer, minimum: 1, default: 1}
+            sample_format: {type: string, enum: [S16LE, S24LE, S32LE], default: S16LE}
+            match:
+              type: [object, 'null']
+              description: How a plugged-in device is matched to this profile
+              properties:
+                usb_vendor_id: {type: [string, 'null']}
+                usb_product_id: {type: [string, 'null']}
+                alsa_name_contains: {type: [string, 'null']}
+        processing:
+          type: object
+          properties:
+            gain_db: {type: number, default: 0}
+            chunk_frames: {type: integer, minimum: 1, default: 4096}
+            highpass_filter_hz: {type: [number, 'null']}
+        stream:
+          type: object
+          properties:
+            raw_enabled: {type: boolean, default: true}
+            processed_enabled: {type: boolean, default: true}
+            live_stream_enabled: {type: boolean, default: false}
+            segment_duration_s: {type: integer, minimum: 1, default: 10}
+    MicrophoneProfilePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/MicrophoneProfile'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── recordings ─────
+    RecordingFile:
+      type: object
+      required: [available, size_bytes, sample_rate_hz]
+      properties:
+        available: {type: boolean, description: '`false` once the local file is deleted'}
+        size_bytes: {type: integer, format: int64}
+        sample_rate_hz: {type: integer}
+        audio_url: {type: [string, 'null'], format: uri-reference, description: '`null` when not available'}
+    AnalysisState:
+      type: object
+      required: [state]
+      properties:
+        state: {type: string, enum: [pending, done, failed, skipped]}
+        reason: {type: [string, 'null'], description: 'Why it failed or was skipped; open enum, e.g. `file_missing`, `sample_rate_unsupported`, `error`'}
+        finished_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        detection_count: {type: [integer, 'null']}
+    Recording:
+      type: object
+      required: [id, microphone_id, started_at, duration_s, clock_synced, sample_rate_hz, raw, analysis, detection_count]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        microphone_id: {$ref: '#/components/schemas/Uuid'}
+        started_at: {$ref: '#/components/schemas/Timestamp', description: Wall-clock time of the first sample}
+        duration_s: {type: number}
+        clock_synced: {type: boolean, description: '`false`: the station clock was unsynchronised, so `started_at` may be off'}
+        sample_rate_hz: {type: integer, description: Native rate of the microphone}
+        channels: {type: integer}
+        raw: {$ref: '#/components/schemas/RecordingFile'}
+        processed: {anyOf: [{$ref: '#/components/schemas/RecordingFile'}, {type: 'null'}], description: '`null` for a microphone that records the raw stream only'}
+        analysis: {type: object, description: State per analyzer; an analyzer that is not enabled has no entry, additionalProperties: {$ref: '#/components/schemas/AnalysisState'}}
+        detection_count: {type: integer}
+        uploaded_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        deleted_at: {$ref: '#/components/schemas/NullableTimestamp', description: When the local audio was deleted}
+        deletion_reason: {type: [string, 'null'], enum: [retention, manual, null], description: Open enum}
+    RecordingPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Recording'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── detections & species ─────
+    DetectionReview:
+      type: object
+      required: [state]
+      properties:
+        state: {$ref: '#/components/schemas/ReviewState'}
+        corrected_species_id: {anyOf: [{$ref: '#/components/schemas/Slug'}, {type: 'null'}], description: 'What it really was, when the analyzer was wrong'}
+        note: {type: [string, 'null'], maxLength: 1000}
+        reviewed_at: {allOf: [{$ref: '#/components/schemas/NullableTimestamp'}], readOnly: true}
+        reviewed_by: {anyOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], readOnly: true}
+    Detection:
+      type: object
+      required: [id, recording_id, microphone_id, analyzer, species_id, scientific_name, common_name, started_at, ended_at, offset_s, confidence, review]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        recording_id: {$ref: '#/components/schemas/Uuid'}
+        microphone_id: {$ref: '#/components/schemas/Uuid'}
+        analyzer: {$ref: '#/components/schemas/Analyzer'}
+        species_id: {$ref: '#/components/schemas/Slug'}
+        scientific_name: {type: string, examples: [Turdus merula]}
+        common_name: {type: string, description: In the requested language, examples: [Amsel]}
+        started_at: {$ref: '#/components/schemas/Timestamp'}
+        ended_at: {$ref: '#/components/schemas/Timestamp'}
+        offset_s: {type: number, description: Start within the recording}
+        confidence: {type: number, minimum: 0, maximum: 1}
+        clock_synced: {type: boolean, description: Inherited from the recording}
+        clip_url: {type: [string, 'null'], format: uri-reference}
+        model_version: {type: [string, 'null'], examples: [v2.4]}
+        details: {type: object, additionalProperties: true, description: Analyzer-specific parameters the result was produced with}
+        review: {$ref: '#/components/schemas/DetectionReview'}
+    DetectionUpdate:
+      type: object
+      required: [review]
+      properties:
+        review: {$ref: '#/components/schemas/DetectionReview'}
+    DetectionPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Detection'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+    SpeciesStats:
+      type: object
+      description: Over the requested window; rejected detections do not count
+      required: [detection_count]
+      properties:
+        detection_count: {type: integer}
+        first_detected_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        last_detected_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        max_confidence: {type: [number, 'null']}
+        first_ever_detected_at: {$ref: '#/components/schemas/NullableTimestamp', description: Independent of the window; tells a new species from a returning one}
+    Species:
+      type: object
+      required: [id, scientific_name, common_name, common_names, category, watched]
+      properties:
+        id: {$ref: '#/components/schemas/Slug'}
+        scientific_name: {type: string}
+        common_name: {type: string, description: In the requested language}
+        common_names: {$ref: '#/components/schemas/LocalizedText'}
+        category: {$ref: '#/components/schemas/SpeciesCategory'}
+        analyzers: {type: array, items: {$ref: '#/components/schemas/Analyzer'}}
+        description: {type: [string, 'null'], description: In the requested language}
+        descriptions: {$ref: '#/components/schemas/LocalizedText'}
+        image_url: {type: [string, 'null'], format: uri-reference}
+        image_attribution: {type: [string, 'null'], description: Author and licence of the picture}
+        reference_url: {type: [string, 'null'], format: uri, description: Where to read more}
+        conservation_status: {type: [string, 'null'], description: IUCN Red List category, examples: [LC, NT, VU, EN, CR]}
+        watched: {type: boolean}
+        stats: {anyOf: [{$ref: '#/components/schemas/SpeciesStats'}, {type: 'null'}]}
+    SpeciesUpdate:
+      type: object
+      properties:
+        watched: {type: boolean}
+    SpeciesPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Species'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── statistics ─────
+    StatsSummary:
+      type: object
+      required: [recording_count, recorded_duration_s, detection_count, species_count, new_species_count]
+      properties:
+        from: {$ref: '#/components/schemas/NullableTimestamp'}
+        to: {$ref: '#/components/schemas/NullableTimestamp'}
+        recording_count: {type: integer}
+        recorded_duration_s: {type: number}
+        detection_count: {type: integer}
+        species_count: {type: integer}
+        new_species_count: {type: integer, description: Species detected for the first time ever within the window}
+    DetectionTimeline:
+      type: object
+      required: [bucket, timezone, items]
+      properties:
+        bucket: {type: string}
+        timezone: {type: string}
+        items:
+          type: array
+          items:
+            type: object
+            required: [start, detection_count, species_count]
+            properties:
+              start: {$ref: '#/components/schemas/Timestamp'}
+              detection_count: {type: integer}
+              species_count: {type: integer}
+    DetectionHeatmap:
+      type: object
+      required: [timezone, items]
+      properties:
+        timezone: {type: string}
+        items:
+          type: array
+          description: Cells without detections are left out
+          items:
+            type: object
+            required: [date, hour, detection_count]
+            properties:
+              date: {type: string, format: date}
+              hour: {type: integer, minimum: 0, maximum: 23}
+              detection_count: {type: integer}
+    RecordingCoverage:
+      type: object
+      required: [bucket, timezone, items]
+      properties:
+        bucket: {type: string}
+        timezone: {type: string}
+        items:
+          type: array
+          items:
+            type: object
+            required: [start, microphone_id, recorded_s, expected_s, gap_count]
+            properties:
+              start: {$ref: '#/components/schemas/Timestamp'}
+              microphone_id: {$ref: '#/components/schemas/Uuid'}
+              recorded_s: {type: number}
+              expected_s: {type: number, description: Seconds the microphone was enabled and enrolled in the bucket}
+              gap_count: {type: integer}
+
+    # ───── storage ─────
+    Storage:
+      allOf:
+        - {$ref: '#/components/schemas/StorageUsage'}
+        - type: object
+          required: [thresholds, breakdown]
+          properties:
+            thresholds:
+              type: object
+              required: [warning_percent, critical_percent, emergency_percent]
+              properties:
+                warning_percent: {type: number}
+                critical_percent: {type: number}
+                emergency_percent: {type: number}
+            breakdown:
+              type: object
+              properties:
+                recordings_raw_bytes: {type: integer, format: int64}
+                recordings_processed_bytes: {type: integer, format: int64}
+                clips_bytes: {type: integer, format: int64}
+                other_bytes: {type: integer, format: int64}
+            growth_bytes_per_day: {type: [number, 'null'], description: Average over the last days}
+            days_until_cleanup: {type: [number, 'null'], description: Until the warning threshold at the current growth; `null` when unknown or already cleaning}
+            oldest_recording_at: {$ref: '#/components/schemas/NullableTimestamp'}
+
+    # ───── sync ─────
+    SyncTarget:
+      type: object
+      required: [type, has_secret]
+      properties:
+        type: {type: string, enum: [webdav, s3, sftp], description: Open enum}
+        url: {type: [string, 'null'], description: Server address without credentials}
+        path: {type: [string, 'null'], description: Folder or bucket prefix}
+        username: {type: [string, 'null']}
+        has_secret: {type: boolean, readOnly: true}
+        options: {type: object, additionalProperties: {type: string}, description: Target-specific settings such as an S3 region}
+    SyncTargetInput:
+      allOf:
+        - {$ref: '#/components/schemas/SyncTarget'}
+        - type: object
+          properties:
+            secret: {type: string, format: password, writeOnly: true, description: Password or secret key. Stored encrypted and never returned.}
+    SyncStatus:
+      type: object
+      required: [enabled, configured, state, pending_count]
+      properties:
+        enabled: {type: boolean}
+        configured: {type: boolean}
+        state: {type: string, enum: [disabled, unconfigured, idle, uploading, waiting_for_window, failing]}
+        pending_count: {type: integer}
+        pending_bytes: {type: [integer, 'null'], format: int64}
+        last_success_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        last_error:
+          type: [object, 'null']
+          properties:
+            time: {$ref: '#/components/schemas/Timestamp'}
+            message: {type: string}
+        target: {anyOf: [{$ref: '#/components/schemas/SyncTarget'}, {type: 'null'}]}
+    SyncTestResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: {type: boolean}
+        duration_ms: {type: [integer, 'null']}
+        message: {type: [string, 'null']}
+    Upload:
+      type: object
+      required: [id, recording_id, attempted_at, size_bytes, success]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        recording_id: {$ref: '#/components/schemas/Uuid'}
+        attempted_at: {$ref: '#/components/schemas/Timestamp'}
+        remote_path: {type: [string, 'null']}
+        size_bytes: {type: integer, format: int64}
+        success: {type: boolean}
+        error_message: {type: [string, 'null']}
+    UploadPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Upload'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── modules ─────
+    Module:
+      type: object
+      required: [id, category, available, enabled, state, updated_at]
+      properties:
+        id: {$ref: '#/components/schemas/ModuleId'}
+        category: {type: string, enum: [analysis, sync, environment, audio, network], description: Open enum}
+        available: {type: boolean, description: Whether this station can run the module at all}
+        enabled: {type: boolean, description: Desired state}
+        state: {type: string, enum: [disabled, starting, running, idle, failed, unavailable], description: Actual state}
+        message: {type: [string, 'null']}
+        activity:
+          type: object
+          description: What the module is doing; fields depend on the module
+          properties:
+            pending_count: {type: [integer, 'null'], description: Recordings waiting for this analyzer}
+            processed_count: {type: [integer, 'null'], description: Since the module last started}
+            error_count: {type: [integer, 'null']}
+            average_duration_ms: {type: [number, 'null']}
+            last_activity_at: {$ref: '#/components/schemas/NullableTimestamp'}
+            model_version: {type: [string, 'null']}
+          additionalProperties: true
+        updated_at: {$ref: '#/components/schemas/Timestamp', description: When `enabled` last changed}
+    ModuleUpdate:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: {type: boolean}
+    ModulePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Module'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── settings ─────
+    TimeWindow:
+      type: object
+      description: A daily window in the station's time zone; it may cross midnight
+      required: [start, end]
+      properties:
+        start: {$ref: '#/components/schemas/LocalTime'}
+        end: {$ref: '#/components/schemas/LocalTime'}
+    RecordingSettings:
+      type: object
+      properties:
+        auto_enrollment: {type: boolean, default: true, description: Start recording from a newly plugged-in microphone whose type is known for certain}
+        max_microphones: {type: integer, minimum: 1, default: 5}
+    StorageSettings:
+      type: object
+      description: The three thresholds must rise
+      properties:
+        warning_percent: {type: number, minimum: 1, maximum: 99, default: 70}
+        critical_percent: {type: number, minimum: 1, maximum: 99, default: 80}
+        emergency_percent: {type: number, minimum: 1, maximum: 99, default: 90}
+        max_age_days: {type: [integer, 'null'], minimum: 1, default: null, description: Delete recordings older than this regardless of free space; `null` keeps them until space runs out}
+    SyncSettings:
+      type: object
+      properties:
+        bandwidth_limit_bytes_per_s: {type: [integer, 'null'], minimum: 1024, default: 1048576, description: '`null` is unlimited'}
+        window: {anyOf: [{$ref: '#/components/schemas/TimeWindow'}, {type: 'null'}], default: null, description: Upload only within this window; `null` is always}
+    BirdnetSettings:
+      type: object
+      properties:
+        min_confidence: {type: number, minimum: 0.01, maximum: 0.99, default: 0.65}
+        sensitivity: {type: number, minimum: 0.5, maximum: 1.5, default: 1.0}
+        overlap_s: {type: number, minimum: 0, maximum: 2.9, default: 0}
+        clip_padding_s: {type: number, minimum: 0, maximum: 10, default: 3}
+        processing_order: {type: string, enum: [oldest_first, newest_first], default: oldest_first}
+        location_filter: {type: boolean, default: true, description: Report only species plausible at the station's location and season; needs a location}
+        window: {anyOf: [{$ref: '#/components/schemas/TimeWindow'}, {type: 'null'}], default: null, description: Analyse only recordings made within this window}
+    BatdetectSettings:
+      type: object
+      properties:
+        min_confidence: {type: number, minimum: 0.01, maximum: 0.99}
+        window: {anyOf: [{$ref: '#/components/schemas/TimeWindow'}, {type: 'null'}]}
+      additionalProperties: true
+    WeatherSettings:
+      type: object
+      properties:
+        provider: {type: string, examples: [open_meteo]}
+        interval_s: {type: integer, minimum: 300}
+      additionalProperties: true
+    NotificationSettings:
+      type: object
+      properties:
+        min_severity: {$ref: '#/components/schemas/Severity'}
+        new_species: {type: boolean}
+        watched_species: {type: boolean}
+        channels:
+          type: array
+          items:
+            type: object
+            required: [type, target, enabled]
+            properties:
+              type: {type: string, enum: [webhook, email, web_push], description: Open enum}
+              target: {type: string}
+              enabled: {type: boolean}
+      additionalProperties: true
+    Settings:
+      type: object
+      properties:
+        recording: {$ref: '#/components/schemas/RecordingSettings'}
+        storage: {$ref: '#/components/schemas/StorageSettings'}
+        sync: {$ref: '#/components/schemas/SyncSettings'}
+        birdnet: {$ref: '#/components/schemas/BirdnetSettings'}
+        batdetect: {$ref: '#/components/schemas/BatdetectSettings'}
+        weather: {$ref: '#/components/schemas/WeatherSettings'}
+        notifications: {$ref: '#/components/schemas/NotificationSettings'}
+    SettingsSectionValue:
+      description: The schema named by the `section` path parameter
+      anyOf:
+        - {$ref: '#/components/schemas/RecordingSettings'}
+        - {$ref: '#/components/schemas/StorageSettings'}
+        - {$ref: '#/components/schemas/SyncSettings'}
+        - {$ref: '#/components/schemas/BirdnetSettings'}
+        - {$ref: '#/components/schemas/BatdetectSettings'}
+        - {$ref: '#/components/schemas/WeatherSettings'}
+        - {$ref: '#/components/schemas/NotificationSettings'}
+
+    # ───── logs ─────
+    LogLine:
+      type: object
+      required: [time, component_id, level, message]
+      properties:
+        time: {$ref: '#/components/schemas/Timestamp'}
+        component_id: {type: string}
+        level: {$ref: '#/components/schemas/LogLevel'}
+        message: {type: string}
+        fields: {type: object, additionalProperties: true}
+    LogLinePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/LogLine'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── weather ─────
+    WeatherObservation:
+      type: object
+      required: [observed_at, source, forecast]
+      properties:
+        observed_at: {$ref: '#/components/schemas/Timestamp'}
+        source: {type: string, examples: [open_meteo, bme280]}
+        forecast: {type: boolean}
+        temperature_c: {type: [number, 'null']}
+        humidity_percent: {type: [number, 'null']}
+        pressure_hpa: {type: [number, 'null']}
+        wind_speed_kmh: {type: [number, 'null']}
+        wind_gusts_kmh: {type: [number, 'null']}
+        precipitation_mm: {type: [number, 'null']}
+        cloud_cover_percent: {type: [number, 'null']}
+        uv_index: {type: [number, 'null']}
+        sunshine_duration_s: {type: [number, 'null']}
+        weather_code: {type: [integer, 'null'], description: WMO weather code}
+    WeatherObservationPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/WeatherObservation'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── exports ─────
+    ExportCreate:
+      type: object
+      required: [kind, format]
+      properties:
+        kind: {type: string, enum: [detections, recordings, weather, audit_log], description: Open enum}
+        format: {type: string, enum: [csv, ndjson, parquet]}
+        from: {$ref: '#/components/schemas/NullableTimestamp'}
+        to: {$ref: '#/components/schemas/NullableTimestamp'}
+    Export:
+      allOf:
+        - {$ref: '#/components/schemas/ExportCreate'}
+        - type: object
+          required: [id, state, created_at]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            state: {type: string, enum: [queued, running, done, failed]}
+            created_at: {$ref: '#/components/schemas/Timestamp'}
+            finished_at: {$ref: '#/components/schemas/NullableTimestamp'}
+            size_bytes: {type: [integer, 'null'], format: int64}
+            download_url: {type: [string, 'null'], format: uri-reference}
+            expires_at: {$ref: '#/components/schemas/NullableTimestamp'}
+            error_message: {type: [string, 'null']}
+    ExportPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Export'}}
+        next_cursor: {$ref: '#/components/schemas/Cursor'}
+
+    # ───── system ─────
+    Network:
+      type: object
+      required: [hostnames]
+      properties:
+        hostnames:
+          type: array
+          items:
+            type: object
+            required: [url, kind, certificate_trusted]
+            properties:
+              url: {type: string, format: uri, examples: ['https://garten.tail1234.ts.net']}
+              kind: {type: string, enum: [mdns, ip, tailscale, fleet], description: Open enum}
+              certificate_trusted: {type: boolean, description: '`true`: browsers accept the certificate without a warning, so the installable app works'}
+        remote_access:
+          type: object
+          properties:
+            provider: {type: [string, 'null'], enum: [tailscale, fleet, null], description: Open enum}
+            state: {type: string, enum: [disabled, connecting, connected, needs_login, failed]}
+    UpdateStatus:
+      type: object
+      required: [current_version, state, managed_by]
+      properties:
+        current_version: {type: string}
+        available_version: {type: [string, 'null']}
+        state: {type: string, enum: [up_to_date, available, downloading, installing, reboot_required, failed]}
+        managed_by: {type: string, enum: [local, fleet], description: '`fleet`: updates arrive through the fleet and cannot be started here'}
+        last_checked_at: {$ref: '#/components/schemas/NullableTimestamp'}
+        message: {type: [string, 'null']}
+    PowerAction:
+      type: object
+      required: [action]
+      properties:
+        action: {type: string, enum: [restart_software, reboot, shutdown]}

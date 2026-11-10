@@ -28,9 +28,9 @@
 *   **Database:** Real-time system configuration updates and metadata.
 
 ### Processing
-*   **Indexer:** Registers new audio files idempotently. Extracts metadata (duration, sample rate) and resolves matching raw file paths. It remembers which files are indexed, so each poll queries the database once, in a batch, for the files it has not seen yet; the cost of a cycle does not grow with the segments the disk retains. Each new recording commits on its own. A segment whose name ends in `_unsynced` (clock not synchronised, ADR-0011) is stored with `clock_unsynced = true`.
-*   **Reconciliation Audit:** Heals split-brain states on startup (e.g., handling files blindly deleted during database outages).
-*   **Upload Worker:** Intelligently batches and compresses pending recordings to lossless formats (e.g., FLAC), then transparently pushes them to configured cloud storage targets via encrypted credentials.
+*   **Indexer:** Registers new audio files idempotently. Resolves the workspace directory to the microphone (`microphones.workspace_name` → `recordings.microphone_id`), extracts metadata and resolves matching raw file paths. `sample_rate_hz` and `channels` are the microphone's native values from the raw file's header; the processed file is the fallback only when the raw file is missing. It remembers which files are indexed, so each poll queries the database once, in a batch, for the files it has not seen yet; the cost of a cycle does not grow with the segments the disk retains. Each new recording commits on its own. A segment whose name ends in `_unsynced` (clock not synchronised, ADR-0011) is stored with `clock_synced = false`.
+*   **Reconciliation Audit:** Heals split-brain states on startup (e.g., handling files blindly deleted during database outages): a row whose file is gone gets `deleted_at` and `deletion_reason = 'missing'`.
+*   **Upload Worker:** Intelligently batches and compresses pending recordings to lossless formats (e.g., FLAC), then transparently pushes them to configured cloud storage targets via encrypted credentials. It runs while the `cloud_sync` row of the `modules` table is enabled; its tuning (`poll_interval_s`, `bandwidth_limit_bytes_per_s`, `window`) is the `sync` settings section. A successful upload sets `recordings.uploaded_at`.
 *   **Janitor:** Enforces retention thresholds by safely deleting files based on NVMe capacity and synchronization state.
 
 ### Outputs
@@ -71,7 +71,7 @@
 ### Application Settings (Dynamic)
 
 > [!NOTE]
-> Managed centrally via DB / Pydantic. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
+> Managed centrally via DB / Pydantic: the `storage` section of the `settings` table (`warning_percent`, `critical_percent`, `emergency_percent`, `cleanup_interval_s`, `cleanup_batch_files`, `index_interval_s`) and the `sync` section. See [Configuration Architecture](../../docs/adr/0023-configuration-management.md) for factory defaults and developer overrides.
 
 ## 6. Technology Stack
 
@@ -91,11 +91,11 @@
 ### Janitor Retention Enforcement
 The Janitor operates in three escalating modes based on the device's overall NVMe utilization limits (ADR-0011):
 
-1.  **Housekeeping:** The softest tier. Removes files *only* if they have been successfully synchronized to the cloud **and** have been fully analyzed by all configured AI workers.
+1.  **Housekeeping:** The softest tier. Removes files *only* if they have been successfully synchronized to the cloud **and** have been fully analyzed by all configured analyzers (every `analysis_state` entry is `done`).
 2.  **Defensive:** Engages as disk space grows tighter. Removes files once they are successfully synchronized to the cloud. Local analysis success is ignored to prioritize keeping the Recorder alive.
 3.  **Panic:** The ultimate failsafe. Removes the oldest files regardless of synchronization or analysis state. Engages when the disk is perilously close to full or when the database connection is offline and blind filesystem operations are required.
 
-When a file is purged by the Janitor, it performs a **Soft Delete** purely on the database side: the file is explicitly unlinked from disk, but its metadata row is preserved with a deletion flag for historical auditing. Deletions are processed in configurable, throttled batches to prevent disk thrashing.
+When a file is purged by the Janitor, it performs a **Soft Delete** purely on the database side: the file is explicitly unlinked from disk, but its metadata row is preserved with `deleted_at` and `deletion_reason = 'retention'` for historical auditing. Deletions are processed in configurable, throttled batches to prevent disk thrashing.
 
 ### Split-Brain Healing
 Because the **Panic** mode may blindly unlink files when the database is temporarily unreachable, the Processor always starts with a Reconciliation Audit. This compares the actual files on disk against the database ledger and heals any discrepancies (orphaned rows) before beginning standard polling operations.

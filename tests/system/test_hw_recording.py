@@ -39,7 +39,7 @@ from silvasonic.controller.container_spec import (
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
-from silvasonic.controller.reconciler import DeviceStateEvaluator
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator
 from silvasonic.recorder.ffmpeg_pipeline import PROCESSED_SAMPLE_RATE, FFmpegConfig, FFmpegPipeline
 from silvasonic.recorder.workspace import ensure_workspace
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -55,7 +55,7 @@ from ._system_helpers import (
     podman_run,
     podman_stop_rm,
     require_processor_image,
-    seed_test_devices,
+    seed_test_microphones,
     wait_for_db_rows,
     wait_for_wavs,
 )
@@ -168,7 +168,7 @@ class TestDeviceValidation:
         """FFmpeg can open the ALSA device for a brief capture."""
         mic = require_primary_mic()
         alsa_device = primary_device.alsa_device
-        sample_rate = mic.sample_rate
+        sample_rate = mic.sample_rate_hz
 
         result = subprocess.run(
             [
@@ -225,9 +225,9 @@ class TestRealAudioCapture:
         """Create a pipeline with test-friendly short segment duration."""
         ensure_workspace(workspace)
         cfg = FFmpegConfig(
-            sample_rate=sample_rate,
+            sample_rate_hz=sample_rate,
             channels=1,
-            format="S16LE",
+            sample_format="S16LE",
             segment_duration_s=self._SEGMENT_S,
             gain_db=0.0,
         )
@@ -259,7 +259,7 @@ class TestRealAudioCapture:
         pipeline = self._make_pipeline(
             workspace,
             primary_device.alsa_device,
-            require_primary_mic().sample_rate,
+            require_primary_mic().sample_rate_hz,
         )
 
         self._run_pipeline(pipeline, self._CAPTURE_S)
@@ -363,19 +363,19 @@ class TestFullHardwareLifecycle:
             )
 
         # Step 3: Upsert as enrolled
-        from silvasonic.controller.device_repository import upsert_device
+        from silvasonic.controller.microphone_repository import upsert_microphone
 
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 primary_device,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         # Step 4: Evaluate → get spec
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
@@ -518,7 +518,7 @@ class TestFullPipelineE2E:
 
         Validates:
         1. Profile matching and device enrollment.
-        2. DeviceStateEvaluator produces a valid Tier2ServiceSpec.
+        2. MicrophoneStateEvaluator produces a valid Tier2ServiceSpec.
         3. Container starts with real /dev/snd and produces dual-stream WAV files.
         4. WAV files have valid headers (correct sample rate and channels).
         5. Redis heartbeat contains service, health, recording, and watchdog metadata.
@@ -541,19 +541,19 @@ class TestFullPipelineE2E:
             )
 
         # ── Step 2: Enroll device in DB ────────────────────────────
-        from silvasonic.controller.device_repository import upsert_device
+        from silvasonic.controller.microphone_repository import upsert_microphone
 
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 primary_device,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         # ── Step 3: Evaluate desired state ─────────────────────────
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
@@ -644,8 +644,8 @@ class TestFullPipelineE2E:
             # ── Step 6: Validate WAV headers (via ffprobe) ────────
             raw_sr, raw_ch, raw_codec = _ffprobe_wav(raw_wavs[0])
             assert raw_ch >= 1
-            assert raw_sr == require_primary_mic().sample_rate, (
-                f"Raw WAV sample rate {raw_sr} != expected {require_primary_mic().sample_rate}"
+            assert raw_sr == require_primary_mic().sample_rate_hz, (
+                f"Raw WAV sample rate {raw_sr} != expected {require_primary_mic().sample_rate_hz}"
             )
             log.info(
                 "test.raw_wav_valid",
@@ -787,19 +787,19 @@ class TestFullPipelineE2E:
                 f"profile '{require_primary_mic().slug}' (score={match_result.score})"
             )
 
-        from silvasonic.controller.device_repository import upsert_device
+        from silvasonic.controller.microphone_repository import upsert_microphone
 
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 primary_device,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         # ── Step 2: Evaluate → get spec ─────────────────────────────
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
@@ -842,7 +842,7 @@ class TestFullPipelineE2E:
             db_session.__enter__()
 
             # Seed device so FK constraints are satisfied
-            seed_test_devices(db_name, [primary_device.stable_device_id])
+            seed_test_microphones(db_name, [primary_device.stable_device_id])
 
             # ── Step 4: Start Recorder with real /dev/snd ──────────
             mgr = ContainerManager(client, owner_profile=f"controller-test-{TEST_RUN_ID}")
@@ -933,23 +933,27 @@ class TestFullPipelineE2E:
                 f"WAV files on disk: {len(proc_wavs)}"
             )
 
-            # Verify metadata (duration, sample_rate, sensor_id)
+            # Verify metadata (duration_s, native sample_rate_hz, microphone)
             rows_str = db_query(
                 db_name,
-                "SELECT sensor_id, file_processed, duration, sample_rate FROM recordings LIMIT 5",
+                "SELECT m.hardware_id, r.processed_path, r.duration_s, r.sample_rate_hz "
+                "FROM recordings r JOIN microphones m ON m.id = r.microphone_id LIMIT 5",
             )
             for line in rows_str.splitlines():
                 parts = line.split("|")
                 if len(parts) < 4:
                     continue
-                sensor_id = parts[0].strip()
-                duration = float(parts[2].strip())
-                sample_rate = int(parts[3].strip())
-                assert sensor_id == primary_device.stable_device_id, (
-                    f"sensor_id mismatch: {sensor_id} != {primary_device.stable_device_id}"
+                hardware_id = parts[0].strip()
+                duration_s = float(parts[2].strip())
+                sample_rate_hz = int(parts[3].strip())
+                assert hardware_id == primary_device.stable_device_id, (
+                    f"hardware_id mismatch: {hardware_id} != {primary_device.stable_device_id}"
                 )
-                assert duration > 0, f"Recording duration must be > 0, got {duration}"
-                assert sample_rate > 0, f"Sample rate must be > 0, got {sample_rate}"
+                assert duration_s > 0, f"Recording duration must be > 0, got {duration_s}"
+                # recordings.sample_rate_hz is the native rate of the microphone
+                assert sample_rate_hz == require_primary_mic().sample_rate_hz, (
+                    f"Native sample rate {sample_rate_hz} != {require_primary_mic().sample_rate_hz}"
+                )
 
             log.info(
                 "test.processor_pipeline_passed",

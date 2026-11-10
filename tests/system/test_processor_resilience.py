@@ -34,7 +34,7 @@ from ._system_helpers import (
     podman_stop,
     podman_stop_rm,
     require_processor_image,
-    seed_processor_config,
+    seed_storage_settings,
     wait_for_db_rows,
     wait_for_wavs,
     wait_until,
@@ -237,7 +237,7 @@ class TestProcessorResilience:
         tmp_path: Path,
         run_id: str,
     ) -> None:
-        """Janitor deletes only uploaded=true recordings when threshold reached."""
+        """Janitor deletes only uploaded recordings (uploaded_at set) when threshold reached."""
         require_recorder_image()
         require_processor_image()
 
@@ -281,30 +281,29 @@ class TestProcessorResilience:
                 timeout=20,
             )
 
-            # Mark 1 recording as uploaded=false (should be default but just in case),
-            # mark 1 as uploaded=true manually via exec.
+            # Recordings start with uploaded_at NULL; mark exactly 1 as uploaded
+            # and switch the cloud_sync module on.
             db_query(
                 db_container,
-                "UPDATE recordings SET uploaded = true "
+                "UPDATE recordings SET uploaded_at = NOW() "
                 "WHERE id = (SELECT id FROM recordings LIMIT 1)",
             )
             db_query(
                 db_container,
-                "INSERT INTO system_config (key, value) "
-                "VALUES ('cloud_sync', '{\"enabled\": true}') "
-                "ON CONFLICT (key) DO UPDATE SET value = system_config.value || EXCLUDED.value",
+                "INSERT INTO modules (id, enabled) VALUES ('cloud_sync', true) "
+                "ON CONFLICT (id) DO UPDATE SET enabled = true",
             )
 
             # Now set the thresholds to force Defensive Mode (critical)
             # without hitting Panic (emergency)
-            seed_processor_config(
+            seed_storage_settings(
                 db_container,
-                janitor_threshold_warning=-20.0,
-                janitor_threshold_critical=-10.0,
-                janitor_threshold_emergency=101.0,
-                janitor_interval_seconds=2,
-                janitor_batch_size=5,
-                indexer_poll_interval=2.0,
+                warning_percent=-20.0,
+                critical_percent=-10.0,
+                emergency_percent=101.0,
+                cleanup_interval_s=2,
+                cleanup_batch_files=5,
+                index_interval_s=2.0,
             )
 
             # Restart Processor so it reads the new config
@@ -333,7 +332,7 @@ class TestProcessorResilience:
             if after_wavs != baseline_wavs - 2:
                 print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
 
-                rows_str = db_query(db_container, "SELECT id, uploaded FROM recordings")
+                rows_str = db_query(db_container, "SELECT id, uploaded_at FROM recordings")
                 print(f"\n--- DB RECORDINGS ---\n{rows_str}")
 
             assert after_wavs == baseline_wavs - 2, (
@@ -341,7 +340,7 @@ class TestProcessorResilience:
                 f"baseline={baseline_wavs} → after={after_wavs}"
             )
 
-            print(f"\n  ✅ Janitor respected uploaded=true flag: {baseline_wavs} → {after_wavs}")
+            print(f"\n  ✅ Janitor respected uploaded_at: {baseline_wavs} → {after_wavs}")
         finally:
             podman_stop_rm(processor_name)
             podman_stop_rm(recorder_name)
@@ -387,14 +386,14 @@ class TestProcessorResilience:
             )
 
             # Seed low Janitor thresholds so Housekeeping triggers
-            seed_processor_config(
+            seed_storage_settings(
                 db_container,
-                janitor_threshold_warning=1.0,
-                janitor_threshold_critical=80.0,
-                janitor_threshold_emergency=90.0,
-                janitor_interval_seconds=2,
-                janitor_batch_size=5,
-                indexer_poll_interval=2.0,
+                warning_percent=1.0,
+                critical_percent=80.0,
+                emergency_percent=90.0,
+                cleanup_interval_s=2,
+                cleanup_batch_files=5,
+                index_interval_s=2.0,
             )
 
             # Wait for WAVs to be produced
@@ -588,7 +587,8 @@ class TestProcessorResilience:
 
         1. Index recordings normally.
         2. Manually delete WAV files (simulates Panic blind delete result).
-        3. Restart Processor → Reconciliation Audit marks orphans ``local_deleted=true``.
+        3. Restart Processor → Reconciliation Audit sets ``deleted_at`` on orphans
+           (``deletion_reason = 'missing'``).
         """
         require_recorder_image()
         require_processor_image()
@@ -636,7 +636,7 @@ class TestProcessorResilience:
             # Get file paths from DB
             files_str = db_query(
                 db_container,
-                "SELECT file_processed FROM recordings WHERE local_deleted = false LIMIT 2",
+                "SELECT processed_path FROM recordings WHERE deleted_at IS NULL LIMIT 2",
             )
             files_to_delete = [line.strip() for line in files_str.splitlines() if line.strip()]
             assert len(files_to_delete) >= 1, "No files found to delete"
@@ -663,7 +663,7 @@ class TestProcessorResilience:
             # Verify Split-Brain: DB says files exist, disk says they don't
             orphan_check_str = db_query(
                 db_container,
-                "SELECT COUNT(*) FROM recordings WHERE local_deleted = false",
+                "SELECT COUNT(*) FROM recordings WHERE deleted_at IS NULL",
             )
             orphan_check = int(orphan_check_str) if orphan_check_str else 0
             assert orphan_check >= 2, "DB should still show all recordings as not deleted"
@@ -684,7 +684,8 @@ class TestProcessorResilience:
                     int(
                         db_query(
                             db_container,
-                            "SELECT COUNT(*) FROM recordings WHERE local_deleted = true",
+                            "SELECT COUNT(*) FROM recordings "
+                            "WHERE deleted_at IS NOT NULL AND deletion_reason = 'missing'",
                         )
                         or "0"
                     )
@@ -693,10 +694,11 @@ class TestProcessorResilience:
                 timeout=20,
             )
 
-            # Verify healing: orphaned rows marked local_deleted=true
+            # Verify healing: orphaned rows carry deleted_at and reason 'missing'
             healed_str = db_query(
                 db_container,
-                "SELECT COUNT(*) FROM recordings WHERE local_deleted = true",
+                "SELECT COUNT(*) FROM recordings "
+                "WHERE deleted_at IS NOT NULL AND deletion_reason = 'missing'",
             )
             healed = int(healed_str) if healed_str else 0
             assert healed >= 1, (
@@ -713,7 +715,7 @@ class TestProcessorResilience:
 
             remaining_str = db_query(
                 db_container,
-                "SELECT COUNT(*) FROM recordings WHERE local_deleted = false",
+                "SELECT COUNT(*) FROM recordings WHERE deleted_at IS NULL",
             )
             remaining = int(remaining_str) if remaining_str else 0
 

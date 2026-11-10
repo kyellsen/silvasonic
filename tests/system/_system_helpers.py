@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from redis import Redis
+from silvasonic.core.ids import uuid7
 
 PROCESSOR_IMAGE = "localhost/silvasonic_processor:latest"
 REDIS_IMAGE = "docker.io/library/redis:7-alpine"
@@ -99,7 +100,6 @@ def require_processor_image() -> None:
     """Skip if the Processor image is not built."""
     if not image_exists(PROCESSOR_IMAGE):
         pytest.skip("Processor image not built (run 'just build' first)")
-
 
 
 def require_birdnet_image() -> None:
@@ -346,12 +346,14 @@ def wait_for_redis(host: str, port: int, timeout: float = 15) -> None:
 # ---------------------------------------------------------------------------
 
 
-def seed_test_devices(db_container: str | Path, device_names: list[str]) -> None:
-    """Seed microphone_profiles and devices rows for system tests.
+def seed_test_microphones(db_container: str | Path, hardware_ids: list[str]) -> None:
+    """Seed microphone_profiles and microphones rows for system tests.
 
-    The Indexer's INSERT into ``recordings`` requires a matching FK in
-    ``devices(name)``. In production, the Controller seeds these; in system
-    tests, we do it manually.
+    The Indexer resolves a workspace directory to ``microphones.id`` via
+    ``workspace_name``; its INSERT into ``recordings`` needs that row. In
+    production, the Controller seeds these; in system tests, we do it
+    manually. Each test microphone uses its hardware ID as name and
+    workspace name.
 
     Uses retries in case a service holds the write lock at that moment.
     """
@@ -362,53 +364,54 @@ def seed_test_devices(db_container: str | Path, device_names: list[str]) -> None
            ON CONFLICT (slug) DO NOTHING""",
         retries=10,
     )
-    for dev in device_names:
+    for hw_id in hardware_ids:
         db_query(
             db_container,
             f"""
-                INSERT INTO devices (
-                    name, serial_number, model, config, profile_slug, workspace_name
+                INSERT INTO microphones (
+                    id, hardware_id, name, serial_number, model, hardware,
+                    profile_slug, workspace_name
                 )
                 VALUES (
-                    '{dev}', '{dev}-serial', 'test-model',
-                    '{{}}', 'test_profile', '{dev}'
+                    '{uuid7().hex}', '{hw_id}', '{hw_id}', '{hw_id}-serial', 'test-model',
+                    '{{}}', 'test_profile', '{hw_id}'
                 )
-                ON CONFLICT (name) DO NOTHING
+                ON CONFLICT (hardware_id) DO NOTHING
             """,
             retries=10,
         )
 
 
-def seed_processor_config(
+def seed_storage_settings(
     db_container: str | Path,
     *,
-    janitor_threshold_warning: float = 70.0,
-    janitor_threshold_critical: float = 80.0,
-    janitor_threshold_emergency: float = 90.0,
-    janitor_interval_seconds: int = 60,
-    janitor_batch_size: int = 50,
-    indexer_poll_interval: float = 2.0,
+    warning_percent: float = 70.0,
+    critical_percent: float = 80.0,
+    emergency_percent: float = 90.0,
+    cleanup_interval_s: int = 60,
+    cleanup_batch_files: int = 50,
+    index_interval_s: float = 2.0,
 ) -> None:
-    """Seed ProcessorSettings into system_config table.
+    """Seed StorageSettings into the ``storage`` section of the settings table.
 
     Allows tests to override Janitor thresholds and intervals.
     """
     import json
 
     config = {
-        "janitor_threshold_warning": janitor_threshold_warning,
-        "janitor_threshold_critical": janitor_threshold_critical,
-        "janitor_threshold_emergency": janitor_threshold_emergency,
-        "janitor_interval_seconds": janitor_interval_seconds,
-        "janitor_batch_size": janitor_batch_size,
-        "indexer_poll_interval": indexer_poll_interval,
+        "warning_percent": warning_percent,
+        "critical_percent": critical_percent,
+        "emergency_percent": emergency_percent,
+        "cleanup_interval_s": cleanup_interval_s,
+        "cleanup_batch_files": cleanup_batch_files,
+        "index_interval_s": index_interval_s,
     }
     config_json = json.dumps(config).replace("'", "''")
     db_query(
         db_container,
-        f"""INSERT INTO system_config (key, value)
-           VALUES ('processor', '{config_json}')
-           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+        f"""INSERT INTO settings (section, value)
+           VALUES ('storage', '{config_json}')
+           ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value""",
         retries=10,
     )
 
@@ -472,7 +475,7 @@ def wait_for_detection(
     """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
     query = (
         "SELECT id, label, clip_path FROM detections "
-        f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' LIMIT 1"
+        f"WHERE label LIKE '{prefix_taxon}%' AND analyzer = 'birdnet' OFFSET 0 LIMIT 1"
     )
 
     def _check() -> dict[str, str]:
@@ -539,11 +542,16 @@ def system_db(
     is queried from the host with ``db_query``.  Seeds test devices for FK
     satisfaction.
     """
+    global _ACTIVE_DB_DIR
     db_dir = tmp_path_factory.mktemp(f"database-{run_id}")
+    db_dir.chmod(0o777)  # container root is the host user under rootless Podman
     create_test_database(db_dir)
-    seed_test_devices(db_dir, ["test-device", "mic-aaa", "mic-bbb"])
-    with active_database(db_dir):
+    seed_test_microphones(db_dir, ["test-device", "mic-aaa", "mic-bbb"])
+    _ACTIVE_DB_DIR = db_dir
+    try:
         yield (str(db_dir), run_id)
+    finally:
+        _ACTIVE_DB_DIR = None
 
 
 @pytest.fixture()

@@ -90,7 +90,7 @@ class TestRecorderConfig:
 
     def test_init_with_injected_config_json(self) -> None:
         """__init__ uses from_injected_config when valid config JSON is present."""
-        config = {"audio": {"sample_rate": 96000, "channels": 1, "format": "S16LE"}}
+        config = {"audio": {"sample_rate_hz": 96000, "channels": 1, "sample_format": "S16LE"}}
         with (
             patch.dict(os.environ, {"SILVASONIC_RECORDER_CONFIG_JSON": json.dumps(config)}),
             patch("silvasonic.core.service.SilvaService.__init__"),
@@ -98,7 +98,7 @@ class TestRecorderConfig:
             from silvasonic.recorder.__main__ import RecorderService
 
             svc = RecorderService()
-            assert svc._pipeline_config.sample_rate == 96000
+            assert svc._pipeline_config.sample_rate_hz == 96000
             assert svc._pipeline_config.raw_enabled is True
             assert svc._pipeline_config.processed_enabled is True
 
@@ -171,9 +171,9 @@ class TestRecorderSettings:
         """parse_injected_config() returns RecorderRuntimeConfig for valid JSON."""
         config = {
             "audio": {
-                "sample_rate": 384000,
+                "sample_rate_hz": 384000,
                 "channels": 1,
-                "format": "S16LE",
+                "sample_format": "S16LE",
             },
         }
         with patch.dict(
@@ -185,7 +185,7 @@ class TestRecorderSettings:
             settings = RecorderSettings()
             parsed = settings.parse_injected_config()
             assert parsed is not None
-            assert parsed.audio.sample_rate == 384000
+            assert parsed.audio.sample_rate_hz == 384000
 
     def test_parse_injected_config_invalid_json(self) -> None:
         """parse_injected_config() returns None for invalid JSON."""

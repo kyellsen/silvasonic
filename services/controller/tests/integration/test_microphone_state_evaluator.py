@@ -1,6 +1,6 @@
-"""Integration test for DeviceStateEvaluator — Golden Path.
+"""Integration test for MicrophoneStateEvaluator — Golden Path.
 
-Verifies that the ORM query mapping within DeviceStateEvaluator correctly
+Verifies that the ORM query mapping within MicrophoneStateEvaluator correctly
 constructs Tier2ServiceSpecs when valid Profiles and Devices exist in the
 real database. This replaces brittle SQLAlchemy Mock chaining.
 """
@@ -10,9 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
-from silvasonic.controller.reconciler import DeviceStateEvaluator
+from silvasonic.controller.microphone_repository import upsert_microphone
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator
 from silvasonic.controller.seeder import ProfileBootstrapper
 from silvasonic.core.database.session import create_station_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -27,7 +27,7 @@ async def test_evaluate_golden_path_yields_spec(
     tmp_path: Path,
     station_db: Path,
 ) -> None:
-    """Evaluator generates a valid Tier2ServiceSpec for an online, enrolled device."""
+    """Evaluator generates a valid Tier2ServiceSpec for a connected, enrolled microphone."""
     engine = create_station_engine(station_db)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -36,14 +36,14 @@ async def test_evaluate_golden_path_yields_spec(
     profiles_dir.mkdir()
     (profiles_dir / "test_eval_profile.yml").write_text(
         """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: eval_profile
 name: Evaluation Profile
 description: Integration test profile
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
 stream:
@@ -59,7 +59,7 @@ stream:
         await bootstrapper.seed(session)
         await session.commit()
 
-    # 2. Insert a valid Device bound to the Profile
+    # 2. Insert a valid Microphone bound to the Profile
     device_info = DeviceInfo(
         alsa_card_index=1,
         alsa_name="EvalMic",
@@ -70,17 +70,17 @@ stream:
     )
 
     async with session_factory() as session:
-        # Upsert with profile & explicit enrolled status
-        await upsert_device(
+        # Upsert with profile & explicit enrolled state
+        await upsert_microphone(
             device_info,
             session,
             profile_slug="eval_profile",
-            enrollment_status="enrolled",
+            enrollment_state="enrolled",
         )
         await session.commit()
 
-    # 3. Test the DeviceStateEvaluator against the real DB
-    evaluator = DeviceStateEvaluator()
+    # 3. Test the MicrophoneStateEvaluator against the real DB
+    evaluator = MicrophoneStateEvaluator()
 
     async with session_factory() as session:
         specs = await evaluator.evaluate(session)

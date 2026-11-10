@@ -5,23 +5,28 @@ Scans the Recorder workspace for promoted WAV files in
 extracts metadata via ``soundfile``, and registers new recordings in
 the ``recordings`` table.
 
-Idempotent: checks for existing entries by ``file_processed`` (dual-stream)
-or ``file_raw`` (raw-only) before insert.
+Idempotent: checks for existing entries by ``processed_path`` (dual-stream)
+or ``raw_path`` (raw-only) before insert.
 Never touches ``.buffer/`` directories (only promoted, complete segments).
+
+``sample_rate_hz`` and ``channels`` are the microphone's native values, read
+from the raw file's header; the processed file is the fallback only when the
+raw file is missing.
 
 Cost per cycle: the caller keeps the set of files already known to be
 indexed, so a cycle sends one batched existence query for the files it has
 not seen yet instead of one query per file on disk.  Without that set the
 work would grow with every segment the disk retains.
 
-Supports both dual-stream devices (raw + processed) and raw-only devices
-where ``processed_enabled=false`` in the microphone profile.
+Supports both dual-stream microphones (raw + processed) and raw-only
+microphones where ``processed_enabled=false`` in the microphone profile.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,8 +34,9 @@ from pathlib import Path
 import soundfile as sf
 import structlog
 from silvasonic.core.database.models.recordings import Recording
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.processor.modules.indexer_stats import IndexerStats
-from sqlalchemy import bindparam, insert, text
+from sqlalchemy import bindparam, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
@@ -50,9 +56,10 @@ _FILENAME_REGEX = re.compile(
 class WavMeta:
     """Metadata extracted from a WAV file."""
 
-    duration: float
-    sample_rate: int
-    filesize: int
+    duration_s: float
+    sample_rate_hz: int
+    channels: int
+    size_bytes: int
 
 
 # Upper bound for the paths sent in one existence query.
@@ -70,12 +77,12 @@ class IndexResult:
 
 
 def scan_workspace(recordings_dir: Path) -> list[Path]:
-    """Discover all promoted WAV files across all device directories.
+    """Discover all promoted WAV files across all microphone directories.
 
     Scans both ``{recordings_dir}/*/data/processed/*.wav`` and
-    ``*/data/raw/*.wav``. If both exist for the same device and
+    ``*/data/raw/*.wav``. If both exist for the same microphone and
     filename, only the processed version is returned (it is the
-    primary indexing artifact for dual-stream devices).
+    primary indexing artifact for dual-stream microphones).
 
     Never returns files from ``.buffer/`` directories.
 
@@ -89,7 +96,7 @@ def scan_workspace(recordings_dir: Path) -> list[Path]:
     raw = set(recordings_dir.glob("*/data/raw/*.wav"))
 
     # Deduplicate: if a processed file exists, skip the raw counterpart.
-    # Use (device_dir_name, filename) as the deduplication key.
+    # Use (workspace_name, filename) as the deduplication key.
     processed_keys = {(p.parts[-4], p.name) for p in processed}
     raw_only = {r for r in raw if (r.parts[-4], r.name) not in processed_keys}
 
@@ -126,11 +133,12 @@ def parse_timestamp(filename: str) -> datetime:
     return dt
 
 
-def is_clock_unsynced(filename: str) -> bool:
-    """Return whether the Recorder named this segment with an unsynchronised clock.
+def is_clock_synced(filename: str) -> bool:
+    """Return whether the Recorder named this segment with a synchronised clock.
 
-    Such a segment's timestamp may be off by however long the device ran
-    without a time source (Issue 002).
+    A segment carrying the ``_unsynced`` filename suffix (ADR-0011) has a
+    timestamp that may be off by however long the device ran without a time
+    source (Issue 002).
 
     Raises:
         ValueError: If filename does not match expected pattern.
@@ -138,7 +146,7 @@ def is_clock_unsynced(filename: str) -> bool:
     match = _FILENAME_REGEX.match(filename)
     if not match:
         raise ValueError(f"Filename does not match expected pattern: {filename}")
-    return match.group("unsynced") is not None
+    return match.group("unsynced") is None
 
 
 def extract_metadata(wav_path: Path) -> WavMeta:
@@ -148,27 +156,28 @@ def extract_metadata(wav_path: Path) -> WavMeta:
         wav_path: Absolute path to the WAV file.
 
     Returns:
-        WavMeta with duration, sample_rate, and filesize.
+        WavMeta with duration, sample rate, channels and size.
     """
     info = sf.info(str(wav_path))
     return WavMeta(
-        duration=info.duration,
-        sample_rate=info.samplerate,
-        filesize=os.path.getsize(wav_path),
+        duration_s=info.duration,
+        sample_rate_hz=info.samplerate,
+        channels=info.channels,
+        size_bytes=os.path.getsize(wav_path),
     )
 
 
-def resolve_sensor_id(wav_path: Path, recordings_dir: Path) -> str:
-    """Extract the sensor/device identifier from the file path.
+def resolve_workspace_name(wav_path: Path, recordings_dir: Path) -> str:
+    """Extract the microphone's workspace directory name from the file path.
 
-    Path structure: ``{recordings_dir}/{sensor_id}/data/{raw|processed}/file.wav``
+    Path structure: ``{recordings_dir}/{workspace_name}/data/{raw|processed}/file.wav``
 
     Args:
         wav_path: Absolute path to the WAV file.
         recordings_dir: Root of the Recorder workspace.
 
     Returns:
-        The sensor_id (workspace directory name).
+        The workspace directory name (``microphones.workspace_name``).
     """
     rel = wav_path.relative_to(recordings_dir)
     return rel.parts[0]
@@ -211,23 +220,23 @@ def _relative_path(wav_path: Path, recordings_dir: Path) -> str:
 async def _already_indexed(session: AsyncSession, rel_paths: list[str]) -> set[str]:
     """Return the paths among ``rel_paths`` that the recordings table already holds.
 
-    A path counts as indexed when it equals a row's ``file_raw`` or
-    ``file_processed``.  One query per ``_EXISTS_BATCH_SIZE`` paths, served
+    A path counts as indexed when it equals a row's ``raw_path`` or
+    ``processed_path``.  One query per ``_EXISTS_BATCH_SIZE`` paths, served
     by the indexes on both columns.
     """
     found: set[str] = set()
     for i in range(0, len(rel_paths), _EXISTS_BATCH_SIZE):
         rows = await session.execute(
             text(
-                "SELECT file_raw, file_processed FROM recordings "
-                "WHERE file_raw IN :paths OR file_processed IN :paths"
+                "SELECT raw_path, processed_path FROM recordings "
+                "WHERE raw_path IN :paths OR processed_path IN :paths"
             ).bindparams(bindparam("paths", expanding=True)),
             {"paths": rel_paths[i : i + _EXISTS_BATCH_SIZE]},
         )
-        for file_raw, file_processed in rows.all():
-            found.add(file_raw)
-            if file_processed is not None:
-                found.add(file_processed)
+        for raw_path, processed_path in rows.all():
+            found.add(raw_path)
+            if processed_path is not None:
+                found.add(processed_path)
     return found
 
 
@@ -241,11 +250,11 @@ async def index_recordings(
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
 
-    Idempotent: existing entries (by ``file_processed`` or ``file_raw``
-    for raw-only devices) are skipped.
+    Idempotent: existing entries (by ``processed_path`` or ``raw_path``
+    for raw-only microphones) are skipped.
 
-    Uses ``devices.workspace_name`` to resolve the filesystem directory
-    name to the device's stable identifier (``devices.name``).
+    Uses ``microphones.workspace_name`` to resolve the filesystem directory
+    name to the microphone's ``id``.
 
     Each new recording is committed on its own, so a failing file never
     rolls back the ones indexed before it in the same cycle.
@@ -285,10 +294,10 @@ async def index_recordings(
         return result
 
     in_db = await _already_indexed(session, [rel_by_path[p] for p in candidates])
-    # Release the read transaction: metadata extraction below must not hold
-    # the database write lock (ADR-0037).  Nothing was written.
+    # Release the read transaction: metadata extraction below must not hold the database write
+    # lock (ADR-0037).  Nothing was written.
     await session.rollback()
-    device_names: dict[str, str | None] = {}
+    microphone_ids: dict[str, uuid.UUID | None] = {}
 
     for wav_path in candidates:
         is_raw = _is_raw_path(wav_path)
@@ -302,61 +311,70 @@ async def index_recordings(
             continue
 
         try:
-            workspace_dir = resolve_sensor_id(wav_path, recordings_dir)
+            workspace_name = resolve_workspace_name(wav_path, recordings_dir)
 
-            # Resolve device: look up by workspace_name (cross-service contract)
-            if workspace_dir not in device_names:
-                device_row = await session.execute(
-                    text("SELECT name FROM devices WHERE workspace_name = :ws_name LIMIT 1"),
-                    {"ws_name": workspace_dir},
+            # Resolve microphone: look up by workspace_name (cross-service contract)
+            if workspace_name not in microphone_ids:
+                microphone_row = await session.execute(
+                    select(Microphone.id)
+                    .where(Microphone.workspace_name == workspace_name)
+                    .limit(1)
                 )
-                row = device_row.fetchone()
-                device_names[workspace_dir] = row[0] if row is not None else None
+                row = microphone_row.fetchone()
+                microphone_ids[workspace_name] = row[0] if row is not None else None
                 await session.rollback()  # release the lock before file I/O
-            device_name = device_names[workspace_dir]
-            if device_name is None:
+            microphone_id = microphone_ids[workspace_name]
+            if microphone_id is None:
                 result.skipped += 1
                 if stats:
                     stats.record_skipped()
                 log.info(
-                    "indexer.device_not_registered",
+                    "indexer.microphone_not_registered",
                     file=rel_path,
-                    sensor_id=workspace_dir,
+                    workspace_name=workspace_name,
                 )
                 continue
 
             # Extract metadata
             meta = extract_metadata(wav_path)
             timestamp = parse_timestamp(wav_path.name)
-            clock_unsynced = is_clock_unsynced(wav_path.name)
+            clock_synced = is_clock_synced(wav_path.name)
 
             # Resolve file paths for both streams
             if is_raw:
-                # Raw-only device: no processed file
+                # Raw-only microphone: no processed file
                 rel_raw = rel_path
                 rel_processed = None
-                filesize_raw = meta.filesize
-                filesize_processed = 0
+                raw_size_bytes = meta.size_bytes
+                processed_size_bytes = 0
+                native = meta
             else:
-                # Dual-stream device: processed is primary, derive raw
+                # Dual-stream microphone: processed is primary, derive raw
                 rel_processed = rel_path
-                raw_path = resolve_raw_path(wav_path)
-                rel_raw = _relative_path(raw_path, recordings_dir)
-                filesize_raw = os.path.getsize(raw_path) if raw_path.exists() else 0
-                filesize_processed = meta.filesize
+                raw_file = resolve_raw_path(wav_path)
+                rel_raw = _relative_path(raw_file, recordings_dir)
+                processed_size_bytes = meta.size_bytes
+                if raw_file.exists():
+                    # The raw header carries the microphone's native rate
+                    native = extract_metadata(raw_file)
+                    raw_size_bytes = native.size_bytes
+                else:
+                    native = meta
+                    raw_size_bytes = 0
 
             # Insert new recording
             await session.execute(
                 insert(Recording).values(
-                    time=timestamp,
-                    sensor_id=device_name,
-                    file_raw=rel_raw,
-                    file_processed=rel_processed,
-                    duration=meta.duration,
-                    sample_rate=meta.sample_rate,
-                    filesize_raw=filesize_raw,
-                    filesize_processed=filesize_processed,
-                    clock_unsynced=clock_unsynced,
+                    started_at=timestamp,
+                    microphone_id=microphone_id,
+                    raw_path=rel_raw,
+                    processed_path=rel_processed,
+                    duration_s=meta.duration_s,
+                    sample_rate_hz=native.sample_rate_hz,
+                    channels=native.channels,
+                    raw_size_bytes=raw_size_bytes,
+                    processed_size_bytes=processed_size_bytes,
+                    clock_synced=clock_synced,
                 )
             )
             await session.commit()
@@ -365,15 +383,15 @@ async def index_recordings(
             if stats:
                 stats.record_indexed(
                     rel_path=rel_path,
-                    sensor_id=device_name,
-                    duration=meta.duration,
+                    microphone_id=microphone_id,
+                    duration_s=meta.duration_s,
                 )
             else:
                 log.info(
                     "indexer.indexed",
                     file=rel_path,
-                    sensor_id=device_name,
-                    duration=meta.duration,
+                    microphone_id=str(microphone_id),
+                    duration_s=meta.duration_s,
                 )
 
         except Exception:

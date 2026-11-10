@@ -53,9 +53,9 @@ class TestWavValidity:
 
         # 1s segments to get multiple files quickly
         cfg = FFmpegConfig(
-            sample_rate=48000,
+            sample_rate_hz=48000,
             channels=1,
-            format="S16LE",
+            sample_format="S16LE",
             segment_duration_s=1,
             raw_enabled=True,
             processed_enabled=True,

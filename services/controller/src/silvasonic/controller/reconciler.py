@@ -2,10 +2,10 @@
 
 Implements the Kubernetes-inspired reconciliation pattern:
 
-1. **DeviceStateEvaluator** — determines which devices should have Recorders.
+1. **MicrophoneStateEvaluator** — determines which microphones should have Recorders.
 2. **ReconciliationLoop** — periodic async task that compares desired vs. actual.
 
-The Controller reads desired state from the database (``devices`` + ``microphone_profiles``)
+The Controller reads desired state from the database (``microphones`` + ``microphone_profiles``)
 and reconciles against actual state from Podman (running containers queried by label).
 """
 
@@ -23,12 +23,12 @@ from silvasonic.controller.container_spec import (
     build_recorder_spec,
     generate_workspace_name,
 )
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceScanner
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.database.session import get_session
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,15 +41,15 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 
-class DeviceStateEvaluator:
-    """Evaluate which devices should have running Recorders.
+class MicrophoneStateEvaluator:
+    """Evaluate which microphones should have running Recorders.
 
-    A device is eligible for recording when ALL conditions are met
-    (Controller README §Device State Evaluation):
+    A microphone is eligible for recording when ALL conditions are met
+    (Controller README §Microphone State Evaluation):
 
-    - ``status == "online"``
+    - ``connection_state == "connected"``
     - ``enabled == True``
-    - ``enrollment_status == "enrolled"``
+    - ``enrollment_state == "enrolled"``
     - ``profile_slug IS NOT NULL``
     """
 
@@ -58,51 +58,51 @@ class DeviceStateEvaluator:
         self._warned_profiles: set[str] = set()
 
     async def evaluate(self, session: AsyncSession) -> list[Tier2ServiceSpec]:
-        """Query eligible devices and build Tier2ServiceSpecs.
+        """Query eligible microphones and build Tier2ServiceSpecs.
 
         Returns:
             List of specs for Recorder containers that should be running.
         """
-        stmt = select(Device).where(
+        stmt = select(Microphone).where(
             and_(
-                Device.status == "online",
-                Device.enabled.is_(True),
-                Device.enrollment_status == "enrolled",
-                Device.profile_slug.isnot(None),
+                Microphone.connection_state == "connected",
+                Microphone.enabled.is_(True),
+                Microphone.enrollment_state == "enrolled",
+                Microphone.profile_slug.isnot(None),
             )
         )
         result = await session.execute(stmt)
-        devices = result.scalars().all()
+        microphones = result.scalars().all()
 
         specs: list[Tier2ServiceSpec] = []
 
-        for device in devices:
+        for microphone in microphones:
             # Fetch the linked profile
-            profile = await session.get(MicProfileDB, device.profile_slug)
+            profile = await session.get(MicProfileDB, microphone.profile_slug)
             if profile is None:
-                cache_key = f"{device.name}:{device.profile_slug}"
+                cache_key = f"{microphone.hardware_id}:{microphone.profile_slug}"
                 if cache_key not in self._warned_profiles:
                     log.warning(
                         "reconciler.missing_profile",
-                        device=device.name,
-                        slug=device.profile_slug,
+                        hardware_id=microphone.hardware_id,
+                        slug=microphone.profile_slug,
                     )
                     self._warned_profiles.add(cache_key)
                 else:
                     log.debug(
                         "reconciler.missing_profile",
-                        device=device.name,
-                        slug=device.profile_slug,
+                        hardware_id=microphone.hardware_id,
+                        slug=microphone.profile_slug,
                     )
                 continue
 
             try:
-                spec = build_recorder_spec(device, profile)
+                spec = build_recorder_spec(microphone, profile)
                 specs.append(spec)
             except Exception:
                 log.exception(
                     "reconciler.spec_build_failed",
-                    device=device.name,
+                    hardware_id=microphone.hardware_id,
                 )
 
         log.debug("reconciler.evaluated", eligible_count=len(specs))
@@ -117,7 +117,7 @@ class ReconciliationLoop:
 
     Each cycle:
     1. Rescan hardware (scan_all → match → upsert) to keep the DB in sync.
-    2. Evaluate desired state from DB (online + enrolled + profiled devices).
+    2. Evaluate desired state from DB (connected + enrolled + profiled microphones).
     3. Compare desired vs. actual Podman containers → start/stop as needed.
     """
 
@@ -127,7 +127,7 @@ class ReconciliationLoop:
         *,
         device_scanner: DeviceScanner | None = None,
         profile_matcher: ProfileMatcher | None = None,
-        hardware_evaluator: DeviceStateEvaluator | None = None,
+        hardware_evaluator: MicrophoneStateEvaluator | None = None,
         sys_evaluator: SystemWorkerEvaluator | None = None,
         interval: float,
         grace_period_s: float = 3.0,
@@ -136,7 +136,7 @@ class ReconciliationLoop:
     ) -> None:
         """Initialize with a ContainerManager and reconciliation interval."""
         self._manager = container_manager
-        self._evaluator = hardware_evaluator or DeviceStateEvaluator()
+        self._evaluator = hardware_evaluator or MicrophoneStateEvaluator()
         self._sys_evaluator = sys_evaluator or SystemWorkerEvaluator()
         self._scanner = device_scanner
         self._matcher = profile_matcher
@@ -144,7 +144,7 @@ class ReconciliationLoop:
         self._grace_period_s = grace_period_s
         self._redis_url = redis_url
         self._stale_timeout_s = stale_timeout_s
-        self._missing_devices: dict[str, float] = {}
+        self._missing_microphones: dict[str, float] = {}
         # Container name → monotonic time it was first seen unhealthy
         self._unhealthy_since: dict[str, float] = {}
         self._trigger_event = asyncio.Event()
@@ -179,8 +179,8 @@ class ReconciliationLoop:
         """Run the reconciliation loop until cancelled.
 
         On each cycle:
-        1. Rescan hardware and sync device state to DB.
-        2. Query DB for desired state (eligible devices).
+        1. Rescan hardware and sync microphone state to DB.
+        2. Query DB for desired state (eligible microphones).
         3. Query Podman for actual state (running containers).
         4. Reconcile: start missing, stop orphaned.
         """
@@ -345,7 +345,7 @@ class ReconciliationLoop:
         return healthy
 
     async def scan_and_sync_devices(self) -> int:
-        """Scan USB devices, match profiles, and sync state to DB.
+        """Scan USB devices, match profiles, and sync the microphones to DB.
 
         Returns the number of devices found.  Reusable for both initial
         scan (during ``load_config``) and periodic rescans.
@@ -357,7 +357,7 @@ class ReconciliationLoop:
 
         async with get_session() as session:
             await self._upsert_detected_devices(devices, session)
-            await self._mark_offline_devices(
+            await self._mark_disconnected_microphones(
                 {d.stable_device_id for d in devices},
                 session,
             )
@@ -370,7 +370,7 @@ class ReconciliationLoop:
         devices: list[DeviceInfo],
         session: AsyncSession,
     ) -> None:
-        """Match profiles and upsert each detected device into the DB."""
+        """Match profiles and upsert a microphone for each detected device."""
         # Pre-load all profiles once for the entire batch (M2 optimisation)
         from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 
@@ -392,62 +392,68 @@ class ReconciliationLoop:
                 profile_slug = None
                 enrollment = "pending"
 
-            device = await upsert_device(
+            microphone = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=profile_slug,
-                enrollment_status=enrollment,
+                enrollment_state=enrollment,
             )
 
             # Persist workspace_name for the Processor Indexer cross-service contract.
-            # Only set when a profile is assigned (enrolled devices get workspace dirs).
-            if device.profile_slug:
-                ws = generate_workspace_name(device.profile_slug, device)
-                if device.workspace_name != ws:
-                    device.workspace_name = ws
+            # Only set when a profile is assigned (enrolled microphones get workspace dirs).
+            if microphone.profile_slug:
+                ws = generate_workspace_name(microphone.profile_slug, microphone)
+                if microphone.workspace_name != ws:
+                    microphone.workspace_name = ws
 
-    async def _mark_offline_devices(
+    async def _mark_disconnected_microphones(
         self,
         current_ids: set[str],
         session: AsyncSession,
     ) -> None:
-        """Mark previously online devices as offline if no longer detected.
+        """Mark connected microphones as disconnected once no longer detected.
+
+        ``current_ids`` are the hardware ids (Stable Device IDs) of the devices
+        found by the latest scan.
 
         Uses a time-based grace period (hysteresis) to debounce temporary
         USB hotplugging or flappying.
         """
         now = time.monotonic()
 
-        # Reset grace period for devices that reappeared
-        reappeared_ids = current_ids.intersection(self._missing_devices)
+        # Reset grace period for microphones that reappeared
+        reappeared_ids = current_ids.intersection(self._missing_microphones)
         for device_id in reappeared_ids:
-            del self._missing_devices[device_id]
+            del self._missing_microphones[device_id]
             log.info("reconciler.device_reappeared_in_grace", device_id=device_id)
 
-        result = await session.execute(select(Device).where(Device.status == "online"))
-        online_devices = result.scalars().all()
-        online_names = {d.name for d in online_devices}
+        result = await session.execute(
+            select(Microphone).where(Microphone.connection_state == "connected")
+        )
+        connected = result.scalars().all()
+        connected_ids = {m.hardware_id for m in connected}
 
-        # Clear orphaned state for devices that are no longer online in the DB
+        # Clear orphaned state for microphones that are no longer connected in the DB
         # Use list(keys()) to prevent RuntimeError: dictionary changed size during iteration
-        for device_id in list(self._missing_devices.keys()):
-            if device_id not in online_names and device_id not in current_ids:
-                del self._missing_devices[device_id]
+        for device_id in list(self._missing_microphones.keys()):
+            if device_id not in connected_ids and device_id not in current_ids:
+                del self._missing_microphones[device_id]
 
-        for device in online_devices:
-            if device.name not in current_ids:
-                if device.name not in self._missing_devices:
+        for microphone in connected:
+            hw_id = microphone.hardware_id
+            if hw_id not in current_ids:
+                if hw_id not in self._missing_microphones:
                     # First time missing -> start grace period
-                    self._missing_devices[device.name] = now
-                    log.debug("reconciler.device_missing_start_grace", device_id=device.name)
-                elif now - self._missing_devices[device.name] >= self._grace_period_s:
-                    # Grace period expired -> mark offline
-                    device.status = "offline"
-                    del self._missing_devices[device.name]
-                    log.info("reconciler.device_offline", device_id=device.name)
+                    self._missing_microphones[hw_id] = now
+                    log.debug("reconciler.device_missing_start_grace", device_id=hw_id)
+                elif now - self._missing_microphones[hw_id] >= self._grace_period_s:
+                    # Grace period expired -> mark disconnected
+                    microphone.connection_state = "disconnected"
+                    del self._missing_microphones[hw_id]
+                    log.info("reconciler.device_disconnected", device_id=hw_id)
                 else:
                     # Missing but still within grace period -> do nothing
-                    log.debug("reconciler.device_missing_in_grace", device_id=device.name)
+                    log.debug("reconciler.device_missing_in_grace", device_id=hw_id)
 
     async def _rescan_hardware(self) -> None:
         """Rescan USB audio devices and sync state to DB.

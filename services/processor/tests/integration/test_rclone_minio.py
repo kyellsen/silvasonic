@@ -13,7 +13,7 @@ import pytest
 import structlog
 from minio import Minio
 from silvasonic.core.crypto import encrypt_value, generate_key
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.schemas.settings import SyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneClient
 from testcontainers.minio import MinioContainer
 
@@ -60,7 +60,7 @@ async def test_rclone_client_uploads_to_minio(
     """Verify that RcloneClient successfully uploads a file to S3 via rclone.
 
     1. Creates a synthetic FLAC file.
-    2. Builds CloudSyncSettings targeting the MinIO container.
+    2. Builds SyncSettings targeting the MinIO container.
     3. Encrypts credentials (simulating DB seeder).
     4. Invokes RcloneClient.upload_file().
     5. Downloads the file via Minio SDK and verifies its contents.
@@ -84,8 +84,7 @@ async def test_rclone_client_uploads_to_minio(
     # The Controller's CloudSyncSeeder encrypts string values with the system AES key
     enc_key = generate_key().encode("utf-8")
 
-    settings = CloudSyncSettings(
-        enabled=True,
+    settings = SyncSettings(
         remote_type="s3",
         remote_config={
             "access_key_id": encrypt_value(access_key, enc_key),
@@ -96,7 +95,7 @@ async def test_rclone_client_uploads_to_minio(
             "env_auth": "false",
             "force_path_style": "true",
         },
-        bandwidth_limit="10M",
+        bandwidth_limit_bytes_per_s=10 * 1024 * 1024,
     )
 
     # 4. Instantiate RcloneClient and execute the upload

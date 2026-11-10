@@ -72,9 +72,9 @@ class TestFFmpegPipelineE2E:
         """Create a mock-source pipeline with short segments."""
         ensure_workspace(workspace)
         cfg = FFmpegConfig(
-            sample_rate=sample_rate,
+            sample_rate_hz=sample_rate,
             channels=1,
-            format="S16LE",
+            sample_format="S16LE",
             segment_duration_s=segment_duration_s,
             gain_db=gain_db,
             raw_enabled=raw_enabled,

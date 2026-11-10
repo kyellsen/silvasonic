@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import structlog
 from silvasonic.core.constants import DEFAULT_LOG_STARTUP_S, DEFAULT_LOG_SUMMARY_INTERVAL_S
 from silvasonic.core.two_phase import TwoPhaseWindow
@@ -35,15 +37,17 @@ class IndexerStats:
         """Return True if still in the initial verbose startup phase."""
         return self._window.is_startup_phase
 
-    def record_indexed(self, rel_path: str, sensor_id: str, duration: float) -> None:
+    def record_indexed(
+        self, rel_path: str, microphone_id: uuid.UUID | str, duration_s: float
+    ) -> None:
         """Record a successfully indexed file."""
         self.total_indexed += 1
         if self.is_startup_phase:
             log.info(
                 "indexer.indexed",
                 file=rel_path,
-                sensor_id=sensor_id,
-                duration=duration,
+                microphone_id=str(microphone_id),
+                duration_s=duration_s,
             )
 
     def record_error(self, rel_path: str) -> None:

@@ -28,14 +28,17 @@ call ``reset_engine()`` in teardown.
 import os
 import sqlite3
 import time
+import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import structlog
 from silvasonic.core.database.schema import ensure_schema
+from silvasonic.core.database.types import to_epoch_us
 from silvasonic.core.settings import DatabaseSettings
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -51,6 +54,13 @@ logger = structlog.get_logger()
 BUSY_TIMEOUT_MS = 5_000
 SLOW_TRANSACTION_S = 1.0
 _BEGIN_KEY = "silvasonic_transaction_started"
+
+# Raw SQL (``text()``) bypasses the SQLAlchemy column types.  These adapters
+# make a parameter bound there land in the same form the ORM stores: a UUID
+# as 32 hex digits (``Uuid`` on SQLite), a datetime as epoch microseconds
+# (``UTCDateTime``).  Values read back by raw SQL stay in that stored form.
+sqlite3.register_adapter(uuid.UUID, lambda value: value.hex)
+sqlite3.register_adapter(datetime, to_epoch_us)
 
 
 def _enable_wal(cursor: Any) -> None:

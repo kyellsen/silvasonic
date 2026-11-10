@@ -13,18 +13,17 @@ from pathlib import Path
 
 import pytest
 from silvasonic.core.database.session import create_station_engine
-from silvasonic.core.database.types import to_epoch_us
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 CLAIM = text("""
     UPDATE recordings
-    SET analysis_state = json_set(analysis_state, '$.test', 'running')
+    SET analysis_state = json_set(analysis_state, '$.test', json('{"state": "running"}'))
     WHERE id = (
         SELECT id FROM recordings
-        WHERE local_deleted = 0
+        WHERE deleted_at IS NULL
           AND json_extract(analysis_state, '$.test') IS NULL
-        ORDER BY time ASC
+        ORDER BY started_at ASC
         LIMIT 1
     )
     RETURNING id
@@ -35,34 +34,34 @@ async def _seed(engine: AsyncEngine, count: int = 3) -> None:
     async with engine.begin() as conn:
         await conn.execute(
             text("""
-                INSERT INTO devices (name, serial_number, model, config)
-                VALUES ('test-mic', 'SN-TEST-001', 'TestMic', '{}')
-                ON CONFLICT (name) DO NOTHING
+                INSERT INTO microphones (hardware_id, name, serial_number, model, hardware)
+                VALUES ('test-mic', 'Test Mic', 'SN-TEST-001', 'TestMic', '{}')
+                ON CONFLICT (hardware_id) DO NOTHING
             """)
         )
         for i in range(count):
             await conn.execute(
                 text("""
                     INSERT INTO recordings (
-                        time, sensor_id, file_raw, file_processed,
-                        duration, sample_rate, filesize_raw, filesize_processed
+                        started_at, microphone_id, raw_path, processed_path,
+                        duration_s, sample_rate_hz, raw_size_bytes, processed_size_bytes
                     ) VALUES (
-                        :time, 'test-mic', :file_raw, :file_processed,
-                        30.0, 48000, 2880000, 1440000
+                        :started_at, (SELECT id FROM microphones WHERE hardware_id = 'test-mic'),
+                        :raw_path, :processed_path, 30.0, 48000, 2880000, 1440000
                     )
                 """),
                 {
-                    "time": to_epoch_us(datetime(2026, 1, 1, i, 0, 0, tzinfo=UTC)),
-                    "file_raw": f"test/raw_{i}.wav",
-                    "file_processed": f"test/processed_{i}.wav",
+                    "started_at": datetime(2026, 1, 1, i, 0, 0, tzinfo=UTC),
+                    "raw_path": f"test/raw_{i}.wav",
+                    "processed_path": f"test/processed_{i}.wav",
                 },
             )
 
 
-async def _claim(engine: AsyncEngine) -> int | None:
+async def _claim(engine: AsyncEngine) -> str | None:
     async with engine.begin() as conn:
         row = (await conn.execute(CLAIM)).first()
-        return None if row is None else int(row[0])
+        return None if row is None else str(row[0])
 
 
 async def _plan(engine: AsyncEngine, sql: str) -> str:
@@ -94,7 +93,7 @@ class TestWorkerPullQuery:
         engine = create_station_engine(station_db)
         plan = await _plan(
             engine,
-            "SELECT id FROM recordings WHERE local_deleted = 0 ORDER BY time ASC LIMIT 1",
+            "SELECT id FROM recordings WHERE deleted_at IS NULL ORDER BY started_at ASC LIMIT 1",
         )
         await engine.dispose()
         assert "ix_recordings_analysis_pending" in plan, f"Expected partial index, got:\n{plan}"
@@ -104,8 +103,8 @@ class TestWorkerPullQuery:
         engine = create_station_engine(station_db)
         plan = await _plan(
             engine,
-            "SELECT id FROM recordings WHERE uploaded = 0 AND local_deleted = 0 "
-            "ORDER BY time ASC LIMIT 1",
+            "SELECT id FROM recordings WHERE uploaded_at IS NULL AND deleted_at IS NULL "
+            "ORDER BY started_at ASC LIMIT 1",
         )
         await engine.dispose()
         assert "ix_recordings_upload_pending" in plan, f"Expected partial index, got:\n{plan}"

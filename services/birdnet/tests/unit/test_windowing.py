@@ -32,11 +32,11 @@ def service(tmp_path: Path) -> BirdNETService:
             "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
         },
     ):
-        from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+        from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 
         svc = BirdNETService()
         svc.birdnet_config = BirdnetSettings()
-        svc.system_config = SystemSettings(latitude=53.5, longitude=10.0)
+        svc.station_config = StationSettings(latitude=53.5, longitude=10.0)
         return svc
 
 
@@ -128,7 +128,7 @@ class TestTailDetection:
 
         recording = MagicMock()
         recording.id = 7
-        recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
 
         with (
             patch("silvasonic.birdnet.service.sf.read", return_value=(audio, MODEL_SR)),
@@ -147,9 +147,15 @@ class TestTailDetection:
 
         assert len(detections) == 1
         det = detections[0]
-        assert det.time == datetime(2026, 6, 15, 6, 0, 7, tzinfo=UTC)
-        assert det.end_time == datetime(2026, 6, 15, 6, 0, 10, tzinfo=UTC)
+        assert det.started_at == datetime(2026, 6, 15, 6, 0, 7, tzinfo=UTC)
+        assert det.ended_at == datetime(2026, 6, 15, 6, 0, 10, tzinfo=UTC)
         assert det.details["week"] == 23
+        assert det.analyzer == "birdnet"
+        assert det.label == "Turdus merula_Eurasian Blackbird"
+        assert det.species_id == "turdus-merula"
+        assert service.birdnet_config is not None
+        assert det.details["overlap_s"] == service.birdnet_config.overlap_s
+        assert det.details["min_confidence"] == service.birdnet_config.min_confidence
 
 
 @pytest.mark.unit
@@ -160,7 +166,7 @@ class TestSeasonalMask:
     async def test_mask_built_for_recording_week(self, service: BirdNETService) -> None:
         """A June recording analysed in any month is filtered with June's species."""
         recording = MagicMock()
-        recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
         recording.analysis_state = {}
 
         class FakeSession:

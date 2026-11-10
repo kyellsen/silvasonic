@@ -39,7 +39,7 @@ See [ADR-0017](../adr/0017-service-state-management.md) for the full decision.
 
 | Dimension                  | Storage                                    | Written By                        | Read By       |
 | -------------------------- | ------------------------------------------ | --------------------------------- | ------------- |
-| **Desired State** (config) | `managed_services` table (DB)              | Admin / Web-Interface             | Controller    |
+| **Desired State** (config) | `modules` table (DB)              | Admin / Web-Interface             | Controller    |
 | **Actual State** (runtime) | Redis: `SET` with TTL + `PUBLISH` (see §3) | Each service (via `SilvaService`) | Web-Interface |
 
 ---
@@ -66,7 +66,7 @@ Services are identified by a combination of `service` (type) and `instance_id` (
 | Service Type              | `instance_id`            | Key Example                        |
 | ------------------------- | ------------------------ | ---------------------------------- |
 | Tier 1 Singletons         | `= service name`         | `silvasonic:status:controller`     |
-| Recorder (multi-instance) | `= devices.name`         | `silvasonic:status:ultramic-01`    |
+| Recorder (multi-instance) | `= microphones.hardware_id`         | `silvasonic:status:ultramic-01`    |
 | ~~Uploader~~ (archived) | — | Upload is now handled by the Processor's Cloud-Sync-Worker (v0.6.0) |
 | Tier 2 Singletons         | `= service name`         | `silvasonic:status:birdnet`        |
 

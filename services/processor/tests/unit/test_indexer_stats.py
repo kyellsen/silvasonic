@@ -12,15 +12,15 @@ class TestIndexerStatsStartupPhase:
         stats = IndexerStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.processor.modules.indexer_stats.log") as mock_log:
-            stats.record_indexed("file1.wav", "sensor_A", 1.5)
-            stats.record_indexed("file2.wav", "sensor_B", 2.0)
+            stats.record_indexed("file1.wav", "mic_A", 1.5)
+            stats.record_indexed("file2.wav", "mic_B", 2.0)
 
         info_calls = [c for c in mock_log.info.call_args_list if c[0][0] == "indexer.indexed"]
         assert len(info_calls) == 2
 
         assert info_calls[0].kwargs["file"] == "file1.wav"
-        assert info_calls[0].kwargs["sensor_id"] == "sensor_A"
-        assert info_calls[0].kwargs["duration"] == 1.5
+        assert info_calls[0].kwargs["microphone_id"] == "mic_A"
+        assert info_calls[0].kwargs["duration_s"] == 1.5
 
         assert info_calls[1].kwargs["file"] == "file2.wav"
 
@@ -51,8 +51,8 @@ class TestIndexerStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=9999.0)
 
         with patch("silvasonic.processor.modules.indexer_stats.log") as mock_log:
-            stats.record_indexed("file1.wav", "sensor", 1.0)
-            stats.record_indexed("file2.wav", "sensor", 1.0)
+            stats.record_indexed("file1.wav", "mic", 1.0)
+            stats.record_indexed("file2.wav", "mic", 1.0)
 
         indexed_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "indexer.indexed"]
         assert len(indexed_logs) == 0
@@ -73,7 +73,7 @@ class TestIndexerStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.processor.modules.indexer_stats.log") as mock_log:
-            stats.record_indexed("file1.wav", "sensor", 1.0)
+            stats.record_indexed("file1.wav", "mic", 1.0)
             stats.record_error("file2.wav")
             stats.maybe_emit_summary()
 
@@ -102,11 +102,11 @@ class TestIndexerStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.processor.modules.indexer_stats.log") as mock_log:
-            stats.record_indexed("1.wav", "sensor", 1.0)
+            stats.record_indexed("1.wav", "mic", 1.0)
             stats.maybe_emit_summary()
 
-            stats.record_indexed("2.wav", "sensor", 1.0)
-            stats.record_indexed("3.wav", "sensor", 1.0)
+            stats.record_indexed("2.wav", "mic", 1.0)
+            stats.record_indexed("3.wav", "mic", 1.0)
             stats.maybe_emit_summary()
 
         summary_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "indexer.summary"]

@@ -23,7 +23,7 @@ Usage::
         service_port = 9500
 
         async def load_config(self) -> None:
-            # Optional: read settings from system_config table
+            # Optional: read sections from the settings table
             async with get_session() as session:
                 ...
 
@@ -97,9 +97,9 @@ class SilvaService:
         self._run_task: asyncio.Task[None] | None = None
 
         # --- Snapshot Refresh (ADR-0031) ---
-        # Subclasses declare which system_config keys to monitor.
-        # Services without config keys (e.g. Recorder) leave this empty.
-        self._config_keys: list[str] = []
+        # Subclasses declare which settings sections to monitor.
+        # Services without settings sections (e.g. Recorder) leave this empty.
+        self._config_sections: list[str] = []
         self._config_updated_at: dict[str, datetime] = {}
 
     # ------------------------------------------------------------------
@@ -157,7 +157,7 @@ class SilvaService:
     async def _refresh_config(self) -> None:
         """Check if config has changed, and re-run load_config() only if needed.
 
-        Compares ``updated_at`` timestamps of the relevant ``system_config``
+        Compares ``updated_at`` timestamps of the relevant ``settings``
         rows against a local cache.  Only calls ``load_config()`` when at
         least one row has been modified since the last check.
 
@@ -167,33 +167,36 @@ class SilvaService:
         Best-effort: failures are logged and swallowed — the service
         continues with the previously loaded configuration.
         """
-        if not self._config_keys:
+        if not self._config_sections:
             return
 
         try:
-            from silvasonic.core.database.models.system import SystemConfig
+            from silvasonic.core.database.models.system import SettingsSection
             from silvasonic.core.database.session import get_session
             from sqlalchemy import select
 
             async with get_session() as session:
-                stmt = select(SystemConfig.key, SystemConfig.updated_at).where(
-                    SystemConfig.key.in_(self._config_keys)
+                stmt = select(SettingsSection.section, SettingsSection.updated_at).where(
+                    SettingsSection.section.in_(self._config_sections)
                 )
                 result = await session.execute(stmt)
                 rows = result.all()
 
             changed = False
-            for key, updated_at in rows:
-                if key not in self._config_updated_at or updated_at > self._config_updated_at[key]:
+            for section, updated_at in rows:
+                if (
+                    section not in self._config_updated_at
+                    or updated_at > self._config_updated_at[section]
+                ):
                     changed = True
-                self._config_updated_at[key] = updated_at
+                self._config_updated_at[section] = updated_at
 
             if changed:
                 await self.load_config()
                 logger.info(
                     "config_refreshed",
                     service=self.service_name,
-                    keys=[k for k, _ in rows],
+                    sections=[s for s, _ in rows],
                 )
         except Exception as exc:
             logger.warning("config_refresh_failed", error=str(exc))

@@ -12,7 +12,8 @@ from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device, SystemConfig
+from silvasonic.core.database.models.species import Species
+from silvasonic.core.database.models.system import Microphone, SettingsSection
 from silvasonic.core.database.session import get_session
 from sqlalchemy import select
 
@@ -25,15 +26,17 @@ async def seeded_db(station_db: Path) -> AsyncGenerator[None]:
 
     async with get_session() as session:
         # 1. System Config
-        session.add(SystemConfig(key="system", value={"latitude": 53.55, "longitude": 9.99}))
         session.add(
-            SystemConfig(
-                key="birdnet",
+            SettingsSection(section="station", value={"latitude": 53.55, "longitude": 9.99})
+        )
+        session.add(
+            SettingsSection(
+                section="birdnet",
                 value={
-                    "confidence_threshold": 0.3,
+                    "min_confidence": 0.3,
                     "sensitivity": 1.0,
-                    "overlap": 0.0,
-                    "threads": 1,
+                    "overlap_s": 0.0,
+                    "thread_count": 1,
                     "processing_order": "oldest_first",
                 },
             )
@@ -42,7 +45,13 @@ async def seeded_db(station_db: Path) -> AsyncGenerator[None]:
         # 2. Profile & Device
         prof = MicrophoneProfile(slug="test-prof", name="test-prof", config={"gain_adjust": 0})
         session.add(prof)
-        dev = Device(name="test-mic", serial_number="1234", model="dummy", profile_slug="test-prof")
+        dev = Microphone(
+            hardware_id="test-mic",
+            name="dummy",
+            serial_number="1234",
+            model="dummy",
+            profile_slug="test-prof",
+        )
         session.add(dev)
         await session.flush()
 
@@ -50,23 +59,23 @@ async def seeded_db(station_db: Path) -> AsyncGenerator[None]:
         from datetime import UTC, datetime
 
         r1 = Recording(
-            time=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake1.wav",
-            file_processed="/tmp/fake1.wav",  # Make it exist
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake1.wav",
+            processed_path="/tmp/fake1.wav",  # Make it exist
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
         )
         r2 = Recording(
-            time=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake2.wav",
-            file_processed="/tmp/fake2.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake2.wav",
+            processed_path="/tmp/fake2.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
         )
         session.add(r1)
@@ -106,8 +115,8 @@ async def test_worker_pull_concurrency(station_db: Path, seeded_db: None) -> Non
             details = BirdnetDetectionDetails(
                 model_version="v2.4",
                 sensitivity=1.0,
-                overlap=0.0,
-                confidence_threshold=0.3,
+                overlap_s=0.0,
+                min_confidence=0.3,
                 location_filter_active=False,
             )
             from datetime import timedelta
@@ -115,11 +124,11 @@ async def test_worker_pull_concurrency(station_db: Path, seeded_db: None) -> Non
             return [
                 Detection(
                     recording_id=recording.id,
-                    worker="birdnet",
-                    time=recording.time,
-                    end_time=recording.time + timedelta(seconds=3),
-                    label="Turdus",
-                    common_name="merula",
+                    analyzer="birdnet",
+                    started_at=recording.started_at,
+                    ended_at=recording.started_at + timedelta(seconds=3),
+                    label="Turdus merula_Eurasian Blackbird",
+                    species_id="turdus-merula",
                     confidence=0.99,
                     details=details.model_dump(),
                 )
@@ -146,10 +155,20 @@ async def test_worker_pull_concurrency(station_db: Path, seeded_db: None) -> Non
         recs = (await session.execute(select(Recording))).scalars().all()
         assert len(recs) == 2
         for r in recs:
-            assert r.analysis_state.get("birdnet") == "done", "Recording not marked done"
+            entry = r.analysis_state.get("birdnet")
+            assert entry is not None, "Recording not analysed"
+            assert entry["state"] == "done", "Recording not marked done"
+            assert entry["detection_count"] == 1
 
         dets = (await session.execute(select(Detection))).scalars().all()
         assert len(dets) == 2, "Each recording should have exactly 1 detection"
+        assert {d.species_id for d in dets} == {"turdus-merula"}
+
+        # The first detection of a label registered its species
+        species = (await session.execute(select(Species))).scalars().all()
+        assert [(s.id, s.label, s.category) for s in species] == [
+            ("turdus-merula", "Turdus merula_Eurasian Blackbird", "bird")
+        ]
 
 
 @pytest.mark.integration
@@ -185,35 +204,43 @@ async def test_worker_resolves_relative_db_paths(
 
     # Seed DB with relative path (as real indexer stores it)
     async with get_session() as session:
-        session.add(SystemConfig(key="system", value={"latitude": 53.55, "longitude": 9.99}))
         session.add(
-            SystemConfig(
-                key="birdnet",
+            SettingsSection(section="station", value={"latitude": 53.55, "longitude": 9.99})
+        )
+        session.add(
+            SettingsSection(
+                section="birdnet",
                 value={
-                    "confidence_threshold": 0.3,
+                    "min_confidence": 0.3,
                     "sensitivity": 1.0,
-                    "overlap": 0.0,
-                    "threads": 1,
+                    "overlap_s": 0.0,
+                    "thread_count": 1,
                     "processing_order": "oldest_first",
                 },
             )
         )
         prof = MicrophoneProfile(slug="test-prof", name="test-prof", config={"gain_adjust": 0})
         session.add(prof)
-        dev = Device(name="test-mic", serial_number="1234", model="dummy", profile_slug="test-prof")
+        dev = Microphone(
+            hardware_id="test-mic",
+            name="dummy",
+            serial_number="1234",
+            model="dummy",
+            profile_slug="test-prof",
+        )
         session.add(dev)
         await session.flush()
 
         from datetime import UTC, datetime
 
         rec = Recording(
-            time=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw=relative_path,
-            file_processed=relative_path,
-            duration=duration_s,
-            sample_rate=sr,
-            filesize_raw=wav_path.stat().st_size,
+            started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path=relative_path,
+            processed_path=relative_path,
+            duration_s=duration_s,
+            sample_rate_hz=sr,
+            raw_size_bytes=wav_path.stat().st_size,
             analysis_state={},
         )
         session.add(rec)
@@ -249,21 +276,22 @@ async def test_worker_resolves_relative_db_paths(
         svc._shutdown_event.set()
         await task
 
-    # Verify: recording was processed, NOT marked as failed_file_missing
+    # Verify: recording was processed, NOT marked as failed for a missing file
     async with get_session() as session:
         rec = (
             await session.execute(
-                select(Recording).where(Recording.file_processed == relative_path)
+                select(Recording).where(Recording.processed_path == relative_path)
             )
         ).scalar_one()
-        state = rec.analysis_state.get("birdnet", "")
-        assert state != "failed_file_missing", (
+        entry = rec.analysis_state.get("birdnet", {})
+        assert entry.get("reason") != "file_missing", (
             f"BirdNET failed to find file with relative path. "
             f"Expected 'done', got analysis_state={rec.analysis_state}"
         )
-        assert state == "done", (
+        assert entry.get("state") == "done", (
             f"Recording should be marked as done, got analysis_state={rec.analysis_state}"
         )
+        assert entry["detection_count"] == 0
 
 
 @pytest.mark.integration
@@ -273,11 +301,11 @@ async def test_stale_claim_is_taken_over_fresh_one_is_not(
 ) -> None:
     """A claim older than the lease belongs to a dead worker; a fresh one is respected.
 
-    Claiming and finishing change only this analyzer's key (ADR-0037).
+    Claiming and finishing change only this analyzer's entry (ADR-0037).
     """
     from datetime import UTC, datetime, timedelta
 
-    from silvasonic.birdnet.service import CLAIM_LEASE, _claim_marker
+    from silvasonic.core.schemas.analysis import CLAIM_LEASE, AnalysisClaim, AnalysisState
 
     with patch.dict(
         "os.environ", {"SILVASONIC_INSTANCE_ID": "w1", "SILVASONIC_WORKSPACE_DIR": "/tmp"}
@@ -286,12 +314,17 @@ async def test_stale_claim_is_taken_over_fresh_one_is_not(
     await svc.load_config()
 
     now = datetime.now(UTC)
+    other = {"state": "done", "reason": None, "finished_at": "2026-01-01T00:00:00Z"}
     async with get_session() as session:
-        recs = (await session.execute(select(Recording).order_by(Recording.time))).scalars().all()
-        recs[0].analysis_state = {"birdnet": _claim_marker(now)}  # worker alive
+        recs = (
+            (await session.execute(select(Recording).order_by(Recording.started_at)))
+            .scalars()
+            .all()
+        )
+        recs[0].analysis_state = {"birdnet": AnalysisClaim.at(now).to_json()}  # worker alive
         recs[1].analysis_state = {
-            "birdnet": _claim_marker(now - CLAIM_LEASE - timedelta(minutes=1)),  # worker died
-            "batdetect": "done",
+            "birdnet": AnalysisClaim.at(now - CLAIM_LEASE - timedelta(minutes=1)).to_json(),
+            "batdetect": other,  # worker died; another analyzer is done
         }
         await session.commit()
         alive_id, stale_id = recs[0].id, recs[1].id
@@ -301,11 +334,12 @@ async def test_stale_claim_is_taken_over_fresh_one_is_not(
     assert claimed.id == stale_id
     assert await svc._claim_next_recording() is None, "the fresh claim must not be taken"
 
-    await svc._finish_recording(stale_id, "done")
+    await svc._finish_recording(stale_id, AnalysisState.done(0))
     async with get_session() as session:
         stale = await session.get(Recording, stale_id)
         alive = await session.get(Recording, alive_id)
     assert stale is not None
     assert alive is not None
-    assert stale.analysis_state == {"birdnet": "done", "batdetect": "done"}
-    assert alive.analysis_state["birdnet"].startswith("running@")
+    assert stale.analysis_state["batdetect"] == other
+    assert stale.analysis_state["birdnet"]["state"] == "done"
+    assert alive.analysis_state["birdnet"]["state"] == "running"

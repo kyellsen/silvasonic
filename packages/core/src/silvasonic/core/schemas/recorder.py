@@ -1,7 +1,7 @@
 """Boundary schema for the Recorder service's runtime payload."""
 
 from pydantic import BaseModel, Field
-from silvasonic.core.schemas.devices import AudioConfig, ProcessingConfig, StreamConfig
+from silvasonic.core.schemas.microphones import AudioConfig, ProcessingConfig, StreamConfig
 
 
 class RecorderRuntimeConfig(BaseModel):

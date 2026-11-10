@@ -19,11 +19,11 @@ TABLES = [
     "recordings",
     "detections",
     "uploads",
-    "devices",
-    "system_config",
+    "microphones",
+    "settings",
     "microphone_profiles",
-    "taxonomy",
-    "weather",
+    "species",
+    "weather_observations",
     "users",
 ]
 

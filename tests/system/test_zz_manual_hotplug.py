@@ -24,8 +24,8 @@ from pathlib import Path
 
 import pytest
 import structlog
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -268,10 +268,11 @@ class TestDualMicDetection:
 
         # Both can be upserted
         async with session_factory() as session:
-            dev1 = await upsert_device(primary, session)
-            dev2 = await upsert_device(secondary, session)
+            mic1 = await upsert_microphone(primary, session)
+            mic2 = await upsert_microphone(secondary, session)
             await session.commit()
-            assert dev1.name != dev2.name
+            assert mic1.id != mic2.id
+            assert mic1.hardware_id != mic2.hardware_id
 
         log.info(
             "test.devices_upserted",

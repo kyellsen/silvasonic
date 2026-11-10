@@ -3,14 +3,15 @@
 Uses the shared ``station_db`` Testcontainer fixture (conftest.py)
 to verify the full Janitor cycle against a real database:
 - Correct SQL query execution per retention mode
-- Soft-delete pattern (physical file removal + DB flag update)
-- Cloud-Sync-Fallback: cloud sync disabled → skip ``uploaded`` condition
+- Soft-delete pattern (physical file removal + ``deleted_at``/``deletion_reason``)
+- Cloud-Sync-Fallback: cloud_sync module off → skip ``uploaded_at`` condition
 - Batch-size enforcement against real DB
 - Mode-specific file preservation guarantees
 """
 
 from __future__ import annotations
 
+import uuid
 import wave
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,6 +25,7 @@ from silvasonic.core.database.session import (
     create_station_engine,
 )
 from silvasonic.core.database.types import to_epoch_us
+from silvasonic.core.schemas.settings import StorageSettings
 from silvasonic.processor.janitor import (
     RetentionMode,
     run_cleanup,
@@ -39,27 +41,37 @@ pytestmark = [pytest.mark.integration]
 # integration test rules.  See: docs/development/testing.md §5.1.
 
 
-def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000) -> None:
+def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate_hz: int = 48000) -> None:
     """Create a minimal valid WAV file for testing."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    n_frames = int(duration_s * sample_rate)
+    n_frames = int(duration_s * sample_rate_hz)
     with wave.open(str(path), "w") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
+        wf.setframerate(sample_rate_hz)
         wf.writeframes(b"\x00\x00" * n_frames)
 
 
-async def _seed_device(factory: async_sessionmaker[Any], name: str) -> None:
-    """Insert a test device row (FK constraint for recordings)."""
+#: When the seeded recordings were uploaded (or deleted).
+UPLOADED_AT = datetime(2026, 6, 1, tzinfo=UTC)
+
+#: ``analysis_state`` of a recording BirdNET has finished (schemas/analysis.py).
+ANALYSED_SQL = (
+    """'{"birdnet": {"state": "done", "reason": null, """
+    """"finished_at": "2026-01-01T00:00:00Z", "detection_count": 0}}'"""
+)
+
+
+async def _seed_microphone(factory: async_sessionmaker[Any], hardware_id: str) -> None:
+    """Insert a test microphone row (FK constraint for recordings)."""
     async with factory() as session:
         await session.execute(
             text("""
-                INSERT INTO devices (name, serial_number, model, config)
-                VALUES (:name, :sn, 'TestMic', '{}')
-                ON CONFLICT (name) DO NOTHING
+                INSERT INTO microphones (hardware_id, name, serial_number, model, hardware)
+                VALUES (:hw, 'TestMic', :sn, 'TestMic', '{}')
+                ON CONFLICT (hardware_id) DO NOTHING
             """),
-            {"name": name, "sn": f"SN-{name}"},
+            {"hw": hardware_id, "sn": f"SN-{hardware_id}"},
         )
         await session.commit()
 
@@ -67,49 +79,68 @@ async def _seed_device(factory: async_sessionmaker[Any], name: str) -> None:
 async def _seed_recording(
     factory: async_sessionmaker[Any],
     *,
-    sensor_id: str,
-    file_raw: str,
-    file_processed: str,
-    uploaded: bool = False,
+    hardware_id: str,
+    raw_path: str,
+    processed_path: str,
+    uploaded_at: datetime | None = None,
     analysis_state_sql: str = "'{}'",
-    local_deleted: bool = False,
-    time: datetime,
-) -> int:
+    deleted_at: datetime | None = None,
+    started_at: datetime,
+) -> uuid.UUID:
     """Insert a recording row and return its ID."""
     async with factory() as session:
         result = await session.execute(
             text(f"""
                 INSERT INTO recordings (
-                    time, sensor_id, file_raw, file_processed,
-                    duration, sample_rate, filesize_raw, filesize_processed,
-                    uploaded, local_deleted, analysis_state
+                    started_at, microphone_id, raw_path, processed_path,
+                    duration_s, sample_rate_hz, raw_size_bytes, processed_size_bytes,
+                    uploaded_at, deleted_at, analysis_state
                 ) VALUES (
-                    :time, :sensor_id, :file_raw, :file_processed,
+                    :started_at,
+                    (SELECT id FROM microphones WHERE hardware_id = :hardware_id),
+                    :raw_path, :processed_path,
                     3.0, 48000, 288000, 288000,
-                    :uploaded, :local_deleted, {analysis_state_sql}
+                    :uploaded_at, :deleted_at,
+                    {analysis_state_sql}
                 )
                 RETURNING id
             """),
             {
-                "time": to_epoch_us(time),
-                "sensor_id": sensor_id,
-                "file_raw": file_raw,
-                "file_processed": file_processed,
-                "uploaded": uploaded,
-                "local_deleted": local_deleted,
+                "started_at": started_at,
+                "hardware_id": hardware_id,
+                "raw_path": raw_path,
+                "processed_path": processed_path,
+                "uploaded_at": uploaded_at,
+                "deleted_at": deleted_at,
             },
         )
         row = result.fetchone()
         assert row is not None
         await session.commit()
-        return int(row[0])
+        return row[0]
+
+
+async def _deletion(factory: async_sessionmaker[Any], rec_id: uuid.UUID) -> str | None:
+    """Return the recording's ``deletion_reason`` (``None`` = not deleted).
+
+    Also asserts that ``deleted_at`` and ``deletion_reason`` are set together.
+    """
+    async with factory() as session:
+        row = (
+            await session.execute(
+                text("SELECT deleted_at, deletion_reason FROM recordings WHERE id = :id"),
+                {"id": rec_id},
+            )
+        ).one()
+    assert (row[0] is None) == (row[1] is None)
+    return row[1]
 
 
 async def _seed_detection(
     factory: async_sessionmaker[Any],
     *,
-    recording_id: int,
-    worker: str = "birdnet",
+    recording_id: uuid.UUID,
+    analyzer: str = "birdnet",
     clip_path: str = "clips/test.wav",
 ) -> None:
     """Insert a detection row referencing a recording."""
@@ -117,12 +148,13 @@ async def _seed_detection(
         await session.execute(
             text("""
                 INSERT INTO detections (
-                    time, end_time, recording_id, worker, label, confidence, clip_path, details
+                    started_at, ended_at, recording_id, analyzer, label, confidence,
+                    clip_path, details
                 ) VALUES (
                     :now_us,
                     :now_us + 3000000,
                     :recording_id,
-                    :worker,
+                    :analyzer,
                     'TestLabel',
                     0.9,
                     :clip_path,
@@ -132,7 +164,7 @@ async def _seed_detection(
             {
                 "now_us": to_epoch_us(datetime.now(UTC)),
                 "recording_id": recording_id,
-                "worker": worker,
+                "analyzer": analyzer,
                 "clip_path": clip_path,
             },
         )
@@ -140,26 +172,24 @@ async def _seed_detection(
 
 
 async def _enable_upload_config(factory: async_sessionmaker[Any]) -> None:
-    """Simulate Cloud Sync enabled in system_config."""
+    """Simulate the cloud_sync module switched on."""
     async with factory() as session:
         await session.execute(
             text("""
-                INSERT INTO system_config (key, value)
-                VALUES ('cloud_sync', '{"enabled": true}')
-                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": true}'
+                INSERT INTO modules (id, enabled) VALUES ('cloud_sync', true)
+                ON CONFLICT (id) DO UPDATE SET enabled = true
             """)
         )
         await session.commit()
 
 
 async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
-    """Simulate Cloud Sync disabled in system_config."""
+    """Simulate the cloud_sync module switched off."""
     async with factory() as session:
         await session.execute(
             text("""
-                INSERT INTO system_config (key, value)
-                VALUES ('cloud_sync', '{"enabled": false}')
-                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": false}'
+                INSERT INTO modules (id, enabled) VALUES ('cloud_sync', false)
+                ON CONFLICT (id) DO UPDATE SET enabled = false
             """)
         )
         await session.commit()
@@ -171,7 +201,7 @@ async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
 
 
 class TestJanitorIntegration:
-    """Janitor integration tests with a real station database (shared station_db)."""
+    """Janitor integration tests with real PostgreSQL (shared station_db)."""
 
     @pytest.fixture(autouse=True)
     def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
@@ -187,7 +217,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "hk-mic")
+        await _seed_microphone(factory, "hk-mic")
         await _enable_upload_config(factory)
 
         # File 1: uploaded + fully analyzed → should be deleted
@@ -197,12 +227,12 @@ class TestJanitorIntegration:
         _create_wav(del_raw)
         del_id = await _seed_recording(
             factory,
-            sensor_id="hk-mic",
-            file_raw="hk-mic/data/raw/uploaded.wav",
-            file_processed="hk-mic/data/processed/uploaded.wav",
-            uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'',
-            time=datetime(2026, 1, 1, tzinfo=UTC),
+            hardware_id="hk-mic",
+            raw_path="hk-mic/data/raw/uploaded.wav",
+            processed_path="hk-mic/data/processed/uploaded.wav",
+            uploaded_at=UPLOADED_AT,
+            analysis_state_sql=ANALYSED_SQL,
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
         # File 2: not uploaded → should be preserved
@@ -212,16 +242,13 @@ class TestJanitorIntegration:
         _create_wav(kept_raw)
         kept_id = await _seed_recording(
             factory,
-            sensor_id="hk-mic",
-            file_raw="hk-mic/data/raw/kept.wav",
-            file_processed="hk-mic/data/processed/kept.wav",
-            uploaded=False,
-            time=datetime(2026, 1, 2, tzinfo=UTC),
+            hardware_id="hk-mic",
+            raw_path="hk-mic/data/raw/kept.wav",
+            processed_path="hk-mic/data/processed/kept.wav",
+            started_at=datetime(2026, 1, 2, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -235,13 +262,51 @@ class TestJanitorIntegration:
         # Verify DB: soft-delete flag
         async with factory() as session:
             row_del = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": del_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": del_id}
             )
             assert bool(row_del.scalar()) is True
             row_kept = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": kept_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"),
+                {"id": kept_id},
             )
             assert bool(row_kept.scalar()) is False
+
+        # The Janitor records why: retention
+        assert await _deletion(factory, del_id) == "retention"
+        assert await _deletion(factory, kept_id) is None
+
+        await engine.dispose()
+
+    async def test_housekeeping_skips_failed_analysis(
+        self, station_db: Path, tmp_path: Path
+    ) -> None:
+        """A recording whose analysis failed is not 'fully analysed' for housekeeping."""
+        engine = create_station_engine(station_db)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        await _seed_microphone(factory, "hkf-mic")
+        await _disable_upload_config(factory)
+
+        proc = tmp_path / "hkf-mic" / "data" / "processed" / "failed.wav"
+        _create_wav(proc)
+        rec_id = await _seed_recording(
+            factory,
+            hardware_id="hkf-mic",
+            raw_path="hkf-mic/data/raw/failed.wav",
+            processed_path="hkf-mic/data/processed/failed.wav",
+            analysis_state_sql=(
+                """'{"birdnet": {"state": "failed", "reason": "error", """
+                """"finished_at": "2026-01-01T00:00:00Z", "detection_count": null}}'"""
+            ),
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+
+        with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
+            async with factory() as session:
+                result = await run_cleanup(session, tmp_path, StorageSettings())
+
+        assert result.recordings_deleted == 0
+        assert proc.exists()
+        assert await _deletion(factory, rec_id) is None
 
         await engine.dispose()
 
@@ -252,7 +317,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "hk2-mic")
+        await _seed_microphone(factory, "hk2-mic")
         await _enable_upload_config(factory)
 
         # 1. Provide recording
@@ -271,25 +336,23 @@ class TestJanitorIntegration:
 
         rec_id = await _seed_recording(
             factory,
-            sensor_id="hk2-mic",
-            file_raw="hk2-mic/data/raw/uploaded.wav",
-            file_processed="hk2-mic/data/processed/uploaded.wav",
-            uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'',
-            time=datetime(2026, 1, 1, tzinfo=UTC),
+            hardware_id="hk2-mic",
+            raw_path="hk2-mic/data/raw/uploaded.wav",
+            processed_path="hk2-mic/data/processed/uploaded.wav",
+            uploaded_at=UPLOADED_AT,
+            analysis_state_sql=ANALYSED_SQL,
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
         # 3. Associate clip with recording
         await _seed_detection(
             factory,
             recording_id=rec_id,
-            worker=worker,
+            analyzer=worker,
             clip_path=clip_path,
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
             async with factory() as session:
                 # We need to simulate the execution environment of `run_cleanup`
@@ -341,7 +404,7 @@ class TestJanitorIntegration:
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _disable_upload_config(factory)
-        await _seed_device(factory, "fb-mic")
+        await _seed_microphone(factory, "fb-mic")
 
         # File: not uploaded, but fully analyzed → should be deleted in fallback
         proc = tmp_path / "fb-mic" / "data" / "processed" / "analyzed.wav"
@@ -350,17 +413,14 @@ class TestJanitorIntegration:
         _create_wav(raw)
         rec_id = await _seed_recording(
             factory,
-            sensor_id="fb-mic",
-            file_raw="fb-mic/data/raw/analyzed.wav",
-            file_processed="fb-mic/data/processed/analyzed.wav",
-            uploaded=False,
-            analysis_state_sql='\'{"birdnet": "true"}\'',
-            time=datetime(2026, 1, 1, tzinfo=UTC),
+            hardware_id="fb-mic",
+            raw_path="fb-mic/data/raw/analyzed.wav",
+            processed_path="fb-mic/data/processed/analyzed.wav",
+            analysis_state_sql=ANALYSED_SQL,
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -373,7 +433,7 @@ class TestJanitorIntegration:
         # Verify soft-delete
         async with factory() as session:
             row = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": rec_id}
             )
             assert bool(row.scalar()) is True
 
@@ -384,7 +444,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "def-mic")
+        await _seed_microphone(factory, "def-mic")
         await _enable_upload_config(factory)
 
         proc = tmp_path / "def-mic" / "data" / "processed" / "uploaded_no_analysis.wav"
@@ -393,16 +453,14 @@ class TestJanitorIntegration:
         _create_wav(raw)
         rec_id = await _seed_recording(
             factory,
-            sensor_id="def-mic",
-            file_raw="def-mic/data/raw/uploaded_no_analysis.wav",
-            file_processed="def-mic/data/processed/uploaded_no_analysis.wav",
-            uploaded=True,
-            time=datetime(2026, 2, 1, tzinfo=UTC),
+            hardware_id="def-mic",
+            raw_path="def-mic/data/raw/uploaded_no_analysis.wav",
+            processed_path="def-mic/data/processed/uploaded_no_analysis.wav",
+            uploaded_at=UPLOADED_AT,
+            started_at=datetime(2026, 2, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=85.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -414,7 +472,7 @@ class TestJanitorIntegration:
         # Verify soft-delete in DB
         async with factory() as session:
             row = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": rec_id}
             )
             assert bool(row.scalar()) is True
 
@@ -426,7 +484,7 @@ class TestJanitorIntegration:
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _disable_upload_config(factory)
-        await _seed_device(factory, "dfb-mic")
+        await _seed_microphone(factory, "dfb-mic")
 
         proc = tmp_path / "dfb-mic" / "data" / "processed" / "not_uploaded.wav"
         raw = tmp_path / "dfb-mic" / "data" / "raw" / "not_uploaded.wav"
@@ -434,16 +492,13 @@ class TestJanitorIntegration:
         _create_wav(raw)
         rec_id = await _seed_recording(
             factory,
-            sensor_id="dfb-mic",
-            file_raw="dfb-mic/data/raw/not_uploaded.wav",
-            file_processed="dfb-mic/data/processed/not_uploaded.wav",
-            uploaded=False,
-            time=datetime(2026, 3, 1, tzinfo=UTC),
+            hardware_id="dfb-mic",
+            raw_path="dfb-mic/data/raw/not_uploaded.wav",
+            processed_path="dfb-mic/data/processed/not_uploaded.wav",
+            started_at=datetime(2026, 3, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=85.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -456,7 +511,7 @@ class TestJanitorIntegration:
         # Verify soft-delete
         async with factory() as session:
             row = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": rec_id}
             )
             assert bool(row.scalar()) is True
 
@@ -467,7 +522,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "panic-mic")
+        await _seed_microphone(factory, "panic-mic")
 
         old_proc = tmp_path / "panic-mic" / "data" / "processed" / "old.wav"
         old_raw = tmp_path / "panic-mic" / "data" / "raw" / "old.wav"
@@ -475,11 +530,10 @@ class TestJanitorIntegration:
         _create_wav(old_raw)
         old_id = await _seed_recording(
             factory,
-            sensor_id="panic-mic",
-            file_raw="panic-mic/data/raw/old.wav",
-            file_processed="panic-mic/data/processed/old.wav",
-            uploaded=False,
-            time=datetime(2025, 1, 1, tzinfo=UTC),
+            hardware_id="panic-mic",
+            raw_path="panic-mic/data/raw/old.wav",
+            processed_path="panic-mic/data/processed/old.wav",
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
 
         new_proc = tmp_path / "panic-mic" / "data" / "processed" / "new.wav"
@@ -488,16 +542,13 @@ class TestJanitorIntegration:
         _create_wav(new_raw)
         new_id = await _seed_recording(
             factory,
-            sensor_id="panic-mic",
-            file_raw="panic-mic/data/raw/new.wav",
-            file_processed="panic-mic/data/processed/new.wav",
-            uploaded=False,
-            time=datetime(2026, 12, 1, tzinfo=UTC),
+            hardware_id="panic-mic",
+            raw_path="panic-mic/data/raw/new.wav",
+            processed_path="panic-mic/data/processed/new.wav",
+            started_at=datetime(2026, 12, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings(janitor_batch_size=1)
+        settings = StorageSettings(cleanup_batch_files=1)
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -510,11 +561,11 @@ class TestJanitorIntegration:
         # Verify soft-delete flags
         async with factory() as session:
             row_old = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": old_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": old_id}
             )
             assert bool(row_old.scalar()) is True
             row_new = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": new_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": new_id}
             )
             assert bool(row_new.scalar()) is False
 
@@ -525,7 +576,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "batch-mic")
+        await _seed_microphone(factory, "batch-mic")
 
         for i in range(5):
             proc = tmp_path / "batch-mic" / "data" / "processed" / f"seg_{i:02d}.wav"
@@ -534,16 +585,13 @@ class TestJanitorIntegration:
             _create_wav(raw)
             await _seed_recording(
                 factory,
-                sensor_id="batch-mic",
-                file_raw=f"batch-mic/data/raw/seg_{i:02d}.wav",
-                file_processed=f"batch-mic/data/processed/seg_{i:02d}.wav",
-                uploaded=False,
-                time=datetime(2026, 1, i + 1, tzinfo=UTC),
+                hardware_id="batch-mic",
+                raw_path=f"batch-mic/data/raw/seg_{i:02d}.wav",
+                processed_path=f"batch-mic/data/processed/seg_{i:02d}.wav",
+                started_at=datetime(2026, 1, i + 1, tzinfo=UTC),
             )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings(janitor_batch_size=2)
+        settings = StorageSettings(cleanup_batch_files=2)
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -556,14 +604,16 @@ class TestJanitorIntegration:
             deleted_count = await session.execute(
                 text("""
                     SELECT COUNT(*) FROM recordings
-                    WHERE local_deleted = true AND sensor_id = 'batch-mic'
+                    WHERE deleted_at IS NOT NULL AND microphone_id =
+                        (SELECT id FROM microphones WHERE hardware_id = 'batch-mic')
                 """)
             )
             assert deleted_count.scalar() == 2
             remaining_count = await session.execute(
                 text("""
                     SELECT COUNT(*) FROM recordings
-                    WHERE local_deleted = false AND sensor_id = 'batch-mic'
+                    WHERE deleted_at IS NULL AND microphone_id =
+                        (SELECT id FROM microphones WHERE hardware_id = 'batch-mic')
                 """)
             )
             assert remaining_count.scalar() == 3
@@ -590,25 +640,22 @@ class TestJanitorIntegration:
         assert (sensor_dir / "newer.wav").exists()
 
     async def test_already_deleted_not_redeleted(self, station_db: Path, tmp_path: Path) -> None:
-        """Rows with local_deleted=true are not picked up for deletion."""
+        """Rows with deleted_at set are not picked up for deletion."""
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "skip-mic")
+        await _seed_microphone(factory, "skip-mic")
 
         await _seed_recording(
             factory,
-            sensor_id="skip-mic",
-            file_raw="skip-mic/data/raw/already_gone.wav",
-            file_processed="skip-mic/data/processed/already_gone.wav",
-            uploaded=False,
-            local_deleted=True,
-            time=datetime(2025, 1, 1, tzinfo=UTC),
+            hardware_id="skip-mic",
+            raw_path="skip-mic/data/raw/already_gone.wav",
+            processed_path="skip-mic/data/processed/already_gone.wav",
+            deleted_at=UPLOADED_AT,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=95.0):
             async with factory() as session:
                 result = await run_cleanup(session, tmp_path, settings)
@@ -625,7 +672,7 @@ class TestJanitorIntegration:
         engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        await _seed_device(factory, "partial-mic")
+        await _seed_microphone(factory, "partial-mic")
         await _enable_upload_config(factory)
 
         recordings_dir = tmp_path / "recorder"
@@ -649,18 +696,20 @@ class TestJanitorIntegration:
 
         rec_id = await _seed_recording(
             factory,
-            sensor_id="partial-mic",
-            file_raw="partial-mic/data/raw/uploaded.wav",
-            file_processed="partial-mic/data/processed/uploaded.wav",
-            uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'',
-            time=datetime(2026, 1, 1, tzinfo=UTC),
+            hardware_id="partial-mic",
+            raw_path="partial-mic/data/raw/uploaded.wav",
+            processed_path="partial-mic/data/processed/uploaded.wav",
+            uploaded_at=UPLOADED_AT,
+            analysis_state_sql=ANALYSED_SQL,
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
         await _seed_detection(
-            factory, recording_id=rec_id, worker=worker, clip_path=clip_path_success
+            factory, recording_id=rec_id, analyzer=worker, clip_path=clip_path_success
         )
-        await _seed_detection(factory, recording_id=rec_id, worker=worker, clip_path=clip_path_fail)
+        await _seed_detection(
+            factory, recording_id=rec_id, analyzer=worker, clip_path=clip_path_fail
+        )
 
         original_unlink = Path.unlink
 
@@ -669,9 +718,7 @@ class TestJanitorIntegration:
                 raise PermissionError("Mock failure for fail.wav")
             original_unlink(self_path, *args, **kwargs)
 
-        from silvasonic.core.schemas.system_config import ProcessorSettings
-
-        settings = ProcessorSettings()
+        settings = StorageSettings()
 
         with (
             patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
@@ -701,7 +748,7 @@ class TestJanitorIntegration:
             assert clip_path_success not in clip_paths
 
             row_rec = await session.execute(
-                text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
+                text("SELECT deleted_at IS NOT NULL FROM recordings WHERE id = :id"), {"id": rec_id}
             )
             assert bool(row_rec.scalar()) is True
 

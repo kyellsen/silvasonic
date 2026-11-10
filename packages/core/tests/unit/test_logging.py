@@ -134,6 +134,39 @@ class TestConfigureLogging:
 
 
 @pytest.mark.unit
+class TestStringifyUuids:
+    """Record IDs are UUIDs (ADR-0033); logs show them as plain strings."""
+
+    def test_uuid_values_become_strings(self) -> None:
+        """UUID values are rendered with str(), other values are untouched."""
+        import uuid
+
+        from silvasonic.core.logging import _stringify_uuids
+
+        rid = uuid.UUID("0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f")
+        ed: dict[str, object] = {"recording_id": rid, "count": 3, "event": "x"}
+        result = _stringify_uuids(logging.getLogger(), "", ed)
+        assert result["recording_id"] == "0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f"
+        assert result["count"] == 3
+        assert result["event"] == "x"
+
+    def test_json_output_has_no_uuid_repr(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """In production JSON mode a UUID is logged as its string, not ``UUID('…')``."""
+        import uuid
+
+        import structlog
+        from silvasonic.core.logging import configure_logging
+
+        rid = uuid.UUID("0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f")
+        with patch.dict(os.environ, {"SILVASONIC_DEVELOPMENT_MODE": "false"}):
+            configure_logging("test")
+        structlog.get_logger().info("uuid_event", recording_id=rid)
+        out = capsys.readouterr().out
+        assert '"recording_id": "0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f"' in out
+        assert "UUID(" not in out
+
+
+@pytest.mark.unit
 class TestDevModeProcessors:
     """Tests for dev-mode log formatting processors."""
 

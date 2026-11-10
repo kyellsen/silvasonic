@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import uuid
 from typing import Any
 
 import structlog
@@ -20,6 +21,16 @@ def _shorten_timestamp(
         # Extract HH:MM:SS from ISO format, drop date + sub-seconds
         time_part = ts.split("T", 1)[1]
         event_dict["timestamp"] = time_part.split(".")[0].rstrip("Z")
+    return event_dict
+
+
+def _stringify_uuids(
+    _logger: logging.Logger, _method: str, event_dict: dict[str, Any]
+) -> dict[str, Any]:
+    """Render UUID values (record IDs, ADR-0033) as plain strings, not ``UUID('…')``."""
+    for key, value in event_dict.items():
+        if isinstance(value, uuid.UUID):
+            event_dict[key] = str(value)
     return event_dict
 
 
@@ -73,6 +84,7 @@ def configure_logging(service_name: str) -> None:
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
+        _stringify_uuids,
     ]
 
     # Dev-only: human-friendly timestamp + short logger name

@@ -1,8 +1,8 @@
 """System lifecycle tests for Singleton Tier-2 Workers (BirdNET).
 
 Tests the Controller's ability to start and stop background worker containers
-like BirdNET based on the `enabled` state in the `managed_services` database table,
-using a real Podman socket and a real station database file.
+like BirdNET based on the `enabled` state in the `modules` database table,
+using a real Podman socket and testcontainers PostgreSQL.
 
 Skip conditions:
 - Podman socket not available → all tests skipped
@@ -21,11 +21,11 @@ import pytest
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
-from silvasonic.controller.reconciler import DeviceStateEvaluator, ReconciliationLoop
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator, ReconciliationLoop
 from silvasonic.controller.seeder import ConfigSeeder
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
 from silvasonic.controller.worker_registry import SYSTEM_WORKERS
-from silvasonic.core.database.models.system import ManagedService
+from silvasonic.core.database.models.system import Module
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .conftest import (
@@ -50,7 +50,7 @@ def require_birdnet_image() -> None:
         pytest.skip("BirdNET image not built (run 'just build' first)")
 
 
-class MockDeviceStateEvaluator(DeviceStateEvaluator):
+class MockMicrophoneStateEvaluator(MicrophoneStateEvaluator):
     """Mock Hardware evaluator to isolate testing to the SystemWorkerEvaluator."""
 
     async def evaluate(self, session: AsyncSession) -> list[Tier2ServiceSpec]:
@@ -120,7 +120,7 @@ class TestSingletonWorkerLifecycle:
 
             # Instantiate ReconciliationLoop with real SystemWorkerEvaluator, mock HW evaluator
             sys_evaluator = SystemWorkerEvaluator()
-            hw_evaluator = MockDeviceStateEvaluator()
+            hw_evaluator = MockMicrophoneStateEvaluator()
 
             loop = ReconciliationLoop(
                 mgr,
@@ -130,9 +130,9 @@ class TestSingletonWorkerLifecycle:
             )
 
             # Phase 2: Start BirdNET via DB state
-            # Insert ManagedService for BirdNET with enabled=True
+            # Insert the BirdNET module row with enabled=True
             async with session_factory() as session:
-                session.add(ManagedService(name=isolated_worker_name, enabled=True))
+                session.add(Module(id=isolated_worker_name, enabled=True))
                 await session.commit()
 
             from contextlib import asynccontextmanager
@@ -165,9 +165,9 @@ class TestSingletonWorkerLifecycle:
             assert labels.get("io.silvasonic.service") == isolated_worker_name
 
             # Phase 3: Stop BirdNET via DB state
-            # Update ManagedService to enabled=False
+            # Switch the module row to enabled=False
             async with session_factory() as session:
-                birdnet_svc = await session.get(ManagedService, isolated_worker_name)
+                birdnet_svc = await session.get(Module, isolated_worker_name)
                 assert birdnet_svc is not None
                 birdnet_svc.enabled = False
                 await session.commit()

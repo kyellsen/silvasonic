@@ -1,10 +1,11 @@
-"""Unit tests for ConfigSeeder, ProfileBootstrapper, AuthSeeder, run_all_seeders.
+"""Unit tests for ConfigSeeder, ProfileBootstrapper, ModuleSeeder, AuthSeeder, run_all_seeders.
 
 Covers defaults insertion, skip-existing, Pydantic validation, YAML loading,
 bcrypt hashing, edge cases (missing files, invalid YAML, .gitkeep), and
 schema_map ↔ defaults.yml parity.
 """
 
+import uuid
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,7 +15,7 @@ import yaml
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
-    ManagedServiceSeeder,
+    ModuleSeeder,
     ProfileBootstrapper,
     _find_service_root,
     _get_config_dir,
@@ -90,44 +91,56 @@ class TestPathResolvers:
 # ---------------------------------------------------------------------------
 # Test fixtures
 # ---------------------------------------------------------------------------
+_STATION_ID = "0193f1c2-0000-7000-8000-000000000001"
+
+
+def _uuid_session() -> AsyncMock:
+    """Mock session; the station id itself comes from ``seeder.uuid7`` (patched)."""
+    result = MagicMock()
+    result.scalar_one.return_value = _STATION_ID
+    session = AsyncMock(add=MagicMock())
+    session.execute = AsyncMock(return_value=result)
+    return session
+
+
 def _make_defaults_yml(tmp_path: Path) -> Path:
     """Create a valid defaults.yml covering ALL seeder keys.
 
     Mirrors the real defaults.yml structure so that ConfigSeeder exercises
-    every entry in its schema_map (system, processor, cloud_sync, birdnet)
+    every entry in its schema_map (station, recording, storage, sync, birdnet)
     plus the auth block handled by AuthSeeder.
     """
     yml = tmp_path / "defaults.yml"
     yml.write_text(
         """
-system:
+station:
+  name: "Test Station"
   latitude: null
   longitude: null
-  max_recorders: 5
-  station_name: "Test Station"
+
+recording:
   auto_enrollment: true
+  max_microphones: 5
 
 auth:
   default_username: "admin"
   default_password: "testpass"
 
-processor:
-  janitor_threshold_warning: 70.0
-  janitor_threshold_critical: 80.0
-  janitor_threshold_emergency: 90.0
-  janitor_interval_seconds: 60
-  janitor_batch_size: 50
-  indexer_poll_interval: 2.0
+storage:
+  warning_percent: 70.0
+  critical_percent: 80.0
+  emergency_percent: 90.0
+  cleanup_interval_s: 60
+  cleanup_batch_files: 50
+  index_interval_s: 2.0
 
-cloud_sync:
-  enabled: false
-  poll_interval: 30
-  bandwidth_limit: "1M"
-  schedule_start_hour: null
-  schedule_end_hour: null
+sync:
+  poll_interval_s: 30
+  bandwidth_limit_bytes_per_s: 1048576
+  window: null
 
 birdnet:
-  confidence_threshold: 0.25
+  min_confidence: 0.25
 """,
         encoding="utf-8",
     )
@@ -141,17 +154,17 @@ def _make_profile_yml(tmp_path: Path) -> Path:
     yml = profiles_dir / "test_mic.yml"
     yml.write_text(
         """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: test_mic
 name: Test Microphone
 description: A test microphone profile.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -189,35 +202,86 @@ class TestConfigSeeder:
     """Tests for the ConfigSeeder class."""
 
     async def test_seed_inserts_defaults(self, tmp_path: Path) -> None:
-        """ConfigSeeder inserts all schema_map keys from defaults.yml."""
+        """ConfigSeeder inserts all schema_map sections from defaults.yml."""
         yml = _make_defaults_yml(tmp_path)
         seeder = ConfigSeeder(defaults_path=yml)
 
-        session = AsyncMock(add=MagicMock())
+        session = _uuid_session()
         session.get = AsyncMock(return_value=None)  # No existing values
 
         await seeder.seed(session)
 
-        # Should seed all 4 config keys (auth is handled by AuthSeeder)
-        assert session.add.call_count == 4
-        added_keys = {call[0][0].key for call in session.add.call_args_list}
-        assert added_keys == {"system", "processor", "cloud_sync", "birdnet"}
+        # Should seed all 5 sections (auth is handled by AuthSeeder)
+        assert session.add.call_count == 5
+        added_sections = {call[0][0].section for call in session.add.call_args_list}
+        assert added_sections == {"station", "recording", "storage", "sync", "birdnet"}
 
         # Spot-check specific values
-        added_by_key = {call[0][0].key: call[0][0].value for call in session.add.call_args_list}
-        assert added_by_key["system"]["station_name"] == "Test Station"
-        assert added_by_key["processor"]["janitor_batch_size"] == 50
-        assert added_by_key["cloud_sync"]["bandwidth_limit"] == "1M"
-        assert added_by_key["birdnet"]["confidence_threshold"] == 0.25
+        added = {call[0][0].section: call[0][0].value for call in session.add.call_args_list}
+        assert added["station"]["name"] == "Test Station"
+        assert added["recording"]["max_microphones"] == 5
+        assert added["storage"]["cleanup_batch_files"] == 50
+        assert added["sync"]["bandwidth_limit_bytes_per_s"] == 1048576
+        assert added["birdnet"]["min_confidence"] == 0.25
+
+    async def test_station_id_generated_on_insert(self, tmp_path: Path) -> None:
+        """A new station section receives a UUIDv7 id generated by the application."""
+        yml = _make_defaults_yml(tmp_path)
+        seeder = ConfigSeeder(defaults_path=yml)
+
+        session = _uuid_session()
+        session.get = AsyncMock(return_value=None)
+
+        with patch(
+            "silvasonic.controller.seeder.uuid7", return_value=uuid.UUID(_STATION_ID)
+        ) as gen:
+            await seeder.seed(session)
+
+        added = {call[0][0].section: call[0][0].value for call in session.add.call_args_list}
+        assert added["station"]["id"] == _STATION_ID
+        gen.assert_called_once()
+
+    async def test_station_id_never_overwritten(self, tmp_path: Path) -> None:
+        """An existing station id is kept; no new id is generated."""
+        yml = _make_defaults_yml(tmp_path)
+        seeder = ConfigSeeder(defaults_path=yml)
+
+        existing = MagicMock()
+        existing.value = {"id": "0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f", "name": "Garten"}
+        session = _uuid_session()
+        session.get = AsyncMock(return_value=existing)
+
+        await seeder.seed(session)
+
+        assert existing.value == {"id": "0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f", "name": "Garten"}
+        session.execute.assert_not_awaited()
+        session.add.assert_not_called()
+
+    async def test_station_id_added_to_existing_row_without_one(self, tmp_path: Path) -> None:
+        """An existing station row without an id gets one; its values are kept."""
+        yml = _make_defaults_yml(tmp_path)
+        seeder = ConfigSeeder(defaults_path=yml)
+
+        existing = MagicMock()
+        existing.value = {"name": "Garten", "id": None}
+        session = _uuid_session()
+        session.get = AsyncMock(return_value=existing)
+
+        with patch("silvasonic.controller.seeder.uuid7", return_value=uuid.UUID(_STATION_ID)):
+            await seeder.seed(session)
+
+        assert existing.value == {"name": "Garten", "id": _STATION_ID}
+        session.add.assert_not_called()
 
     async def test_seed_skips_existing_values(self, tmp_path: Path) -> None:
         """ConfigSeeder skips keys that already exist in DB."""
         yml = _make_defaults_yml(tmp_path)
         seeder = ConfigSeeder(defaults_path=yml)
 
-        # Simulate existing "system" key
+        # Simulate existing sections (the station row already has its id)
         existing = MagicMock()
-        existing.key = "system"
+        existing.section = "station"
+        existing.value = {"id": _STATION_ID}
         session = AsyncMock(add=MagicMock())
         session.get = AsyncMock(return_value=existing)
 
@@ -239,12 +303,10 @@ class TestConfigSeeder:
         yml = tmp_path / "defaults.yml"
         yml.write_text(
             """
-system:
+station:
+  name: "Test"
   latitude: "not_a_float"
   longitude: null
-  max_recorders: 5
-  station_name: "Test"
-  auto_enrollment: true
 """,
             encoding="utf-8",
         )
@@ -267,7 +329,7 @@ system:
         session.add.assert_not_called()
 
     async def test_unknown_key_without_schema(self, tmp_path: Path) -> None:
-        """ConfigSeeder inserts keys without a schema mapping (no validation)."""
+        """ConfigSeeder inserts sections without a schema mapping (no validation)."""
         yml = tmp_path / "defaults.yml"
         yml.write_text(
             """
@@ -285,7 +347,7 @@ custom_key:
 
         assert session.add.call_count == 1
         added = session.add.call_args[0][0]
-        assert added.key == "custom_key"
+        assert added.section == "custom_key"
 
     async def test_deep_merges_override_yaml(self, tmp_path: Path) -> None:
         """ConfigSeeder correctly deep merges defaults.override.yml over defaults.yml."""
@@ -293,25 +355,25 @@ custom_key:
         override = tmp_path / "defaults.override.yml"
         override.write_text(
             """
-system:
+station:
   latitude: 10.5
-  station_name: "Override Station"
+  name: "Override Station"
 birdnet:
-  confidence_threshold: 0.99
+  min_confidence: 0.99
 """,
             encoding="utf-8",
         )
         seeder = ConfigSeeder(defaults_path=yml)
-        session = AsyncMock(add=MagicMock())
+        session = _uuid_session()
         session.get = AsyncMock(return_value=None)
 
         await seeder.seed(session)
 
-        added_by_key = {call[0][0].key: call[0][0].value for call in session.add.call_args_list}
-        assert added_by_key["system"]["latitude"] == 10.5
-        assert added_by_key["system"]["longitude"] is None  # Untouched by override
-        assert added_by_key["system"]["station_name"] == "Override Station"
-        assert added_by_key["birdnet"]["confidence_threshold"] == 0.99
+        added = {call[0][0].section: call[0][0].value for call in session.add.call_args_list}
+        assert added["station"]["latitude"] == 10.5
+        assert added["station"]["longitude"] is None  # Untouched by override
+        assert added["station"]["name"] == "Override Station"
+        assert added["birdnet"]["min_confidence"] == 0.99
 
 
 # ===================================================================
@@ -337,7 +399,7 @@ class TestProfileBootstrapper:
         added = session.add.call_args[0][0]
         assert added.slug == "test_mic"
         assert added.name == "Test Microphone"
-        assert added.is_system is True
+        assert added.built_in is True
         assert "audio" in added.config
 
     async def test_seed_skips_existing_profile(self, tmp_path: Path) -> None:
@@ -388,17 +450,17 @@ class TestProfileBootstrapper:
         # Also add a valid profile so the "no_files" path doesn't match
         (profiles_dir / "valid.yml").write_text(
             """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: valid_mic
 name: Valid Mic
 description: A valid mic.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -441,7 +503,7 @@ stream:
 name: Missing Slug Mic
 description: No slug field
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
 """,
             encoding="utf-8",
         )
@@ -471,10 +533,10 @@ audio:
         # Verify the generic_usb config content
         generic_calls = [c for c in session.add.call_args_list if c.args[0].slug == "generic_usb"]
         generic_db = generic_calls[0].args[0]
-        assert generic_db.is_system is True
-        assert generic_db.config["audio"]["sample_rate"] == 48000
+        assert generic_db.built_in is True
+        assert generic_db.config["audio"]["sample_rate_hz"] == 48000
         assert generic_db.config["audio"]["channels"] == 1
-        assert generic_db.config["audio"]["format"] == "S16LE"
+        assert generic_db.config["audio"]["sample_format"] == "S16LE"
         assert generic_db.config["processing"]["gain_db"] == 0.0
 
 
@@ -509,7 +571,7 @@ class TestAllRealProfilesValid:
     def test_profile_passes_pydantic_validation(self, yml_name: str) -> None:
         """Each seed YAML must parse without Pydantic ValidationError."""
         import yaml
-        from silvasonic.core.schemas.devices import MicrophoneProfile
+        from silvasonic.core.schemas.microphones import MicrophoneProfile
 
         yml_path = self._real_profiles_dir() / yml_name
         raw = yaml.safe_load(yml_path.read_text(encoding="utf-8"))
@@ -522,7 +584,8 @@ class TestAllRealProfilesValid:
 
         # Basic sanity: slug and audio section must be present
         assert profile.slug, f"{yml_name}: slug must not be empty"
-        assert profile.audio.sample_rate > 0, f"{yml_name}: sample_rate must be positive"
+        assert profile.audio.sample_rate_hz > 0, f"{yml_name}: sample_rate_hz must be positive"
+        assert profile.schema_version == "2.0", f"{yml_name}: schema_version must be 2.0"
 
     @pytest.mark.parametrize(
         "yml_name",
@@ -637,31 +700,28 @@ system:
 
 
 # ===================================================================
-# ManagedServiceSeeder
+# ModuleSeeder
 # ===================================================================
 
 
 @pytest.mark.unit
-class TestManagedServiceSeeder:
-    """Tests for the Tier-2 singleton orchestration seeder."""
+class TestModuleSeeder:
+    """Tests for the module switch seeder."""
 
-    async def test_seed_inserts_missing_services(self) -> None:
-        """Seeder inserts row when service is not in the DB."""
-        seeder = ManagedServiceSeeder()
+    async def test_seed_inserts_missing_modules(self) -> None:
+        """Seeder inserts a row per worker (on) and cloud_sync (off)."""
+        seeder = ModuleSeeder()
         session = AsyncMock(add=MagicMock())
         session.get = AsyncMock(return_value=None)
 
         await seeder.seed(session)
 
-        # verify session.add was called for 'birdnet'
-        session.add.assert_called()
-        added_service = session.add.call_args[0][0]
-        assert added_service.name == "birdnet"
-        assert added_service.enabled is True
+        added = {call.args[0].id: call.args[0].enabled for call in session.add.call_args_list}
+        assert added == {"birdnet": True, "cloud_sync": False}
 
-    async def test_seed_skips_existing_services(self) -> None:
+    async def test_seed_skips_existing_modules(self) -> None:
         """Seeder does not overwrite existing user-modified rows."""
-        seeder = ManagedServiceSeeder()
+        seeder = ModuleSeeder()
         session = AsyncMock(add=MagicMock())
         # mock that service already exists
         session.get = AsyncMock(return_value=MagicMock())
@@ -718,7 +778,7 @@ class TestRunAllSeeders:
                 new_callable=AsyncMock,
             ),
             patch(
-                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                "silvasonic.controller.seeder.ModuleSeeder.seed",
                 new_callable=AsyncMock,
             ),
             patch(
@@ -741,7 +801,7 @@ class TestRunAllSeeders:
         """Seeder execution order is a design constraint (Data Capture Integrity).
 
         ConfigSeeder and ProfileBootstrapper MUST run first because
-        ProfileMatcher depends on system.auto_enrollment and profiles
+        ProfileMatcher depends on recording.auto_enrollment and profiles
         during the Initial Device Scan immediately after seeding.
         """
         factory, _sessions = self._make_session_factory()
@@ -753,8 +813,8 @@ class TestRunAllSeeders:
         def _track_profiles(*a: object, **kw: object) -> None:
             call_order.append("profiles")
 
-        def _track_managed(*a: object, **kw: object) -> None:
-            call_order.append("managed_services")
+        def _track_modules(*a: object, **kw: object) -> None:
+            call_order.append("modules")
 
         def _track_cloud(*a: object, **kw: object) -> None:
             call_order.append("cloud_sync")
@@ -774,9 +834,9 @@ class TestRunAllSeeders:
                 side_effect=_track_profiles,
             ),
             patch(
-                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                "silvasonic.controller.seeder.ModuleSeeder.seed",
                 new_callable=AsyncMock,
-                side_effect=_track_managed,
+                side_effect=_track_modules,
             ),
             patch(
                 "silvasonic.controller.seeder.CloudSyncSeeder.seed",
@@ -794,7 +854,7 @@ class TestRunAllSeeders:
         assert call_order == [
             "config",
             "profiles",
-            "managed_services",
+            "modules",
             "cloud_sync",
             "auth",
         ]
@@ -818,7 +878,7 @@ class TestRunAllSeeders:
                 new_callable=AsyncMock,
             ),
             patch(
-                "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+                "silvasonic.controller.seeder.ModuleSeeder.seed",
                 new_callable=AsyncMock,
             ),
             patch(
@@ -877,17 +937,19 @@ class TestDefaultsYamlParity:
     @staticmethod
     def _get_schema_map() -> dict[str, type]:
         """Return the same schema_map the seeder uses at runtime."""
-        from silvasonic.core.schemas.system_config import (
+        from silvasonic.core.schemas.settings import (
             BirdnetSettings,
-            CloudSyncSettings,
-            ProcessorSettings,
-            SystemSettings,
+            RecordingSettings,
+            StationSettings,
+            StorageSettings,
+            SyncSettings,
         )
 
         return {
-            "system": SystemSettings,
-            "processor": ProcessorSettings,
-            "cloud_sync": CloudSyncSettings,
+            "station": StationSettings,
+            "recording": RecordingSettings,
+            "storage": StorageSettings,
+            "sync": SyncSettings,
             "birdnet": BirdnetSettings,
         }
 

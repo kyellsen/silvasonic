@@ -2,6 +2,7 @@
 
 import asyncio
 import gc
+import json
 import os
 import re
 import time
@@ -14,13 +15,21 @@ import soundfile as sf
 import structlog
 from ai_edge_litert.interpreter import Interpreter
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
+from silvasonic.birdnet.species import label_species_id, register_species
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.session import get_session
+from silvasonic.core.schemas.analysis import (
+    CLAIM_LEASE,
+    REASON_FILE_MISSING,
+    REASON_SAMPLE_RATE_UNSUPPORTED,
+    AnalysisClaim,
+    AnalysisState,
+)
 from silvasonic.core.schemas.detections import BirdnetDetectionDetails
-from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 from silvasonic.core.service import SilvaService
-from sqlalchemy import and_, false, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
@@ -41,14 +50,6 @@ MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
 META_MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
 LABELS_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Labels.txt"
-
-# Worker Pull claim (ADR-0018, ADR-0037): a claimed recording carries
-# ``"running@<claim time>"`` under its analyzer key until the result is
-# written.  A claim older than the lease belongs to a worker that died and
-# may be taken over.
-ANALYZER_KEY = "birdnet"
-CLAIM_PREFIX = "running@"
-CLAIM_LEASE = timedelta(minutes=10)
 
 
 def _derive_model_version(filename: str) -> str:
@@ -125,14 +126,17 @@ def birdnet_week(moment: datetime) -> int:
     return (moment.month - 1) * 4 + min(3, (moment.day - 1) // 7) + 1
 
 
-def _analysis_state() -> Any:
+ANALYZER_KEY = "birdnet"
+
+
+def _analysis_entry() -> Any:
     """This analyzer's entry in ``recordings.analysis_state``, as an SQL expression."""
     return func.json_extract(Recording.analysis_state, f"$.{ANALYZER_KEY}")
 
 
-def _claim_marker(moment: datetime) -> str:
-    """The state value of a claim made at ``moment``; sorts by time."""
-    return CLAIM_PREFIX + moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+def _analysis_field(name: str) -> Any:
+    """One field of this analyzer's entry, as an SQL expression."""
+    return func.json_extract(Recording.analysis_state, f"$.{ANALYZER_KEY}.{name}")
 
 
 def _flat_sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
@@ -165,7 +169,7 @@ class BirdNETService(SilvaService):
         )
         self.env_settings = env_settings
         self.birdnet_config: BirdnetSettings | None = None
-        self.system_config: SystemSettings | None = None
+        self.station_config: StationSettings | None = None
         self.model_version = _derive_model_version(MODEL_PATH.name)
         self.recordings_dir = Path(env_settings.RECORDINGS_DIR)
 
@@ -175,8 +179,8 @@ class BirdNETService(SilvaService):
         # Initialize Two-Phase Logging stats
         self.stats = BirdnetStats()
 
-        # Snapshot Refresh: monitor birdnet tuning + system location (ADR-0031)
-        self._config_keys = ["birdnet", "system"]
+        # Snapshot Refresh: monitor birdnet tuning + station location (ADR-0031)
+        self._config_sections = ["birdnet", "station"]
         self._backlog_pending: int = 0
 
     def get_extra_meta(self) -> dict[str, Any]:
@@ -195,16 +199,18 @@ class BirdNETService(SilvaService):
 
     async def load_config(self) -> None:
         """Load runtime configuration from the database."""
-        from silvasonic.core.database.models.system import SystemConfig
+        from silvasonic.core.database.models.system import SettingsSection
         from sqlalchemy import select
 
         async with get_session() as session:
-            stmt = select(SystemConfig).where(SystemConfig.key.in_(["birdnet", "system"]))
+            stmt = select(SettingsSection).where(
+                SettingsSection.section.in_(["birdnet", "station"])
+            )
             result = await session.execute(stmt)
-            configs = {row.key: row.value for row in result.scalars()}
+            configs = {row.section: row.value for row in result.scalars()}
 
             self.birdnet_config = BirdnetSettings(**configs.get("birdnet", {}))
-            self.system_config = SystemSettings(**configs.get("system", {}))
+            self.station_config = StationSettings(**configs.get("station", {}))
 
     def _get_allowed_species_mask(self, labels: list[str], week: int) -> tuple[np.ndarray, bool]:
         """Build the boolean mask of species plausible at the location in ``week``.
@@ -216,12 +222,12 @@ class BirdNETService(SilvaService):
         Returns:
             The mask and whether the location filter is active.
         """
-        assert self.system_config is not None
+        assert self.station_config is not None
 
         loc_filter_active = False
         allowed_mask = np.ones(len(labels), dtype=bool)
 
-        if self.system_config.latitude is not None and self.system_config.longitude is not None:
+        if self.station_config.latitude is not None and self.station_config.longitude is not None:
             # We must run the meta-model to determine allowed species
             loc_filter_active = True
             try:
@@ -231,7 +237,7 @@ class BirdNETService(SilvaService):
                 meta_out = meta_interp.get_output_details()[0]["index"]
 
                 meta_input = np.array(
-                    [[self.system_config.latitude, self.system_config.longitude, week]],
+                    [[self.station_config.latitude, self.station_config.longitude, week]],
                     dtype=np.float32,
                 )
                 meta_interp.set_tensor(meta_in, meta_input)
@@ -274,7 +280,7 @@ class BirdNETService(SilvaService):
         before the recording does.
         """
         assert self.birdnet_config is not None
-        assert self.system_config is not None
+        assert self.station_config is not None
 
         loop = asyncio.get_running_loop()
 
@@ -301,7 +307,7 @@ class BirdNETService(SilvaService):
         audio, lead = await loop.run_in_executor(None, _load)
 
         # Slice segments
-        overlap = self.birdnet_config.overlap
+        overlap = self.birdnet_config.overlap_s
         step = int((WINDOW_SECS - overlap) * MODEL_SR)
 
         detections: list[Detection] = []
@@ -338,7 +344,7 @@ class BirdNETService(SilvaService):
             scores = _flat_sigmoid(raw, sensitivity=-adj_sens)
 
             # Mask and threshold filter
-            mask = (scores >= self.birdnet_config.confidence_threshold) & allowed_mask
+            mask = (scores >= self.birdnet_config.min_confidence) & allowed_mask
             hits = np.where(mask)[0]
 
             w_start_td = timedelta(seconds=(start_idx - offset) / MODEL_SR)
@@ -349,16 +355,15 @@ class BirdNETService(SilvaService):
                 parts = labels[i].split("_")
 
                 label_basename = f"{parts[0]}_{parts[1]}" if len(parts) > 1 else parts[0]
-                common_name = parts[1] if len(parts) > 1 else ""
 
                 details = BirdnetDetectionDetails(
                     model_version=self.model_version,
                     sensitivity=self.birdnet_config.sensitivity,
-                    overlap=self.birdnet_config.overlap,
-                    confidence_threshold=self.birdnet_config.confidence_threshold,
+                    overlap_s=self.birdnet_config.overlap_s,
+                    min_confidence=self.birdnet_config.min_confidence,
                     location_filter_active=loc_filter_active,
-                    lat=self.system_config.latitude,
-                    lon=self.system_config.longitude,
+                    lat=self.station_config.latitude,
+                    lon=self.station_config.longitude,
                     week=week if loc_filter_active else None,
                 )
 
@@ -371,8 +376,8 @@ class BirdNETService(SilvaService):
 
                 clip_path = self.clips_dir / clip_filename
 
-                # Audio slicing logic: ± clip_padding_seconds
-                pad_samples = int(self.birdnet_config.clip_padding_seconds * MODEL_SR)
+                # Audio slicing logic: ± clip_padding_s
+                pad_samples = int(self.birdnet_config.clip_padding_s * MODEL_SR)
                 slice_start = max(0, start_idx - pad_samples)
                 slice_end = min(len(audio), start_idx + WINDOW_SAMPLES + pad_samples)
 
@@ -395,11 +400,11 @@ class BirdNETService(SilvaService):
 
                 det = Detection(
                     recording_id=recording.id,
-                    worker="birdnet",
-                    time=recording.time + w_start_td,
-                    end_time=recording.time + w_end_td,
+                    analyzer="birdnet",
+                    started_at=recording.started_at + w_start_td,
+                    ended_at=recording.started_at + w_end_td,
                     label=label_basename,
-                    common_name=common_name,
+                    species_id=label_species_id(label_basename),
                     confidence=score,
                     details=details.model_dump(),
                     clip_path=det_clip_path,
@@ -422,47 +427,49 @@ class BirdNETService(SilvaService):
         """
         result = await session.execute(
             select(
-                Recording.time,
-                Recording.duration,
-                Recording.file_processed,
-                Recording.file_raw,
+                Recording.started_at,
+                Recording.duration_s,
+                Recording.processed_path,
+                Recording.raw_path,
             )
-            .where(Recording.sensor_id == recording.sensor_id)
-            .where(Recording.time < recording.time)
-            .where(Recording.local_deleted.is_(False))
-            .order_by(Recording.time.desc())
+            .where(Recording.microphone_id == recording.microphone_id)
+            .where(Recording.started_at < recording.started_at)
+            .where(Recording.deleted_at.is_(None))
+            .order_by(Recording.started_at.desc())
             .limit(1)
         )
         prev = result.first()
-        if prev is None or not is_contiguous(prev.time, prev.duration, recording.time):
+        if prev is None or not is_contiguous(
+            prev.started_at, prev.duration_s, recording.started_at
+        ):
             return None
-        path = self.recordings_dir / (prev.file_processed or prev.file_raw)
+        path = self.recordings_dir / (prev.processed_path or prev.raw_path)
         return path if path.exists() else None
 
     async def _claim_next_recording(self) -> Recording | None:
         """Claim the next recording to analyse, in one short transaction.
 
-        The claim is committed before inference starts, so the database is
-        free while the model runs (ADR-0037).  A claim older than
-        ``CLAIM_LEASE`` is taken over.
+        The claim (``AnalysisClaim``) is committed before inference starts, so
+        the database is free while the model runs (ADR-0037).  A claim older
+        than ``CLAIM_LEASE`` belongs to a worker that died and is taken over.
         """
         assert self.birdnet_config is not None
         now = datetime.now(UTC)
-        state = _analysis_state()
+        entry = _analysis_entry()
         order = (
-            Recording.time.desc()
+            Recording.started_at.desc()
             if self.birdnet_config.processing_order == "newest_first"
-            else Recording.time.asc()
+            else Recording.started_at.asc()
         )
         candidate = (
             select(Recording.id)
-            .where(Recording.local_deleted == false())
+            .where(Recording.deleted_at.is_(None))
             .where(
                 or_(
-                    state.is_(None),
+                    entry.is_(None),
                     and_(
-                        state.like(f"{CLAIM_PREFIX}%"),
-                        state < _claim_marker(now - CLAIM_LEASE),
+                        _analysis_field("state") == "running",
+                        _analysis_field("claimed_at") < AnalysisClaim.timestamp(now - CLAIM_LEASE),
                     ),
                 )
             )
@@ -475,7 +482,9 @@ class BirdNETService(SilvaService):
             .where(Recording.id == candidate)
             .values(
                 analysis_state=func.json_set(
-                    Recording.analysis_state, f"$.{ANALYZER_KEY}", _claim_marker(now)
+                    Recording.analysis_state,
+                    f"$.{ANALYZER_KEY}",
+                    func.json(AnalysisClaim.at(now).to_json_text()),
                 )
             )
             .returning(Recording)
@@ -488,13 +497,13 @@ class BirdNETService(SilvaService):
 
     async def _finish_recording(
         self,
-        recording_id: int,
-        state: str,
+        recording_id: object,
+        state: AnalysisState,
         detections: list[Detection] | None = None,
     ) -> None:
-        """Store the detections and the final state of one recording, in one transaction.
+        """Store the detections and the result of one recording, in one transaction.
 
-        Only this analyzer's key in ``analysis_state`` changes.
+        Only this analyzer's entry in ``analysis_state`` changes.
         """
         async with get_session() as session:
             if detections:
@@ -504,7 +513,9 @@ class BirdNETService(SilvaService):
                 .where(Recording.id == recording_id)
                 .values(
                     analysis_state=func.json_set(
-                        Recording.analysis_state, f"$.{ANALYZER_KEY}", state
+                        Recording.analysis_state,
+                        f"$.{ANALYZER_KEY}",
+                        func.json(json.dumps(state.to_json())),
                     )
                 )
                 .execution_options(synchronize_session=False)
@@ -514,7 +525,7 @@ class BirdNETService(SilvaService):
     async def run(self) -> None:
         """Main inference loop."""
         assert self.birdnet_config is not None, "BirdNET DB config not loaded"
-        assert self.system_config is not None, "System DB config not loaded"
+        assert self.station_config is not None, "Station DB config not loaded"
 
         self.health.update_status("birdnet", True, "initializing native engine")
 
@@ -523,7 +534,7 @@ class BirdNETService(SilvaService):
                 labels = [line.strip() for line in f.readlines()]
 
             interpreter = Interpreter(
-                model_path=str(MODEL_PATH), num_threads=self.birdnet_config.threads
+                model_path=str(MODEL_PATH), num_threads=self.birdnet_config.thread_count
             )
             interpreter.allocate_tensors()
 
@@ -544,18 +555,19 @@ class BirdNETService(SilvaService):
             self.stats.maybe_emit_summary()
 
             # --- Snapshot Refresh: reload tuning parameters (ADR-0031) ---
-            prev_lat = self.system_config.latitude if self.system_config else None
-            prev_lon = self.system_config.longitude if self.system_config else None
+            prev_lat = self.station_config.latitude if self.station_config else None
+            prev_lon = self.station_config.longitude if self.station_config else None
             await self._refresh_config()
             # A new location invalidates every cached species mask
-            if self.system_config and (
-                self.system_config.latitude != prev_lat or self.system_config.longitude != prev_lon
+            if self.station_config and (
+                self.station_config.latitude != prev_lat
+                or self.station_config.longitude != prev_lon
             ):
                 species_masks.clear()
                 log.info(
                     "birdnet.species_masks_reset",
-                    lat=self.system_config.latitude,
-                    lon=self.system_config.longitude,
+                    lat=self.station_config.latitude,
+                    lon=self.station_config.longitude,
                 )
 
             # Backlog update (for heartbeat meta)
@@ -564,8 +576,8 @@ class BirdNETService(SilvaService):
                     count_result = await session.execute(
                         select(func.count())
                         .select_from(Recording)
-                        .where(Recording.local_deleted.is_(False))
-                        .where(_analysis_state().is_(None))
+                        .where(Recording.deleted_at.is_(None))
+                        .where(_analysis_entry().is_(None))
                     )
                     self._backlog_pending = count_result.scalar_one()
             except Exception:
@@ -581,12 +593,14 @@ class BirdNETService(SilvaService):
                     continue
 
                 # Check file existence — DB stores relative paths, prefix with recordings_dir
-                rel_path = recording.file_processed or recording.file_raw
+                rel_path = recording.processed_path or recording.raw_path
                 audio_path = self.recordings_dir / rel_path
                 if not audio_path.exists():
                     log.error("birdnet.file_missing", path=str(audio_path))
                     # Mark as failed in DB to prevent infinite loop
-                    await self._finish_recording(recording.id, "failed_file_missing")
+                    await self._finish_recording(
+                        recording.id, AnalysisState.failed(REASON_FILE_MISSING)
+                    )
                     continue
 
                 # Process — no database transaction is open while the model runs
@@ -594,7 +608,7 @@ class BirdNETService(SilvaService):
                 start_time = time.perf_counter()
 
                 try:
-                    week = birdnet_week(recording.time)
+                    week = birdnet_week(recording.started_at)
                     if week not in species_masks:
                         species_masks[week] = self._get_allowed_species_mask(labels, week)
                     allowed_mask, loc_filter_active = species_masks[week]
@@ -612,7 +626,11 @@ class BirdNETService(SilvaService):
                         lead_in_path,
                     )
 
-                    await self._finish_recording(recording.id, "done", detections)
+                    if detections:
+                        await register_species({d.label for d in detections})
+                    await self._finish_recording(
+                        recording.id, AnalysisState.done(len(detections)), detections
+                    )
                     elapsed = time.perf_counter() - start_time
                     self.stats.record_analyzed(recording.id, elapsed, len(detections))
 
@@ -622,12 +640,14 @@ class BirdNETService(SilvaService):
                         recording_id=recording.id,
                         error=str(e),
                     )
-                    await self._finish_recording(recording.id, "skipped_sample_rate")
+                    await self._finish_recording(
+                        recording.id, AnalysisState.skipped(REASON_SAMPLE_RATE_UNSUPPORTED)
+                    )
 
                 except Exception as e:
                     self.stats.record_error(recording.id, e)
-                    # Store crash log in state
-                    await self._finish_recording(recording.id, f"crashed: {str(e)[:50]}")
+                    # Store the failure in state; the error text is in the log
+                    await self._finish_recording(recording.id, AnalysisState.failed())
 
             except Exception as exc:
                 # Soft-fail transient DB errors or post-rollback persistence failures (ADR-0030)

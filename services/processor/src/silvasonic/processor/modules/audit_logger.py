@@ -1,12 +1,13 @@
 """Audit logger for Cloud Sync uploads.
 
 Records upload attempts to the immutable `uploads` table and signals the Janitor
-by marking `recordings.uploaded = True` upon success.
+by setting `recordings.uploaded_at` upon success.
 """
 
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any
 
 from silvasonic.core.database.models.recordings import Recording, Upload
@@ -16,10 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 async def log_upload_attempt(
     session: AsyncSession,
-    recording_id: int,
+    recording_id: uuid.UUID,
     filename: str,
     remote_path: str,
-    size: int,
+    size_bytes: int,
     success: bool,
     error_message: str | None,
     duration_s: float,
@@ -31,7 +32,7 @@ async def log_upload_attempt(
         recording_id: Origin recording PK.
         filename: Base filename of the uploaded file.
         remote_path: Target path on remote storage.
-        size: Bytes transferred or size of the file.
+        size_bytes: Bytes transferred or size of the file.
         success: Whether the upload succeeded.
         error_message: Error text if failed.
         duration_s: Time taken for the upload attempt.
@@ -47,7 +48,7 @@ async def log_upload_attempt(
         recording_id=recording_id,
         filename=filename,
         remote_path=remote_path,
-        size=size,
+        size_bytes=size_bytes,
         success=success,
         error_message=json.dumps(meta),
     )
@@ -60,6 +61,6 @@ async def log_upload_attempt(
         stmt = (
             update(Recording)
             .where(Recording.id == recording_id)
-            .values(uploaded=True, uploaded_at=datetime.now(UTC))
+            .values(uploaded_at=datetime.now(UTC))
         )
         await session.execute(stmt)

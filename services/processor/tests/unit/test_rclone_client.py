@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from silvasonic.core.crypto import generate_key
-from silvasonic.core.schemas.system_config import CloudSyncSettings
-from silvasonic.processor.modules.rclone_client import RcloneClient
+from silvasonic.core.schemas.settings import SyncSettings
+from silvasonic.processor.modules.rclone_client import RcloneClient, bwlimit_arg
 
 
 @pytest.fixture
@@ -16,9 +16,8 @@ def encryption_key() -> bytes:
 
 
 @pytest.fixture
-def settings() -> CloudSyncSettings:
-    return CloudSyncSettings(
-        enabled=True,
+def settings() -> SyncSettings:
+    return SyncSettings(
         remote_type="s3",
         remote_config={
             "access_key_id": "test-key",
@@ -44,7 +43,7 @@ def dummy_flac(tmp_path: Path) -> Path:
 
 @pytest.mark.unit
 async def test_rclone_failure_logs_stderr(
-    settings: CloudSyncSettings,
+    settings: SyncSettings,
     encryption_key: bytes,
     dummy_flac: Path,
     capfd: pytest.CaptureFixture[str],
@@ -86,7 +85,7 @@ async def test_rclone_failure_logs_stderr(
 
 @pytest.mark.unit
 async def test_rclone_failure_log_includes_error_kwarg(
-    settings: CloudSyncSettings,
+    settings: SyncSettings,
     encryption_key: bytes,
     dummy_flac: Path,
 ) -> None:
@@ -142,7 +141,7 @@ class TestDecryptConfig:
 
     def test_plain_values_pass_through(
         self,
-        settings: CloudSyncSettings,
+        settings: SyncSettings,
         encryption_key: bytes,
     ) -> None:
         """Config with only plain values passes through unchanged."""
@@ -162,7 +161,7 @@ class TestDecryptConfig:
 
     def test_encrypted_values_are_decrypted(
         self,
-        settings: CloudSyncSettings,
+        settings: SyncSettings,
         encryption_key: bytes,
     ) -> None:
         """Config with enc:-prefixed values are decrypted to plaintext."""
@@ -185,7 +184,7 @@ class TestDecryptConfig:
 
     def test_mixed_plain_and_encrypted(
         self,
-        settings: CloudSyncSettings,
+        settings: SyncSettings,
         encryption_key: bytes,
     ) -> None:
         """Mixed config: enc: values decrypted, plain values untouched."""
@@ -212,7 +211,7 @@ class TestDecryptConfig:
 
     def test_non_string_values_pass_through(
         self,
-        settings: CloudSyncSettings,
+        settings: SyncSettings,
         encryption_key: bytes,
     ) -> None:
         """Non-string values (int, bool) pass through without error."""
@@ -229,3 +228,58 @@ class TestDecryptConfig:
         assert result["chunk_size"] == 5242880
         assert result["disable_http2"] is True
         assert result["endpoint"] == "https://s3.example.com"
+
+
+# ────────────────────────────────────────────────────
+# Bandwidth limit: bytes per second → rclone --bwlimit
+# ────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("bytes_per_s", "expected"),
+    [(1_048_576, "1024K"), (1024, "1K"), (1536, "2K"), (100, "1K"), (None, None)],
+)
+def test_bwlimit_arg_converts_to_kibibytes(bytes_per_s: int | None, expected: str | None) -> None:
+    """A bare rclone number is KiB/s, so bytes are passed as whole KiB with K."""
+    assert bwlimit_arg(bytes_per_s) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("bytes_per_s", "expected_flag"),
+    [(1_048_576, ["--bwlimit", "1024K"]), (None, None)],
+)
+async def test_upload_passes_bwlimit_only_when_limited(
+    settings: SyncSettings,
+    encryption_key: bytes,
+    dummy_flac: Path,
+    bytes_per_s: int | None,
+    expected_flag: list[str] | None,
+) -> None:
+    """The rclone command carries --bwlimit for a limit and omits it for None."""
+    settings.bandwidth_limit_bytes_per_s = bytes_per_s
+    client = RcloneClient(settings, encryption_key)
+    captured: list[tuple[Any, ...]] = []
+
+    async def mock_exec(*args: Any, **kwargs: Any) -> AsyncMock:
+        captured.append(args)
+        proc = AsyncMock()
+        proc.returncode = 0
+        proc.communicate.return_value = (b"", b"")
+        return proc
+
+    with (
+        patch("asyncio.create_subprocess_exec", side_effect=mock_exec),
+        patch.object(
+            client, "_generate_rclone_conf", new_callable=AsyncMock, return_value=dummy_flac
+        ),
+    ):
+        await client.upload_file(dummy_flac, "bucket/path/file.flac")
+
+    cmd = list(captured[0])
+    if expected_flag is None:
+        assert "--bwlimit" not in cmd
+    else:
+        idx = cmd.index("--bwlimit")
+        assert cmd[idx : idx + 2] == expected_flag

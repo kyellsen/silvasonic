@@ -11,7 +11,7 @@ from silvasonic.birdnet.service import BirdNETService
 from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.database.session import get_session
 
 
@@ -24,54 +24,68 @@ async def seeded_backlog_db(station_db: Path) -> AsyncGenerator[None]:
         # Seed Profile & Device to satisfy FKs
         prof = MicrophoneProfile(slug="test-prof", name="test-prof", config={"gain_adjust": 0})
         session.add(prof)
-        dev = Device(name="test-mic", serial_number="1234", model="dummy", profile_slug="test-prof")
+        dev = Microphone(
+            hardware_id="test-mic",
+            name="dummy",
+            serial_number="1234",
+            model="dummy",
+            profile_slug="test-prof",
+        )
         session.add(dev)
         await session.flush()
 
         # 1. Pending recording
         r1 = Recording(
-            time=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake1.wav",
-            file_processed="/tmp/fake1.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake1.wav",
+            processed_path="/tmp/fake1.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
         )
         # 2. Another pending recording
         r2 = Recording(
-            time=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake2.wav",
-            file_processed="/tmp/fake2.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake2.wav",
+            processed_path="/tmp/fake2.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
         )
         # 3. Analyzed recording
         r3 = Recording(
-            time=datetime(2024, 1, 1, 12, 2, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake3.wav",
-            file_processed="/tmp/fake3.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
-            analysis_state={"birdnet": "done"},
+            started_at=datetime(2024, 1, 1, 12, 2, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake3.wav",
+            processed_path="/tmp/fake3.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
+            analysis_state={
+                "birdnet": {
+                    "state": "done",
+                    "reason": None,
+                    "finished_at": "2024-01-01T12:10:00Z",
+                    "detection_count": 0,
+                }
+            },
         )
         # 4. Deleted recording (should not be counted)
         r4 = Recording(
-            time=datetime(2024, 1, 1, 12, 3, tzinfo=UTC),
-            sensor_id="test-mic",
-            file_raw="/tmp/fake4.wav",
-            file_processed="/tmp/fake4.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 3, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="/tmp/fake4.wav",
+            processed_path="/tmp/fake4.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
-            local_deleted=True,
+            deleted_at=datetime(2024, 1, 2, tzinfo=UTC),
+            deletion_reason="retention",
         )
 
         session.add_all([r1, r2, r3, r4])
@@ -112,12 +126,12 @@ class TestBacklogMetrics:
                 patch.object(svc, "_refresh_config"),
                 patch("builtins.open"),
                 patch.object(svc, "birdnet_config"),
-                patch.object(svc, "system_config"),
+                patch.object(svc, "station_config"),
             ):
                 # Ensure the loop exits immediately and doesn't do processing
                 assert svc.birdnet_config is not None
                 svc.birdnet_config.processing_order = "oldest_first"
-                svc.birdnet_config.threads = 1
+                svc.birdnet_config.thread_count = 1
                 await svc.run()
 
         # After one iteration of the run() loop, _backlog_pending should be populated
@@ -137,32 +151,44 @@ class TestBacklogMetrics:
                 slug="test-prof2", name="test-prof2", config={"gain_adjust": 0}
             )
             session.add(prof)
-            dev = Device(
-                name="test-mic2", serial_number="4321", model="dummy", profile_slug="test-prof2"
+            dev = Microphone(
+                hardware_id="test-mic2",
+                name="dummy",
+                serial_number="4321",
+                model="dummy",
+                profile_slug="test-prof2",
             )
             session.add(dev)
             await session.flush()
 
             r1 = Recording(
-                time=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-                sensor_id="test-mic2",
-                file_raw="/tmp/f.wav",
-                file_processed="/tmp/f.wav",
-                duration=10.0,
-                sample_rate=48000,
-                filesize_raw=100,
-                analysis_state={"birdnet": "done"},
+                started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+                microphone_id=dev.id,
+                raw_path="/tmp/f.wav",
+                processed_path="/tmp/f.wav",
+                duration_s=10.0,
+                sample_rate_hz=48000,
+                raw_size_bytes=100,
+                analysis_state={
+                    "birdnet": {
+                        "state": "done",
+                        "reason": None,
+                        "finished_at": "2024-01-01T12:10:00Z",
+                        "detection_count": 0,
+                    }
+                },
             )
             r2 = Recording(
-                time=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
-                sensor_id="test-mic2",
-                file_raw="/tmp/f.wav",
-                file_processed="/tmp/f.wav",
-                duration=10.0,
-                sample_rate=48000,
-                filesize_raw=100,
+                started_at=datetime(2024, 1, 1, 12, 1, tzinfo=UTC),
+                microphone_id=dev.id,
+                raw_path="/tmp/f.wav",
+                processed_path="/tmp/f.wav",
+                duration_s=10.0,
+                sample_rate_hz=48000,
+                raw_size_bytes=100,
                 analysis_state={},
-                local_deleted=True,
+                deleted_at=datetime(2024, 1, 2, tzinfo=UTC),
+                deletion_reason="retention",
             )
             session.add_all([r1, r2])
             await session.commit()
@@ -187,11 +213,11 @@ class TestBacklogMetrics:
                 patch.object(svc, "_refresh_config"),
                 patch("builtins.open"),
                 patch.object(svc, "birdnet_config"),
-                patch.object(svc, "system_config"),
+                patch.object(svc, "station_config"),
             ):
                 assert svc.birdnet_config is not None
                 svc.birdnet_config.processing_order = "oldest_first"
-                svc.birdnet_config.threads = 1
+                svc.birdnet_config.thread_count = 1
                 await svc.run()
 
         # Only 'done' or 'deleted' recordings, backlog is 0

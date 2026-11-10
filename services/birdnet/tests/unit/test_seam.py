@@ -1,6 +1,7 @@
 """BirdNET analyses calls that a segment boundary cuts in two."""
 
 import asyncio
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from silvasonic.birdnet.service import (
 from silvasonic.core.database.models.recordings import Recording
 
 T0 = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+MIC_ID = uuid.UUID("0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f")
 
 
 @pytest.fixture
@@ -32,11 +34,11 @@ def service(tmp_path: Path) -> BirdNETService:
             "SILVASONIC_RECORDINGS_DIR": str(tmp_path / "recorder"),
         },
     ):
-        from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+        from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 
         svc = BirdNETService()
         svc.birdnet_config = BirdnetSettings()
-        svc.system_config = SystemSettings(latitude=53.5, longitude=10.0)
+        svc.station_config = StationSettings(latitude=53.5, longitude=10.0)
         return svc
 
 
@@ -139,7 +141,7 @@ class TestSeamWindow:
         sf.write(str(current_path), np.zeros(10 * MODEL_SR, dtype=np.float32), MODEL_SR)
         recording = MagicMock()
         recording.id = 8
-        recording.time = T0
+        recording.started_at = T0
 
         with (
             patch("silvasonic.birdnet.service.sf.write"),
@@ -158,7 +160,7 @@ class TestSeamWindow:
                 lead_in_path=prev_path,
             )
 
-        assert [(d.time, d.end_time) for d in detections] == [
+        assert [(d.started_at, d.ended_at) for d in detections] == [
             (T0 - timedelta(seconds=1.5), T0 + timedelta(seconds=1.5))
         ]
         assert detections[0].clip_path == "clips/8_-1500_1500_TurdusmerulaEurasianBlackbird.wav"
@@ -169,7 +171,7 @@ class TestSeamWindow:
         current[int(0.5 * MODEL_SR)] = 0.5
         recording = MagicMock()
         recording.id = 9
-        recording.time = T0
+        recording.started_at = T0
 
         with (
             patch("silvasonic.birdnet.service.sf.read", return_value=(current, MODEL_SR)),
@@ -189,7 +191,7 @@ class TestSeamWindow:
                 lead_in_path=Path("/tmp/gone.wav"),
             )
 
-        assert [d.time for d in detections] == [T0]
+        assert [d.started_at for d in detections] == [T0]
 
 
 @pytest.mark.unit
@@ -214,8 +216,10 @@ class TestPreviousSegmentPath:
         rel = "mic-01/data/processed/prev.wav"
         (service.recordings_dir / rel).parent.mkdir(parents=True)
         (service.recordings_dir / rel).write_bytes(b"")
-        row = SimpleNamespace(time=T0, duration=10.0, file_processed=rel, file_raw="raw.wav")
-        recording = Recording(sensor_id="mic-01", time=T0 + timedelta(seconds=10))
+        row = SimpleNamespace(
+            started_at=T0, duration_s=10.0, processed_path=rel, raw_path="raw.wav"
+        )
+        recording = Recording(microphone_id=MIC_ID, started_at=T0 + timedelta(seconds=10))
 
         path = await service._previous_segment_path(self._session(row), recording)
 
@@ -223,8 +227,10 @@ class TestPreviousSegmentPath:
 
     async def test_gap_gives_none(self, service: BirdNETService) -> None:
         """After a gap the two segments do not share a call."""
-        row = SimpleNamespace(time=T0, duration=10.0, file_processed=None, file_raw="raw.wav")
-        recording = Recording(sensor_id="mic-01", time=T0 + timedelta(seconds=30))
+        row = SimpleNamespace(
+            started_at=T0, duration_s=10.0, processed_path=None, raw_path="raw.wav"
+        )
+        recording = Recording(microphone_id=MIC_ID, started_at=T0 + timedelta(seconds=30))
 
         path = await service._previous_segment_path(self._session(row), recording)
 
@@ -232,8 +238,10 @@ class TestPreviousSegmentPath:
 
     async def test_deleted_file_gives_none(self, service: BirdNETService) -> None:
         """A predecessor the Janitor removed is not used."""
-        row = SimpleNamespace(time=T0, duration=10.0, file_processed=None, file_raw="gone.wav")
-        recording = Recording(sensor_id="mic-01", time=T0 + timedelta(seconds=10))
+        row = SimpleNamespace(
+            started_at=T0, duration_s=10.0, processed_path=None, raw_path="gone.wav"
+        )
+        recording = Recording(microphone_id=MIC_ID, started_at=T0 + timedelta(seconds=10))
 
         path = await service._previous_segment_path(self._session(row), recording)
 
@@ -241,7 +249,7 @@ class TestPreviousSegmentPath:
 
     async def test_first_segment_gives_none(self, service: BirdNETService) -> None:
         """The first segment of a device has no predecessor."""
-        recording = Recording(sensor_id="mic-01", time=T0)
+        recording = Recording(microphone_id=MIC_ID, started_at=T0)
 
         path = await service._previous_segment_path(self._session(None), recording)
 

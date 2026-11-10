@@ -1,7 +1,7 @@
 """Startup seeders for Controller — idempotent DB bootstrapping (ADR-0023).
 
 Seeder execution order (recorder-critical first):
-    ConfigSeeder → ProfileBootstrapper → ManagedServiceSeeder → CloudSyncSeeder → AuthSeeder
+    ConfigSeeder → ProfileBootstrapper → ModuleSeeder → CloudSyncSeeder → AuthSeeder
 
 Each seeder runs in its own transaction (per-seeder commit/rollback).
 All use INSERT ON CONFLICT DO NOTHING — existing user values are never overwritten.
@@ -9,6 +9,7 @@ All use INSERT ON CONFLICT DO NOTHING — existing user values are never overwri
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any, Protocol
@@ -16,22 +17,27 @@ from typing import Any, Protocol
 import bcrypt
 import structlog
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from silvasonic.controller.worker_registry import SYSTEM_WORKERS
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
-from silvasonic.core.database.models.system import ManagedService, SystemConfig, User
-from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
-from silvasonic.core.schemas.system_config import (
+from silvasonic.core.database.models.system import Module, SettingsSection, User
+from silvasonic.core.ids import uuid7
+from silvasonic.core.schemas.microphones import MicrophoneProfile as MicProfileSchema
+from silvasonic.core.schemas.settings import (
     AuthDefaults,
     BirdnetSettings,
-    CloudSyncSettings,
-    ProcessorSettings,
-    SystemSettings,
+    RecordingSettings,
+    StationSettings,
+    StorageSettings,
+    SyncSettings,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 log = structlog.get_logger()
+
+#: Module implemented by the Processor's upload worker, not a Tier-2 container.
+CLOUD_SYNC_MODULE = "cloud_sync"
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +98,16 @@ def _load_defaults(path: Path) -> dict[str, Any] | None:
     return raw
 
 
+async def _new_station_id(session: AsyncSession) -> str:
+    """Return a fresh UUIDv7 (ADR-0033) for ``station.id``.
+
+    The application generates it; SQLite has no generator (ADR-0037).  The
+    session argument stays so callers need not change.
+    """
+    _ = session
+    return str(uuid7())
+
+
 # ---------------------------------------------------------------------------
 # Seeder protocol (static typing only — no runtime_checkable)
 # ---------------------------------------------------------------------------
@@ -113,7 +129,12 @@ class Seeder(Protocol):
 
 
 class ConfigSeeder:
-    """Seed ``system_config`` with factory defaults (ADR-0023)."""
+    """Seed the ``settings`` table with factory defaults (ADR-0023).
+
+    The ``station`` section additionally receives a UUIDv7 ``id`` from the
+    database the first time it is seeded (or when an existing row lacks
+    one); an existing id is never overwritten.
+    """
 
     name = "config"
 
@@ -132,7 +153,7 @@ class ConfigSeeder:
         self._defaults = defaults
 
     async def seed(self, session: AsyncSession) -> None:
-        """Load ``defaults.yml`` and insert missing keys into ``system_config``."""
+        """Load ``defaults.yml`` and insert missing sections into ``settings``."""
         defaults = self._defaults
         if defaults is None:
             defaults_path = self._defaults_path or _get_defaults_yml()
@@ -148,40 +169,46 @@ class ConfigSeeder:
         if defaults is None:
             return
 
-        # Only seed keys that have a Pydantic schema mapping.
+        # Only seed sections that have a Pydantic schema mapping.
         # Order matches defaults.yml: cross-cutting first, then by milestone.
-        schema_map: dict[str, type] = {
-            "system": SystemSettings,
-            "processor": ProcessorSettings,
-            "cloud_sync": CloudSyncSettings,
+        schema_map: dict[str, type[BaseModel]] = {
+            "station": StationSettings,
+            "recording": RecordingSettings,
+            "storage": StorageSettings,
+            "sync": SyncSettings,
             "birdnet": BirdnetSettings,
         }
 
-        for key, value in defaults.items():
-            if key == "auth":
+        for section, value in defaults.items():
+            if section == "auth":
                 continue  # Handled by AuthSeeder
 
             # Validate against Pydantic schema if one exists
-            schema = schema_map.get(key)
+            schema = schema_map.get(section)
             if schema:
                 try:
                     validated = schema(**value)
-                    value = validated.model_dump()
+                    value = validated.model_dump(mode="json")
                 except ValidationError as exc:
                     log.error(
                         "seeder.config.validation_failed",
-                        key=key,
+                        section=section,
                         errors=exc.error_count(),
                     )
                     continue
 
             # INSERT ON CONFLICT DO NOTHING
-            existing = await session.get(SystemConfig, key)
+            existing = await session.get(SettingsSection, section)
             if existing is None:
-                session.add(SystemConfig(key=key, value=value))
-                log.info("seeder.config.inserted", key=key)
+                if section == "station":
+                    value = {**value, "id": await _new_station_id(session)}
+                session.add(SettingsSection(section=section, value=value))
+                log.info("seeder.config.inserted", section=section)
+            elif section == "station" and not existing.value.get("id"):
+                existing.value = {**existing.value, "id": await _new_station_id(session)}
+                log.info("seeder.config.station_id_generated")
             else:
-                log.debug("seeder.config.skipped", key=key)
+                log.debug("seeder.config.skipped", section=section)
 
 
 class ProfileBootstrapper:
@@ -252,9 +279,8 @@ class ProfileBootstrapper:
                 slug=slug,
                 name=validated.name,
                 description=validated.description,
-                match_pattern=None,  # Legacy field, match is in config.audio.match
                 config=config_data,
-                is_system=True,
+                built_in=True,
             )
             session.add(db_profile)
             log.info("seeder.profiles.inserted", slug=slug, file=yml_path.name)
@@ -329,7 +355,8 @@ class CloudSyncSeeder:
 
     Reads ``SILVASONIC_CLOUD_REMOTE_TYPE``, ``_URL``, ``_USER``, ``_PASS``
     from the environment.  If ALL four are set, encrypts user/pass via
-    Fernet and UPSERTs into ``system_config`` key ``"cloud_sync"``.
+    Fernet, UPSERTs them into the ``sync`` settings section and switches the
+    ``cloud_sync`` module on.
 
     **UPSERT semantics:** ``.env`` is infrastructure — always overwrites
     DB values.  If env vars are absent, the seeder does nothing (existing
@@ -346,7 +373,7 @@ class CloudSyncSeeder:
     )
 
     async def seed(self, session: AsyncSession) -> None:
-        """Read env vars and UPSERT cloud_sync config if all are present."""
+        """Read env vars and UPSERT the sync target if all are present."""
         import os
 
         values = {v: os.environ.get(v, "").strip() for v in self._ENV_VARS}
@@ -400,8 +427,7 @@ class CloudSyncSeeder:
 
         # Validate the settings
         try:
-            validated = CloudSyncSettings(
-                enabled=True,
+            validated = SyncSettings(
                 remote_type=remote_type,
                 remote_config=remote_config,
             )
@@ -412,15 +438,14 @@ class CloudSyncSeeder:
             )
             return
 
-        cloud_sync_value = validated.model_dump()
+        sync_value = validated.model_dump(mode="json")
 
         # UPSERT: .env is infrastructure, always overwrites
-        existing = await session.get(SystemConfig, "cloud_sync")
+        existing = await session.get(SettingsSection, "sync")
         if existing is not None:
-            # Merge: keep non-credential settings (poll_interval, bandwidth, schedule),
-            # overwrite remote_type, remote_config, and enable.
+            # Merge: keep non-credential settings (poll interval, bandwidth, window),
+            # overwrite remote_type and remote_config.
             merged = dict(existing.value)
-            merged["enabled"] = True
             merged["remote_type"] = remote_type
             merged["remote_config"] = remote_config
             existing.value = merged
@@ -430,37 +455,46 @@ class CloudSyncSeeder:
                 action="updated",
             )
         else:
-            session.add(SystemConfig(key="cloud_sync", value=cloud_sync_value))
+            session.add(SettingsSection(section="sync", value=sync_value))
             log.info(
                 "seeder.cloud_sync.upserted",
                 remote_type=remote_type,
                 action="inserted",
             )
 
+        # Switch the upload on: .env credentials mean the operator wants it.
+        module = await session.get(Module, CLOUD_SYNC_MODULE)
+        if module is None:
+            session.add(Module(id=CLOUD_SYNC_MODULE, enabled=True))
+        elif not module.enabled:
+            module.enabled = True
+            module.updated_at = datetime.now(UTC)
+        log.info("seeder.cloud_sync.module_enabled")
 
-class ManagedServiceSeeder:
-    """Seed ``managed_services`` with Tier-2 singleton workers (ADR-0029).
 
-    Only Tier-2 containers orchestrated by the Controller belong here.
-    Tier-1 services (processor, controller) are managed externally via
-    Compose and MUST NOT be seeded.
+class ModuleSeeder:
+    """Seed ``modules`` with the switch of every optional feature (ADR-0029).
+
+    One row per Tier-2 singleton worker the Controller orchestrates
+    (switched on by default) and one for ``cloud_sync`` (switched off
+    until a remote target is configured). Tier-1 services (processor,
+    controller) are managed externally via Compose and are not modules.
     """
 
-    name = "managed_services"
+    name = "modules"
 
     async def seed(self, session: AsyncSession) -> None:
-        """Insert default managed_services rows (ON CONFLICT DO NOTHING)."""
-        for worker in SYSTEM_WORKERS:
-            name = worker.name
-            # Default to enabled for all registered workers
-            enabled = True
+        """Insert default module rows (ON CONFLICT DO NOTHING)."""
+        defaults: list[tuple[str, bool]] = [(worker.name, True) for worker in SYSTEM_WORKERS]
+        defaults.append((CLOUD_SYNC_MODULE, False))
 
-            existing = await session.get(ManagedService, name)
+        for module_id, enabled in defaults:
+            existing = await session.get(Module, module_id)
             if existing is None:
-                session.add(ManagedService(name=name, enabled=enabled))
-                log.info("seeder.managed_service.inserted", name=name, enabled=enabled)
+                session.add(Module(id=module_id, enabled=enabled))
+                log.info("seeder.module.inserted", module=module_id, enabled=enabled)
             else:
-                log.debug("seeder.managed_service.skipped", name=name)
+                log.debug("seeder.module.skipped", module=module_id)
 
 
 async def run_all_seeders(
@@ -472,7 +506,7 @@ async def run_all_seeders(
 
     Seeder order: recorder-critical first, then infrastructure, then optional.
     ConfigSeeder and ProfileBootstrapper MUST run first because
-    ``ProfileMatcher`` reads ``system.auto_enrollment`` and profiles
+    ``ProfileMatcher`` reads ``recording.auto_enrollment`` and profiles
     during the Initial Device Scan that follows immediately after seeding.
     """
     defaults = _load_defaults(_get_defaults_yml())
@@ -481,7 +515,7 @@ async def run_all_seeders(
     seeders: list[Seeder] = [
         ConfigSeeder(defaults=defaults),
         ProfileBootstrapper(),
-        ManagedServiceSeeder(),
+        ModuleSeeder(),
         CloudSyncSeeder(),
         AuthSeeder(defaults=defaults),
     ]

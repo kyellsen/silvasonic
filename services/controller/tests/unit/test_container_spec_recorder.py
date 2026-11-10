@@ -20,16 +20,16 @@ _RECORDER_ENV = {
 }
 
 
-def _make_device(**overrides: object) -> MagicMock:
-    """Create a mock Device for build_recorder_spec."""
-    device = MagicMock()
-    device.name = overrides.pop("name", "0869-0389-00000000034F")
-    device.config = {
+def _make_microphone(**overrides: object) -> MagicMock:
+    """Create a mock Microphone for build_recorder_spec."""
+    microphone = MagicMock()
+    microphone.hardware_id = overrides.pop("hardware_id", "0869-0389-00000000034F")
+    microphone.hardware = {
         "alsa_device": "hw:2,0",
         "usb_serial": "00000000034F",
         **(overrides or {}),
     }
-    return device
+    return microphone
 
 
 def _make_profile(**overrides: object) -> MagicMock:
@@ -38,7 +38,7 @@ def _make_profile(**overrides: object) -> MagicMock:
     profile.slug = overrides.pop("slug", "ultramic_384_evo")
     profile.config = overrides.pop(
         "config",
-        {"audio": {"sample_rate": 384000, "channels": 1}},
+        {"audio": {"sample_rate_hz": 384000, "channels": 1}},
     )
     return profile
 
@@ -50,27 +50,27 @@ class TestBuildRecorderSpecPrivileged:
     @patch.dict("os.environ", _RECORDER_ENV)
     def test_spec_is_privileged(self) -> None:
         """Recorder runs privileged — Podman rootless is the sandbox."""
-        spec = build_recorder_spec(_make_device(), _make_profile())
+        spec = build_recorder_spec(_make_microphone(), _make_profile())
 
         assert spec.privileged is True
 
     @patch.dict("os.environ", _RECORDER_ENV)
     def test_spec_uses_symbolic_audio_group(self) -> None:
         """group_add uses symbolic 'audio' — works with privileged mode."""
-        spec = build_recorder_spec(_make_device(), _make_profile())
+        spec = build_recorder_spec(_make_microphone(), _make_profile())
 
         assert spec.group_add == ["audio"]
 
     @patch.dict("os.environ", _RECORDER_ENV)
     def test_spec_always_has_dev_snd(self) -> None:
         """Recorder spec always maps /dev/snd into the container."""
-        spec = build_recorder_spec(_make_device(), _make_profile())
+        spec = build_recorder_spec(_make_microphone(), _make_profile())
 
         assert "/dev/snd:/dev/snd" in spec.devices
 
     @patch.dict("os.environ", _RECORDER_ENV)
     def test_spec_has_no_security_opt(self) -> None:
         """No security_opt field needed with privileged mode."""
-        spec = build_recorder_spec(_make_device(), _make_profile())
+        spec = build_recorder_spec(_make_microphone(), _make_profile())
         # security_opt was removed from Tier2ServiceSpec (KISS refactoring)
         assert not hasattr(spec, "security_opt")

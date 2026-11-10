@@ -28,17 +28,17 @@ The choice affects resilience, complexity, and coupling between services.
 Workers query the database directly for unanalyzed recordings:
 
 ```sql
-SELECT id, file_processed
+SELECT id, processed_path
 FROM recordings
-WHERE analysis_state->>'birdnet' IS NULL
-ORDER BY time ASC
+WHERE NOT analysis_state ? 'birdnet'
+ORDER BY started_at ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED;
 ```
 
 *   `FOR UPDATE` locks the row to prevent concurrent workers from claiming the same recording.
 *   `SKIP LOCKED` ensures other workers skip already-claimed rows instead of blocking — no contention.
-*   On completion, the worker updates `analysis_state->>'birdnet' = 'true'`.
+*   On completion, the worker sets `analysis_state->'birdnet'` to `{"state": "done", "reason": null, "finished_at": …, "detection_count": …}` (`failed` or `skipped` with a reason code otherwise).
 
 ### Processor Role: Ingestion + Janitor Only
 

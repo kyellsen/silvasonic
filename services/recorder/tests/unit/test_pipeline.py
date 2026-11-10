@@ -56,9 +56,9 @@ class TestFFmpegConfig:
     def test_defaults(self) -> None:
         """Default config matches ADR-0011 processed target."""
         cfg = FFmpegConfig()
-        assert cfg.sample_rate == 48000
+        assert cfg.sample_rate_hz == 48000
         assert cfg.channels == 1
-        assert cfg.format == "S16LE"
+        assert cfg.sample_format == "S16LE"
         assert cfg.segment_duration_s == 10
         assert cfg.gain_db == 0.0
         assert cfg.raw_enabled is True
@@ -67,18 +67,18 @@ class TestFFmpegConfig:
     def test_from_injected_config(self) -> None:
         """from_injected_config extracts all fields from an RecorderRuntimeConfig."""
         config = MagicMock()
-        config.audio.sample_rate = 384000
+        config.audio.sample_rate_hz = 384000
         config.audio.channels = 1
-        config.audio.format = "S24LE"
+        config.audio.sample_format = "S24LE"
         config.processing.gain_db = 6.0
         config.stream.segment_duration_s = 30
         config.stream.raw_enabled = True
         config.stream.processed_enabled = False
 
         cfg = FFmpegConfig.from_injected_config(config)
-        assert cfg.sample_rate == 384000
+        assert cfg.sample_rate_hz == 384000
         assert cfg.channels == 1
-        assert cfg.format == "S24LE"
+        assert cfg.sample_format == "S24LE"
         assert cfg.gain_db == 6.0
         assert cfg.segment_duration_s == 30
         assert cfg.raw_enabled is True
@@ -86,23 +86,23 @@ class TestFFmpegConfig:
 
     def test_ffmpeg_codec_s16le(self) -> None:
         """S16LE maps to pcm_s16le."""
-        cfg = FFmpegConfig(format="S16LE")
+        cfg = FFmpegConfig(sample_format="S16LE")
         assert cfg.ffmpeg_codec == "pcm_s16le"
 
     def test_ffmpeg_codec_s24le(self) -> None:
         """S24LE maps to pcm_s24le."""
-        cfg = FFmpegConfig(format="S24LE")
+        cfg = FFmpegConfig(sample_format="S24LE")
         assert cfg.ffmpeg_codec == "pcm_s24le"
 
     def test_ffmpeg_codec_s32le(self) -> None:
         """S32LE maps to pcm_s32le."""
-        cfg = FFmpegConfig(format="S32LE")
+        cfg = FFmpegConfig(sample_format="S32LE")
         assert cfg.ffmpeg_codec == "pcm_s32le"
 
     def test_alsa_format(self) -> None:
         """ALSA format map is consistent."""
         for fmt, expected in _ALSA_FORMAT_MAP.items():
-            cfg = FFmpegConfig.model_validate({"format": fmt})
+            cfg = FFmpegConfig.model_validate({"sample_format": fmt})
             assert cfg.alsa_format == expected
 
     def test_volume_filter_zero_gain(self) -> None:
@@ -117,7 +117,7 @@ class TestFFmpegConfig:
 
     def test_build_ffmpeg_args_mock_source(self) -> None:
         """Mock source uses lavfi sine generator."""
-        cfg = FFmpegConfig(sample_rate=48000, channels=1, format="S16LE")
+        cfg = FFmpegConfig(sample_rate_hz=48000, channels=1, sample_format="S16LE")
         args = cfg.build_ffmpeg_args("hw:1,0", Path("/app/ws"), run_id="123", mock_source=True)
 
         assert "-f" in args
@@ -129,7 +129,7 @@ class TestFFmpegConfig:
 
     def test_build_ffmpeg_args_alsa_source(self) -> None:
         """ALSA source uses the device string."""
-        cfg = FFmpegConfig(sample_rate=384000, channels=1, format="S24LE")
+        cfg = FFmpegConfig(sample_rate_hz=384000, channels=1, sample_format="S24LE")
         args = cfg.build_ffmpeg_args("hw:2,0", Path("/app/ws"), run_id="123", mock_source=False)
 
         assert "alsa" in args

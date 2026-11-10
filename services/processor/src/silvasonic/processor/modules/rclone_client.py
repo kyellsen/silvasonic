@@ -16,9 +16,21 @@ from typing import Any
 import structlog
 from silvasonic.core.crypto import decrypt_value
 from silvasonic.core.schemas.cloud_sync import validate_rclone_config
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.schemas.settings import SyncSettings
 
 log = structlog.get_logger()
+
+
+def bwlimit_arg(bytes_per_s: int | None) -> str | None:
+    """Translate ``sync.bandwidth_limit_bytes_per_s`` into rclone's ``--bwlimit``.
+
+    A bare rclone number means KiB/s, so the value is passed in whole
+    kibibytes with the ``K`` suffix (``1048576`` -> ``"1024K"``), at least
+    ``1K``.  ``None`` means unlimited: no flag.
+    """
+    if bytes_per_s is None:
+        return None
+    return f"{max(1, round(bytes_per_s / 1024))}K"
 
 
 @dataclass
@@ -35,9 +47,9 @@ class RcloneResult:
 class RcloneClient:
     """Client for executing rclone commands."""
 
-    def __init__(self, cloud_sync_settings: CloudSyncSettings, encryption_key: bytes) -> None:
+    def __init__(self, sync_settings: SyncSettings, encryption_key: bytes) -> None:
         """Initialize the client with validated settings and key."""
-        self.settings = cloud_sync_settings
+        self.settings = sync_settings
         self.encryption_key = encryption_key
 
         # Pre-validate and decrypt config so we fail fast before uploading
@@ -117,8 +129,9 @@ class RcloneClient:
                 "--stats-one-line",
             ]
 
-            if self.settings.bandwidth_limit:
-                cmd.extend(["--bwlimit", self.settings.bandwidth_limit])
+            bwlimit = bwlimit_arg(self.settings.bandwidth_limit_bytes_per_s)
+            if bwlimit is not None:
+                cmd.extend(["--bwlimit", bwlimit])
 
             log.debug("rclone.upload.start", source=local_path.name, target=remote_path)
 

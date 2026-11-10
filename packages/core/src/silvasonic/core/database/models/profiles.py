@@ -13,10 +13,9 @@ class MicrophoneProfile(Base):
     slug: Mapped[str] = mapped_column(Text, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    match_pattern: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Full Pydantic config dumped as JSON
     config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
-    # Flag to indicate if this profile was bootstrapped from system YAMLs
-    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Shipped with the software: bootstrapped from the YAML profiles
+    built_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

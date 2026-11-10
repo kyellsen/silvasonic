@@ -39,7 +39,7 @@ Following **ADR-0023**, the intervals for logging cadence are considered **Opera
 ## 3. Options Considered
 
 - **Abstract Base Class (`TwoPhaseTracker`)**: Rejected. Would force identical thread-locking paradigms onto all services, creating overhead for lock-free services and preventing `async` snapshot injection for services like the Controller.
-- **`system_config` Database Table**: Rejected. Dynamically changeable JSON intervals for system logging violate the immutable-container directive and overcomplicate the database settings tier. Overrides belong in `.env`.
+- **`settings` Database Table**: Rejected. Dynamically changeable JSON intervals for system logging violate the immutable-container directive and overcomplicate the database settings tier. Overrides belong in `.env`.
 - **Ignore spammy services:** Rejected. Technical debt in the logging sphere causes real-world pain for deployments over cellular/LTE connections.
 
 ## 4. Consequences

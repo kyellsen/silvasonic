@@ -13,9 +13,9 @@ from pathlib import Path
 
 import structlog
 from silvasonic.core.crypto import load_encryption_key
-from silvasonic.core.database.models.system import SystemConfig
+from silvasonic.core.database.models.system import Module, SettingsSection
 from silvasonic.core.health import HealthMonitor
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.schemas.settings import SyncSettings, TimeWindow
 from silvasonic.processor.modules.audit_logger import log_upload_attempt
 from silvasonic.processor.modules.flac_encoder import FlacEncodingError, encode_wav_to_flac
 from silvasonic.processor.modules.path_builder import build_remote_path
@@ -26,20 +26,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
 
+#: ``modules.id`` of the switch that turns cloud upload on and off.
+CLOUD_SYNC_MODULE_ID = "cloud_sync"
 
-def _is_within_window(start_hour: int | None, end_hour: int | None) -> bool:
-    """Return True if the current UTC time is within the allowed schedule window.
 
-    If either hour is None, continuous upload is assumed.
+def _minutes(hh_mm: str) -> int:
+    """Convert ``"HH:MM"`` to minutes since midnight."""
+    hours, minutes = hh_mm.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def _is_within_window(window: TimeWindow | None) -> bool:
+    """Return True if the current UTC time is within the allowed upload window.
+
+    ``None`` means continuous upload.  A window whose ``start`` is later than
+    its ``end`` crosses midnight (e.g. 22:00 to 06:00).  ``start == end``
+    is an empty window.
     """
-    if start_hour is None or end_hour is None:
+    if window is None:
         return True
 
-    current_hour = datetime.now(UTC).hour
-    if start_hour <= end_hour:
-        return start_hour <= current_hour < end_hour
-    # Overnight window (e.g., 22 to 6)
-    return current_hour >= start_hour or current_hour < end_hour
+    now = datetime.now(UTC)
+    current = now.hour * 60 + now.minute
+    start = _minutes(window.start)
+    end = _minutes(window.end)
+    if start <= end:
+        return start <= current < end
+    # Overnight window (e.g., 22:00 to 06:00)
+    return current >= start or current < end
 
 
 class UploadWorker:
@@ -59,31 +73,40 @@ class UploadWorker:
         self.stats = stats or UploadStats()
         self._shutdown_event = asyncio.Event()
 
-    async def _fetch_config(self) -> tuple[str, CloudSyncSettings | None]:
-        """Fetch station name and cloud sync settings from the DB."""
+    async def _fetch_config(self) -> tuple[str, SyncSettings | None, bool]:
+        """Fetch station name, sync settings and the cloud_sync module switch.
+
+        Returns:
+            ``(station_name, settings, enabled)``.  ``enabled`` is ``False``
+            when the ``cloud_sync`` row of ``modules`` is disabled or absent.
+        """
         async with self.session_factory() as session:
             # Get station name
-            sys_conf = await session.get(SystemConfig, "system")
+            station_conf = await session.get(SettingsSection, "station")
             station_name = "silvasonic"
-            if sys_conf and "station_name" in sys_conf.value:
-                station_name = sys_conf.value["station_name"]
+            if station_conf and "name" in station_conf.value:
+                station_name = station_conf.value["name"]
 
-            # Get cloud sync settings
-            sync_conf = await session.get(SystemConfig, "cloud_sync")
+            # Get the module switch
+            module = await session.get(Module, CLOUD_SYNC_MODULE_ID)
+            enabled = bool(module is not None and module.enabled)
+
+            # Get sync settings
+            sync_conf = await session.get(SettingsSection, "sync")
             if not sync_conf:
-                return station_name, None
+                return station_name, None, enabled
 
             try:
-                settings = CloudSyncSettings(**sync_conf.value)
-                return station_name, settings
+                settings = SyncSettings(**sync_conf.value)
+                return station_name, settings, enabled
             except Exception as e:
                 log.error("upload_worker.config_invalid", error=str(e))
-                return station_name, None
+                return station_name, None, enabled
 
     async def _process_batch(
         self,
         station_name: str,
-        settings: CloudSyncSettings,
+        settings: SyncSettings,
         encryption_key: bytes,
     ) -> bool:
         """Process a single batch. Return False if connection error forces abort."""
@@ -110,28 +133,32 @@ class UploadWorker:
                 item.station_name = station_name
 
                 # Verify file still exists on disk (Janitor might have deleted it)
-                if not item.file_raw.exists():
-                    log.warning("upload_worker.file_missing", file=item.file_raw.name)
+                if not item.raw_path.exists():
+                    log.warning("upload_worker.file_missing", file=item.raw_path.name)
                     # We do NOT mark it uploaded if it's missing, to avoid false audits.
-                    # Janitor sets local_deleted=True, so it naturally falls out of the queue later.
+                    # Janitor sets deleted_at, so it naturally falls out of the queue later.
                     continue
 
-                target_filename = item.file_raw.with_suffix(".flac").name
+                target_filename = item.raw_path.with_suffix(".flac").name
                 remote_path = build_remote_path(
-                    item.station_name, item.profile_slug, item.sensor_id, item.time, target_filename
+                    item.station_name,
+                    item.profile_slug,
+                    item.hardware_id,
+                    item.started_at,
+                    target_filename,
                 )
 
                 # 1. Encode
                 try:
-                    flac_path = await encode_wav_to_flac(item.file_raw, item.file_raw.parent)
+                    flac_path = await encode_wav_to_flac(item.raw_path, item.raw_path.parent)
                 except (FlacEncodingError, OSError) as e:
-                    self.stats.record_attempt(False, 0, item.file_raw.name, remote_path, 0.0)
+                    self.stats.record_attempt(False, 0, item.raw_path.name, remote_path, 0.0)
                     await log_upload_attempt(
                         session,
                         item.recording_id,
                         target_filename,
                         remote_path,
-                        item.file_raw.stat().st_size,
+                        item.raw_path.stat().st_size,
                         False,
                         str(e),
                         0.0,
@@ -146,7 +173,7 @@ class UploadWorker:
                     self.stats.record_attempt(
                         result.success,
                         result.bytes_transferred,
-                        item.file_raw.name,
+                        item.raw_path.name,
                         remote_path,
                         result.duration_s,
                     )
@@ -188,9 +215,9 @@ class UploadWorker:
 
         while not self._shutdown_event.is_set():
             try:
-                station_name, settings = await self._fetch_config()
+                station_name, settings, enabled = await self._fetch_config()
 
-                if not settings or not settings.enabled:
+                if not settings or not enabled:
                     self.health.update_status("upload_worker", True, "state: disabled")
                     await self._sleep(60)  # Default sleep if inactive
                     continue
@@ -198,12 +225,12 @@ class UploadWorker:
                 if not settings.remote_type:
                     log.warning("upload_worker.no_remote_configured")
                     self.health.update_status("upload_worker", False, "error: no_target")
-                    await self._sleep(settings.poll_interval)
+                    await self._sleep(settings.poll_interval_s)
                     continue
 
-                if not _is_within_window(settings.schedule_start_hour, settings.schedule_end_hour):
+                if not _is_within_window(settings.window):
                     self.health.update_status("upload_worker", True, "state: outside_window")
-                    await self._sleep(settings.poll_interval)
+                    await self._sleep(settings.poll_interval_s)
                     continue
 
                 # We are active and within window
@@ -219,7 +246,7 @@ class UploadWorker:
                     log.warning("upload_worker.batch_aborted_due_to_connection_error")
                     self.health.update_status("upload_worker", False, "error: connection_error")
 
-                await self._sleep(settings.poll_interval)
+                await self._sleep(settings.poll_interval_s)
 
             except Exception as e:
                 log.exception("upload_worker.crash", exc_info=e)

@@ -31,8 +31,8 @@ async def test_finds_pending_recordings(mock_session: AsyncMock, recordings_dir:
     """Test standard case of finding un-uploaded recordings."""
     rec = MagicMock()
     rec.id = 1
-    rec.file_raw = "ultramic/data/raw/file.wav"
-    rec.time = datetime(2024, 1, 1, 12, tzinfo=UTC)
+    rec.raw_path = "ultramic/data/raw/file.wav"
+    rec.started_at = datetime(2024, 1, 1, 12, tzinfo=UTC)
 
     mock_session.execute.return_value = _mock_db_result([(rec, "mic_1", "test_profile")])
 
@@ -40,8 +40,8 @@ async def test_finds_pending_recordings(mock_session: AsyncMock, recordings_dir:
 
     assert len(pending) == 1
     assert pending[0].recording_id == 1
-    assert pending[0].file_raw == recordings_dir / "ultramic/data/raw/file.wav"
-    assert pending[0].sensor_id == "mic_1"
+    assert pending[0].raw_path == recordings_dir / "ultramic/data/raw/file.wav"
+    assert pending[0].hardware_id == "mic_1"
     # station_name should be empty initially
     assert pending[0].station_name == ""
 
@@ -71,30 +71,30 @@ async def test_batch_size_respected(mock_session: AsyncMock, recordings_dir: Pat
 
 
 @pytest.mark.unit
-async def test_pending_upload_file_raw_is_absolute(
+async def test_pending_upload_raw_path_is_absolute(
     mock_session: AsyncMock, recordings_dir: Path
 ) -> None:
-    """find_pending_uploads prepends recordings_dir to file_raw.
+    """find_pending_uploads prepends recordings_dir to raw_path.
 
-    Regression: Without the base directory, file_raw is a relative
+    Regression: Without the base directory, raw_path is a relative
     path that resolves against CWD, causing upload_worker.file_missing
     for every recording.
     """
     rec = MagicMock()
     rec.id = 42
-    rec.file_raw = "rode-nt-usb-p3d6/data/raw/2026-04-03T18-05-21Z_15s_dc67adae_00000000.wav"
-    rec.time = datetime(2026, 4, 3, 18, 5, 21, tzinfo=UTC)
+    rec.raw_path = "rode-nt-usb-p3d6/data/raw/2026-04-03T18-05-21Z_15s_dc67adae_00000000.wav"
+    rec.started_at = datetime(2026, 4, 3, 18, 5, 21, tzinfo=UTC)
 
     mock_session.execute.return_value = _mock_db_result([(rec, "19f7-0003-port3-6", "rode_nt_usb")])
 
     pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=10)
 
     assert len(pending) == 1
-    assert pending[0].file_raw.is_absolute(), (
-        f"file_raw must be absolute but got: {pending[0].file_raw}"
+    assert pending[0].raw_path.is_absolute(), (
+        f"raw_path must be absolute but got: {pending[0].raw_path}"
     )
-    expected = recordings_dir / rec.file_raw
-    assert pending[0].file_raw == expected
+    expected = recordings_dir / rec.raw_path
+    assert pending[0].raw_path == expected
 
 
 @pytest.mark.unit
@@ -103,15 +103,15 @@ async def test_pending_upload_preserves_relative_structure(
 ) -> None:
     """Verify the full relative path structure is preserved under recordings_dir.
 
-    The DB stores paths like `sensor/data/raw/filename.wav`; the resolved
-    absolute path must be `recordings_dir / sensor/data/raw/filename.wav`.
+    The DB stores paths like `workspace/data/raw/filename.wav`; the resolved
+    absolute path must be `recordings_dir / workspace/data/raw/filename.wav`.
     """
     rec = MagicMock()
     rec.id = 7
-    rec.file_raw = (
+    rec.raw_path = (
         "ultramic-384-evo-034f/data/processed/2026-04-03T18-05-20Z_15s_8a4b57f5_00000000.wav"
     )
-    rec.time = datetime(2026, 4, 3, 18, 5, 20, tzinfo=UTC)
+    rec.started_at = datetime(2026, 4, 3, 18, 5, 20, tzinfo=UTC)
 
     mock_session.execute.return_value = _mock_db_result(
         [(rec, "0869-0389-00000000034F", "ultramic_384_evo")]
@@ -119,7 +119,7 @@ async def test_pending_upload_preserves_relative_structure(
 
     pending = await find_pending_uploads(mock_session, recordings_dir, batch_size=10)
 
-    assert pending[0].file_raw.parts[-4:] == (
+    assert pending[0].raw_path.parts[-4:] == (
         "ultramic-384-evo-034f",
         "data",
         "processed",

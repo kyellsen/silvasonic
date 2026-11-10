@@ -4,11 +4,11 @@
 
 ## Overview
 
-The `microphone_profiles` table stores hardware-specific configuration for each supported microphone type. Profiles are referenced by the `devices` table and injected into Recorder containers at launch time (Profile Injection).
+The `microphone_profiles` table stores hardware-specific configuration for each supported microphone type. Profiles are referenced by the `microphones` table and injected into Recorder containers at launch time (Profile Injection).
 
 For the database schema, see:
 - SQLAlchemy Model: [`profiles.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/profiles.py)
-- Device FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`
+- Microphone FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `microphones.profile_slug → microphone_profiles.slug`
 
 ---
 
@@ -18,7 +18,7 @@ System profiles are maintained as YAML files in `services/controller/config/prof
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "2.0"
 slug: ultramic_384_evo               # Unique identifier (primary key)
 name: Dodotronic Ultramic 384 EVO    # Human-readable name
 description: High-performance ultrasonic microphone for bioacoustics.
@@ -26,9 +26,9 @@ manufacturer: Dodotronic
 model: Ultramic 384 EVO
 
 audio:
-  sample_rate: 384000                # Hardware native sample rate (Hz)
+  sample_rate_hz: 384000             # Hardware native sample rate (Hz)
   channels: 1                        # Number of audio channels
-  format: S16LE                      # Sample format (S16LE, S24LE, S32LE)
+  sample_format: S16LE               # Sample format (S16LE, S24LE, S32LE)
   match:                             # ← MatchCriteria for auto-detection
     usb_vendor_id: "0869"            # USB Vendor ID (stable, never changes)
     usb_product_id: "0389"           # USB Product ID
@@ -36,12 +36,12 @@ audio:
 
 processing:
   gain_db: 12.0                      # Software gain in dB
-  chunk_size: 8192                   # Buffer chunk size in frames
+  chunk_frames: 8192                 # Buffer chunk size in frames
   highpass_filter_hz: 1000.0         # High-pass filter cutoff (Hz)
 
 stream:
   raw_enabled: true                  # Archive full native sample rate
-  processed_enabled: true            # Downsample to 48kHz for analysis; false only at sample_rate 48000
+  processed_enabled: true            # Downsample to 48kHz for analysis; false only at sample_rate_hz 48000
   live_stream_enabled: false         # Icecast Opus stream (v1.1.0) — set true when available
   segment_duration_s: 15             # Profile-specific override; system default is 10s
 ```
@@ -50,7 +50,7 @@ stream:
 
 ## Match Criteria
 
-The `match` block inside `audio` defines how the Controller matches a physically connected USB device to this profile. This replaces the legacy `match_pattern` text field.
+The `match` block inside `audio` defines how the Controller matches a physically connected USB device to this profile.
 
 ### Matching Fields
 
@@ -66,9 +66,9 @@ The Controller evaluates all profiles against a newly detected USB device and as
 
 | Score   | Condition                                            | Action                                                              |
 | ------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
-| **100** | `usb_vendor_id` AND `usb_product_id` both match      | Auto-Enrollment (if `auto_enrollment` is `true` in `system_config`) |
+| **100** | `usb_vendor_id` AND `usb_product_id` both match      | Auto-Enrollment (if `auto_enrollment` is `true` in the `recording` settings section) |
 | **50**  | Only `alsa_name_contains` matches (case-insensitive) | Suggestion — user confirms in Web-Interface                         |
-| **0**   | No match                                             | v0.3.0: Device stays `pending`. v0.4.0+: Auto-assign `generic_usb` fallback profile |
+| **0**   | No match                                             | v0.3.0: Microphone stays `pending`. v0.4.0+: Auto-assign `generic_usb` fallback profile |
 
 If multiple profiles match with the same score, the device remains `pending` (ambiguous match — user decides).
 
@@ -128,9 +128,9 @@ Silvasonic uses **1-second polling** (`/proc/asound/cards` + sysfs) to detect US
 | Phase                       | Actor                              | How                                                                             |
 | --------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
 | **System Profile creation** | Developer                          | Adds YAML file to `services/controller/config/profiles/`                        |
-| **Seed into DB**            | Controller (ProfileBootstrapper)   | Inserts on startup (`is_system=true`). Skips if slug already exists — user profiles are never overwritten |
-| **User Profile creation**   | User (Web-Interface)               | CRUD via Web-Interface → DB (`is_system=false`). Never overwritten by seed      |
-| **Profile assignment**      | Controller (auto) or User (manual) | Device enrollment via `devices.profile_slug` FK                                 |
+| **Seed into DB**            | Controller (ProfileBootstrapper)   | Inserts on startup (`built_in=true`). Skips if slug already exists — user profiles are never overwritten |
+| **User Profile creation**   | User (Web-Interface)               | CRUD via Web-Interface → DB (`built_in=false`). Never overwritten by seed      |
+| **Profile assignment**      | Controller (auto) or User (manual) | Microphone enrollment via `microphones.profile_slug` FK |
 | **Profile injection**       | Controller                         | Env vars `SILVASONIC_RECORDER_DEVICE`, `SILVASONIC_RECORDER_PROFILE_SLUG`, `SILVASONIC_RECORDER_CONFIG_JSON` at `containers.run()`  |
 
 ---
@@ -147,7 +147,7 @@ Silvasonic uses **1-second polling** (`/proc/asound/cards` + sysfs) to detect US
 
 ## Pydantic Schema
 
-The `MatchCriteria` model is defined in [`devices.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/schemas/devices.py):
+The `MatchCriteria` model is defined in [`microphones.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/schemas/microphones.py):
 
 ```python
 class MatchCriteria(BaseModel):

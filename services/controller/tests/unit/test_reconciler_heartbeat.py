@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.reconciler import (
-    DeviceStateEvaluator,
+    MicrophoneStateEvaluator,
     ReconciliationLoop,
 )
 from silvasonic.controller.worker_evaluator import SystemWorkerEvaluator
@@ -39,7 +39,7 @@ def _make_spec(**overrides: Any) -> Tier2ServiceSpec:
     return Tier2ServiceSpec(**defaults)
 
 
-class FakeEvaluator(DeviceStateEvaluator, SystemWorkerEvaluator):
+class FakeEvaluator(MicrophoneStateEvaluator, SystemWorkerEvaluator):
     """Fake evaluator returning static specs."""
 
     def __new__(cls, *args: Any, **kwargs: Any) -> Any:

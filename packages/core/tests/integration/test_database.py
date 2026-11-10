@@ -38,7 +38,7 @@ class TestStationDatabase:
         await engine.dispose()
 
         assert version == SCHEMA_VERSION
-        assert {"recordings", "detections", "devices", "system_config", "uploads"} <= tables
+        assert {"recordings", "detections", "microphones", "settings", "uploads"} <= tables
 
     async def test_concurrent_first_connections_create_schema_once(self, tmp_path: Path) -> None:
         """Services starting at the same time do not race on CREATE TABLE."""
@@ -69,13 +69,14 @@ class TestStationDatabase:
         assert busy_timeout > 0
 
     async def test_foreign_keys_enforced(self, station_db: Path) -> None:
-        """A recording must reference an existing device."""
+        """A recording must reference an existing microphone."""
         engine = create_station_engine(station_db)
         with pytest.raises(IntegrityError):
             async with engine.begin() as conn:
                 await conn.exec_driver_sql(
-                    "INSERT INTO recordings (time, sensor_id, file_raw, duration, "
-                    "sample_rate, filesize_raw) VALUES (0, 'no-such-device', 'a.wav', 1, 1, 1)"
+                    "INSERT INTO recordings (started_at, microphone_id, raw_path, duration_s, "
+                    "sample_rate_hz, raw_size_bytes) "
+                    "VALUES (0, 'no-such-microphone', 'a.wav', 1, 1, 1)"
                 )
         await engine.dispose()
 
@@ -85,8 +86,7 @@ class TestStationDatabase:
         with pytest.raises(IntegrityError):
             async with engine.begin() as conn:
                 await conn.exec_driver_sql(
-                    "INSERT INTO managed_services (name, enabled, updated_at) "
-                    "VALUES ('x', 1, 'yesterday')"
+                    "INSERT INTO modules (id, enabled, updated_at) VALUES ('x', 1, 'yesterday')"
                 )
         await engine.dispose()
 

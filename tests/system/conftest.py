@@ -1,7 +1,7 @@
 """Shared fixtures for system and system_hw_auto / system_hw_manual tests.
 
-These fixtures manage Podman sockets, the station database file and an
-isolated Redis (session-scoped).
+These fixtures manage Podman sockets, database containers, and isolated
+PostgreSQL and Redis (session-scoped).
 - Real ``SilvasonicPodmanClient`` connected to the host Podman socket.
 - ``ContainerManager`` with automatic cleanup of test containers.
 - Async SQLAlchemy session factory wired to the testcontainers DB.
@@ -27,7 +27,7 @@ from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.core.database.session import create_station_engine
-from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
+from silvasonic.core.schemas.microphones import MicrophoneProfile as MicProfileSchema
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 log = structlog.get_logger()
@@ -270,7 +270,7 @@ class HwMicConfig:
     vid: str
     pid: str
     alsa_contains: str
-    sample_rate: int
+    sample_rate_hz: int
     profile_data: dict[str, Any]
 
 
@@ -304,7 +304,7 @@ def load_hw_mic_config(profile_slug: str) -> HwMicConfig:
         vid=match["usb_vendor_id"],
         pid=match["usb_product_id"],
         alsa_contains=match.get("alsa_name_contains", ""),
-        sample_rate=validated.audio.sample_rate,
+        sample_rate_hz=validated.audio.sample_rate_hz,
         profile_data=raw,
     )
 
@@ -477,8 +477,10 @@ def seed_test_defaults(tmp_path: Path) -> Path:
     defaults_path = tmp_path / "defaults.yml"
     defaults_path.write_text(
         """\
-system:
-  station_name: "System Test Station"
+station:
+  name: "System Test Station"
+
+recording:
   auto_enrollment: true
 
 auth:

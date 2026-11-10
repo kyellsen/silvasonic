@@ -1,13 +1,13 @@
 """Integration test: Full Recorder Spawn Flow (scan → container start).
 
 Verifies the complete chain of components with a **real database**
-(a real station database file) and **mocked hardware** (ALSA + Podman):
+(testcontainers PostgreSQL) and **mocked hardware** (ALSA + Podman):
 
     Mock /proc/asound/cards
       → DeviceScanner.scan_all()
       → ProfileMatcher.match()
-      → upsert_device() [real DB]
-      → DeviceStateEvaluator.evaluate() [real DB]
+      → upsert_microphone() [real DB]
+      → MicrophoneStateEvaluator.evaluate() [real DB]
       → ContainerManager.start() [mock Podman]
 
 This is an **integration** test (not E2E) because it stays within the
@@ -22,10 +22,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, UsbInfo
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.controller.profile_matcher import ProfileMatcher
-from silvasonic.controller.reconciler import DeviceStateEvaluator
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator
 from silvasonic.core.database.session import create_station_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -85,21 +85,21 @@ def _seed_matching_profile(tmp_path: Path) -> Path:
     profiles_dir.mkdir(exist_ok=True)
     (profiles_dir / f"{_MOCK_PROFILE_SLUG}.yml").write_text(
         f"""
-schema_version: "1.0"
+schema_version: "2.0"
 slug: {_MOCK_PROFILE_SLUG}
 name: {_MOCK_ALSA_NAME}
 description: Dodotronic {_MOCK_ALSA_NAME} USB microphone.
 audio:
-  sample_rate: 384000
+  sample_rate_hz: 384000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
   match:
     usb_vendor_id: "{_MOCK_VID}"
     usb_product_id: "{_MOCK_PID}"
     alsa_name_contains: "UltraMic"
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -117,7 +117,7 @@ stream:
 
 
 class TestEvaluatorDBScoped:
-    """Verify DeviceStateEvaluator produces correct specs from real DB data."""
+    """Verify MicrophoneStateEvaluator produces correct specs from real DB data."""
 
     async def test_evaluator_returns_spec_for_enrolled_device(
         self,
@@ -135,17 +135,17 @@ class TestEvaluatorDBScoped:
         profiles_dir.mkdir(exist_ok=True)
         (profiles_dir / "spawn_test.yml").write_text(
             """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: spawn_test
 name: Spawn Test Profile
 description: For recorder spawn integration test.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -159,7 +159,7 @@ stream:
             await bootstrapper.seed(session)
             await session.commit()
 
-        # 2) Create a device (enrolled + online)
+        # 2) Create a microphone (enrolled + connected)
         from silvasonic.controller.device_scanner import DeviceInfo
 
         device_info = DeviceInfo(
@@ -171,16 +171,16 @@ stream:
             usb_serial="SPAWN-001",
         )
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug="spawn_test",
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         # 3) Run evaluator
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
@@ -196,7 +196,7 @@ stream:
         assert spec.name == "silvasonic-recorder-spawn-test-001"
         assert spec.environment["SILVASONIC_RECORDER_PROFILE_SLUG"] == "spawn_test"
 
-    async def test_evaluator_skips_offline_device(
+    async def test_evaluator_skips_disconnected_microphone(
         self,
         tmp_path: Path,
         station_db: Path,
@@ -212,17 +212,17 @@ stream:
         profiles_dir.mkdir(exist_ok=True)
         (profiles_dir / "offline_test.yml").write_text(
             """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: offline_test
 name: Offline Test Profile
-description: For offline device test.
+description: For disconnected microphone test.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -236,7 +236,7 @@ stream:
             await bootstrapper.seed(session)
             await session.commit()
 
-        # Create enrolled device, then set offline
+        # Create enrolled microphone, then set disconnected
         from silvasonic.controller.device_scanner import DeviceInfo
 
         device_info = DeviceInfo(
@@ -248,17 +248,17 @@ stream:
             usb_serial="OFFLINE-001",
         )
         async with session_factory() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug="offline_test",
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
-            # Manually set offline
-            device.status = "offline"
+            # Manually set disconnected
+            device.connection_state = "disconnected"
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 
@@ -285,7 +285,7 @@ class TestRecorderSpawnFlow:
         1. Seed a matching profile into DB
         2. Scan mocked /proc/asound/cards → DeviceInfo
         3. Match device against profiles → auto-enroll
-        4. Upsert device into DB (online + enrolled)
+        4. Upsert microphone into DB (connected + enrolled)
         5. Evaluate desired state from DB → Tier2ServiceSpec
         6. Reconcile → ContainerManager.start() called with correct spec
         """
@@ -297,12 +297,14 @@ class TestRecorderSpawnFlow:
 
         profiles_dir = _seed_matching_profile(tmp_path)
 
-        # Seed system config with auto_enrollment=true
+        # Seed settings with recording.auto_enrollment=true
         defaults_yml = tmp_path / "defaults.yml"
         defaults_yml.write_text(
             """
-system:
-  station_name: "Integration Test Station"
+station:
+  name: "Integration Test Station"
+
+recording:
   auto_enrollment: true
 
 auth:
@@ -346,26 +348,26 @@ auth:
 
         # -- Step 4: Upsert device into real DB --
         async with session_factory() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled" if match_result.auto_enroll else "pending",
+                enrollment_state="enrolled" if match_result.auto_enroll else "pending",
             )
             await session.commit()
             # Capture values before session closes
-            device_name = device.name
-            device_status = device.status
-            device_enrollment = device.enrollment_status
+            device_name = device.hardware_id
+            device_status = device.connection_state
+            device_enrollment = device.enrollment_state
             device_profile = device.profile_slug
 
         assert device_name == _device_id("FLOW-TEST-001")
-        assert device_status == "online"
+        assert device_status == "connected"
         assert device_enrollment == "enrolled"
         assert device_profile == _MOCK_PROFILE_SLUG
 
         # -- Step 5: Evaluate desired state from DB --
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             all_specs = await evaluator.evaluate(session)
 
@@ -422,16 +424,16 @@ auth:
 
         await engine.dispose()
 
-    async def test_offline_device_stops_recorder(
+    async def test_disconnected_microphone_stops_recorder(
         self,
         tmp_path: Path,
         station_db: Path,
     ) -> None:
-        """When a device goes offline, reconciliation stops its recorder.
+        """When a microphone disconnects, reconciliation stops its recorder.
 
         Steps:
-        1. Seed profile + create enrolled online device
-        2. Set device offline in DB
+        1. Seed profile + create enrolled connected microphone
+        2. Set microphone disconnected in DB
         3. Evaluate → empty specs
         4. Reconcile with one running container → stop called
         """
@@ -446,20 +448,20 @@ auth:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        # Create device, then set it offline
+        # Create microphone, then set it disconnected
         device_info = _make_device("OFFLINE-FLOW")
 
         async with session_factory() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
-            device.status = "offline"  # Simulate unplug
+            device.connection_state = "disconnected"  # Simulate unplug
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             all_specs = await evaluator.evaluate(session)
 
@@ -526,16 +528,16 @@ class TestRecorderLifecycleEdgeCases:
 
         device_info = _make_device("DISABLED-001", card_index=10)
         async with sf() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             device.enabled = False  # Emergency stop (US-C07)
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -565,15 +567,15 @@ class TestRecorderLifecycleEdgeCases:
 
         device_info = _make_device("PENDING-001", card_index=11)
         async with sf() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=None,
-                enrollment_status="pending",
+                enrollment_state="pending",
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -601,43 +603,44 @@ class TestRecorderLifecycleEdgeCases:
 
         device_info = _make_device("REPLUG-001", card_index=12)
 
-        # First insert: online + enrolled
+        # First insert: connected + enrolled
         async with sf() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
-            original_name = device.name
             await session.commit()
+            # The UUIDv7 id is generated by the database on flush
+            original_id = device.id
 
-        # Simulate unplug: set offline
-        from silvasonic.core.database.models.system import Device
+        # Simulate unplug: set disconnected
+        from silvasonic.core.database.models.system import Microphone
 
         async with sf() as session:
-            device_row = await session.get(Device, original_name)
+            device_row = await session.get(Microphone, original_id)
             assert device_row is not None
-            device_row.status = "offline"
+            device_row.connection_state = "disconnected"
             await session.commit()
 
         # Replug: upsert same device again
         async with sf() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
-            replug_name = device.name
-            replug_status = device.status
+            replug_id = device.id
+            replug_status = device.connection_state
 
-        assert replug_name == original_name, "Same serial → same device row"
-        assert replug_status == "online", "Re-plugged device must be online"
+        assert replug_id == original_id, "Same serial → same microphone row"
+        assert replug_status == "connected", "Re-plugged microphone must be connected"
 
         # Evaluate → should produce a spec again
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -657,23 +660,23 @@ class TestRecorderLifecycleEdgeCases:
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
-        from silvasonic.core.database.models.system import SystemConfig
+        from silvasonic.core.database.models.system import SettingsSection
 
         profiles_dir = _seed_matching_profile(tmp_path)
 
         async with sf() as session:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
-            # Directly set auto_enrollment=false (ConfigSeeder skips existing keys)
-            existing = await session.get(SystemConfig, "system")
+            # Directly set auto_enrollment=false (ConfigSeeder skips existing sections)
+            existing = await session.get(SettingsSection, "recording")
             if existing is not None:
                 val = dict(existing.value) if existing.value else {}
                 val["auto_enrollment"] = False
                 existing.value = val
             else:
                 session.add(
-                    SystemConfig(
-                        key="system",
-                        value={"station_name": "Test", "auto_enrollment": False},
+                    SettingsSection(
+                        section="recording",
+                        value={"auto_enrollment": False},
                     )
                 )
             await session.commit()
@@ -694,17 +697,17 @@ class TestRecorderLifecycleEdgeCases:
 
         # Upsert as pending (since auto_enroll=False)
         async with sf() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=None,
-                enrollment_status="pending",
+                enrollment_state="pending",
             )
-            assert device.enrollment_status == "pending"
+            assert device.enrollment_state == "pending"
             await session.commit()
 
         # Evaluator should produce no spec
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -717,7 +720,7 @@ class TestRecorderLifecycleEdgeCases:
 
         # Restore auto_enrollment=True to avoid polluting shared DB for other tests
         async with sf() as session:
-            cfg = await session.get(SystemConfig, "system")
+            cfg = await session.get(SettingsSection, "recording")
             if cfg is not None:
                 val = dict(cfg.value) if cfg.value else {}
                 val["auto_enrollment"] = True
@@ -748,15 +751,15 @@ class TestRecorderSpecIntegrity:
 
         device_info = _make_device("RESLIM-001", card_index=20)
         async with sf() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -812,15 +815,15 @@ class TestRecorderSpecIntegrity:
 
         device_info = _make_device("RESTART-001", card_index=21)
         async with sf() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -876,15 +879,15 @@ class TestRecorderSpecIntegrity:
 
         device_info = _make_device("NAMECHK-001", card_index=22)
         async with sf() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             specs = await evaluator.evaluate(session)
 
@@ -933,15 +936,15 @@ class TestRecorderSpecIntegrity:
         mic_b = _make_device("MULTI-BBB", card_index=31)
 
         async with sf() as session:
-            await upsert_device(
-                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            await upsert_microphone(
+                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_state="enrolled"
             )
-            await upsert_device(
-                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            await upsert_microphone(
+                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_state="enrolled"
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             all_specs = await evaluator.evaluate(session)
 
@@ -1017,20 +1020,20 @@ class TestGenericUsbFallback:
         # Also seed a known profile that does NOT match our device
         (profiles_dir / "known_mic.yml").write_text(
             """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: known_mic
 name: Known Microphone
 description: A known mic that won't match our unknown device.
 audio:
-  sample_rate: 96000
+  sample_rate_hz: 96000
   channels: 2
-  format: S24LE
+  sample_format: S24LE
   match:
     usb_vendor_id: "ffff"
     usb_product_id: "ffff"
 processing:
   gain_db: 6.0
-  chunk_size: 8192
+  chunk_frames: 8192
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -1040,12 +1043,14 @@ stream:
             encoding="utf-8",
         )
 
-        # Seed system config with auto_enrollment=true
+        # Seed settings with recording.auto_enrollment=true
         defaults_yml = tmp_path / "defaults.yml"
         defaults_yml.write_text(
             """
-system:
-  station_name: "Fallback Test Station"
+station:
+  name: "Fallback Test Station"
+
+recording:
   auto_enrollment: true
 """,
             encoding="utf-8",
@@ -1079,21 +1084,21 @@ system:
 
         # Step 3: Upsert as enrolled with generic_usb
         async with sf() as session:
-            device = await upsert_device(
+            device = await upsert_microphone(
                 unknown_device,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
-            device_name = device.name
+            device_name = device.hardware_id
             device_profile = device.profile_slug
 
         assert device_profile == "generic_usb"
         assert device_name == "1234-5678-UNKNOWN-001"
 
         # Step 4: Evaluate → should produce a spec with generic_usb config
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             all_specs = await evaluator.evaluate(session)
 
@@ -1114,9 +1119,9 @@ system:
         import json
 
         config = json.loads(spec.environment["SILVASONIC_RECORDER_CONFIG_JSON"])
-        assert config["audio"]["sample_rate"] == 48000
+        assert config["audio"]["sample_rate_hz"] == 48000
         assert config["audio"]["channels"] == 1
-        assert config["audio"]["format"] == "S16LE"
+        assert config["audio"]["sample_format"] == "S16LE"
         assert config["processing"]["gain_db"] == 0.0
 
         await engine.dispose()
@@ -1165,15 +1170,15 @@ class TestContainerNameSuffixUniqueness:
         mic_b = _make_device("SERIAL-BBB002", card_index=41)
 
         async with sf() as session:
-            await upsert_device(
-                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            await upsert_microphone(
+                mic_a, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_state="enrolled"
             )
-            await upsert_device(
-                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_status="enrolled"
+            await upsert_microphone(
+                mic_b, session, profile_slug=_MOCK_PROFILE_SLUG, enrollment_state="enrolled"
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             all_specs = await evaluator.evaluate(session)
 
@@ -1260,15 +1265,15 @@ class TestContainerNameSuffixUniqueness:
         )
 
         async with sf() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_no_serial,
                 session,
                 profile_slug=_MOCK_PROFILE_SLUG,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with sf() as session:
             all_specs = await evaluator.evaluate(session)
 

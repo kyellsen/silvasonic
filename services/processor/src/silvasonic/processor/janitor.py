@@ -10,14 +10,17 @@ Three escalating modes:
 - **Defensive** (>80%): Delete uploaded recordings (analysis state ignored).
 - **Panic** (>90%): Delete oldest files regardless of any status.
 
-**Cloud-Sync-Fallback:** When ``CloudSyncSettings.enabled`` is ``false``
-(no upload target configured), the ``uploaded`` condition is skipped in Housekeeping and
-Defensive modes.  This prevents the Janitor from remaining idle until Panic
-threshold is reached when the Cloud Sync feature is disabled.
+**Cloud-Sync-Fallback:** When the ``cloud_sync`` module is switched off
+(``modules`` row disabled or absent), the ``uploaded_at IS NOT NULL`` condition is
+skipped in Housekeeping and Defensive modes.  This prevents the Janitor from
+remaining idle until Panic threshold is reached when the Cloud Sync feature is
+disabled.
 The fallback is clearly logged at WARNING level.
 
-**Batch size:** Deletions are limited to ``janitor_batch_size`` per cycle
+**Batch size:** Deletions are limited to ``cleanup_batch_files`` per cycle
 to avoid I/O storms and excessive DB load.
+
+Every deletion sets ``deleted_at`` and ``deletion_reason = 'retention'``.
 """
 
 from __future__ import annotations
@@ -25,18 +28,32 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
 import structlog
-from silvasonic.core.schemas.system_config import ProcessorSettings
+from silvasonic.core.schemas.settings import StorageSettings
 from silvasonic.processor.modules.janitor_stats import JanitorStats
 from sqlalchemy import bindparam, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
+
+#: ``recordings.deletion_reason`` for a deletion by the retention policy.
+DELETION_REASON_RETENTION = "retention"
+
+# A recording is fully analysed when every analyzer entry in
+# ``analysis_state`` has the state ``done`` (silvasonic.core.schemas.analysis).
+_FULLY_ANALYSED = """
+                  EXISTS (SELECT 1 FROM json_each(analysis_state))
+                  AND NOT EXISTS (
+                      SELECT 1 FROM json_each(analysis_state) AS kv
+                      WHERE json_extract(kv.value, '$.state') IS NOT 'done'
+                  )"""
 
 
 class RetentionMode(StrEnum):
@@ -77,37 +94,34 @@ async def get_disk_usage(path: Path) -> float:
     return await asyncio.to_thread(_sync_usage)
 
 
-def evaluate_mode(disk_pct: float, settings: ProcessorSettings) -> RetentionMode:
+def evaluate_mode(disk_pct: float, settings: StorageSettings) -> RetentionMode:
     """Map disk utilization percentage to a retention mode.
 
     Args:
         disk_pct: Current disk usage percentage.
-        settings: Processor settings with threshold values.
+        settings: Storage settings with threshold values.
 
     Returns:
         The active retention mode.
     """
-    if disk_pct >= settings.janitor_threshold_emergency:
+    if disk_pct >= settings.emergency_percent:
         return RetentionMode.PANIC
-    if disk_pct >= settings.janitor_threshold_critical:
+    if disk_pct >= settings.critical_percent:
         return RetentionMode.DEFENSIVE
-    if disk_pct >= settings.janitor_threshold_warning:
+    if disk_pct >= settings.warning_percent:
         return RetentionMode.HOUSEKEEPING
     return RetentionMode.IDLE
 
 
 async def is_cloud_sync_enabled(session: AsyncSession) -> bool:
-    """Check whether cloud sync is enabled in the system configuration.
+    """Check whether the ``cloud_sync`` module is switched on.
 
-    Returns ``False`` when ``CloudSyncSettings.enabled`` is ``false``,
+    Returns ``False`` when its ``modules`` row is disabled or absent,
     which triggers the Cloud-Sync-Fallback in Housekeeping and Defensive modes.
     """
-    result = await session.execute(
-        text("SELECT json_extract(value, '$.enabled') FROM system_config WHERE key = 'cloud_sync'")
-    )
+    result = await session.execute(text("SELECT enabled FROM modules WHERE id = 'cloud_sync'"))
     row = result.fetchone()
-    # json_extract returns JSON true as 1; a string "true" stays a string
-    return row is not None and row[0] in (1, "true")
+    return bool(row is not None and row[0])
 
 
 async def find_deletable(
@@ -115,7 +129,7 @@ async def find_deletable(
     mode: RetentionMode,
     batch_size: int,
     cloud_sync_active: bool,
-) -> list[tuple[int, str, str | None]]:
+) -> list[tuple[uuid.UUID, str, str | None]]:
     """Query recordings eligible for deletion in the given mode.
 
     Args:
@@ -125,64 +139,56 @@ async def find_deletable(
         cloud_sync_active: Whether Cloud Sync is enabled.
 
     Returns:
-        List of ``(id, file_raw, file_processed)`` tuples, sorted oldest first.
+        List of ``(id, raw_path, processed_path)`` tuples, sorted oldest first.
     """
     if mode == RetentionMode.HOUSEKEEPING:
         if cloud_sync_active:
-            query = text("""
-                SELECT id, file_raw, file_processed
+            query = text(f"""
+                SELECT id, raw_path, processed_path
                 FROM recordings
-                WHERE local_deleted = false
-                  AND uploaded = true
-                  AND EXISTS (SELECT 1 FROM json_each(analysis_state))
-                  AND NOT EXISTS (
-                      SELECT 1 FROM json_each(analysis_state) AS kv
-                      WHERE kv.value != 'true'
-                  )
-                ORDER BY time ASC
+                WHERE deleted_at IS NULL
+                  AND uploaded_at IS NOT NULL
+                  AND {_FULLY_ANALYSED}
+                ORDER BY started_at ASC
                 LIMIT :batch
             """)
         else:
             # Cloud-Sync-Fallback: skip uploaded condition
-            query = text("""
-                SELECT id, file_raw, file_processed
+            query = text(f"""
+                SELECT id, raw_path, processed_path
                 FROM recordings
-                WHERE local_deleted = false
-                  AND EXISTS (SELECT 1 FROM json_each(analysis_state))
-                  AND NOT EXISTS (
-                      SELECT 1 FROM json_each(analysis_state) AS kv
-                      WHERE kv.value != 'true'
-                  )
-                ORDER BY time ASC
+                WHERE deleted_at IS NULL
+                  AND {_FULLY_ANALYSED}
+                ORDER BY started_at ASC
                 LIMIT :batch
             """)
 
     elif mode == RetentionMode.DEFENSIVE:
         if cloud_sync_active:
             query = text("""
-                SELECT id, file_raw, file_processed
+                SELECT id, raw_path, processed_path
                 FROM recordings
-                WHERE local_deleted = false
-                  AND uploaded = true
-                ORDER BY time ASC
+                WHERE deleted_at IS NULL
+                  AND uploaded_at IS NOT NULL
+                ORDER BY started_at ASC
                 LIMIT :batch
             """)
         else:
             # Cloud-Sync-Fallback: skip uploaded condition
             query = text("""
-                SELECT id, file_raw, file_processed
+                SELECT id, raw_path, processed_path
                 FROM recordings
-                WHERE local_deleted = false
-                ORDER BY time ASC
+                WHERE deleted_at IS NULL
+                ORDER BY started_at ASC
                 LIMIT :batch
             """)
 
     elif mode == RetentionMode.PANIC:
         query = text("""
-            SELECT id, file_raw, file_processed
+            SELECT id, raw_path, processed_path
             FROM recordings
-            WHERE local_deleted = false
-            ORDER BY time ASC
+            WHERE deleted_at IS NULL
+            ORDER BY started_at ASC
             LIMIT :batch
         """)
 
@@ -195,15 +201,15 @@ async def find_deletable(
 
 async def delete_files(
     recordings_dir: Path,
-    file_raw: str,
-    file_processed: str | None,
+    raw_path: str,
+    processed_path: str | None,
 ) -> int:
     """Physically delete raw and processed WAV files from disk.
 
     Args:
         recordings_dir: Root of the Recorder workspace.
-        file_raw: Relative path to raw WAV.
-        file_processed: Relative path to processed WAV (``None`` for raw-only devices).
+        raw_path: Relative path to raw WAV.
+        processed_path: Relative path to processed WAV (``None`` for raw-only microphones).
 
     Returns:
         Number of files actually removed.
@@ -211,7 +217,7 @@ async def delete_files(
 
     def _unlink_sync() -> int:
         removed = 0
-        for rel_path in filter(None, (file_raw, file_processed)):
+        for rel_path in filter(None, (raw_path, processed_path)):
             full = recordings_dir / rel_path
             try:
                 if not full.resolve().is_relative_to(recordings_dir.resolve()):
@@ -227,27 +233,27 @@ async def delete_files(
 
 async def delete_worker_clips(
     session: AsyncSession,
-    recording_id: int,
+    recording_id: uuid.UUID,
     workspace_root: Path,
 ) -> int:
-    """Physically delete audio clips extracted by analysis workers.
+    """Physically delete audio clips extracted by analyzers.
 
     1. Query the detections table for associated clips.
-    2. Unlink the physical files from the respective worker workspaces via a thread.
+    2. Unlink the physical files from the respective analyzer workspaces via a thread.
     3. Nullify the clip_path column in the database only for successfully deleted paths.
 
     Args:
         session: Active async DB session.
         recording_id: Primary key of the deleted recording.
         workspace_root: Base Workspace path (e.g., ``/data``) to resolve
-            ``{worker}/{clip_path}``.
+            ``{analyzer}/{clip_path}``.
 
     Returns:
         Number of physical clip files successfully unlinked.
     """
     result = await session.execute(
         text("""
-            SELECT worker, clip_path 
+            SELECT analyzer, clip_path 
             FROM detections 
             WHERE recording_id = :id AND clip_path IS NOT NULL
         """),
@@ -260,9 +266,9 @@ async def delete_worker_clips(
     def _unlink_clips_sync() -> tuple[list[str], Exception | None]:
         successful_clip_paths = []
         err: Exception | None = None
-        for worker, clip_path in rows:
+        for analyzer, clip_path in rows:
             # Expected path format: /data/birdnet/clips/file.wav
-            full_path = workspace_root / worker / clip_path
+            full_path = workspace_root / analyzer / clip_path
             try:
                 if not full_path.resolve().is_relative_to(workspace_root.resolve()):
                     continue
@@ -274,7 +280,7 @@ async def delete_worker_clips(
             except OSError as e:
                 log.exception(
                     "janitor.delete_worker_clip_error",
-                    recording_id=recording_id,
+                    recording_id=str(recording_id),
                     clip_path=str(full_path),
                 )
                 err = e
@@ -287,8 +293,8 @@ async def delete_worker_clips(
     if successful_clip_paths:
         await session.execute(
             text("""
-                UPDATE detections
-                SET clip_path = NULL
+                UPDATE detections 
+                SET clip_path = NULL 
                 WHERE recording_id = :id AND clip_path IN :clip_paths
             """).bindparams(bindparam("clip_paths", expanding=True)),
             {"id": recording_id, "clip_paths": successful_clip_paths},
@@ -303,16 +309,16 @@ async def delete_worker_clips(
 
 async def soft_delete(
     session: AsyncSession,
-    recording_id: int,
+    recording_id: uuid.UUID,
 ) -> None:
     """Mark a recording as locally deleted in the database.
 
-    The row is preserved for historical inventory — only the
-    ``local_deleted`` flag is set to ``TRUE`` (Soft Delete pattern).
+    The row is preserved for historical inventory — only ``deleted_at``
+    and ``deletion_reason = 'retention'`` are set (Soft Delete pattern).
     """
     await session.execute(
-        text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
-        {"id": recording_id},
+        text("UPDATE recordings SET deleted_at = :now, deletion_reason = :reason WHERE id = :id"),
+        {"id": recording_id, "now": datetime.now(UTC), "reason": DELETION_REASON_RETENTION},
     )
 
 
@@ -322,7 +328,7 @@ async def panic_filesystem_fallback(
 ) -> int:
     """Blind cleanup by mtime when the database is unreachable.
 
-    Deletes the oldest WAV files across all sensor directories, sorted
+    Deletes the oldest WAV files across all microphone directories, sorted
     by modification time.  This is the last-resort fallback for Panic
     Mode when the DB is offline.
 
@@ -342,8 +348,8 @@ async def panic_filesystem_fallback(
             candidates: dict[str, list[Path]] = {}
             for wav_path in recordings_dir.glob("*/data/*/*.wav"):
                 try:
-                    sensor_name = wav_path.parts[-4]
-                    key = f"{sensor_name}/{wav_path.stem}"
+                    workspace_name = wav_path.parts[-4]
+                    key = f"{workspace_name}/{wav_path.stem}"
                     if key not in candidates:
                         candidates[key] = []
                     candidates[key].append(wav_path)
@@ -386,7 +392,7 @@ async def panic_filesystem_fallback(
 async def run_cleanup(
     session: AsyncSession,
     recordings_dir: Path,
-    settings: ProcessorSettings,
+    settings: StorageSettings,
     mode: RetentionMode | None = None,
     disk_pct: float | None = None,
     stats: JanitorStats | None = None,
@@ -404,7 +410,7 @@ async def run_cleanup(
     Args:
         session: Database session
         recordings_dir: Root directory for recordings
-        settings: Active ProcessorSettings with intervals and batch sizes
+        settings: Active StorageSettings with thresholds and batch size
         mode: Optional pre-evaluated retention mode
         disk_pct: Optional pre-evaluated disk usage percentage
         stats: Two-Phase Logging stats object.
@@ -426,7 +432,7 @@ async def run_cleanup(
         "janitor.cycle_start",
         mode=mode.value,
         disk_usage_percent=round(disk_pct, 1),
-        batch_size=settings.janitor_batch_size,
+        batch_size=settings.cleanup_batch_files,
     )
 
     # Check Cloud Sync availability (for Housekeeping/Defensive fallback)
@@ -438,14 +444,14 @@ async def run_cleanup(
             mode=mode.value,
             reason="upload_disabled",
             detail=(
-                "Cloud sync not enabled — skipping 'uploaded' condition. "
+                "Cloud sync not enabled — skipping 'uploaded_at' condition. "
                 "Files will be deleted based on analysis state only "
                 "(Housekeeping) or age only (Defensive)."
             ),
         )
 
     # Find deletable recordings
-    rows = await find_deletable(session, mode, settings.janitor_batch_size, cloud_sync_active)
+    rows = await find_deletable(session, mode, settings.cleanup_batch_files, cloud_sync_active)
     # Release the read transaction before touching files (ADR-0037).  Nothing
     # was written.  The deletions below then hold the lock for one batch of
     # unlinks, milliseconds on NVMe.
@@ -453,59 +459,59 @@ async def run_cleanup(
 
     # Delete files + soft-delete in DB
     workspace_root = recordings_dir.parent
-    for rec_id, file_raw, file_processed in rows:
+    for rec_id, raw_path, processed_path in rows:
         try:
-            await delete_files(recordings_dir, file_raw, file_processed)
+            await delete_files(recordings_dir, raw_path, processed_path)
             await soft_delete(session, rec_id)
             result.recordings_deleted += 1
             if stats:
                 stats.record_deleted(
                     recording_id=rec_id,
-                    file_processed=file_processed,
+                    processed_path=processed_path,
                     mode=mode.value,
                     cloud_sync_fallback=result.cloud_sync_fallback,
                 )
             else:
                 log.info(
                     "janitor.deleted",
-                    recording_id=rec_id,
-                    file_processed=file_processed,
+                    recording_id=str(rec_id),
+                    processed_path=processed_path,
                     mode=mode.value,
                     cloud_sync_fallback=result.cloud_sync_fallback,
                 )
 
-            # Post-cleanup for worker clips. Failure here must not abort soft_delete!
+            # Post-cleanup for analyzer clips. Failure here must not abort soft_delete!
             try:
                 await delete_worker_clips(session, rec_id, workspace_root)
             except Exception:
                 result.errors += 1
-                result.error_details.append(file_processed or file_raw)
+                result.error_details.append(processed_path or raw_path)
                 if stats:
-                    stats.record_error(rec_id, file_processed)
+                    stats.record_error(rec_id, processed_path)
                 else:
-                    log.exception("janitor.worker_clip_delete_error", recording_id=rec_id)
+                    log.exception("janitor.worker_clip_delete_error", recording_id=str(rec_id))
         except SQLAlchemyError as e:
             log.exception(
                 "janitor.db_error",
-                recording_id=rec_id,
+                recording_id=str(rec_id),
                 detail="Database error during cleanup, aborting cycle to prevent split-brain.",
             )
             result.errors += 1
-            result.error_details.append(file_processed or file_raw)
+            result.error_details.append(processed_path or raw_path)
             if stats:
-                stats.record_error(rec_id, file_processed)
+                stats.record_error(rec_id, processed_path)
             await session.rollback()
             raise e
         except Exception:
             result.errors += 1
-            result.error_details.append(file_processed or file_raw)
+            result.error_details.append(processed_path or raw_path)
             if stats:
-                stats.record_error(rec_id, file_processed)
+                stats.record_error(rec_id, processed_path)
             else:
                 log.exception(
                     "janitor.delete_error",
-                    recording_id=rec_id,
-                    file_processed=file_processed,
+                    recording_id=str(rec_id),
+                    processed_path=processed_path,
                 )
 
     # Always commit to ensure any partial NULLs applied by delete_worker_clips are saved,
@@ -526,7 +532,7 @@ async def run_cleanup(
 
 async def run_cleanup_safe(
     recordings_dir: Path,
-    settings: ProcessorSettings,
+    settings: StorageSettings,
     stats: JanitorStats | None = None,
 ) -> JanitorResult:
     """Top-level entry point with DB-failure protection.
@@ -564,7 +570,7 @@ async def run_cleanup_safe(
                 disk_usage_percent=round(disk_pct, 1),
                 detail="Database unreachable during PANIC — falling back to mtime cleanup.",
             )
-            deleted = await panic_filesystem_fallback(recordings_dir, settings.janitor_batch_size)
+            deleted = await panic_filesystem_fallback(recordings_dir, settings.cleanup_batch_files)
             return JanitorResult(
                 mode=RetentionMode.PANIC,
                 disk_usage_percent=disk_pct,

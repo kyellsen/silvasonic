@@ -93,17 +93,17 @@ async def test_native_tflite_inference(
     ):
         worker = BirdNETService()
 
-    from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+    from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 
     worker.birdnet_config = BirdnetSettings(
-        confidence_threshold=0.20,
+        min_confidence=0.20,
         sensitivity=1.0,
-        overlap=0.0,
-        threads=1,
+        overlap_s=0.0,
+        thread_count=1,
         processing_order="oldest_first",
     )
     # Hamburg defaults for testing location filtering
-    worker.system_config = SystemSettings(latitude=53.55, longitude=9.99)
+    worker.station_config = StationSettings(latitude=53.55, longitude=9.99)
 
     # 2. Use models provided by the birdnet_model_dir fixture
     model_dir = birdnet_model_dir
@@ -122,14 +122,15 @@ async def test_native_tflite_inference(
     interpreter.allocate_tensors()
 
     # Create a fake Recording DB representation
+    import uuid
     from datetime import UTC, datetime
 
     from silvasonic.birdnet.service import birdnet_week
     from silvasonic.core.database.models.recordings import Recording
 
-    # Only ID and time are used inside _process_recording
-    recording = Recording(id=999, time=datetime(2024, 5, 1, tzinfo=UTC))
-    week = birdnet_week(recording.time)
+    # Only id and started_at are used inside _process_recording
+    recording = Recording(id=uuid.uuid4(), started_at=datetime(2024, 5, 1, tzinfo=UTC))
+    week = birdnet_week(recording.started_at)
 
     # Precompute mask for the recording's season
     with patch("silvasonic.birdnet.service.META_MODEL_PATH", meta_model_path):
