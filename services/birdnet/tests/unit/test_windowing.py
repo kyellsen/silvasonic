@@ -193,6 +193,7 @@ class TestSeasonalMask:
             patch("silvasonic.birdnet.service.Interpreter"),
             patch("silvasonic.birdnet.service.get_session", return_value=FakeSessionCtx()),
             patch.object(service, "_refresh_config"),
+            patch.object(service, "_previous_segment_path", return_value=None),
             patch.object(service, "_process_recording", side_effect=process) as mock_process,
             patch.object(
                 service, "_get_allowed_species_mask", return_value=(np.array([True]), True)
@@ -203,4 +204,4 @@ class TestSeasonalMask:
 
         mock_mask.assert_called_once()
         assert mock_mask.call_args.args[1] == 23
-        assert mock_process.call_args.args[-1] == 23
+        assert mock_process.call_args.args[6] == 23  # week

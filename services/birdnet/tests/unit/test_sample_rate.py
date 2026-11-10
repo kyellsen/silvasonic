@@ -110,6 +110,7 @@ class TestUnsupportedSampleRate:
             patch("silvasonic.birdnet.service.Interpreter"),
             patch("silvasonic.birdnet.service.get_session", return_value=FakeSessionCtx()),
             patch.object(service, "_refresh_config"),
+            patch.object(service, "_previous_segment_path", return_value=None),
             patch.object(service, "_process_recording", side_effect=process),
             patch.object(
                 service, "_get_allowed_species_mask", return_value=(np.array([True]), False)

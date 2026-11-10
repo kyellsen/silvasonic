@@ -21,6 +21,7 @@ from silvasonic.core.schemas.detections import BirdnetDetectionDetails
 from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 from silvasonic.core.service import SilvaService
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
 
@@ -30,6 +31,11 @@ WINDOW_SECS = 3.0
 WINDOW_SAMPLES = int(WINDOW_SECS * MODEL_SR)
 # A recording shorter than this is not worth one zero-padded window.
 MIN_CHUNK_SAMPLES = int(1.5 * MODEL_SR)
+# The seam window spans a segment boundary: this much audio on either side.
+SEAM_SAMPLES = WINDOW_SAMPLES // 2
+# Segment names are rounded to the second, so consecutive segments of one
+# run may appear up to this far apart.
+CONTIGUITY_TOLERANCE_S = 1.0
 
 MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
@@ -80,6 +86,26 @@ def window_starts(n_samples: int, step: int) -> list[int]:
     if starts[-1] != last_start:
         starts.append(last_start)
     return starts
+
+
+def is_contiguous(prev_start: datetime, prev_duration_s: float, start: datetime) -> bool:
+    """Return whether a segment starts where the previous one of its device ended."""
+    prev_end = prev_start + timedelta(seconds=prev_duration_s)
+    return abs((start - prev_end).total_seconds()) <= CONTIGUITY_TOLERANCE_S
+
+
+def read_tail(path: Path, n_samples: int) -> np.ndarray | None:
+    """Read the last ``n_samples`` of a 48 kHz recording as mono float32.
+
+    Returns ``None`` when the file is shorter or not at the model's rate.
+    """
+    info = sf.info(str(path))
+    if info.samplerate != MODEL_SR or info.frames < n_samples:
+        return None
+    tail, _ = sf.read(str(path), start=info.frames - n_samples, dtype="float32")
+    if tail.ndim > 1:
+        tail = tail.mean(axis=1)
+    return tail
 
 
 def birdnet_week(moment: datetime) -> int:
@@ -216,11 +242,18 @@ class BirdNETService(SilvaService):
         allowed_mask: np.ndarray,
         loc_filter_active: bool,
         week: int | None = None,
+        lead_in_path: Path | None = None,
     ) -> list[Detection]:
         """Perform native inference on a single recording.
 
         ``week`` is the BirdNET week the species mask was built for; it is
         stored in each detection's details while the location filter is on.
+
+        ``lead_in_path`` is the previous, contiguous segment of the same
+        device. Its last 1.5 s are prepended, and one extra *seam window*
+        spans the boundary, so a call cut in two by the segment split is
+        analysed whole. A detection in the seam window starts up to 1.5 s
+        before the recording does.
         """
         assert self.birdnet_config is not None
         assert self.system_config is not None
@@ -228,7 +261,7 @@ class BirdNETService(SilvaService):
         loop = asyncio.get_running_loop()
 
         # Load audio blocking call bound to executor
-        def _load() -> np.ndarray:
+        def _load() -> tuple[np.ndarray, np.ndarray]:
             audio, sr = sf.read(str(audio_path), dtype="float32")
             if sr != MODEL_SR:
                 # Windows and timestamps would be scaled wrongly, the
@@ -238,9 +271,16 @@ class BirdNETService(SilvaService):
                 )
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
-            return audio
 
-        audio = await loop.run_in_executor(None, _load)
+            lead = None
+            if lead_in_path is not None and len(audio) >= SEAM_SAMPLES:
+                try:
+                    lead = read_tail(lead_in_path, SEAM_SAMPLES)
+                except Exception as e:  # the Janitor may have removed it meanwhile
+                    log.debug("birdnet.lead_in_unreadable", path=str(lead_in_path), error=str(e))
+            return audio, lead if lead is not None else np.zeros(0, dtype=np.float32)
+
+        audio, lead = await loop.run_in_executor(None, _load)
 
         # Slice segments
         overlap = self.birdnet_config.overlap
@@ -253,7 +293,14 @@ class BirdNETService(SilvaService):
         # Fast inversion for sigmoid according to spike v3
         adj_sens = max(0.5, min(1.0 - (self.birdnet_config.sensitivity - 1.0), 1.5))
 
-        for start_idx in window_starts(len(audio), step):
+        # Window offsets index the buffer: lead-in (if any) + the recording
+        offset = len(lead)
+        starts = [s + offset for s in window_starts(len(audio), step)]
+        if offset:
+            starts.insert(0, 0)  # the seam window, centred on the boundary
+            audio = np.concatenate([lead, audio])
+
+        for start_idx in starts:
             if self._shutdown_event.is_set():
                 break
 
@@ -276,7 +323,7 @@ class BirdNETService(SilvaService):
             mask = (scores >= self.birdnet_config.confidence_threshold) & allowed_mask
             hits = np.where(mask)[0]
 
-            w_start_td = timedelta(seconds=start_idx / MODEL_SR)
+            w_start_td = timedelta(seconds=(start_idx - offset) / MODEL_SR)
             w_end_td = w_start_td + timedelta(seconds=WINDOW_SECS)
 
             for i in hits:
@@ -346,6 +393,33 @@ class BirdNETService(SilvaService):
         gc.collect()
 
         return detections
+
+    async def _previous_segment_path(
+        self, session: AsyncSession, recording: Recording
+    ) -> Path | None:
+        """Return the file of the segment right before ``recording``, if contiguous.
+
+        Same device, ending where ``recording`` starts, still on disk.  A gap
+        (FFmpeg restart, device unplugged) or a deleted file yields ``None``.
+        """
+        result = await session.execute(
+            select(
+                Recording.time,
+                Recording.duration,
+                Recording.file_processed,
+                Recording.file_raw,
+            )
+            .where(Recording.sensor_id == recording.sensor_id)
+            .where(Recording.time < recording.time)
+            .where(Recording.local_deleted.is_(False))
+            .order_by(Recording.time.desc())
+            .limit(1)
+        )
+        prev = result.first()
+        if prev is None or not is_contiguous(prev.time, prev.duration, recording.time):
+            return None
+        path = self.recordings_dir / (prev.file_processed or prev.file_raw)
+        return path if path.exists() else None
 
     async def run(self) -> None:
         """Main inference loop."""
@@ -452,6 +526,7 @@ class BirdNETService(SilvaService):
                         if week not in species_masks:
                             species_masks[week] = self._get_allowed_species_mask(labels, week)
                         allowed_mask, loc_filter_active = species_masks[week]
+                        lead_in_path = await self._previous_segment_path(session, recording)
 
                         detections = await self._process_recording(
                             recording,
@@ -461,6 +536,7 @@ class BirdNETService(SilvaService):
                             allowed_mask,
                             loc_filter_active,
                             week,
+                            lead_in_path,
                         )
 
                         if detections:
