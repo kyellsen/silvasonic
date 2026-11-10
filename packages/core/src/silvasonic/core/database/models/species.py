@@ -24,7 +24,12 @@ class Species(Base):
 
     # Localized maps: {"de": "Amsel", "en": "Blackbird"}
     common_names: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # Plain text by language, never HTML from outside
     descriptions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # Per language: {"url": ..., "license": ..., "license_url": ...} of that text
+    description_sources: Mapped[dict[str, Any]] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'"), nullable=False
+    )
 
     # bird, bat, mammal, amphibian, insect, human, environment, other
     category: Mapped[str] = mapped_column(
@@ -34,9 +39,13 @@ class Species(Base):
         Boolean, default=False, server_default=text("0"), nullable=False
     )
 
-    # Static asset paths
+    # Picture, relative to the analyzer's workspace, and its attribution:
+    # source page, author and licence as the licence asks them to be shown
     image_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_author: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_license: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_license_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # IUCN Red List status (LC, EN, etc.)
     conservation_status: Mapped[str | None] = mapped_column(Text, nullable=True)

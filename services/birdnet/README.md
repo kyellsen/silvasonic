@@ -39,11 +39,17 @@
 *   **Segment Boundaries:** The Recorder splits audio into segments, which can cut a call in two. When the previous segment of the same microphone ends where the current one starts (within 1 s) and is still on disk, its last 1.5 s are prepended and one extra *seam window* spans the boundary. Its detections belong to the current recording and start up to 1.5 s before it. A gap (FFmpeg restart, device unplugged) or a deleted predecessor skips the seam window. Cost: one more inference per segment.
 *   **Location Filtering:** Runs the BirdNET meta-model with station coordinates + week-of-year to generate a species mask. Species outside the geographic/seasonal range are excluded from results. The week (BirdNET's 48-week year, four per month) comes from each recording's own timestamp, so a backlog is filtered by the season it was recorded in; masks are cached per week and dropped when the location changes.
 *   **Clip Extraction:** Extracts WAV audio clips for each detection (detection time range ± configurable padding).
+*   **Species Enrichment (best effort):** The first time a species is detected, a description (English and German) and a picture are fetched from Wikipedia and stored with the species, so the station can show them offline afterwards. This is the only step that needs internet access; without it a species simply has no description or picture yet. Sound classes that are not species are skipped, and a lookup that failed or stayed incomplete is repeated after six hours at the earliest.
+    *   **Only the scientific name leaves the station**, sent to Wikipedia and Wikimedia Commons; no audio, coordinates or station identity.
+    *   **Attributable content only.** Each description is stored with its article URL and licence (CC BY-SA 4.0). A picture is taken only from Wikimedia Commons, and only with the author, licence and file page Commons reports for it; a language Wikipedia's own uploads (often non-free) are never used. Whoever shows a description or picture shows its attribution with it.
+    *   **Plain text.** Descriptions are stored as text, never as HTML from outside.
+    *   **No database lock during the lookup.** The species row is read in one short transaction and written in another; the network calls happen in between (ADR-0037).
 
 ### Outputs
 
 *   **Database Rows:** Inserts classification results into the database.
 *   **Audio Clips:** Saves WAV clips to the BirdNET workspace (`clips/`), linking the relative file path to the detection record.
+*   **Species Pictures:** Saves one picture per species to the BirdNET workspace (`wiki/img/`), named after the species id and linked from the species record with its source page, author and licence.
 *   **Redis Heartbeats:** Fire-and-forget heartbeats (ADR-0019). Includes backlog size, total analyzed, total detections, and avg inference time in the heartbeat metadata.
 
 ---
@@ -91,6 +97,7 @@
 
 *   **ML Runtime:** `ai-edge-litert` (Google's TFLite successor) — mandatory for resource-constrained RPi 5 deployment.
 *   **Audio I/O:** `soundfile` (WAV read/write, clip extraction), `numpy` (spectrogram processing, 3-second chunk splitting).
+*   **HTTP:** `httpx` (Wikipedia lookups of the species enrichment).
 *   **Python:** `silvasonic-core` (core lifecycle infrastructure, health monitoring, two-phase logging, heartbeats), `structlog` (JSON logging).
 *   **Models:** BirdNET Global 6K V2.4 — FP32 classifier (~30 MB) + FP16 meta-model (~10 MB) + labels file. Models are downloaded at container build time from the `birdnetlib` PyPI wheel.
 *   **Base Image:** `python:3.13-slim-bookworm` (Containerfile).
@@ -127,8 +134,10 @@ Each detection stores `analyzer = "birdnet"`, `started_at`/`ended_at`, the label
 **Container view** (`/data/birdnet` — own workspace, RW):
 ```
 /data/birdnet/
-└── clips/
-    └── {recording_id}_{start_ms}_{end_ms}_{label}.wav
+├── clips/
+│   └── {recording_id}_{start_ms}_{end_ms}_{label}.wav
+└── wiki/img/
+    └── {species_id}.jpg           # Picture from Wikipedia, one per species
 ```
 
 **Recorder view** (`/data/recorder` — read-only mount):

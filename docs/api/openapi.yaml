@@ -2016,7 +2016,8 @@ components:
         category: {$ref: '#/components/schemas/SpeciesCategory'}
         analyzers: {type: array, items: {$ref: '#/components/schemas/Analyzer'}}
         description: {type: [string, 'null'], description: In the requested language}
-        descriptions: {$ref: '#/components/schemas/LocalizedText'}
+        descriptions: {$ref: '#/components/schemas/LocalizedText', description: Plain text, never HTML}
+        description_attribution: {type: [string, 'null'], description: Source and licence of the description in the requested language}
         image_url: {type: [string, 'null'], format: uri-reference}
         image_attribution: {type: [string, 'null'], description: Author and licence of the picture}
         reference_url: {type: [string, 'null'], format: uri, description: Where to read more}

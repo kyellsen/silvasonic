@@ -52,12 +52,18 @@ async def _run_once(
     entry on ``recording`` as the database would.
     """
     add_all = MagicMock()
+    order: list[str] = []
+
+    async def enrich(labels: set[str]) -> None:
+        order.append("enrich")
+        add_all.enriched = labels
 
     async def finish(recording_id: Any, state: Any, detections: Any = None) -> None:
         assert recording_id == recording.id
         if detections:
             add_all(detections)
         recording.analysis_state = {**recording.analysis_state, "birdnet": state.to_json()}
+        order.append("finish")
         service._shutdown_event.set()
 
     class FakeSession:
@@ -81,6 +87,7 @@ async def _run_once(
         patch.object(service, "_refresh_config"),
         patch.object(service, "_claim_next_recording", AsyncMock(return_value=recording)),
         patch.object(service, "_finish_recording", side_effect=finish),
+        patch.object(service, "_enrich_species", new=enrich),
         patch.object(service, "_previous_segment_path", return_value=None),
         patch.object(service, "_process_recording", side_effect=process),
         patch.object(service, "_get_allowed_species_mask", return_value=(np.array([True]), False)),
@@ -88,6 +95,7 @@ async def _run_once(
     ):
         await service.run()
     add_all.ensure = ensure
+    add_all.order = order
     return add_all
 
 
@@ -156,3 +164,43 @@ class TestAnalysisState:
 
         _assert_entry(recording.analysis_state["birdnet"], "failed", "file_missing", None)
         process.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestSpeciesEnrichment:
+    """The Wikipedia lookup follows the stored result and cannot undo it."""
+
+    async def test_enrichment_runs_after_the_result_is_stored(
+        self, service: BirdNETService
+    ) -> None:
+        recording = _recording()
+        det = MagicMock(label="Turdus merula_Eurasian Blackbird")
+
+        async def process(*args: Any, **kwargs: Any) -> list[Any]:
+            return [det]
+
+        add_all = await _run_once(service, recording, process)
+
+        assert add_all.order == ["finish", "enrich"]
+        assert add_all.enriched == {"Turdus merula_Eurasian Blackbird"}
+
+    async def test_no_detections_no_enrichment(self, service: BirdNETService) -> None:
+        recording = _recording()
+
+        async def process(*args: Any, **kwargs: Any) -> list[Any]:
+            return []
+
+        add_all = await _run_once(service, recording, process)
+
+        assert add_all.order == ["finish"]
+
+    async def test_enrichment_failure_is_logged_not_raised(
+        self, service: BirdNETService, tmp_path: Path
+    ) -> None:
+        """A failing lookup of one label does not stop the next or reach the loop."""
+        lookup = AsyncMock(side_effect=[RuntimeError("offline"), None])
+        with patch("silvasonic.birdnet.service.enrich_if_needed", new=lookup):
+            await service._enrich_species({"A a_A", "B b_B"})
+
+        assert lookup.await_count == 2

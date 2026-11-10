@@ -16,6 +16,7 @@ import structlog
 from ai_edge_litert.interpreter import Interpreter
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
 from silvasonic.birdnet.species import label_species_id, register_species
+from silvasonic.birdnet.wiki_enricher import enrich_if_needed
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.session import get_session
@@ -522,6 +523,20 @@ class BirdNETService(SilvaService):
             )
             await session.commit()
 
+    async def _enrich_species(self, labels: set[str]) -> None:
+        """Look up description and picture of each new species on Wikipedia (best effort).
+
+        Runs after the result is stored: the recording is done whatever
+        happens here, and no database transaction is open during the network
+        calls (``wiki_enricher``).
+        """
+        workspace = Path(self.env_settings.WORKSPACE_DIR)
+        for label in sorted(labels):
+            try:
+                await enrich_if_needed(label, workspace)
+            except Exception:
+                log.warning("wiki_enrichment_failed", label=label, exc_info=True)
+
     async def run(self) -> None:
         """Main inference loop."""
         assert self.birdnet_config is not None, "BirdNET DB config not loaded"
@@ -633,6 +648,8 @@ class BirdNETService(SilvaService):
                     )
                     elapsed = time.perf_counter() - start_time
                     self.stats.record_analyzed(recording.id, elapsed, len(detections))
+                    if detections:
+                        await self._enrich_species({d.label for d in detections})
 
                 except UnsupportedSampleRateError as e:
                     log.warning(

@@ -11,6 +11,7 @@ requires-python = ">=3.13"
 dependencies = [
     "silvasonic-core",
     "ai-edge-litert",
+    "httpx",
     "numpy",
     "soundfile",
 ]

@@ -91,11 +91,18 @@ CREATE TABLE species (
     label TEXT NOT NULL,
     scientific_name TEXT NOT NULL,
     common_names TEXT NOT NULL CHECK (json_valid(common_names)),
+    -- Plain text by language; never HTML from outside
     descriptions TEXT NOT NULL CHECK (json_valid(descriptions)),
+    -- Per language: {"url", "license", "license_url"} of the text in descriptions
+    description_sources TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(description_sources)),
     category TEXT NOT NULL DEFAULT 'other',
     watched INTEGER NOT NULL DEFAULT 0 CHECK (watched IN (0, 1)),
+    -- Picture in the BirdNET workspace and what its licence asks to show with it
     image_path TEXT,
     image_source TEXT,
+    image_author TEXT,
+    image_license TEXT,
+    image_license_url TEXT,
     conservation_status TEXT,
     UNIQUE (analyzer, label)
 ) STRICT;
