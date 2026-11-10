@@ -87,9 +87,14 @@
 - [Milestone v0.7.0](development/milestones/milestone_0_7_0.md) — Gateway (Reverse Proxy)
 - [Milestone v0.7.1](development/milestones/milestone_0_7_1.md) — DB-Viewer
 - [Milestone v0.8.0](development/milestones/milestone_0_8_0.md) — BirdNET (On-device Avian Inference)
-- [Milestone v0.9.0](development/milestones/milestone_0_9_0.md) — Web-Interface & Field Deployment
-- [Milestone v0.10.0](development/milestones/milestone_0_10_0.md) — Marketing Landing Page (Astro)
-- [Milestone v1.0.0](development/milestones/milestone_1_0_0.md) — Production Release & ML Integration
+- [Milestone v0.8.1](development/milestones/milestone_0_8_1.md) — Field Hardening (patch release)
+- [Milestone v0.9.0](development/milestones/milestone_0_9_0.md) — Station Data Foundation: naming, SQLite, migrations
+- [Milestone v0.10.0](development/milestones/milestone_0_10_0.md) — Station API: contract, authentication, roles
+- [Milestone v0.11.0](development/milestones/milestone_0_11_0.md) — Web-Interface: Svelte single-page app
+- [Milestone v0.12.0](development/milestones/milestone_0_12_0.md) — Secure Access: HTTPS, Tailscale
+- [Milestone v0.13.0](development/milestones/milestone_0_13_0.md) — Supervisor & Quadlets: systemd units
+- [Milestone v0.14.0](development/milestones/milestone_0_14_0.md) — Rollout & Updates
+- [Milestone v1.0.0](development/milestones/milestone_1_0_0.md) — MVP: hardening, security and licensing review, field trial, operator docs
 - [Milestone Template](development/milestones/_template.md) — Template for new milestone documents
 - [Service Blueprint](development/service_blueprint.md) — Mandatory patterns for new Python services
 - [Testing Guide](development/testing.md)

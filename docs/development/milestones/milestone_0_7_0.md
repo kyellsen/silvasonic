@@ -2,7 +2,7 @@
 
 > **Target:** v0.7.0 — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)
 >
-> **Status:** ⏳ Planned
+> **Status:** ✅ Done
 >
 > **References:** [ADR-0014: Dual Deployment Strategy](../../adr/0014-dual-deployment-strategy.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md), [Port Allocation](../../arch/port_allocation.md)
 >

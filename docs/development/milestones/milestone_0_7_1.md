@@ -2,7 +2,7 @@
 
 > **Target:** v0.7.1 — DB-Viewer
 >
-> **Status:** 🔨 In Progress 
+> **Status:** ✅ Done
 >
 > **References:** [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >

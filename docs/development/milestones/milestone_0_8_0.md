@@ -1,7 +1,7 @@
 # Milestone v0.8.0 — BirdNET (On-device Avian Inference)
 
 > **Target:** v0.8.0 — On-device avian species classification (Worker Pull via DB, ADR-0018)
-> **Status:** 🔨 In Progress
+> **Status:** ✅ Done
 >
 > **References:** [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
