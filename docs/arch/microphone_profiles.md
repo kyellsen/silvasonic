@@ -41,7 +41,7 @@ processing:
 
 stream:
   raw_enabled: true                  # Archive full native sample rate
-  processed_enabled: true            # Downsample to 48kHz for analysis
+  processed_enabled: true            # Downsample to 48kHz for analysis; false only at sample_rate 48000
   live_stream_enabled: false         # Icecast Opus stream (v1.1.0) — set true when available
   segment_duration_s: 15             # Profile-specific override; system default is 10s
 ```

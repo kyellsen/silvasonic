@@ -1,8 +1,11 @@
 """Pydantic schemas for hardware devices and profiles."""
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+
+# Sample rate of the processed stream, the one analysis workers consume (ADR-0011).
+ANALYSIS_SAMPLE_RATE = 48_000
 
 
 class MatchCriteria(BaseModel):
@@ -87,3 +90,20 @@ class MicrophoneProfile(BaseModel):
         default_factory=ProcessingConfig, description="DSP settings"
     )
     stream: StreamConfig = Field(default_factory=StreamConfig, description="Output stream settings")
+
+    @model_validator(mode="after")
+    def _raw_only_needs_analysis_rate(self) -> Self:
+        """Reject a raw-only profile whose raw stream is not analysis-ready.
+
+        Without the processed stream, analysis workers read the raw files,
+        so their sample rate must be the 48 kHz the workers expect
+        (ADR-0011). Only authored profiles are checked: the Recorder's
+        runtime payload is not, so a bad profile never stops a recording.
+        """
+        if not self.stream.processed_enabled and self.audio.sample_rate != ANALYSIS_SAMPLE_RATE:
+            raise ValueError(
+                f"processed_enabled: false requires audio.sample_rate {ANALYSIS_SAMPLE_RATE}, "
+                f"got {self.audio.sample_rate}: analysis workers read the raw stream "
+                "and expect 48 kHz"
+            )
+        return self

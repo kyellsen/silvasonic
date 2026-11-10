@@ -112,6 +112,26 @@ class TestMicrophoneProfile:
         assert d["slug"] == "test"
         assert d["audio"]["sample_rate"] == 48000
 
+    def test_raw_only_profile_at_48k_is_valid(self) -> None:
+        """A 48 kHz microphone may skip the processed stream (ADR-0011)."""
+        profile = MicrophoneProfile(
+            slug="rode",
+            name="Rode",
+            audio=AudioConfig(sample_rate=48000),
+            stream=StreamConfig(processed_enabled=False),
+        )
+        assert profile.stream.processed_enabled is False
+
+    def test_raw_only_profile_off_48k_raises(self) -> None:
+        """Without a processed stream, analysis would read 44.1 kHz audio as 48 kHz."""
+        with pytest.raises(ValidationError, match=r"requires audio\.sample_rate 48000"):
+            MicrophoneProfile(
+                slug="cd",
+                name="CD-rate mic",
+                audio=AudioConfig(sample_rate=44100),
+                stream=StreamConfig(processed_enabled=False),
+            )
+
 
 # ---------------------------------------------------------------------------
 # Cloud Sync / Rclone Schemas

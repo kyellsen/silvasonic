@@ -29,7 +29,7 @@
 
 ### Inputs
 
-*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace (mounted **read-only**, Consumer Principle, ADR-0009).
+*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace, or the raw file of a raw-only device, which is 48 kHz by profile rule (ADR-0011). Mounted **read-only** (Consumer Principle, ADR-0009). BirdNET does not resample: a file at another rate is not analysed and its `analysis_state` becomes `skipped_sample_rate`.
 *   **Database Queue:** Polls for unanalyzed files via the Worker Pull Pattern (ADR-0018).
 *   **Database Configuration:** Reads runtime tuning parameters via Snapshot Refresh (ADR-0031).
 

@@ -46,6 +46,14 @@ def _derive_model_version(filename: str) -> str:
     return "v0.0-unknown"
 
 
+class UnsupportedSampleRateError(ValueError):
+    """The audio file is not at the model's 48 kHz.
+
+    BirdNET does not resample (ADR-0011): the Recorder's processed stream is
+    48 kHz, and a raw-only profile is valid only for a 48 kHz microphone.
+    """
+
+
 def window_starts(n_samples: int, step: int) -> list[int]:
     """Return the start offsets of the analysis windows for one recording.
 
@@ -223,11 +231,10 @@ class BirdNETService(SilvaService):
         def _load() -> np.ndarray:
             audio, sr = sf.read(str(audio_path), dtype="float32")
             if sr != MODEL_SR:
-                log.warning(
-                    "birdnet.resampling_skipped",
-                    file=str(audio_path),
-                    actual_sr=sr,
-                    expected_sr=MODEL_SR,
+                # Windows and timestamps would be scaled wrongly, the
+                # detections meaningless
+                raise UnsupportedSampleRateError(
+                    f"{audio_path.name} is at {sr} Hz, the model expects {MODEL_SR} Hz"
                 )
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
@@ -468,6 +475,18 @@ class BirdNETService(SilvaService):
                         await session.commit()
                         elapsed = time.perf_counter() - start_time
                         self.stats.record_analyzed(recording.id, elapsed, len(detections))
+
+                    except UnsupportedSampleRateError as e:
+                        await session.rollback()
+                        log.warning(
+                            "birdnet.unsupported_sample_rate",
+                            recording_id=recording.id,
+                            error=str(e),
+                        )
+                        new_state = dict(recording.analysis_state)
+                        new_state["birdnet"] = "skipped_sample_rate"
+                        recording.analysis_state = new_state
+                        await session.commit()
 
                     except Exception as e:
                         self.stats.record_error(recording.id, e)
