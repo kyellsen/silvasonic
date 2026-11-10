@@ -44,8 +44,11 @@ async def run_audit(
         """)
     )
     rows = result.fetchall()
+    # Release the read transaction: checking every file on disk must not hold
+    # the database write lock (ADR-0037).  Nothing was written.
+    await session.rollback()
 
-    reconciled = 0
+    missing: list[int] = []
     for row_id, file_processed, file_raw in rows:
         if file_processed is None and file_raw is None:
             continue
@@ -57,11 +60,7 @@ async def run_audit(
             missing_file = file_raw
 
         if missing_file is not None:
-            await session.execute(
-                text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
-                {"id": row_id},
-            )
-            reconciled += 1
+            missing.append(row_id)
             log.warning(
                 "reconciliation.file_missing",
                 recording_id=row_id,
@@ -69,7 +68,13 @@ async def run_audit(
                 reason="reconciliation",
             )
 
-    if reconciled > 0:
+    reconciled = len(missing)
+    if missing:
+        for row_id in missing:
+            await session.execute(
+                text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
+                {"id": row_id},
+            )
         await session.commit()
 
     log.info(

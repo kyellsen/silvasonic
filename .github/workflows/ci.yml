@@ -81,10 +81,6 @@ jobs:
           SILVASONIC_NETWORK=silvasonic-net
           DOCKER_HOST=unix:///run/user/${UID_VAL}/podman/podman.sock
           TESTCONTAINERS_RYUK_DISABLED=true
-          POSTGRES_USER=silvasonic
-          POSTGRES_PASSWORD=silvasonic
-          POSTGRES_DB=silvasonic
-          SILVASONIC_DB_PORT=5432
           SILVASONIC_REDIS_PORT=6379
           SILVASONIC_REDIS_URL=redis://localhost:6379/0
           SILVASONIC_CONTROLLER_PORT=9100
@@ -99,7 +95,6 @@ jobs:
         run: |
           # Pull large images upfront so testcontainers doesn't timeout
           # during fixture setup (pytest-timeout = 30s).
-          podman pull docker.io/timescale/timescaledb:2.19.3-pg17 &
           podman pull docker.io/library/redis:7.4-alpine &
           # MinIO's own image is gone; the reference is test_rclone_minio.py's
           # MINIO_IMAGE, Chainguard's build pinned by digest.

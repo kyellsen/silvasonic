@@ -4,31 +4,29 @@ Verifies that modifying a ``system_config`` row via SQLAlchemy
 automatically updates the ``updated_at`` timestamp — the foundation
 of the Snapshot Refresh staleness check (ADR-0031).
 
-Requires a real PostgreSQL (Testcontainers, via ``postgres_container`` fixture).
+Requires a real station database file (via the ``station_db`` fixture).
 """
+
+from pathlib import Path
 
 import pytest
 from silvasonic.core.database.models.system import SystemConfig
-from silvasonic.test_utils.helpers import build_postgres_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.core.database.session import create_station_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @pytest.mark.integration
 class TestSystemConfigOnUpdate:
     """Verify that SQLAlchemy's onupdate= triggers on JSONB modifications."""
 
-    async def test_updated_at_changes_on_value_modification(
-        self, postgres_container: PostgresContainer
-    ) -> None:
+    async def test_updated_at_changes_on_value_modification(self, station_db: Path) -> None:
         """Modifying a system_config row updates its updated_at timestamp.
 
         This is the core contract that _refresh_config() relies on:
         if updated_at doesn't change, the staleness check won't detect
         modifications and workers will run with stale configuration.
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # Phase 1: Insert a config row

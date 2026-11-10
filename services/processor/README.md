@@ -77,7 +77,7 @@
 
 *   **Core Logic:** `silvasonic-core` service lifecycle bindings
 *   **Audio Metadata:** `soundfile`
-*   **Database Driver:** `sqlalchemy` (async), `asyncpg`
+*   **Database Driver:** `sqlalchemy` (async), `aiosqlite`
 *   **Cloud Transfer:** `flac` (CLI encoder), `rclone` (CLI uploader)
 
 ## 7. Out of Scope

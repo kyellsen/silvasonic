@@ -4,6 +4,9 @@
 # Each service has its own isolated subdirectory (zero trust).
 # Internal structure within each service dir is created dynamically at runtime.
 
+# --- Database (SQLite file shared by all DB clients, ADR-0037) ---
+database
+
 # --- Controller ---
 controller
 

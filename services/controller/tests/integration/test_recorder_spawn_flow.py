@@ -1,7 +1,7 @@
 """Integration test: Full Recorder Spawn Flow (scan → container start).
 
 Verifies the complete chain of components with a **real database**
-(testcontainers PostgreSQL) and **mocked hardware** (ALSA + Podman):
+(a real station database file) and **mocked hardware** (ALSA + Podman):
 
     Mock /proc/asound/cards
       → DeviceScanner.scan_all()
@@ -26,9 +26,8 @@ from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo, DeviceScanner, UsbInfo
 from silvasonic.controller.profile_matcher import ProfileMatcher
 from silvasonic.controller.reconciler import DeviceStateEvaluator
-from silvasonic.test_utils.helpers import build_postgres_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.core.database.session import create_station_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 pytestmark = [
     pytest.mark.integration,
@@ -123,11 +122,10 @@ class TestEvaluatorDBScoped:
     async def test_evaluator_returns_spec_for_enrolled_device(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Enrolled device in DB → evaluator returns a Tier2ServiceSpec."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # 1) Seed a profile
@@ -201,11 +199,10 @@ stream:
     async def test_evaluator_skips_offline_device(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Offline device in DB → evaluator does NOT return a spec."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # Seed profile
@@ -280,7 +277,7 @@ class TestRecorderSpawnFlow:
     async def test_usb_mic_detected_and_recorder_spawned(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """A USB mic detection results in a recorder container being started.
 
@@ -292,8 +289,7 @@ class TestRecorderSpawnFlow:
         5. Evaluate desired state from DB → Tier2ServiceSpec
         6. Reconcile → ContainerManager.start() called with correct spec
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # -- Step 1: Seed profile into real DB --
@@ -429,7 +425,7 @@ auth:
     async def test_offline_device_stops_recorder(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """When a device goes offline, reconciliation stops its recorder.
 
@@ -439,8 +435,7 @@ auth:
         3. Evaluate → empty specs
         4. Reconcile with one running container → stop called
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # Seed profile
@@ -516,11 +511,10 @@ class TestRecorderLifecycleEdgeCases:
     async def test_disabled_device_produces_no_spec(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Disabled device → evaluator returns no spec (US-C07)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -556,11 +550,10 @@ class TestRecorderLifecycleEdgeCases:
     async def test_unenrolled_device_produces_no_spec(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Pending (unenrolled) device → evaluator returns no spec (US-C07)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -593,11 +586,10 @@ class TestRecorderLifecycleEdgeCases:
     async def test_replug_reactivates_same_device(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Re-plugging a mic re-activates the same device (US-C01§3)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -658,11 +650,10 @@ class TestRecorderLifecycleEdgeCases:
     async def test_auto_enrollment_disabled_keeps_pending(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """With auto_enrollment=false, new devices stay pending (US-C01§4)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -742,11 +733,10 @@ class TestRecorderSpecIntegrity:
     async def test_spec_contains_resource_limits(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Resource limits (ADR-0020) are present in spec (US-C04)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -807,11 +797,10 @@ class TestRecorderSpecIntegrity:
     async def test_spec_contains_restart_policy(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Restart policy on-failure/5 is set in spec (US-C02)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -872,11 +861,10 @@ class TestRecorderSpecIntegrity:
     async def test_container_name_matches_workspace_dir(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Container name and workspace directory use same human-readable name."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -927,11 +915,10 @@ class TestRecorderSpecIntegrity:
     async def test_two_mics_produce_two_independent_specs(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Two enrolled mics → two distinct specs with different names (US-R05)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -1000,7 +987,7 @@ class TestGenericUsbFallback:
     async def test_unknown_device_gets_generic_fallback_and_spawns(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Unknown USB device (no VID/PID match) auto-enrolls with generic_usb.
 
@@ -1010,8 +997,7 @@ class TestGenericUsbFallback:
         3. Upsert device as enrolled with generic_usb
         4. Evaluate → produces a Tier2ServiceSpec with generic_usb config
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ConfigSeeder, ProfileBootstrapper
@@ -1153,7 +1139,7 @@ class TestContainerNameSuffixUniqueness:
     async def test_suffix_derived_from_serial_last_4_chars(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Two mics (same profile, different serials) get suffix from serial[-4:].
 
@@ -1164,8 +1150,7 @@ class TestContainerNameSuffixUniqueness:
         4. Verify names are 'silvasonic-recorder-ultramic-384k-a001' and '-b002'.
         5. Verify workspace dirs match the unique suffix part.
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper
@@ -1246,15 +1231,14 @@ class TestContainerNameSuffixUniqueness:
     async def test_suffix_falls_back_to_bus_path_without_serial(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Device without USB serial uses bus_path as suffix fallback.
 
         Verifies _short_suffix() fallback chain:
         serial → bus_path → alsa_card_index.
         """
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         sf = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         from silvasonic.controller.seeder import ProfileBootstrapper

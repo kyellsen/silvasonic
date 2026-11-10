@@ -28,8 +28,9 @@ from pathlib import Path
 
 import soundfile as sf
 import structlog
+from silvasonic.core.database.models.recordings import Recording
 from silvasonic.processor.modules.indexer_stats import IndexerStats
-from sqlalchemy import text
+from sqlalchemy import bindparam, insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
@@ -219,9 +220,8 @@ async def _already_indexed(session: AsyncSession, rel_paths: list[str]) -> set[s
         rows = await session.execute(
             text(
                 "SELECT file_raw, file_processed FROM recordings "
-                "WHERE file_raw = ANY(CAST(:paths AS TEXT[])) "
-                "OR file_processed = ANY(CAST(:paths AS TEXT[]))"
-            ),
+                "WHERE file_raw IN :paths OR file_processed IN :paths"
+            ).bindparams(bindparam("paths", expanding=True)),
             {"paths": rel_paths[i : i + _EXISTS_BATCH_SIZE]},
         )
         for file_raw, file_processed in rows.all():
@@ -285,6 +285,9 @@ async def index_recordings(
         return result
 
     in_db = await _already_indexed(session, [rel_by_path[p] for p in candidates])
+    # Release the read transaction: metadata extraction below must not hold
+    # the database write lock (ADR-0037).  Nothing was written.
+    await session.rollback()
     device_names: dict[str, str | None] = {}
 
     for wav_path in candidates:
@@ -309,6 +312,7 @@ async def index_recordings(
                 )
                 row = device_row.fetchone()
                 device_names[workspace_dir] = row[0] if row is not None else None
+                await session.rollback()  # release the lock before file I/O
             device_name = device_names[workspace_dir]
             if device_name is None:
                 result.skipped += 1
@@ -343,28 +347,17 @@ async def index_recordings(
 
             # Insert new recording
             await session.execute(
-                text("""
-                    INSERT INTO recordings (
-                        time, sensor_id, file_raw, file_processed,
-                        duration, sample_rate, filesize_raw, filesize_processed,
-                        clock_unsynced
-                    ) VALUES (
-                        :time, :sensor_id, :file_raw, :file_processed,
-                        :duration, :sample_rate, :filesize_raw, :filesize_processed,
-                        :clock_unsynced
-                    )
-                """),
-                {
-                    "time": timestamp,
-                    "sensor_id": device_name,
-                    "file_raw": rel_raw,
-                    "file_processed": rel_processed,
-                    "duration": meta.duration,
-                    "sample_rate": meta.sample_rate,
-                    "filesize_raw": filesize_raw,
-                    "filesize_processed": filesize_processed,
-                    "clock_unsynced": clock_unsynced,
-                },
+                insert(Recording).values(
+                    time=timestamp,
+                    sensor_id=device_name,
+                    file_raw=rel_raw,
+                    file_processed=rel_processed,
+                    duration=meta.duration,
+                    sample_rate=meta.sample_rate,
+                    filesize_raw=filesize_raw,
+                    filesize_processed=filesize_processed,
+                    clock_unsynced=clock_unsynced,
+                )
             )
             await session.commit()
             _known.add(rel_path)

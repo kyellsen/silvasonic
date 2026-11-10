@@ -32,7 +32,7 @@ from pathlib import Path
 import structlog
 from silvasonic.core.schemas.system_config import ProcessorSettings
 from silvasonic.processor.modules.janitor_stats import JanitorStats
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -103,12 +103,11 @@ async def is_cloud_sync_enabled(session: AsyncSession) -> bool:
     which triggers the Cloud-Sync-Fallback in Housekeeping and Defensive modes.
     """
     result = await session.execute(
-        text("SELECT value->>'enabled' FROM system_config WHERE key = 'cloud_sync'")
+        text("SELECT json_extract(value, '$.enabled') FROM system_config WHERE key = 'cloud_sync'")
     )
     row = result.fetchone()
-    if row is not None and row[0] is not None:
-        return bool(str(row[0]).lower() == "true")
-    return False
+    # json_extract returns JSON true as 1; a string "true" stays a string
+    return row is not None and row[0] in (1, "true")
 
 
 async def find_deletable(
@@ -135,9 +134,9 @@ async def find_deletable(
                 FROM recordings
                 WHERE local_deleted = false
                   AND uploaded = true
-                  AND analysis_state != '{}'::jsonb
+                  AND EXISTS (SELECT 1 FROM json_each(analysis_state))
                   AND NOT EXISTS (
-                      SELECT 1 FROM jsonb_each_text(analysis_state) AS kv
+                      SELECT 1 FROM json_each(analysis_state) AS kv
                       WHERE kv.value != 'true'
                   )
                 ORDER BY time ASC
@@ -149,9 +148,9 @@ async def find_deletable(
                 SELECT id, file_raw, file_processed
                 FROM recordings
                 WHERE local_deleted = false
-                  AND analysis_state != '{}'::jsonb
+                  AND EXISTS (SELECT 1 FROM json_each(analysis_state))
                   AND NOT EXISTS (
-                      SELECT 1 FROM jsonb_each_text(analysis_state) AS kv
+                      SELECT 1 FROM json_each(analysis_state) AS kv
                       WHERE kv.value != 'true'
                   )
                 ORDER BY time ASC
@@ -288,10 +287,10 @@ async def delete_worker_clips(
     if successful_clip_paths:
         await session.execute(
             text("""
-                UPDATE detections 
-                SET clip_path = NULL 
-                WHERE recording_id = :id AND clip_path = ANY(:clip_paths)
-            """),
+                UPDATE detections
+                SET clip_path = NULL
+                WHERE recording_id = :id AND clip_path IN :clip_paths
+            """).bindparams(bindparam("clip_paths", expanding=True)),
             {"id": recording_id, "clip_paths": successful_clip_paths},
         )
 
@@ -447,6 +446,10 @@ async def run_cleanup(
 
     # Find deletable recordings
     rows = await find_deletable(session, mode, settings.janitor_batch_size, cloud_sync_active)
+    # Release the read transaction before touching files (ADR-0037).  Nothing
+    # was written.  The deletions below then hold the lock for one batch of
+    # unlinks, milliseconds on NVMe.
+    await session.rollback()
 
     # Delete files + soft-delete in DB
     workspace_root = recordings_dir.parent

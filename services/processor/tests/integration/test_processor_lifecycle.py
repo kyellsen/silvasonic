@@ -12,7 +12,6 @@ from unittest.mock import MagicMock
 import pytest
 from silvasonic.core.database.session import _get_engine, _get_session_factory
 from silvasonic.processor.__main__ import ProcessorService
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.mark.integration
@@ -20,17 +19,11 @@ class TestProcessorLifecycle:
     """Verify ProcessorService lifecycle and configuration."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(
-        self, monkeypatch: pytest.MonkeyPatch, postgres_container: PostgresContainer
-    ) -> None:
-        """Inject testcontainer DB credentials into environment."""
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
+        """Point the code under test at the test database."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
 
     async def test_processor_metrics_and_lifecycle(self, tmp_path: Path) -> None:
         """Verify service initializes, runs cycles, and updates metrics safely."""

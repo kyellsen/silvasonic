@@ -5,15 +5,16 @@ Verifies upsert_device behavior without needing deep SQLAlchemy mocks.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.system import Device
-from silvasonic.test_utils.helpers import build_postgres_url
+from silvasonic.core.database.session import create_station_engine
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 pytestmark = [
     pytest.mark.integration,
@@ -26,9 +27,8 @@ _MOCK_PID = "0b40"
 
 
 @pytest.fixture
-def session_factory(postgres_container: PostgresContainer) -> async_sessionmaker[AsyncSession]:
-    url = build_postgres_url(postgres_container)
-    engine = create_async_engine(url)
+def session_factory(station_db: Path) -> async_sessionmaker[AsyncSession]:
+    engine = create_station_engine(station_db)
     return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

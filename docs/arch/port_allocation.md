@@ -9,7 +9,6 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 
 | Service                | Internal Port | Host Port (Dev) | `.env` Variable                 | Status             |
 | ---------------------- | ------------- | --------------- | ------------------------------- | ------------------ |
-| **TimescaleDB**        | 5432          | 5432            | `SILVASONIC_DB_PORT`            | ✅ Implemented      |
 | **Redis**              | 6379          | 6379            | `SILVASONIC_REDIS_PORT`         | ✅ Implemented |
 | **Controller**         | 9100          | 9100            | `SILVASONIC_CONTROLLER_PORT`    | ✅ Implemented      |
 | **Web-Mock** (Dev UI)  | 8001          | 8001            | `SILVASONIC_WEB_MOCK_PORT`      | ✅ Implemented |
@@ -27,7 +26,7 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 
 ## Principles
 
-1. **Standard ports** for well-known services (PostgreSQL 5432, Redis 6379, HTTP 80/443)
+1. **Standard ports** for well-known services (Redis 6379, HTTP 80/443)
 2. **`80XX` range** for web-facing UIs (Web-Interface 8000, Web-Mock 8001, Icecast 8080)
 3. **`91XX` range** for Silvasonic service APIs (Controller 9100, Processor 9200)
 4. **`9500`** unified internal health port for services without their own API

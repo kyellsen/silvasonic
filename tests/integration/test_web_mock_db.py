@@ -1,14 +1,15 @@
 """Integration tests for web-mock database connectivity.
 
-Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
-(via root ``conftest.py``) to spin up a real TimescaleDB instance.
+Uses the shared ``station_db`` fixture from ``silvasonic-test-utils``
+(via root ``conftest.py``) for a real station database file.
 """
 
 from collections.abc import AsyncIterator
-from typing import Any
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from silvasonic.core.database.session import create_station_engine
 from silvasonic.web_mock.__main__ import app
 
 
@@ -18,22 +19,20 @@ class TestWebMockDatabaseConnectivity:
 
     @pytest.fixture(autouse=True)
     async def setup_env(
-        self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any
+        self, monkeypatch: pytest.MonkeyPatch, station_db: Path
     ) -> AsyncIterator[None]:
-        """Inject the testcontainer's database credentials into the environment.
+        """Point the app at the test database.
 
         Also clears any dependency_overrides that unit tests may have set on
         the shared ``app`` singleton (e.g. mock get_db), so integration tests
         use real database sessions.
         """
         from silvasonic.core.database.session import override_engine, reset_engine
-        from silvasonic.test_utils.helpers import build_postgres_url
-        from sqlalchemy.ext.asyncio import create_async_engine
 
         # Remove any leftover dependency overrides from unit tests
         app.dependency_overrides.clear()
 
-        engine = create_async_engine(build_postgres_url(postgres_container))
+        engine = create_station_engine(station_db)
         override_engine(engine)
 
         try:

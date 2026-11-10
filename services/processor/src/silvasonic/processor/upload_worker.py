@@ -93,6 +93,9 @@ class UploadWorker:
                 self._recordings_dir,
                 batch_size=50,
             )
+            # Release the read transaction: encoding and uploading take seconds
+            # to minutes and must not hold the database write lock (ADR-0037).
+            await session.rollback()
             self.stats.update_pending(len(pending))
 
             if not pending:

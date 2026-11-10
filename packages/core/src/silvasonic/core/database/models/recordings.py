@@ -2,27 +2,22 @@ from datetime import UTC, datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, Text, text
-from sqlalchemy.dialects.postgresql import JSONB
+from silvasonic.core.database.types import UTCDateTime
+from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Recording(Base):
     """Registry of all audio files recorded by the system.
 
-    Standard PostgreSQL table (ADR-0025). FK constraints from ``detections``
-    and ``uploads`` are preserved. Data volume (~2M rows/year) does not
-    require Hypertable partitioning.
+    Referenced by ``detections`` and ``uploads`` (ADR-0025).
     """
 
     __tablename__ = "recordings"
 
-    # Standard PostgreSQL Table (Not a Hypertable)
-    # This allows it to be referenced by Foreign Keys from other tables (like detections, uploads)
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
-    # Time is still indexed but not part of PK
-    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    time: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False, index=True)
 
     # Microphone Identifier. References devices.name
     # (lazy string ref to avoid circular imports if needed)
@@ -41,22 +36,22 @@ class Recording(Base):
     filesize_processed: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
 
     uploaded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    uploaded_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
     # Soft Delete: Marked True if file is removed from local disk by Janitor
     local_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Analysis status map — Worker Pull (ADR-0018)
     analysis_state: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        JSON,
         default=dict,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'{}'"),
         nullable=False,
     )
 
     # Named while the system clock was unsynchronised: ``time`` may be off (Issue 002)
     clock_unsynced: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false"), nullable=False
+        Boolean, default=False, server_default=text("0"), nullable=False
     )
 
 
@@ -72,7 +67,7 @@ class Upload(Base):
     )
 
     attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        UTCDateTime(), default=lambda: datetime.now(UTC), nullable=False
     )
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     remote_path: Mapped[str | None] = mapped_column(Text, nullable=True)

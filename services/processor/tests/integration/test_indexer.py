@@ -1,7 +1,7 @@
 """Integration tests for the Indexer module.
 
-Tests WAV indexing against a real PostgreSQL database
-(Testcontainer). Creates synthetic WAV files, runs the Indexer, and
+Tests WAV indexing against a real station database file
+(SQLite). Creates synthetic WAV files, runs the Indexer, and
 verifies ``recordings`` rows in the database.
 """
 
@@ -9,21 +9,16 @@ from __future__ import annotations
 
 import wave
 from pathlib import Path
-from typing import Any
 
 import pytest
-from silvasonic.core.database.session import _get_engine, _get_session_factory
+from silvasonic.core.database.session import (
+    _get_engine,
+    _get_session_factory,
+    create_station_engine,
+)
 from silvasonic.processor import indexer
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
-
-
-def _build_async_url(container: PostgresContainer) -> str:
-    """Build an asyncpg connection URL from a testcontainer."""
-    host = container.get_container_host_ip()
-    port = container.get_exposed_port(5432)
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000) -> None:
@@ -76,25 +71,18 @@ async def _seed_device(
 
 @pytest.mark.integration
 class TestIndexerIntegration:
-    """Verify Indexer integration with real PostgreSQL."""
+    """Verify Indexer integration with a real station database."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
-        """Inject testcontainer DB credentials into environment."""
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
+        """Point the code under test at the test database."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
 
-    async def test_new_wav_indexed(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_new_wav_indexed(self, station_db: Path, tmp_path: Path) -> None:
         """Synthetic WAVs in workspace → Indexer picks up → verify recordings rows."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
@@ -117,12 +105,9 @@ class TestIndexerIntegration:
 
         await engine.dispose()
 
-    async def test_idempotent_reindex(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_idempotent_reindex(self, station_db: Path, tmp_path: Path) -> None:
         """Running Indexer twice on same files → no duplicate rows."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
@@ -149,11 +134,10 @@ class TestIndexerIntegration:
         await engine.dispose()
 
     async def test_raw_only_reindex_and_path_indexes(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Raw-only files are found again by file_raw; lookups use the path indexes."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
@@ -172,19 +156,19 @@ class TestIndexerIntegration:
 
         async with factory() as session:
             rows = await session.execute(
-                text("SELECT indexname FROM pg_indexes WHERE tablename = 'recordings'")
+                text(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type = 'index' AND tbl_name = 'recordings'"
+                )
             )
             names = {row[0] for row in rows}
         assert {"ix_recordings_file_raw", "ix_recordings_file_processed"} <= names
 
         await engine.dispose()
 
-    async def test_unsynced_marker_is_stored(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_unsynced_marker_is_stored(self, station_db: Path, tmp_path: Path) -> None:
         """A segment named before NTP sync is flagged; a plain one is not."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
@@ -207,12 +191,9 @@ class TestIndexerIntegration:
 
         await engine.dispose()
 
-    async def test_multiple_sensors_indexed(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_multiple_sensors_indexed(self, station_db: Path, tmp_path: Path) -> None:
         """Files from two sensor directories → correct sensor_id per row."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
@@ -238,7 +219,7 @@ class TestIndexerIntegration:
         await engine.dispose()
 
     async def test_unregistered_device_skipped_not_errored(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Indexer skips files for unregistered devices instead of FK error.
 
@@ -249,8 +230,7 @@ class TestIndexerIntegration:
         2. Never attempt the INSERT (no FK violation).
         3. Leave zero rows in the recordings table.
         """
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # Setup: WAV exists but device "ghost-mic" is NOT in the devices table
@@ -272,7 +252,7 @@ class TestIndexerIntegration:
         await engine.dispose()
 
     async def test_unregistered_device_does_not_block_valid_recordings(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Unregistered device is skipped; valid device recordings still indexed.
 
@@ -282,8 +262,7 @@ class TestIndexerIntegration:
         2. Successfully INSERT the recording for the known device.
         3. Report correct skipped and new counts.
         """
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # Seed only "good-mic", NOT "bad-mic"
@@ -314,7 +293,7 @@ class TestIndexerIntegration:
         await engine.dispose()
 
     async def test_errored_files_prevents_reprocessing(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Files in errored_files are not retried, preventing log flood.
 
@@ -322,8 +301,7 @@ class TestIndexerIntegration:
         first indexing cycle. On the next cycle, the caller passes the error
         file in errored_files so it is immediately skipped without any DB query.
         """
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # Seed device so device-check passes (we want to test corrupt WAV path)

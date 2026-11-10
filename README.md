@@ -91,7 +91,7 @@ silvasonic/
 │   ├── core/            # silvasonic-core: service base class, DB, Redis, heartbeat
 │   └── test-utils/      # silvasonic-test-utils: shared testcontainer fixtures
 ├── services/            # Container service definitions & Containerfiles
-│   ├── database/        # TimescaleDB / PostgreSQL
+│   ├── database/        # Station database docs (SQLite file, no container)
 │   ├── controller/      # Hardware/Container manager
 │   ├── gateway/         # Caddy reverse proxy, HTTPS termination & routing
 │   ├── processor/       # Data ingestion, indexing & retention (Janitor)
@@ -109,7 +109,7 @@ silvasonic/
 
 | Service        | Tier | Role                                                                                     | Status     |
 | -------------- | ---- | ---------------------------------------------------------------------------------------- | ---------- |
-| **database**   | 1    | TimescaleDB / PostgreSQL — central state management                                      | ✅ Running  |
+| **database**   | 1    | SQLite file shared by all DB clients — central state management (ADR-0037)               | ✅ Running  |
 | **redis**      | 1    | Status bus — Pub/Sub heartbeats, Key-Value status cache (ephemeral)                      | ✅ Running  |
 | **controller** | 1    | Hardware/Container manager — health monitoring, placeholder orchestration                | ✅ Running  |
 | **gateway**    | 1    | Caddy reverse proxy — HTTPS termination and internal routing                             | ✅ Running  |

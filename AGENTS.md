@@ -48,7 +48,7 @@ Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs
 - Every doc must label sections **AS-IS** or **TO-BE**. Service docs need a `Status:` line (`implemented` | `partial` | `planned`).
 - No content duplication — link instead of copying.
 - When a service moves to implementation: create `services/<svc>/README.md`, convert `docs/services/<svc>.md` to link-stub.
-- Bind Mounts with `:z`. Named Volumes **ONLY** for `database`.
+- Bind Mounts with `:z`. The station database is one SQLite file in the `database/` workspace directory, mounted read-write into every service with DB access (ADR-0037).
 - Temporary artifacts → `.tmp/` (git-ignored).
 - ⚠️ New root files/dirs → register in `.keep` or `just clear` deletes them.
 
@@ -58,7 +58,7 @@ Full details: **[ADR-0010](https://github.com/kyellsen/silvasonic/blob/main/docs
 | -------- | ------------------------------------------------------------------------- |
 | Config   | `pydantic` V2, `pyYAML` (`safe_load` only)                                |
 | Logging  | `structlog` (JSON) / `rich` (dev)                                         |
-| DB       | `sqlalchemy` 2.0+ async, `asyncpg`                                        |
+| DB       | `sqlalchemy` 2.0+ async, `aiosqlite` (SQLite, ADR-0037)                   |
 | Redis    | `redis-py` async (ADR-0019)                                               |
 | System   | `psutil` (process + host resource monitoring, ADR-0019)                   |
 | Web      | `fastapi`, `jinja2`, `htmx`, `alpine.js` (ADR-0003)                       |
@@ -78,7 +78,7 @@ Full testing guide (anti-patterns, CI stages, writing rules, isolation): **[Test
 
 ## 7. Environment Variable Naming
 *   **Prefix Rule:** Every project variable **MUST** use `SILVASONIC_` prefix (e.g. `SILVASONIC_DB_PORT`).
-*   **Exceptions:** Third-party standards keep their names: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DOCKER_HOST`.
+*   **Exceptions:** Third-party standards keep their names, e.g. `DOCKER_HOST`.
 
 ## 8. Data Contracts (Spec-Driven Development)
 *   **Single Source of Truth:** All shared data structures, event payloads, and configurations **MUST** use the central Pydantic schemas located in `packages/core/src/silvasonic/core/schemas/`.

@@ -41,7 +41,7 @@
 
 | Service      | Role                                                                            | Criticality       | Status    |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------ |
-| **database**   | Central state management (TimescaleDB / PostgreSQL)                                                    | Critical        | ✅ AS-IS   |
+| **database**   | Central state management (SQLite file, no server process — ADR-0037)                                  | Critical        | ✅ AS-IS   |
 | **redis**     | Status bus (Pub/Sub heartbeats, Key-Value status cache) and Reconcile-Nudge for immediate Controller wake-up (ADR-0017, ADR-0019)             | Life Support      | ✅ AS-IS   |
 | **controller**  | Hardware/Container manager. Detects USB microphones, manages service lifecycles via State Reconciliation (DB + Redis nudge). No HTTP API beyond `/healthy` | Critical        | ✅ AS-IS   |
 | **web-interface** | Local management console. In production: full management console. Dev predecessor: `web-mock` (v0.2.0)                          | Life Support / Optional | ✅ AS-IS ¹  |

@@ -27,12 +27,13 @@ from silvasonic.controller.container_spec import MountSpec, RestartPolicy, Tier2
 
 from ._system_helpers import (
     BIRDNET_IMAGE,
+    DB_PATH_IN_CONTAINER,
     PROCESSOR_IMAGE,
+    db_query,
     make_processor_env,
     podman_logs,
     podman_run,
     podman_stop_rm,
-    psql_query,
     require_birdnet_image,
     require_processor_image,
     seed_processor_config,
@@ -97,10 +98,10 @@ class TestHardwareBirdNETFullPipeline:
             "confidence_threshold": 0.0,
         }
         cfg_json = json.dumps(birdnet_cfg)
-        psql_query(
+        db_query(
             db_name,
             f"""INSERT INTO system_config (key, value)
-               VALUES ('birdnet', '{cfg_json}'::jsonb)
+               VALUES ('birdnet', '{cfg_json}')
                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
         )
 
@@ -225,11 +226,7 @@ class TestHardwareBirdNETFullPipeline:
                 birdnet_name,
                 BIRDNET_IMAGE,
                 env={
-                    "SILVASONIC_DB_HOST": "database",
-                    "SILVASONIC_DB_PORT": "5432",
-                    "POSTGRES_USER": "silvasonic",
-                    "POSTGRES_PASSWORD": "silvasonic",
-                    "POSTGRES_DB": "silvasonic",
+                    "SILVASONIC_DB_PATH": DB_PATH_IN_CONTAINER,
                     "SILVASONIC_REDIS_URL": f"redis://{redis_name}:6379/0",
                     "SILVASONIC_RECORDINGS_DIR": "/data/recorder",
                     "SILVASONIC_WORKSPACE_DIR": "/data/birdnet",

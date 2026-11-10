@@ -57,7 +57,8 @@ class TestPathResolvers:
         _get_config_dir.cache_clear()
         result = _get_config_dir()
         assert result.name == "config"
-        assert result.parent.name in ("apps", "silvasonic", "silvasonic-api", "silvasonic-core", "")
+        # The repository root, whatever the checkout is called (a worktree, a clone)
+        assert (result.parent / "compose.yml").is_file() or result.parent == Path("/app")
 
     def test_get_defaults_yml(self) -> None:
         """_get_defaults_yml returns config_dir/defaults.yml."""

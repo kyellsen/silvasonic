@@ -1,4 +1,4 @@
-"""Integration tests for the Upload Worker pipeline against real PostgreSQL.
+"""Integration tests for the Upload Worker pipeline against a real station database.
 
 This module tests the Database State-Machine boundary:
 DB (Pending) -> poller -> UploadWorker -> audit_logger -> DB (Uploaded).
@@ -17,25 +17,18 @@ import pytest
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.session import create_station_engine
 from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.upload_worker import UploadWorker
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
-
-
-# Use testcontainers utility function if available (or duplicate engine creation)
-def _build_url(container: PostgresContainer) -> str:
-    port = container.get_exposed_port(5432)
-    host = container.get_container_host_ip()
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @pytest.fixture
-def db_engine(postgres_container: PostgresContainer) -> Any:
-    """Provide an async SQLAlchemy engine connected to the shared testcontainer."""
-    engine = create_async_engine(_build_url(postgres_container))
+def db_engine(station_db: Path) -> Any:
+    """Provide an async SQLAlchemy engine for the shared station database."""
+    engine = create_station_engine(station_db)
     yield engine
     engine.sync_engine.dispose()
 

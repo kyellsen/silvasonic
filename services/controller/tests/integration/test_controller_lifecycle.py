@@ -1,13 +1,13 @@
-"""Integration tests: ControllerService ↔ Redis / Postgres.
+"""Integration tests: ControllerService ↔ Redis / station database.
 
 Verifies the real data-flow through the chain specific to the Controller:
 
     ControllerService._setup()
     → ServiceContext.setup()
     → HeartbeatPublisher with get_extra_meta() (host_resources)
-    → _monitor_database() → check_database_connection() → real Postgres
+    → _monitor_database() → check_database_connection() → real station database
 
-Uses shared ``redis_container`` and ``postgres_container`` fixtures from
+Uses shared ``redis_container`` and ``station_db`` fixtures from
 ``silvasonic-test-utils`` (surfaced via root ``conftest.py``).
 """
 
@@ -16,14 +16,15 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
 from redis.asyncio import Redis
-from silvasonic.test_utils.helpers import build_postgres_url, build_redis_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.core.database.session import create_station_engine
+from silvasonic.test_utils.helpers import build_redis_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from testcontainers.redis import RedisContainer
 
 
@@ -131,9 +132,9 @@ class TestControllerLifecycleRedis:
     async def test_monitor_database_with_real_db(
         self,
         redis_container: RedisContainer,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
-        """_monitor_database() updates health to 'Connected' against real Postgres."""
+        """_monitor_database() updates health to 'Connected' against a real station database."""
         from silvasonic.controller.__main__ import ControllerService
 
         url = build_redis_url(redis_container)
@@ -156,9 +157,8 @@ class TestControllerLifecycleRedis:
             await svc._setup()
 
         try:
-            # Patch the session factory to point at the testcontainer DB
-            pg_url = build_postgres_url(postgres_container)
-            engine = create_async_engine(pg_url)
+            # Patch the session factory to point at the test database
+            engine = create_station_engine(station_db)
             session_factory = async_sessionmaker(
                 engine, class_=AsyncSession, expire_on_commit=False
             )

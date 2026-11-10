@@ -86,9 +86,31 @@ class TestBuildWorkerSpec:
         )
         spec = build_worker_spec(worker)
 
-        rw_mounts = [m for m in spec.mounts if not m.read_only]
-        assert len(rw_mounts) == 1
-        assert rw_mounts[0].target == "/data/birdnet"
+        rw_targets = {m.target for m in spec.mounts if not m.read_only}
+        assert rw_targets == {"/data/birdnet", "/data/database"}
+
+    @patch.dict(
+        "os.environ",
+        {
+            "SILVASONIC_NETWORK": "test-net",
+            "SILVASONIC_WORKSPACE_PATH": "/mnt/workspace",
+            "SILVASONIC_REDIS_URL": "redis://test:6379/0",
+        },
+    )
+    def test_database_directory_mount(self) -> None:
+        """Every worker gets the database directory read-write (ADR-0037).
+
+        SQLite writes its WAL and lock index beside the file, so the
+        directory is mounted, not the file.
+        """
+        spec = build_worker_spec(_make_worker(name="birdnet"))
+
+        db_mounts = [m for m in spec.mounts if m.target == "/data/database"]
+        assert len(db_mounts) == 1
+        assert db_mounts[0].source == "/mnt/workspace/database"
+        assert db_mounts[0].read_only is False
+        assert spec.environment["SILVASONIC_DB_PATH"] == "/data/database/silvasonic.db"
+        assert not any(k.startswith("POSTGRES_") for k in spec.environment)
 
     @patch.dict(
         "os.environ",

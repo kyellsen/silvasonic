@@ -2,6 +2,8 @@
 
 > **Status:** Accepted • **Date:** 2026-03-26
 
+> **NOTE ([ADR-0037](0037-sqlite-station-database.md)):** The station database is SQLite; no table is a hypertable any more, so the distinction drawn here no longer applies. `recordings` stays a plain table.
+
 ## 1. Context & Problem
 
 The `recordings` table serves as the central inventory for all audio files captured by Recorder instances. Two other tables reference it via Foreign Keys:

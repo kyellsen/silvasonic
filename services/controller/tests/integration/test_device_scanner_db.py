@@ -1,16 +1,17 @@
 """Integration tests: DeviceScanner + upsert_device ↔ real DB.
 
 Verifies that DeviceScanner can read ``/proc/asound/cards`` on the host
-and that ``upsert_device`` correctly persists device rows into PostgreSQL.
+and that ``upsert_device`` correctly persists device rows into the station database.
 
 Tests are **skipped** when:
 - ``/proc/asound/cards`` does not exist (CI / non-Linux)
 - No USB-Audio card is present (optional, scan returns empty list)
-- ``postgres_container`` fixture is unavailable
+- ``station_db`` fixture is unavailable
 """
 
 from __future__ import annotations
 
+import json
 import pathlib
 from pathlib import Path
 
@@ -20,10 +21,9 @@ from silvasonic.controller.device_scanner import (
     DeviceInfo,
     DeviceScanner,
 )
-from silvasonic.test_utils.helpers import build_postgres_url
+from silvasonic.core.database.session import create_station_engine
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 _CARDS_PATH = pathlib.Path("/proc/asound/cards")
 _CARDS_AVAILABLE = _CARDS_PATH.exists()
@@ -68,15 +68,14 @@ class TestDeviceScannerHostRead:
 
 
 class TestUpsertDeviceDB:
-    """Verify upsert_device writes to real PostgreSQL."""
+    """Verify upsert_device writes to a real station database."""
 
     async def test_upsert_inserts_new_device(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """upsert_device creates a new device row in the DB."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         device_info = DeviceInfo(
@@ -113,11 +112,10 @@ class TestUpsertDeviceDB:
     @pytest.mark.system_hw_auto
     async def test_detects_real_hardware_primary_mic(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Calling upsert_device twice does not create duplicates."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         device_info = DeviceInfo(
@@ -152,11 +150,10 @@ class TestUpsertDeviceDB:
     async def test_upsert_with_profile_auto_enroll(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """upsert_device with profile_slug sets enrollment to 'enrolled'."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # First seed a profile so FK constraint is satisfied
@@ -226,11 +223,10 @@ stream:
 
     async def test_upsert_device_updates_volatile_hardware_config(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """TDD Test for Issue 003: Volatile ALSA Configuration Drift."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # --- SCHRITT 1: Erstes Einstecken (Initial Setup) ---
@@ -272,7 +268,7 @@ stream:
 
         assert row is not None
         model = row[0]
-        config = row[1]
+        config = json.loads(row[1])  # raw SQL: JSON is TEXT in SQLite
 
         # Verify changes were persisted by SQLAlchemy correctly
         assert model == "TestMic (Updated)", "Model string did not update!"

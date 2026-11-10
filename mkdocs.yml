@@ -65,6 +65,8 @@ nav:
       - "ADR-0022: Live Log Streaming": adr/0022-live-log-streaming.md
       - "ADR-0023: Configuration Management": adr/0023-configuration-management.md
       - "ADR-0024: FFmpeg Audio Engine": adr/0024-ffmpeg-audio-engine.md
+      - "ADR-0037: SQLite Station Database": adr/0037-sqlite-station-database.md
+      - "ADR-0038: Connection Classes and Upload Path": adr/0038-connection-classes-and-upload-path.md
   - Development:
       - "Milestone v0.1.0": development/milestones/milestone_0_1_0.md
       - "Milestone v0.2.0": development/milestones/milestone_0_2_0.md

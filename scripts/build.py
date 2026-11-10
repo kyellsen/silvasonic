@@ -22,7 +22,7 @@ from common import (
 from compose import compose
 
 # Default services
-SERVICES = ["database", "controller", "processor", "web-mock"]
+SERVICES = ["controller", "processor", "web-mock"]
 
 # Managed-profile services (require --profile managed to be visible)
 MANAGED_SERVICES = ["recorder", "birdnet"]

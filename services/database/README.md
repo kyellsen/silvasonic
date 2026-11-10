@@ -1,20 +1,20 @@
 # silvasonic-database
 
-> **Status:** Implemented (since v0.1.0) · **Tier:** 1 (Infrastructure) · **Engine:** TimescaleDB / PostgreSQL · **Instances:** Single · **Port:** 5432
+> **Status:** Implemented (SQLite since ADR-0037) · **Tier:** 1 (Infrastructure) · **Engine:** SQLite (WAL mode) · **Instances:** Single file · **Port:** none
 
-**AS-IS:** Central persistent store for the Silvasonic system — relational metadata and time-series data powered by TimescaleDB on PostgreSQL.
+**AS-IS:** The station database is one SQLite file, `silvasonic.db`, in the `database/` workspace directory. It has no container and no server process. Every service with database access opens the file directly through `silvasonic.core.database`. The decision and what it gives up are in [ADR-0037](../../docs/adr/0037-sqlite-station-database.md).
 
 ---
 
 ## 1. The Problem / The Gap
 
-*   **Time-Series Data:** Bioacoustic data generates millions of rows (recordings, detections, weather observations) ordered by time. Standard SQL databases degrade in performance at this volume without specialized partitioning.
-*   **State Persistence:** Service configuration, device inventory, and desired state must persist across reboots and container restarts.
+*   **State Persistence:** Service configuration, device inventory, desired state, recordings, detections and upload history must survive reboots, container restarts and power loss.
+*   **Limited Hardware:** A database server costs a Raspberry Pi hundreds of megabytes of RAM and needs an upgrade on every station in the field.
 
 ## 2. User Benefit
 
-*   **Fast Queries:** TimescaleDB hypertables allow querying "last 24 hours of detections" in milliseconds, even with millions of rows.
-*   **Data Integrity:** Transactional guarantees (ACID) ensure metadata always matches files on disk.
+*   **Data Integrity:** Transactions (ACID) keep metadata consistent with the files on disk. With WAL and `synchronous = NORMAL`, a power loss can drop the last commits but never corrupts the file.
+*   **Nothing to run:** No database container to start, wait for or upgrade. A backup is a file.
 
 ---
 
@@ -22,116 +22,108 @@
 
 ### Inputs
 
-*   **SQL Queries:** INSERT / SELECT / UPDATE from all services with DB access (Controller, Processor, BirdNET, BatDetect, Weather, Web-Interface). **Not** from the Recorder (ADR-0013).
+*   **SQL from the services with DB access:** Controller, Processor, BirdNET, the development UIs and, as planned, the API service, BatDetect and Weather. **Not** the Recorder (ADR-0013).
 
 ### Processing
 
-*   **Relational Storage:** System Config, Devices, Microphone Profiles, Storage Remotes, System Services, Taxonomy.
-*   **Time-Series Storage:** Detections and Weather Observations via TimescaleDB hypertables (partitioned by `time`).
-*   **Compression:** (Future) Auto-compressing old chunks via TimescaleDB continuous aggregates and compression policies.
+*   **Relational Storage:** System Config, Devices, Microphone Profiles, Managed Services, Taxonomy, Users.
+*   **Time-Ordered Storage:** Recordings, Detections, Weather Observations and Uploads, indexed by time.
 
 ### Outputs
 
-*   **Result Sets:** Data for all consuming services, the Web-Interface API, and the Controller reconciliation loop.
+*   **Result Sets:** Data for all consuming services and the Controller reconciliation loop.
 
 ---
 
 ## 4. Operational Constraints & Rules
 
-| Aspect           | Value / Rule                                                                |
-| ---------------- | --------------------------------------------------------------------------- |
-| **Immutable**    | No (Stateful by definition)                                                 |
-| **DB Access**    | N/A (This **is** the database)                                              |
-| **Concurrency**  | High (Optimized via PostgreSQL `asyncpg` bindings)                            |
-| **State**        | Stateful (Named Volume `db-data`)                                           |
-| **Privileges**   | Rootless (Podman rootless mode, no `USER` directive)                        |
-| **Resources**    | Medium (Steady memory footprint, I/O bound)                                |
-| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
+| Aspect           | Value / Rule                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| **Immutable**    | No (stateful by definition)                                                                         |
+| **Location**     | `${SILVASONIC_WORKSPACE_PATH}/database/`, mounted read-write at `/data/database` (`:z`)            |
+| **Concurrency**  | One writer at a time; readers never block. Every transaction is `BEGIN IMMEDIATE` and must be short |
+| **Filesystem**   | Local disk only. Never NFS, SMB or FUSE: SQLite's locks need one kernel and a local file system      |
+| **Privileges**   | Rootless; the directory, not only the file, must be writable (WAL and lock index live beside it)   |
+| **Resources**    | A few MB of page cache per connection, inside each client                                           |
 
 ## 5. Configuration & Environment
 
-| Variable / Mount     | Description                 | Default / Example          |
-| -------------------- | --------------------------- | -------------------------- |
-| `POSTGRES_USER`      | Database superuser name     | `silvasonic`               |
-| `POSTGRES_PASSWORD`  | Database superuser password | `silvasonic`               |
-| `POSTGRES_DB`        | Default database name       | `silvasonic`               |
-| `SILVASONIC_DB_PORT` | Host-exposed port           | `5432`                     |
-| `db-data` (Volume)   | Named Volume for PGDATA     | `/var/lib/postgresql/data` |
+| Variable / Mount          | Description                                  | Default / Example              |
+| ------------------------- | -------------------------------------------- | ------------------------------ |
+| `SILVASONIC_DB_PATH`      | The database file inside a container         | `/data/database/silvasonic.db` |
+| `database/` (bind mount)  | Directory with the file and its `-wal`/`-shm` | `/data/database`               |
 
-> [!NOTE]
-> `POSTGRES_*` variables are a third-party naming exception per AGENTS.md §7 — they follow the TimescaleDB/PostgreSQL image convention.
+Every connection gets the same pragmas from `silvasonic.core.database.session`: `journal_mode = WAL`, `synchronous = NORMAL`, `foreign_keys = ON` and a busy timeout. No service sets its own.
 
 ---
 
 ## 6. Technology Stack
 
-*   **Engine:** PostgreSQL 17
-*   **Extension:** TimescaleDB 2.19.3
-*   **Base Image:** `timescale/timescaledb:2.19.3-pg17`
-*   **Client Libraries:** `sqlalchemy` (2.0+ async), `asyncpg` (in consuming services)
+*   **Engine:** SQLite (the version the `python:3.13-slim-bookworm` base image ships, 3.40)
+*   **Client Libraries:** `sqlalchemy` (2.0+ async), `aiosqlite`
+*   **Inspection:** `sqlite3` on the host, the DB-Viewer in development
 
 ---
 
 ## 7. Out of Scope
 
 *   **Does NOT** store large binary blobs — WAV/FLAC files reside on the filesystem, only paths are stored here.
-*   **Does NOT** expose ports to the internet — internal `silvasonic-net` only (Gateway handles external access).
+*   **Does NOT** listen on a port — nothing outside the station reaches it; the API service will be the network interface (ADR-0032, planned).
 *   **Does NOT** contain application logic — it is a passive data store.
-*   **Does NOT** authenticate end-users — Gateway and Web-Interface handle authentication.
-*   **Does NOT** compress audio files (Processor Cloud-Sync-Worker's job).
+*   **Does NOT** replicate to a fleet server — a station reports in API representations instead (ADR-0037).
 
 ---
 
 ## 8. Implementation Details (Domain Specific)
+
 ### Schema Management (Dev-Phase)
 
-| Rule      | Detail                                                                                                                |
-| :-------- | :-------------------------------------------------------------------------------------------------------------------- |
-| **Edit**  | Always modify [`01-init-schema.sql`](init/01-init-schema.sql) directly.                                               |
-| **Apply** | Tear down the database container and recreate — no incremental migrations during dev.                                 |
-| **Sync**  | Every change to the SQL DDL **must** be mirrored in the SQLAlchemy models (`packages/core/…/models/`) and vice-versa. |
+| Rule      | Detail                                                                                                                   |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **Edit**  | Modify [`schema.sql`](../../packages/core/src/silvasonic/core/database/schema.sql) directly.                              |
+| **Apply** | The first connection to a new file applies it and sets `PRAGMA user_version`. To start over, stop the stack and delete `database/`. |
+| **Sync**  | Every change to the DDL **must** be mirrored in the SQLAlchemy models (`packages/core/…/models/`) and vice-versa.         |
+| **Version** | A file with another `user_version` stops every service: the schema needs a migration, and the migration tool is decided before v1.0.0 (ADR-0033). |
 
-The init script runs only on an empty volume. Recreating the database keeps the recordings on disk (the Indexer finds them again) but loses detections and upload history. To bring an **existing** database up to date without that loss, apply the changes since its creation by hand; every statement is safe to repeat:
+Deleting `database/` keeps the recordings on disk (the Indexer finds them again) but loses detections and upload history.
+
+### Inspecting and Backing Up
 
 ```bash
-podman exec -i silvasonic-database psql -U silvasonic -d silvasonic <<'SQL'
--- Indexer existence checks by file path
-CREATE INDEX IF NOT EXISTS ix_recordings_file_raw ON recordings (file_raw);
-CREATE INDEX IF NOT EXISTS ix_recordings_file_processed ON recordings (file_processed);
--- Segments named while the clock was unsynchronised (Issue 002)
-ALTER TABLE recordings ADD COLUMN IF NOT EXISTS clock_unsynced BOOLEAN NOT NULL DEFAULT FALSE;
-SQL
+# Read-only look at a running station
+sqlite3 "file:$SILVASONIC_WORKSPACE_PATH/database/silvasonic.db?mode=ro" ".tables"
+
+# Consistent copy while every service keeps running
+sqlite3 "$SILVASONIC_WORKSPACE_PATH/database/silvasonic.db" "VACUUM INTO '/tmp/silvasonic-backup.db'"
 ```
 
-Without the column the Indexer cannot insert new recordings; without the indexes it only runs slower.
-
----
+Never copy the file with `cp` while services run: the latest commits may still sit in `silvasonic.db-wal`.
 
 ### Type Conventions
 
-| Category        | Type                                         |
-| :-------------- | :------------------------------------------- |
-| Identifiers     | `BIGINT GENERATED BY DEFAULT AS IDENTITY`    |
-| Timestamps      | `TIMESTAMPTZ` (= `TIMESTAMP WITH TIME ZONE`) |
-| Strings         | `TEXT` (never `VARCHAR`)                     |
-| Structured data | `JSONB`                                      |
+| Category        | Type in `schema.sql`                       | In Python                                |
+| :-------------- | :----------------------------------------- | :--------------------------------------- |
+| Identifiers     | `INTEGER PRIMARY KEY`                      | `int`                                    |
+| Timestamps      | `INTEGER`, microseconds since the epoch (UTC) | aware `datetime` via `UTCDateTime`     |
+| Booleans        | `INTEGER` 0/1 with a `CHECK`               | `bool`                                   |
+| Strings         | `TEXT`                                     | `str`                                    |
+| Structured data | `TEXT` with `CHECK (json_valid(…))`        | `dict` via SQLAlchemy `JSON`             |
 
----
+Every table is `STRICT`, so SQLite rejects a value of the wrong type. Raw SQL (`text()`) bypasses the Python types: bind times with `to_epoch_us()` and expect JSON as text and booleans as 0/1.
 
-### Hypertable Constraints (TimescaleDB)
+### Writing Without Blocking Others
 
-- `detections` and `weather` are **hypertables** partitioned by `time`.
-- TimescaleDB does **not** support Foreign Keys **referencing** a hypertable.
-  → `recordings` must remain a **standard table** so that `detections` and `uploads` can reference it via FK.
-- The partition key (`time`) **must** be part of the composite primary key on every hypertable.
+*   Never hold a transaction open across inference, file I/O or a network call. End a read with `rollback()` before such work; write in a short transaction afterwards.
+*   A transaction that holds the lock longer than one second is logged as `database.slow_transaction`.
+*   Analysis workers claim a recording with one `UPDATE … RETURNING` and a lease, commit, and analyse without a transaction (ADR-0018, ADR-0037).
 
 ---
 
 ## 9. References
 
-- [Database Schema (DDL)](init/01-init-schema.sql) — SQL source of truth
+- [ADR-0037: SQLite as the Station Database](../../docs/adr/0037-sqlite-station-database.md) — the decision and its trade-offs
+- [Database Schema (DDL)](../../packages/core/src/silvasonic/core/database/schema.sql) — SQL source of truth
 - [SQLAlchemy Models](../../packages/core/src/silvasonic/core/database/models/) — ORM mirror
-- [ADR-0006: Bind Mounts over Volumes](../../docs/adr/0006-bind-mounts-over-volumes.md) — Named Volume exception for database
-- [Port Allocation](../../docs/arch/port_allocation.md) — Database on port 5432
+- [Filesystem Governance](../../docs/arch/filesystem_governance.md) — the `database/` workspace directory
 - [Glossary](../../docs/glossary.md) — canonical definitions of all DB entities
 - [VISION.md](../../VISION.md) — services architecture

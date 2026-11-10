@@ -604,7 +604,7 @@ class TestLazySessionInit:
         session._get_engine.cache_clear()
         session._get_session_factory.cache_clear()
 
-        with _patch("silvasonic.core.database.session.create_async_engine") as mock_engine:
+        with _patch("silvasonic.core.database.session.create_station_engine") as mock_engine:
             mock_engine.return_value = "fake_engine"
             engine1 = session._get_engine()
             engine2 = session._get_engine()

@@ -11,7 +11,7 @@
 
 ## 1. The Problem / The Gap
 
-*   Developers need a way to quickly verify database state (e.g. injected events, processed audio metadata) without dropping into `psql` or setting up complex desktop DB tools.
+*   Developers need a way to quickly verify database state (e.g. injected events, processed audio metadata) without opening the file with `sqlite3` or a desktop DB tool.
 *   Data scientists/analysts need to extract processed data chunks easily.
 
 ## 2. User Benefit
@@ -23,7 +23,7 @@
 
 ### Inputs
 *   User interaction via browser.
-*   Direct reads from the TimescaleDB.
+*   Direct reads from the station database file (SQLite). Times are shown as stored: microseconds since the epoch.
 
 ### Processing
 *   FastAPI backend rendering dynamic HTML chunks via Jinja2 & HTMX.
@@ -49,10 +49,7 @@
 
 | Variable / Mount           | Description                                    | Default / Example  |
 | -------------------------- | ---------------------------------------------- | ------------------ |
-| `SILVASONIC_DB_HOST`            | Database hostname                              | `database`         |
-| `POSTGRES_USER`            | Database user                                  | `silvasonic`       |
-| `POSTGRES_PASSWORD`        | Database password                              | `silvasonic`       |
-| `POSTGRES_DB`              | Target database name                           | `silvasonic`       |
+| `SILVASONIC_DB_PATH`            | Station database file (SQLite)                 | `/data/database/silvasonic.db` |
 | `SILVASONIC_API_ROOT_PATH` | Path prefix for reverse proxy routing (FastAPI)| `/db-viewer`       |
 
 *(Controlled via `COMPOSE_PROFILES=db-viewer` in `.env`)*

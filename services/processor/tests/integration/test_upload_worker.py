@@ -1,6 +1,6 @@
 """Integration tests for the Upload Worker.
 
-Tests the full local encoding and auditing pipeline against a real PostgreSQL DB
+Tests the full local encoding and auditing pipeline against a real station database
 while safely mocking only the final `.upload_file()` network call.
 """
 
@@ -12,23 +12,19 @@ from typing import Any
 
 import pytest
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.session import _get_engine, _get_session_factory
+from silvasonic.core.database.session import (
+    _get_engine,
+    _get_session_factory,
+    create_station_engine,
+)
 from silvasonic.core.health import HealthMonitor
 from silvasonic.core.schemas.system_config import CloudSyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.upload_worker import UploadWorker
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 TEST_KEY = b"Kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa="
-
-
-def _build_async_url(container: PostgresContainer) -> str:
-    """Build an asyncpg connection URL from a testcontainer."""
-    host = container.get_container_host_ip()
-    port = container.get_exposed_port(5432)
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
 
 
 async def _seed_device_and_recording(session: AsyncSession, wav_path: Path) -> int:
@@ -101,25 +97,18 @@ class TestUploadWorkerIntegration:
     """Verify UploadWorker logic with local constraints."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(
-        self, monkeypatch: pytest.MonkeyPatch, postgres_container: PostgresContainer
-    ) -> None:
-        """Inject testcontainer DB credentials into environment."""
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
+        """Point the code under test at the test database."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
         monkeypatch.setenv("SILVASONIC_CRYPTO_KEY", TEST_KEY.decode("utf-8"))
 
     async def test_process_batch_success(
-        self, postgres_container: PostgresContainer, tmp_path: Path, mocker: Any
+        self, station_db: Path, tmp_path: Path, mocker: Any
     ) -> None:
         """Verify processing batch successfully encodes and audits without loop hanging."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         wav_path = tmp_path / "mic-01" / "data" / "processed" / "test.wav"
@@ -168,7 +157,7 @@ class TestUploadWorkerIntegration:
             )
             upload_logs = rows.fetchall()
             assert len(upload_logs) == 1
-            assert upload_logs[0][0] is True  # success
+            assert upload_logs[0][0] == 1  # success (raw SQL: booleans are 0/1)
             assert upload_logs[0][1] == 1024  # transferred bytes
 
         await engine.dispose()

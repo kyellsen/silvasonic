@@ -102,7 +102,7 @@ just ci              # Full CI pipeline (> 4m):
 
 ### Integration Tests
 
-- Use `testcontainers` for disposable PostgreSQL and Redis instances.
+- Use the `station_db` fixture (a SQLite file per test process) for the database and `testcontainers` for Redis.
 - Do **NOT** rely on the Compose stack — integration tests must be self-contained.
 - Use `polyfactory` for generating Pydantic model instances as test data.
 
@@ -110,7 +110,7 @@ just ci              # Full CI pipeline (> 4m):
 
 - Test the full Controller lifecycle pipeline with **real Podman** but **mocked hardware**.
 - Each test gets its own **isolated Podman network** (`silvasonic-test-{run_id}`) via the `system_network` fixture.
-- Use `testcontainers` for DB + Redis (Controller tests), or `podman_run()` with the isolated network (Processor tests).
+- Use the `system_db` fixture for the database (a directory mounted into the containers) and `testcontainers` or `podman_run()` for Redis.
 - Mock `/proc/asound/cards` and sysfs to simulate device detection without hardware.
 - Skip gracefully when Podman socket is absent or images aren't built.
 - Tests cover: seeding, device scanning, profile matching, reconciliation, container start/stop, crash recovery.
@@ -184,7 +184,7 @@ Particularly for AI-generated tests, distinguish carefully between fixing and de
   - Zero I/O, zero database access, zero framework internals.
   - Minimize mocking: use fakes or data structures where possible.
 - **Integration Tests (`@pytest.mark.integration`):**
-  - Must use real PostgreSQL/Redis testcontainers. Mocking the database in integration tests is **FORBIDDEN**.
+  - Must use a real station database file (`station_db`) and real Redis testcontainers. Mocking the database in integration tests is **FORBIDDEN**.
   - Must verify actual contracts between components and external dependencies.
 - **System Tests (`@pytest.mark.system`):**
   - Must focus on full lifecycle effects and state transitions.
@@ -227,7 +227,7 @@ The `just ci` command runs these stages in order:
 | --- | --- |
 | `pytest` | Test runner |
 | `pytest-xdist` | Parallel test execution (`-n` workers) — see §10 |
-| `testcontainers` | Disposable PostgreSQL + Redis for integration tests |
+| `testcontainers` | Disposable Redis and MinIO for integration tests    |
 | `polyfactory` | Pydantic model factories for test data generation |
 | `playwright` | Browser automation for E2E tests |
 | `pytest-timeout` | Global timeout per test (default: 120s) |
@@ -287,7 +287,7 @@ Override example: `SILVASONIC_INTEGRATION_WORKERS=8 just test-int`
 
 ### Integration Test DB Cleanup
 
-With `pytest-xdist`, each worker gets its own session-scoped `postgres_container` (via `testcontainers`). An **autouse** `_clean_db_tables` fixture calls a centralized `clean_database` helper from `silvasonic-test-utils`.
+With `pytest-xdist`, each worker gets its own session-scoped `station_db` file. An **autouse** `_clean_db_tables` fixture calls a centralized `clean_database` helper from `silvasonic-test-utils`.
 
 This helper dynamically queries the database for all application tables and truncates them using `RESTART IDENTITY CASCADE`. This automatically respects foreign key relationships and entirely removes the need to manually maintain cleanup lists when adding new tables to the schema.
 

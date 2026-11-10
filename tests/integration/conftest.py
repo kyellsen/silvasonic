@@ -9,17 +9,17 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
-from silvasonic.test_utils.containers import postgres_container as postgres_container
 from silvasonic.test_utils.containers import redis_container as redis_container
 from silvasonic.test_utils.containers import shared_network as shared_network
+from silvasonic.test_utils.containers import station_db as station_db
 from silvasonic.test_utils.helpers import clean_database
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture(autouse=True)
-def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
+def _clean_db_tables(station_db: Path) -> Iterator[None]:
     """Reset application tables after each test for parallel safety.
 
     Runs **after** every integration test in this directory.  Truncates
@@ -28,4 +28,4 @@ def _clean_db_tables(postgres_container: PostgresContainer) -> Iterator[None]:
     interfere with each other.
     """
     yield
-    asyncio.get_event_loop().run_until_complete(clean_database(postgres_container))
+    asyncio.get_event_loop().run_until_complete(clean_database(station_db))

@@ -7,17 +7,17 @@ waiters, and device seeding used across all ``tests/system/`` modules.
 from __future__ import annotations
 
 import contextlib
+import sqlite3
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from pathlib import Path
 
 import pytest
 from redis import Redis
 
 PROCESSOR_IMAGE = "localhost/silvasonic_processor:latest"
-DATABASE_IMAGE = "localhost/silvasonic_database:latest"
 REDIS_IMAGE = "docker.io/library/redis:7-alpine"
 BIRDNET_IMAGE = "localhost/silvasonic_birdnet:latest"
 
@@ -101,11 +101,6 @@ def require_processor_image() -> None:
         pytest.skip("Processor image not built (run 'just build' first)")
 
 
-def require_database_image() -> None:
-    """Skip if the Database image is not built."""
-    if not image_exists(DATABASE_IMAGE):
-        pytest.skip("Database image not built (run 'just build' first)")
-
 
 def require_birdnet_image() -> None:
     """Skip if the BirdNET image is not built."""
@@ -129,6 +124,10 @@ def podman_run(
     network_aliases: list[str] | None = None,
 ) -> str:
     """Start a container via podman run. Returns container ID.
+
+    A container whose ``env`` names ``SILVASONIC_DB_PATH`` gets the database
+    directory of the running test (see ``system_db``) mounted read-write at
+    ``/data/database``, as compose does on a station (ADR-0037).
 
     Args:
         name: Container name.
@@ -155,6 +154,11 @@ def podman_run(
     if env:
         for k, v in env.items():
             cmd.extend(["-e", f"{k}={v}"])
+        if "SILVASONIC_DB_PATH" in env:
+            if _ACTIVE_DB_DIR is None:
+                msg = f"{name} needs the database, but no system_db fixture is active"
+                raise RuntimeError(msg)
+            cmd.extend(["-v", f"{_ACTIVE_DB_DIR}:{DB_DIR_IN_CONTAINER}:z"])
     if publish:
         for port_spec in publish:
             cmd.extend(["-p", port_spec])
@@ -236,90 +240,90 @@ def podman_logs(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def psql_query(
-    db_container: str,
+DB_DIR_IN_CONTAINER = "/data/database"
+DB_PATH_IN_CONTAINER = f"{DB_DIR_IN_CONTAINER}/silvasonic.db"
+
+# Database directory of the running test; set by the ``system_db`` fixture.
+# Tests run one at a time per pytest-xdist worker process.
+_ACTIVE_DB_DIR: Path | None = None
+
+
+def db_query(
+    db_dir: str | Path,
     query: str,
     *,
     retries: int = 0,
     retry_delay: float = 1.0,
 ) -> str:
-    """Execute a SQL query via psql inside the DB container.
+    """Execute one SQL statement against the test database file, from the host.
 
-    Returns the raw stdout output. Uses ``-t`` (tuples-only) and ``-A``
-    (unaligned) for machine-readable output.
+    Returns the rows as text in the shape ``psql -t -A`` printed: one line
+    per row, columns joined by ``|``, NULL as an empty string.  SQLite
+    returns booleans as ``1``/``0`` and times as epoch microseconds.
+
+    The database lives in a directory shared with the containers, so the
+    host reads the same file the services write (WAL mode lets it read
+    while they write).
 
     Args:
-        db_container: Name of the running database container.
+        db_dir: Database directory yielded by ``system_db``.
         query: SQL statement to execute.
-        retries: Number of retry attempts on transient failure (e.g. DB
-            container restarting its init scripts under parallel load).
+        retries: Retry attempts while a service holds the write lock longer
+            than the busy timeout, or before the first service created the file.
         retry_delay: Seconds to wait between retries.
     """
-    last_err: RuntimeError | None = None
+    path = Path(db_dir) / "silvasonic.db"
+    last_err: Exception | None = None
     for attempt in range(1 + retries):
-        result = subprocess.run(
-            [
-                "podman",
-                "exec",
-                db_container,
-                "psql",
-                "-U",
-                "silvasonic",
-                "-d",
-                "silvasonic",
-                "-t",
-                "-A",
-                "-c",
-                query,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-        last_err = RuntimeError(f"psql query failed: {result.stderr}")
-        if attempt < retries:
-            time.sleep(retry_delay)
-    assert last_err is not None  # range(1 + retries) runs at least once
-    raise last_err
-
-
-def wait_for_db(db_container: str, timeout: float = 30) -> None:
-    """Wait for PostgreSQL inside the container to accept connections.
-
-    Uses an actual SQL query (not just pg_isready) to ensure the init
-    scripts have completed and tables exist.
-    """
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
         try:
-            result = subprocess.run(
-                [
-                    "podman",
-                    "exec",
-                    db_container,
-                    "psql",
-                    "-U",
-                    "silvasonic",
-                    "-d",
-                    "silvasonic",
-                    "-t",
-                    "-A",
-                    "-c",
-                    "SELECT COUNT(*) FROM microphone_profiles",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if result.returncode == 0 and result.stdout.strip().isdigit():
-                return
-        except Exception:
-            pass
-        time.sleep(1)
-    msg = f"Database container '{db_container}' not ready after {timeout}s"
-    raise TimeoutError(msg)
+            con = sqlite3.connect(path, timeout=10, isolation_level=None)
+            try:
+                con.execute("PRAGMA busy_timeout = 10000")
+                rows = con.execute(query).fetchall()
+            finally:
+                con.close()
+            return "\n".join(
+                "|".join("" if v is None else str(v) for v in row) for row in rows
+            ).strip()
+        except sqlite3.Error as exc:
+            last_err = exc
+            if attempt < retries:
+                time.sleep(retry_delay)
+    assert last_err is not None  # range(1 + retries) runs at least once
+    raise RuntimeError(f"SQLite query failed: {last_err}") from last_err
+
+
+@contextlib.contextmanager
+def active_database(db_dir: Path) -> Generator[None]:
+    """Mount ``db_dir`` into every DB client ``podman_run`` starts meanwhile."""
+    global _ACTIVE_DB_DIR
+    _ACTIVE_DB_DIR = db_dir
+    try:
+        yield
+    finally:
+        _ACTIVE_DB_DIR = None
+
+
+def create_test_database(db_dir: Path) -> None:
+    """Create the station database with its schema, as a service's first connection would.
+
+    The directory is opened to everyone: under rootless Podman the container's
+    root is the host user, but the SQLite WAL and lock files must be
+    writable by whichever process opens them first.
+    """
+    db_dir.mkdir(parents=True, exist_ok=True)
+    db_dir.chmod(0o777)
+    import asyncio
+
+    from silvasonic.core.database.session import create_station_engine
+
+    async def _create() -> None:
+        engine = create_station_engine(db_dir / "silvasonic.db")
+        async with engine.connect() as conn:
+            await conn.exec_driver_sql("SELECT 1")
+        await engine.dispose()
+
+    asyncio.run(_create())
 
 
 def wait_for_redis(host: str, port: int, timeout: float = 15) -> None:
@@ -342,17 +346,16 @@ def wait_for_redis(host: str, port: int, timeout: float = 15) -> None:
 # ---------------------------------------------------------------------------
 
 
-def seed_test_devices(db_container: str, device_names: list[str]) -> None:
+def seed_test_devices(db_container: str | Path, device_names: list[str]) -> None:
     """Seed microphone_profiles and devices rows for system tests.
 
     The Indexer's INSERT into ``recordings`` requires a matching FK in
     ``devices(name)``. In production, the Controller seeds these; in system
     tests, we do it manually.
 
-    Uses retries because under parallel load the PostgreSQL init scripts
-    may briefly restart the server after ``wait_for_db`` succeeds.
+    Uses retries in case a service holds the write lock at that moment.
     """
-    psql_query(
+    db_query(
         db_container,
         """INSERT INTO microphone_profiles (slug, name, config)
            VALUES ('test_profile', 'Test Profile', '{}')
@@ -360,7 +363,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
         retries=10,
     )
     for dev in device_names:
-        psql_query(
+        db_query(
             db_container,
             f"""
                 INSERT INTO devices (
@@ -368,7 +371,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
                 )
                 VALUES (
                     '{dev}', '{dev}-serial', 'test-model',
-                    '{{}}'::jsonb, 'test_profile', '{dev}'
+                    '{{}}', 'test_profile', '{dev}'
                 )
                 ON CONFLICT (name) DO NOTHING
             """,
@@ -377,7 +380,7 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
 
 
 def seed_processor_config(
-    db_container: str,
+    db_container: str | Path,
     *,
     janitor_threshold_warning: float = 70.0,
     janitor_threshold_critical: float = 80.0,
@@ -401,10 +404,10 @@ def seed_processor_config(
         "indexer_poll_interval": indexer_poll_interval,
     }
     config_json = json.dumps(config).replace("'", "''")
-    psql_query(
+    db_query(
         db_container,
         f"""INSERT INTO system_config (key, value)
-           VALUES ('processor', '{config_json}'::jsonb)
+           VALUES ('processor', '{config_json}')
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
         retries=10,
     )
@@ -437,7 +440,7 @@ def wait_for_wavs(
 
 
 def wait_for_db_rows(
-    db_container: str,
+    db_container: str | Path,
     query: str,
     *,
     min_count: int = 1,
@@ -447,7 +450,7 @@ def wait_for_db_rows(
     """Poll database for a minimum row count."""
 
     def _check() -> int:
-        output = psql_query(db_container, query, retries=0).strip()
+        output = db_query(db_container, query, retries=0).strip()
         count = int(output) if output.isdigit() else 0
         return count if count >= min_count else 0
 
@@ -460,7 +463,7 @@ def wait_for_db_rows(
 
 
 def wait_for_detection(
-    db_container: str,
+    db_container: str | Path,
     prefix_taxon: str,
     *,
     timeout: float = 40,
@@ -469,11 +472,11 @@ def wait_for_detection(
     """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
     query = (
         "SELECT id, label, clip_path FROM detections "
-        f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' OFFSET 0 LIMIT 1"
+        f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' LIMIT 1"
     )
 
     def _check() -> dict[str, str]:
-        output = psql_query(db_container, query, retries=0).strip()
+        output = db_query(db_container, query, retries=0).strip()
         if output and "|" in output:
             id_str, label, clip_path = output.split("|")
             return {"id": id_str, "label": label, "clip_path": clip_path}
@@ -503,7 +506,7 @@ def system_network(run_id: str) -> Iterator[str]:
     """Create an isolated Podman network per test. Yields network name.
 
     Each test gets its own network so that parallel tests cannot
-    interfere via shared DNS aliases (``database``, ``redis``).
+    interfere via shared DNS aliases (``redis``).
     Cleaned up in teardown.
     """
     network_name = f"silvasonic-test-{run_id}"
@@ -527,36 +530,20 @@ def system_network(run_id: str) -> Iterator[str]:
 @pytest.fixture()
 def system_db(
     run_id: str,
-    system_network: str,
+    tmp_path_factory: pytest.TempPathFactory,
 ) -> Iterator[tuple[str, str]]:
-    """Start a PostgreSQL container on an isolated network.
+    """Create a station database (SQLite, ADR-0037) in a directory of its own.
 
-    Yields ``(db_container_name, run_id)``.
-    Seeds test devices for FK satisfaction.
+    Yields ``(db_dir, run_id)``.  ``db_dir`` is mounted into every container
+    started with ``SILVASONIC_DB_PATH`` in its env (see ``podman_run``) and
+    is queried from the host with ``db_query``.  Seeds test devices for FK
+    satisfaction.
     """
-    require_database_image()
-
-    name = f"silvasonic-db-{run_id}"
-    podman_stop_rm(name)
-
-    podman_run(
-        name,
-        DATABASE_IMAGE,
-        env={
-            "POSTGRES_USER": "silvasonic",
-            "POSTGRES_PASSWORD": "silvasonic",
-            "POSTGRES_DB": "silvasonic",
-        },
-        network=system_network,
-        network_aliases=["database", "silvasonic-database"],
-    )
-
-    try:
-        wait_for_db(name, timeout=30)
-        seed_test_devices(name, ["test-device", "mic-aaa", "mic-bbb"])
-        yield (name, run_id)
-    finally:
-        podman_stop_rm(name)
+    db_dir = tmp_path_factory.mktemp(f"database-{run_id}")
+    create_test_database(db_dir)
+    seed_test_devices(db_dir, ["test-device", "mic-aaa", "mic-bbb"])
+    with active_database(db_dir):
+        yield (str(db_dir), run_id)
 
 
 @pytest.fixture()
@@ -600,15 +587,11 @@ def system_redis(
 def make_processor_env() -> dict[str, str]:
     """Build the standard Processor environment dict.
 
-    Uses fixed DNS names (``database``, ``redis``) that resolve
-    within the test's isolated Podman network.
+    Redis resolves by its fixed DNS name within the test's isolated Podman
+    network; the database is the file ``podman_run`` mounts.
     """
     return {
-        "SILVASONIC_DB_HOST": "database",
-        "SILVASONIC_DB_PORT": "5432",
-        "POSTGRES_USER": "silvasonic",
-        "POSTGRES_PASSWORD": "silvasonic",
-        "POSTGRES_DB": "silvasonic",
+        "SILVASONIC_DB_PATH": DB_PATH_IN_CONTAINER,
         "SILVASONIC_REDIS_URL": "redis://redis:6379/0",
         "SILVASONIC_RECORDINGS_DIR": "/data/recorder",
         "SILVASONIC_ENCRYPTION_KEY": "zVwzBZb-B2UaAqyP3jDihh01e_-80u2rD5pYtQYkUaQ=",

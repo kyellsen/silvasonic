@@ -1,8 +1,7 @@
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import Boolean, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -17,7 +16,7 @@ class MicrophoneProfile(Base):
     match_pattern: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Full Pydantic config dumped as JSON
-    config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
     # Flag to indicate if this profile was bootstrapped from system YAMLs
     is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -46,17 +46,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ._hw_helpers import has_usb_audio_device
 from ._system_helpers import (
-    DATABASE_IMAGE,
     PROCESSOR_IMAGE,
+    active_database,
+    create_test_database,
+    db_query,
     make_processor_env,
     podman_logs,
     podman_run,
     podman_stop_rm,
-    psql_query,
-    require_database_image,
     require_processor_image,
     seed_test_devices,
-    wait_for_db,
     wait_for_db_rows,
     wait_for_wavs,
 )
@@ -763,16 +762,15 @@ class TestFullPipelineE2E:
 
         1. Recorder captures real audio from USB microphone.
         2. WAV files are promoted to device workspace.
-        3. Standalone DB + Processor containers pick up those files.
+        3. A Processor container with its own database picks up those files.
         4. Processor Indexer registers recordings in the DB.
         5. Assert recordings rows have correct metadata.
 
-        This test uses real hardware audio, a real containerized DB,
+        This test uses real hardware audio, a real station database file,
         and a real Processor — the full production path.
         """
         require_recorder_image()
         require_processor_image()
-        require_database_image()
 
         _redis_host, _redis_port, hw_network = hw_redis
 
@@ -814,7 +812,8 @@ class TestFullPipelineE2E:
         spec = matching_specs[0]
 
         # ── Step 3: Setup infrastructure ────────────────────────────
-        db_name = f"silvasonic-db-hw-proc-{TEST_RUN_ID}"
+        db_dir = tmp_path / "database"
+        db_name = str(db_dir)
         processor_name = f"silvasonic-processor-hw-{TEST_RUN_ID}"
         test_name = f"silvasonic-recorder-hw-proc-{TEST_RUN_ID}"
 
@@ -837,19 +836,10 @@ class TestFullPipelineE2E:
         client.connect()
 
         try:
-            # Start DB container
-            podman_run(
-                db_name,
-                DATABASE_IMAGE,
-                env={
-                    "POSTGRES_USER": "silvasonic",
-                    "POSTGRES_PASSWORD": "silvasonic",
-                    "POSTGRES_DB": "silvasonic",
-                },
-                network=hw_network,
-                network_aliases=["database", "silvasonic-database"],
-            )
-            wait_for_db(db_name, timeout=30)
+            # Station database (SQLite): mounted into the Processor by podman_run
+            create_test_database(db_dir)
+            db_session = active_database(db_dir)
+            db_session.__enter__()
 
             # Seed device so FK constraints are satisfied
             seed_test_devices(db_name, [primary_device.stable_device_id])
@@ -944,7 +934,7 @@ class TestFullPipelineE2E:
             )
 
             # Verify metadata (duration, sample_rate, sensor_id)
-            rows_str = psql_query(
+            rows_str = db_query(
                 db_name,
                 "SELECT sensor_id, file_processed, duration, sample_rate FROM recordings LIMIT 5",
             )
@@ -977,4 +967,4 @@ class TestFullPipelineE2E:
                 client.containers.get(test_name).remove(force=True)
             client.close()
             podman_stop_rm(processor_name)
-            podman_stop_rm(db_name)
+            db_session.__exit__(None, None, None)

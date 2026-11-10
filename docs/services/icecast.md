@@ -42,7 +42,7 @@
 | Aspect           | Value / Rule                                                        |
 | ---------------- | ------------------------------------------------------------------- |
 | **Immutable**    | No (managed by Compose/Quadlet, standard Icecast config)            |
-| **DB Access**    | No — Icecast is independent of PostgreSQL                           |
+| **DB Access**    | No — Icecast is independent of the station database                           |
 | **Concurrency**  | Multi-threaded (Icecast default, one thread per source + listeners) |
 | **State**        | Stateless — no persistent data, ephemeral stream relay              |
 | **Privileges**   | Rootless (ADR-0007)                                                 |

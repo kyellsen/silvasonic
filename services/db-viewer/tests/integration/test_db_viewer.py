@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 from silvasonic.core.database import get_db
+from silvasonic.core.database.session import create_station_engine
 from silvasonic.db_viewer.__main__ import app
-from silvasonic.test_utils.helpers import build_postgres_url, clean_database
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.test_utils.helpers import clean_database
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @pytest.fixture(autouse=True)
-async def _clean_db_tables(postgres_container: PostgresContainer) -> AsyncGenerator[None]:
+async def _clean_db_tables(station_db: Path) -> AsyncGenerator[None]:
     """Reset application tables after each test for parallel safety."""
     yield
-    await clean_database(postgres_container)
+    await clean_database(station_db)
 
 
 @pytest.mark.integration
@@ -26,12 +27,9 @@ class TestDBViewerAPI:
     """Tests for the DB Viewer HTML and Export endpoints."""
 
     @pytest.fixture
-    async def db_session_factory(
-        self, postgres_container: PostgresContainer
-    ) -> AsyncGenerator[Any]:
+    async def db_session_factory(self, station_db: Path) -> AsyncGenerator[Any]:
         """Provide a session factory attached to the test database."""
-        pg_url = build_postgres_url(postgres_container)
-        engine = create_async_engine(pg_url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         yield session_factory
         await engine.dispose()
@@ -59,7 +57,7 @@ class TestDBViewerAPI:
     async def test_table_snippet_renders_data(
         self,
         db_session_factory: Any,
-        postgres_container: PostgresContainer,
+        station_db: Path,
         client: httpx.AsyncClient,
     ) -> None:
         """Verify the snippet endpoint renders DB data as HTML."""
@@ -86,7 +84,7 @@ class TestDBViewerAPI:
     async def test_export_table_csv(
         self,
         db_session_factory: Any,
-        postgres_container: PostgresContainer,
+        station_db: Path,
         client: httpx.AsyncClient,
     ) -> None:
         """Verify the export endpoint returns CSV data."""

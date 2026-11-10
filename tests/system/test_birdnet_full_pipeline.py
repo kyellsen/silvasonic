@@ -18,11 +18,12 @@ import pytest
 
 from ._system_helpers import (
     BIRDNET_IMAGE,
+    DB_PATH_IN_CONTAINER,
     PROCESSOR_IMAGE,
+    db_query,
     make_processor_env,
     podman_run,
     podman_stop_rm,
-    psql_query,
     require_birdnet_image,
     require_processor_image,
     seed_processor_config,
@@ -68,10 +69,10 @@ class TestBirdNETFullPipeline:
             "confidence_threshold": 0.0,  # Zero guarantees pipeline throughput
         }
         cfg_json = json.dumps(birdnet_cfg)
-        psql_query(
+        db_query(
             db_name,
             f"""INSERT INTO system_config (key, value)
-               VALUES ('birdnet', '{cfg_json}'::jsonb)
+               VALUES ('birdnet', '{cfg_json}')
                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
         )
 
@@ -159,11 +160,7 @@ class TestBirdNETFullPipeline:
                 birdnet_name,
                 BIRDNET_IMAGE,
                 env={
-                    "SILVASONIC_DB_HOST": "database",
-                    "SILVASONIC_DB_PORT": "5432",
-                    "POSTGRES_USER": "silvasonic",
-                    "POSTGRES_PASSWORD": "silvasonic",
-                    "POSTGRES_DB": "silvasonic",
+                    "SILVASONIC_DB_PATH": DB_PATH_IN_CONTAINER,
                     "SILVASONIC_REDIS_URL": f"redis://{redis_name}:6379/0",
                     # Point to full recordings tree and private workspace
                     "SILVASONIC_RECORDINGS_DIR": "/data/recorder",
@@ -193,27 +190,13 @@ class TestBirdNETFullPipeline:
         except BaseException as exc:
             # Dump database rows to see what BirdNET actually found
             print("\n--- BIRDNET DETECTIONS ---")
-            import subprocess
-
-            res = subprocess.run(
-                [
-                    "podman",
-                    "exec",
+            print(
+                db_query(
                     db_name,
-                    "psql",
-                    "-U",
-                    "silvasonic",
-                    "-d",
-                    "silvasonic",
-                    "-c",
                     "SELECT id, label, confidence FROM detections "
-                    "ORDER BY confidence DESC LIMIT 20;",
-                ],
-                capture_output=True,
-                text=True,
+                    "ORDER BY confidence DESC LIMIT 20",
+                )
             )
-            print(res.stdout)
-            print(res.stderr)
             raise exc
 
         finally:

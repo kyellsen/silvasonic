@@ -2,24 +2,19 @@ from datetime import datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import Boolean, DateTime, Float, Integer, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from silvasonic.core.database.types import UTCDateTime
+from sqlalchemy import JSON, Boolean, Float, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Weather(Base):
-    """Hybrid environmental data from local sensors (BME280) and external APIs.
-
-    Designed to be a TimescaleDB hypertable partitioned by `time`.
-    """
+    """Hybrid environmental data from local sensors (BME280) and external APIs."""
 
     __tablename__ = "weather"
 
-    # TimescaleDB Partition Key
-    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    time: Mapped[datetime] = mapped_column(UTCDateTime(), primary_key=True)
 
-    # Source identifier (e.g. 'local_bme280', 'openmeteo')
-    # Part of composite PK in standard SQL, but for Timescale, time is main partition
+    # Source identifier (e.g. 'local_bme280', 'openmeteo'); one row per time and source
     source: Mapped[str] = mapped_column(Text, primary_key=True)
 
     station_code: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -41,4 +36,4 @@ class Weather(Base):
     is_forecast: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Overflow Buffer for extra sensors
-    extra: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    extra: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

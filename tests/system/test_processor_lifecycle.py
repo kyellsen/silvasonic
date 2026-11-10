@@ -1,7 +1,7 @@
 """System tests: Processor Lifecycle — full Recorder → Processor pipeline.
 
 Tests the complete data flow from Recorder (mock audio source) through the
-Processor Indexer into the PostgreSQL ``recordings`` table.
+Processor Indexer into the ``recordings`` table.
 
 Requires:
 - Running Podman socket on the host.
@@ -14,11 +14,11 @@ Usage::
     just test-system
 
 Architecture:
-- PostgreSQL (``silvasonic_database`` image) on an isolated test network with alias ``database``.
+- A station database file (SQLite) in a temp directory, mounted into the Processor.
 - Redis on the same isolated network with alias ``redis``.
 - Recorder container (mock source) writes WAV segments to a shared workspace.
 - Processor container indexes those WAV files into the ``recordings`` table.
-- Assertions use ``podman exec ... psql`` for DB queries (no extra driver dep).
+- Assertions read the shared database file from the host (``db_query``).
 """
 
 from __future__ import annotations
@@ -33,12 +33,12 @@ from redis import Redis
 
 from ._system_helpers import (
     PROCESSOR_IMAGE,
+    db_query,
     make_processor_env,
     make_recorder_env,
     podman_logs,
     podman_run,
     podman_stop_rm,
-    psql_query,
     require_processor_image,
     wait_for_db_rows,
     wait_for_log_pattern,
@@ -135,7 +135,7 @@ class TestProcessorLifecycle:
             )
 
             # Verify recording metadata
-            rows_str = psql_query(
+            rows_str = db_query(
                 db_container,
                 "SELECT sensor_id, file_processed, duration, sample_rate FROM recordings",
             )
@@ -438,11 +438,11 @@ class TestProcessorLifecycle:
                 "reconciliation.completed",
                 timeout=30,
             )
-            count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
+            count_str = db_query(db_container, "SELECT COUNT(*) FROM recordings")
             count_second = int(count_str) if count_str else 0
 
             # Check for duplicates: each file_processed must be unique
-            dup_str = psql_query(
+            dup_str = db_query(
                 db_container,
                 """SELECT file_processed, COUNT(*) as cnt
                    FROM recordings
@@ -533,7 +533,7 @@ class TestProcessorLifecycle:
                 timeout=30,
             )
 
-            sensor_str = psql_query(
+            sensor_str = db_query(
                 db_container,
                 "SELECT DISTINCT sensor_id FROM recordings",
             )

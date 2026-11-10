@@ -25,6 +25,7 @@ import pytest
 from ._system_helpers import (
     PROCESSOR_IMAGE,
     count_wav_files,
+    db_query,
     make_processor_env,
     make_recorder_env,
     podman_is_running,
@@ -32,7 +33,6 @@ from ._system_helpers import (
     podman_run,
     podman_stop,
     podman_stop_rm,
-    psql_query,
     require_processor_image,
     seed_processor_config,
     wait_for_db_rows,
@@ -140,7 +140,7 @@ class TestProcessorResilience:
             )
 
             # Verify Indexer continued working
-            after_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
+            after_str = db_query(db_container, "SELECT COUNT(*) FROM recordings")
             after = int(after_str) if after_str else 0
 
             # Processor must still be running
@@ -283,15 +283,15 @@ class TestProcessorResilience:
 
             # Mark 1 recording as uploaded=false (should be default but just in case),
             # mark 1 as uploaded=true manually via exec.
-            psql_query(
+            db_query(
                 db_container,
                 "UPDATE recordings SET uploaded = true "
                 "WHERE id = (SELECT id FROM recordings LIMIT 1)",
             )
-            psql_query(
+            db_query(
                 db_container,
                 "INSERT INTO system_config (key, value) "
-                "VALUES ('cloud_sync', '{\"enabled\": true}'::jsonb) "
+                "VALUES ('cloud_sync', '{\"enabled\": true}') "
                 "ON CONFLICT (key) DO UPDATE SET value = system_config.value || EXCLUDED.value",
             )
 
@@ -333,7 +333,7 @@ class TestProcessorResilience:
             if after_wavs != baseline_wavs - 2:
                 print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
 
-                rows_str = psql_query(db_container, "SELECT id, uploaded FROM recordings")
+                rows_str = db_query(db_container, "SELECT id, uploaded FROM recordings")
                 print(f"\n--- DB RECORDINGS ---\n{rows_str}")
 
             assert after_wavs == baseline_wavs - 2, (
@@ -634,7 +634,7 @@ class TestProcessorResilience:
             )
 
             # Get file paths from DB
-            files_str = psql_query(
+            files_str = db_query(
                 db_container,
                 "SELECT file_processed FROM recordings WHERE local_deleted = false LIMIT 2",
             )
@@ -661,7 +661,7 @@ class TestProcessorResilience:
             assert deleted_count >= 1, "Failed to delete any files from disk"
 
             # Verify Split-Brain: DB says files exist, disk says they don't
-            orphan_check_str = psql_query(
+            orphan_check_str = db_query(
                 db_container,
                 "SELECT COUNT(*) FROM recordings WHERE local_deleted = false",
             )
@@ -682,7 +682,7 @@ class TestProcessorResilience:
                 "reconciliation healed orphans",
                 lambda: (
                     int(
-                        psql_query(
+                        db_query(
                             db_container,
                             "SELECT COUNT(*) FROM recordings WHERE local_deleted = true",
                         )
@@ -694,7 +694,7 @@ class TestProcessorResilience:
             )
 
             # Verify healing: orphaned rows marked local_deleted=true
-            healed_str = psql_query(
+            healed_str = db_query(
                 db_container,
                 "SELECT COUNT(*) FROM recordings WHERE local_deleted = true",
             )
@@ -711,7 +711,7 @@ class TestProcessorResilience:
                 f"Expected 'reconciliation' in logs.\nLogs:\n{logs}"
             )
 
-            remaining_str = psql_query(
+            remaining_str = db_query(
                 db_container,
                 "SELECT COUNT(*) FROM recordings WHERE local_deleted = false",
             )

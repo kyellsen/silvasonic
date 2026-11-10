@@ -2,9 +2,10 @@
 # Silvasonic Compose Configuration
 # Podman-only (see ADR-0004, ADR-0013)
 #
-# Host ports: only the Gateway listens on the network. Database, Redis and the
-# service APIs bind to SILVASONIC_INTERNAL_BIND_ADDRESS (default 127.0.0.1),
-# reachable from this host for development but not from the LAN.
+# Host ports: only the Gateway listens on the network. Redis and the service
+# APIs bind to SILVASONIC_INTERNAL_BIND_ADDRESS (default 127.0.0.1), reachable
+# from this host for development but not from the LAN. The database is a
+# file (SQLite, ADR-0037) and has no port.
 # ==============================================================================
 
 services:
@@ -29,30 +30,6 @@ services:
       web-mock:
         condition: service_healthy
 
-  # --- Database (TimescaleDB) ---
-  database:
-    container_name: silvasonic-database
-    build:
-      context: .
-      dockerfile: services/database/Containerfile
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
-      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
-    ports:
-      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_DB_PORT:-5432}:5432"
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    networks:
-      - silvasonic-net
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-silvasonic}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # --- Controller (API / Orchestration) ---
   controller:
     container_name: silvasonic-controller
@@ -62,7 +39,6 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      SILVASONIC_DB_HOST: database
       SILVASONIC_CONTAINER_SOCKET: /var/run/container.sock
       SILVASONIC_NETWORK: silvasonic-net
       SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
@@ -70,13 +46,14 @@ services:
     ports:
       - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
     volumes:
+      # Station database (SQLite, ADR-0037): the directory, because SQLite
+      # keeps its WAL and lock index beside the file.
+      - ${SILVASONIC_WORKSPACE_PATH}/database:/data/database:z
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
       - ${SILVASONIC_PODMAN_SOCKET}:/var/run/container.sock:z
       - ./config:/app/config:ro,z  # Factory defaults + microphone profiles
     depends_on:
-      database:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -101,11 +78,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      SILVASONIC_DB_HOST: database
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
       - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
     volumes:
+      # Station database (SQLite, ADR-0037): the directory, because SQLite
+      # keeps its WAL and lock index beside the file.
+      - ${SILVASONIC_WORKSPACE_PATH}/database:/data/database:z
       # Recorder workspace: RW — Processor is the ONLY non-Recorder service
       # with write access (Janitor delete authority, ADR-0009).
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/data/recorder:z
@@ -114,8 +93,6 @@ services:
       # Analysis Worker workspaces: RW — Janitor delete authority for clips (Issue 008)
       - ${SILVASONIC_WORKSPACE_PATH}/birdnet:/data/birdnet:z
     depends_on:
-      database:
-        condition: service_healthy
       redis:
         condition: service_healthy
       controller:
@@ -218,18 +195,16 @@ services:
     env_file: .env
     environment:
       SILVASONIC_REDIS_URL: redis://redis:6379/0
-      SILVASONIC_DB_HOST: database
-      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
-      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
       SILVASONIC_API_ROOT_PATH: /web-mock
     ports:
       - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
     depends_on:
       redis:
         condition: service_healthy
-      database:
-        condition: service_healthy
+    volumes:
+      # Station database (SQLite, ADR-0037): the directory, because SQLite
+      # keeps its WAL and lock index beside the file.
+      - ${SILVASONIC_WORKSPACE_PATH}/database:/data/database:z
     networks:
       - silvasonic-net
     healthcheck:
@@ -250,14 +225,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      SILVASONIC_DB_HOST: database
-      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
-      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
       SILVASONIC_API_ROOT_PATH: /db-viewer
-    depends_on:
-      database:
-        condition: service_healthy
+    volumes:
+      # Station database (SQLite, ADR-0037): the directory, because SQLite
+      # keeps its WAL and lock index beside the file.
+      - ${SILVASONIC_WORKSPACE_PATH}/database:/data/database:z
     networks:
       - silvasonic-net
     healthcheck:
@@ -269,7 +241,6 @@ services:
 
 # --- Volumes (Named volumes only for stateful services, per ADR-0006) ---
 volumes:
-  db-data:
   redis-data:
   caddy_data:
   caddy_config:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import wave
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 from silvasonic.processor import indexer
@@ -149,7 +149,7 @@ class TestClockMarker:
         result = await indexer.index_recordings(session, tmp_path)
 
         assert result.new == 1
-        insert_params = session.execute.await_args_list[-1].args[1]
+        insert_params = session.execute.await_args_list[-1].args[0].compile().params
         assert insert_params["clock_unsynced"] is True
 
 
@@ -391,7 +391,10 @@ class TestCyclesStayCheap:
         assert result.new == 1
         assert result.errors == 1
         session.commit.assert_awaited_once()
-        session.rollback.assert_awaited_once()
+        # Two releases of the read lock before file I/O (ADR-0037), then the
+        # failing file's own rollback, which comes last.
+        assert session.rollback.await_count == 3
+        assert session.method_calls[-1] == call.rollback()
         assert known == {f"mic-01/data/processed/{good}"}
 
 

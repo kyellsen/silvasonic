@@ -1,7 +1,7 @@
 """Integration tests for the Reconciliation Audit module.
 
-Tests the startup audit against a real PostgreSQL database
-(Testcontainer). Seeds recordings, manipulates the filesystem, and
+Tests the startup audit against a real station database
+(SQLite). Seeds recordings, manipulates the filesystem, and
 verifies the audit correctly marks orphaned rows.
 """
 
@@ -9,21 +9,16 @@ from __future__ import annotations
 
 import wave
 from pathlib import Path
-from typing import Any
 
 import pytest
-from silvasonic.core.database.session import _get_engine, _get_session_factory
+from silvasonic.core.database.session import (
+    _get_engine,
+    _get_session_factory,
+    create_station_engine,
+)
 from silvasonic.processor import reconciliation
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
-
-
-def _build_async_url(container: PostgresContainer) -> str:
-    """Build an asyncpg connection URL from a testcontainer."""
-    host = container.get_container_host_ip()
-    port = container.get_exposed_port(5432)
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 def _create_wav(path: Path) -> None:
@@ -38,25 +33,18 @@ def _create_wav(path: Path) -> None:
 
 @pytest.mark.integration
 class TestReconciliationIntegration:
-    """Verify Reconciliation Audit end-to-end with real PostgreSQL."""
+    """Verify Reconciliation Audit end-to-end with a real station database."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
-        """Inject testcontainer DB credentials into environment."""
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
+        """Point the code under test at the test database."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
 
-    async def test_orphaned_rows_healed(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_orphaned_rows_healed(self, station_db: Path, tmp_path: Path) -> None:
         """Seed DB with local_deleted=false, remove files → audit marks local_deleted=true."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # Seed device and recording
@@ -74,7 +62,7 @@ class TestReconciliationIntegration:
                         time, sensor_id, file_raw, file_processed,
                         duration, sample_rate, filesize_raw, filesize_processed
                     ) VALUES (
-                        '2026-01-01T00:00:00Z', 'mic-01',
+                        1767225600000000, 'mic-01',  -- 2026-01-01T00:00:00Z in epoch µs
                         'mic-01/data/raw/gone.wav', 'mic-01/data/processed/gone.wav',
                         10.0, 48000, 960000, 960000
                     )
@@ -91,16 +79,13 @@ class TestReconciliationIntegration:
         # Verify local_deleted is now true
         async with factory() as session:
             result = await session.execute(text("SELECT local_deleted FROM recordings LIMIT 1"))
-            assert result.scalar() is True
+            assert bool(result.scalar()) is True
 
         await engine.dispose()
 
-    async def test_valid_rows_preserved(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_valid_rows_preserved(self, station_db: Path, tmp_path: Path) -> None:
         """Seed DB with local_deleted=false, files exist → no changes."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # Create the files on disk
@@ -122,7 +107,7 @@ class TestReconciliationIntegration:
                         time, sensor_id, file_raw, file_processed,
                         duration, sample_rate, filesize_raw, filesize_processed
                     ) VALUES (
-                        '2026-01-01T00:00:00Z', 'mic-01',
+                        1767225600000000, 'mic-01',  -- 2026-01-01T00:00:00Z in epoch µs
                         'mic-01/data/raw/exists.wav', 'mic-01/data/processed/exists.wav',
                         10.0, 48000, 960000, 960000
                     )
@@ -139,6 +124,6 @@ class TestReconciliationIntegration:
         # Verify local_deleted is still false
         async with factory() as session:
             result = await session.execute(text("SELECT local_deleted FROM recordings LIMIT 1"))
-            assert result.scalar() is False
+            assert bool(result.scalar()) is False
 
         await engine.dispose()

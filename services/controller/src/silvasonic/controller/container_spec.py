@@ -17,6 +17,7 @@ from silvasonic.controller.worker_registry import BackgroundWorker
 from silvasonic.core.database.models.profiles import MicrophoneProfile as MicProfileDB
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
+from silvasonic.core.settings import DEFAULT_DB_PATH, DatabaseSettings
 
 
 # ---------------------------------------------------------------------------
@@ -333,13 +334,20 @@ def build_worker_spec(
     environment = {
         "SILVASONIC_INSTANCE_ID": worker.name,
         "SILVASONIC_REDIS_URL": env.REDIS_URL,
-        "SILVASONIC_DB_HOST": "database",
-        "POSTGRES_USER": "silvasonic",
-        "POSTGRES_PASSWORD": "silvasonic",
-        "POSTGRES_DB": "silvasonic",
+        "SILVASONIC_DB_PATH": str(DEFAULT_DB_PATH),
     }
 
-    mounts = []
+    # Every worker pulls its work from the station database (ADR-0018). SQLite
+    # needs the directory, not just the file, writable: it keeps its WAL and
+    # lock index beside the database (ADR-0037).
+    mounts = [
+        MountSpec(
+            source=str(Path(workspace_path) / "database"),
+            target=str(DEFAULT_DB_PATH.parent),
+            read_only=False,
+            controller_source=str(DatabaseSettings().SILVASONIC_DB_PATH.parent),
+        )
+    ]
 
     if worker.needs_recorder_read_access:
         # RO mount of all recorders, mapped to /data/recorder (Processor convention)

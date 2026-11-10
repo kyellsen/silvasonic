@@ -80,7 +80,7 @@
 
 *   **Container Management:** `podman-py` (Podman REST API client)
 *   **Hardware Detection:** Direct `sysfs` reads via `pathlib` (USB metadata extraction — zero external dependencies)
-*   **Database:** `sqlalchemy` (2.0+ async), `asyncpg`
+*   **Database:** `sqlalchemy` (2.0+ async), `aiosqlite`
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
 *   **Config:** `pydantic` (Service configuration schemas, Microphone Profiles)
 *   **Core:** Standardized Service Lifecycle Framework (provides unified Health checks and Redis Publishing via `silvasonic-core`)

@@ -113,7 +113,7 @@ Workers poll their relevant `system_config` rows at the **top of each outer-loop
 │     └─ BirdNET: species mask if lat/lon changed              │
 │     └─ Processor: _janitor_every_n ratio                     │
 │                                                             │
-│  3. Claim work item (SELECT FOR UPDATE SKIP LOCKED)          │
+│  3. Claim work item (UPDATE … RETURNING, with a lease)       │
 │                                                             │
 │  4. Process with consistent, fresh settings                  │
 │     └─ A work item is NEVER processed with mixed settings    │

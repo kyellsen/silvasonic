@@ -62,12 +62,14 @@
 - [ADR-0023: Configuration Management — YAML Seed, DB Settings, Users Table](adr/0023-configuration-management.md)
 - [ADR-0024: FFmpeg Audio Engine — Externalizing the Real-Time Audio Path](adr/0024-ffmpeg-audio-engine.md)
 - [ADR-0025: Recordings Table — Standard PostgreSQL Table (No Hypertable)](adr/0025-recordings-standard-table.md)
-- [ADR-0026: Database Engine Selection for Edge Analytics](adr/0026-timescaledb-edge-analytics.md)
+- [ADR-0026: Database Engine Selection for Edge Analytics](adr/0026-timescaledb-edge-analytics.md) *(superseded by ADR-0037)*
 - [ADR-0027: BirdNET Inference Engine](adr/0027-birdnet-inference-engine.md)
 - [ADR-0029: System Worker Orchestration](adr/0029-system-worker-orchestration.md)
 - [ADR-0030: Database Runtime Resilience (Soft-Fail Loops)](adr/0030-database-resilience.md)
 - [ADR-0030: Logging Cadence & Stats Extensibility](adr/0030-logging-cadence-and-stats.md)
 - [ADR-0031: Runtime Tuning via DB Snapshot Refresh](adr/0031-runtime-tuning-snapshot-refresh.md)
+- [ADR-0037: SQLite as the Station Database](adr/0037-sqlite-station-database.md)
+- [ADR-0038: Connection Classes and the Upload Path](adr/0038-connection-classes-and-upload-path.md) *(proposed)*
 
 ## Development
 

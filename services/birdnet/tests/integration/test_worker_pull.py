@@ -15,11 +15,10 @@ from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.models.system import Device, SystemConfig
 from silvasonic.core.database.session import get_session
 from sqlalchemy import select
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture
-async def seeded_db(postgres_container: PostgresContainer) -> AsyncGenerator[None]:
+async def seeded_db(station_db: Path) -> AsyncGenerator[None]:
     """Seed the database with a device, profile, and system config."""
     # Ensure DB is reachable
     await check_database_connection()
@@ -79,9 +78,7 @@ async def seeded_db(postgres_container: PostgresContainer) -> AsyncGenerator[Non
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_worker_pull_concurrency(
-    postgres_container: PostgresContainer, seeded_db: None
-) -> None:
+async def test_worker_pull_concurrency(station_db: Path, seeded_db: None) -> None:
     """Test that multiple workers can pull recordings simultaneously without lock collisions."""
     # Create two service instances with mocked Redis config
     with patch.dict(
@@ -158,7 +155,7 @@ async def test_worker_pull_concurrency(
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_worker_resolves_relative_db_paths(
-    postgres_container: PostgresContainer,
+    station_db: Path,
     tmp_path: Path,
 ) -> None:
     """BirdNET must prefix relative DB paths with recordings_dir to find audio files.
@@ -267,3 +264,48 @@ async def test_worker_resolves_relative_db_paths(
         assert state == "done", (
             f"Recording should be marked as done, got analysis_state={rec.analysis_state}"
         )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_stale_claim_is_taken_over_fresh_one_is_not(
+    station_db: Path, seeded_db: None
+) -> None:
+    """A claim older than the lease belongs to a dead worker; a fresh one is respected.
+
+    Claiming and finishing change only this analyzer's key (ADR-0037).
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from silvasonic.birdnet.service import CLAIM_LEASE, _claim_marker
+
+    with patch.dict(
+        "os.environ", {"SILVASONIC_INSTANCE_ID": "w1", "SILVASONIC_WORKSPACE_DIR": "/tmp"}
+    ):
+        svc = BirdNETService()
+    await svc.load_config()
+
+    now = datetime.now(UTC)
+    async with get_session() as session:
+        recs = (await session.execute(select(Recording).order_by(Recording.time))).scalars().all()
+        recs[0].analysis_state = {"birdnet": _claim_marker(now)}  # worker alive
+        recs[1].analysis_state = {
+            "birdnet": _claim_marker(now - CLAIM_LEASE - timedelta(minutes=1)),  # worker died
+            "batdetect": "done",
+        }
+        await session.commit()
+        alive_id, stale_id = recs[0].id, recs[1].id
+
+    claimed = await svc._claim_next_recording()
+    assert claimed is not None
+    assert claimed.id == stale_id
+    assert await svc._claim_next_recording() is None, "the fresh claim must not be taken"
+
+    await svc._finish_recording(stale_id, "done")
+    async with get_session() as session:
+        stale = await session.get(Recording, stale_id)
+        alive = await session.get(Recording, alive_id)
+    assert stale is not None
+    assert alive is not None
+    assert stale.analysis_state == {"birdnet": "done", "batdetect": "done"}
+    assert alive.analysis_state["birdnet"].startswith("running@")

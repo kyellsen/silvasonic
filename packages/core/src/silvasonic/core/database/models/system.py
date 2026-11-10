@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from silvasonic.core.database.types import UTCDateTime
+from sqlalchemy import JSON, BigInteger, Boolean, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -18,7 +18,7 @@ class Device(Base):
     status: Mapped[str] = mapped_column(Text, default="offline", nullable=False)
     enrollment_status: Mapped[str] = mapped_column(Text, default="pending", nullable=False)
 
-    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Link to the Microphone Profile
@@ -26,7 +26,7 @@ class Device(Base):
         Text, ForeignKey("microphone_profiles.slug"), nullable=True
     )
 
-    config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
     # Human-readable workspace directory name (e.g. "ultramic-384-evo-034f").
     # Set by the Controller when a profile is assigned (enrollment).
@@ -40,9 +40,9 @@ class SystemConfig(Base):
     __tablename__ = "system_config"
 
     key: Mapped[str] = mapped_column(Text, primary_key=True)
-    value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    value: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime(),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
@@ -61,7 +61,7 @@ class ManagedService(Base):
     name: Mapped[str] = mapped_column(Text, primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        UTCDateTime(), default=lambda: datetime.now(UTC), nullable=False
     )
 
 
@@ -75,8 +75,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        UTCDateTime(), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+        UTCDateTime(), default=lambda: datetime.now(UTC), nullable=False
     )

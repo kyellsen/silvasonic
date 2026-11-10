@@ -5,7 +5,7 @@ import gc
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ from silvasonic.core.database.session import get_session
 from silvasonic.core.schemas.detections import BirdnetDetectionDetails
 from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
 from silvasonic.core.service import SilvaService
-from sqlalchemy import func, select
+from sqlalchemy import and_, false, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
@@ -41,6 +41,14 @@ MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
 META_MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite"
 LABELS_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Labels.txt"
+
+# Worker Pull claim (ADR-0018, ADR-0037): a claimed recording carries
+# ``"running@<claim time>"`` under its analyzer key until the result is
+# written.  A claim older than the lease belongs to a worker that died and
+# may be taken over.
+ANALYZER_KEY = "birdnet"
+CLAIM_PREFIX = "running@"
+CLAIM_LEASE = timedelta(minutes=10)
 
 
 def _derive_model_version(filename: str) -> str:
@@ -115,6 +123,16 @@ def birdnet_week(moment: datetime) -> int:
     from the recording's own timestamp, not from the time of analysis.
     """
     return (moment.month - 1) * 4 + min(3, (moment.day - 1) // 7) + 1
+
+
+def _analysis_state() -> Any:
+    """This analyzer's entry in ``recordings.analysis_state``, as an SQL expression."""
+    return func.json_extract(Recording.analysis_state, f"$.{ANALYZER_KEY}")
+
+
+def _claim_marker(moment: datetime) -> str:
+    """The state value of a claim made at ``moment``; sorts by time."""
+    return CLAIM_PREFIX + moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def _flat_sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
@@ -421,6 +439,78 @@ class BirdNETService(SilvaService):
         path = self.recordings_dir / (prev.file_processed or prev.file_raw)
         return path if path.exists() else None
 
+    async def _claim_next_recording(self) -> Recording | None:
+        """Claim the next recording to analyse, in one short transaction.
+
+        The claim is committed before inference starts, so the database is
+        free while the model runs (ADR-0037).  A claim older than
+        ``CLAIM_LEASE`` is taken over.
+        """
+        assert self.birdnet_config is not None
+        now = datetime.now(UTC)
+        state = _analysis_state()
+        order = (
+            Recording.time.desc()
+            if self.birdnet_config.processing_order == "newest_first"
+            else Recording.time.asc()
+        )
+        candidate = (
+            select(Recording.id)
+            .where(Recording.local_deleted == false())
+            .where(
+                or_(
+                    state.is_(None),
+                    and_(
+                        state.like(f"{CLAIM_PREFIX}%"),
+                        state < _claim_marker(now - CLAIM_LEASE),
+                    ),
+                )
+            )
+            .order_by(order)
+            .limit(1)
+            .scalar_subquery()
+        )
+        stmt = (
+            update(Recording)
+            .where(Recording.id == candidate)
+            .values(
+                analysis_state=func.json_set(
+                    Recording.analysis_state, f"$.{ANALYZER_KEY}", _claim_marker(now)
+                )
+            )
+            .returning(Recording)
+            .execution_options(synchronize_session=False)
+        )
+        async with get_session() as session:
+            recording = (await session.execute(stmt)).scalar_one_or_none()
+            await session.commit()
+        return recording
+
+    async def _finish_recording(
+        self,
+        recording_id: int,
+        state: str,
+        detections: list[Detection] | None = None,
+    ) -> None:
+        """Store the detections and the final state of one recording, in one transaction.
+
+        Only this analyzer's key in ``analysis_state`` changes.
+        """
+        async with get_session() as session:
+            if detections:
+                session.add_all(detections)
+            await session.execute(
+                update(Recording)
+                .where(Recording.id == recording_id)
+                .values(
+                    analysis_state=func.json_set(
+                        Recording.analysis_state, f"$.{ANALYZER_KEY}", state
+                    )
+                )
+                .execution_options(synchronize_session=False)
+            )
+            await session.commit()
+
     async def run(self) -> None:
         """Main inference loop."""
         assert self.birdnet_config is not None, "BirdNET DB config not loaded"
@@ -475,7 +565,7 @@ class BirdNETService(SilvaService):
                         select(func.count())
                         .select_from(Recording)
                         .where(Recording.local_deleted.is_(False))
-                        .where(~Recording.analysis_state.has_key("birdnet"))
+                        .where(_analysis_state().is_(None))
                     )
                     self._backlog_pending = count_result.scalar_one()
             except Exception:
@@ -484,95 +574,60 @@ class BirdNETService(SilvaService):
             try:
                 self.health.update_status("birdnet", True, "polling")
 
-                # Worker Pull ORM
-                async with get_session() as session:
-                    # Ascending / Descending processing order
-                    sort_col = Recording.time.asc()
-                    if self.birdnet_config.processing_order == "newest_first":
-                        sort_col = Recording.time.desc()
+                recording = await self._claim_next_recording()
+                if recording is None:
+                    # No work found, sleep
+                    await asyncio.sleep(self.env_settings.POLLING_INTERVAL_S)
+                    continue
 
-                    # SELECT FOR UPDATE SKIP LOCKED
-                    stmt = (
-                        select(Recording)
-                        .where(Recording.local_deleted.is_(False))
-                        .where(~Recording.analysis_state.has_key("birdnet"))
-                    )
-                    stmt = stmt.order_by(sort_col).limit(1).with_for_update(skip_locked=True)
+                # Check file existence — DB stores relative paths, prefix with recordings_dir
+                rel_path = recording.file_processed or recording.file_raw
+                audio_path = self.recordings_dir / rel_path
+                if not audio_path.exists():
+                    log.error("birdnet.file_missing", path=str(audio_path))
+                    # Mark as failed in DB to prevent infinite loop
+                    await self._finish_recording(recording.id, "failed_file_missing")
+                    continue
 
-                    result = await session.execute(stmt)
-                    recording = result.scalar_one_or_none()
+                # Process — no database transaction is open while the model runs
+                self.health.update_status("birdnet", True, f"analyzing {recording.id}")
+                start_time = time.perf_counter()
 
-                    if recording is None:
-                        # No work found, sleep
-                        await asyncio.sleep(self.env_settings.POLLING_INTERVAL_S)
-                        continue
-
-                    # Check file existence — DB stores relative paths, prefix with recordings_dir
-                    rel_path = recording.file_processed or recording.file_raw
-                    audio_path = self.recordings_dir / rel_path
-                    if not audio_path.exists():
-                        log.error("birdnet.file_missing", path=str(audio_path))
-                        # Mark as failed in DB to prevent infinite loop
-                        recording.analysis_state = {"birdnet": "failed_file_missing"}
-                        await session.commit()
-                        continue
-
-                    # Process
-                    self.health.update_status("birdnet", True, f"analyzing {recording.id}")
-                    start_time = time.perf_counter()
-
-                    try:
-                        week = birdnet_week(recording.time)
-                        if week not in species_masks:
-                            species_masks[week] = self._get_allowed_species_mask(labels, week)
-                        allowed_mask, loc_filter_active = species_masks[week]
+                try:
+                    week = birdnet_week(recording.time)
+                    if week not in species_masks:
+                        species_masks[week] = self._get_allowed_species_mask(labels, week)
+                    allowed_mask, loc_filter_active = species_masks[week]
+                    async with get_session() as session:
                         lead_in_path = await self._previous_segment_path(session, recording)
 
-                        detections = await self._process_recording(
-                            recording,
-                            audio_path,
-                            interpreter,
-                            labels,
-                            allowed_mask,
-                            loc_filter_active,
-                            week,
-                            lead_in_path,
-                        )
+                    detections = await self._process_recording(
+                        recording,
+                        audio_path,
+                        interpreter,
+                        labels,
+                        allowed_mask,
+                        loc_filter_active,
+                        week,
+                        lead_in_path,
+                    )
 
-                        if detections:
-                            session.add_all(detections)
+                    await self._finish_recording(recording.id, "done", detections)
+                    elapsed = time.perf_counter() - start_time
+                    self.stats.record_analyzed(recording.id, elapsed, len(detections))
 
-                        # Update analysis state using direct mutation / JSON merging
-                        # Copy the dict and update to ensure SQLAlchemy notices the mutation
-                        new_state = dict(recording.analysis_state)
-                        new_state["birdnet"] = "done"
-                        recording.analysis_state = new_state
+                except UnsupportedSampleRateError as e:
+                    log.warning(
+                        "birdnet.unsupported_sample_rate",
+                        recording_id=recording.id,
+                        error=str(e),
+                    )
+                    await self._finish_recording(recording.id, "skipped_sample_rate")
 
-                        await session.commit()
-                        elapsed = time.perf_counter() - start_time
-                        self.stats.record_analyzed(recording.id, elapsed, len(detections))
-
-                    except UnsupportedSampleRateError as e:
-                        await session.rollback()
-                        log.warning(
-                            "birdnet.unsupported_sample_rate",
-                            recording_id=recording.id,
-                            error=str(e),
-                        )
-                        new_state = dict(recording.analysis_state)
-                        new_state["birdnet"] = "skipped_sample_rate"
-                        recording.analysis_state = new_state
-                        await session.commit()
-
-                    except Exception as e:
-                        self.stats.record_error(recording.id, e)
-                        await session.rollback()
-
-                        # Store crash log in state
-                        new_state = dict(recording.analysis_state)
-                        new_state["birdnet"] = f"crashed: {str(e)[:50]}"
-                        recording.analysis_state = new_state
-                        await session.commit()
+                except Exception as e:
+                    self.stats.record_error(recording.id, e)
+                    # Store crash log in state
+                    await self._finish_recording(recording.id, f"crashed: {str(e)[:50]}")
 
             except Exception as exc:
                 # Soft-fail transient DB errors or post-rollback persistence failures (ADR-0030)

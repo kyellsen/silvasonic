@@ -1,14 +1,15 @@
-"""Integration tests: Seeders ↔ real TimescaleDB.
+"""Integration tests: Seeders ↔ real station database.
 
 Verifies that ConfigSeeder, ProfileBootstrapper, and AuthSeeder
-actually insert data into a real PostgreSQL/TimescaleDB instance.
+actually insert data into a real station database (SQLite).
 
-Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
+Uses the shared ``station_db`` fixture from ``silvasonic-test-utils``
 (surfaced via root ``conftest.py``).
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,10 +19,9 @@ from silvasonic.controller.seeder import (
     ManagedServiceSeeder,
     ProfileBootstrapper,
 )
-from silvasonic.test_utils.helpers import build_postgres_url
+from silvasonic.core.database.session import create_station_engine
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 def _make_defaults_yml(tmp_path: Path) -> Path:
@@ -76,16 +76,15 @@ stream:
 
 @pytest.mark.integration
 class TestConfigSeederIntegration:
-    """Verify ConfigSeeder inserts actual rows into a real PostgreSQL DB."""
+    """Verify ConfigSeeder inserts actual rows into a real station database."""
 
     async def test_seed_inserts_system_config(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """ConfigSeeder inserts 'system' key into system_config table."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         yml = _make_defaults_yml(tmp_path)
@@ -100,22 +99,22 @@ class TestConfigSeederIntegration:
             result = await session.execute(
                 text("SELECT value FROM system_config WHERE key = 'system'")
             )
-            row = result.scalar_one_or_none()
+            raw = result.scalar_one_or_none()
 
         await engine.dispose()
 
-        assert row is not None, "system_config row not found after seeding"
+        assert raw is not None, "system_config row not found after seeding"
+        row = json.loads(raw)  # raw SQL: JSON is TEXT in SQLite
         assert row["station_name"] == "Integration Test Station"
         assert row["auto_enrollment"] is True
 
     async def test_seed_is_idempotent(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Running ConfigSeeder twice does not create duplicate rows."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         yml = _make_defaults_yml(tmp_path)
@@ -144,16 +143,15 @@ class TestConfigSeederIntegration:
 
 @pytest.mark.integration
 class TestProfileBootstrapperIntegration:
-    """Verify ProfileBootstrapper inserts actual profiles into a real PostgreSQL DB."""
+    """Verify ProfileBootstrapper inserts actual profiles into a real station database."""
 
     async def test_seed_inserts_profile(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """ProfileBootstrapper inserts a profile row into microphone_profiles table."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         profiles_dir = _make_profile_yml(tmp_path)
@@ -176,21 +174,20 @@ class TestProfileBootstrapperIntegration:
 
         assert row is not None, "microphone_profiles row not found after seeding"
         assert row[0] == "Integration Test Microphone"
-        assert row[1] is True  # is_system
+        assert row[1] == 1  # is_system (raw SQL: booleans are 0/1)
 
 
 @pytest.mark.integration
 class TestAuthSeederIntegration:
-    """Verify AuthSeeder creates an admin user in a real PostgreSQL DB."""
+    """Verify AuthSeeder creates an admin user in a real station database."""
 
     async def test_seed_creates_admin_with_bcrypt(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """AuthSeeder inserts an admin user with bcrypt-hashed password."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         yml = _make_defaults_yml(tmp_path)
@@ -221,11 +218,10 @@ class TestRunAllSeedersIntegration:
     async def test_all_seeders_populate_db(
         self,
         tmp_path: Path,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """run_all_seeders populates system_config, microphone_profiles, and users."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         # Create test YAML files
@@ -273,7 +269,7 @@ class TestRunAllSeedersCloudSync:
 
     async def test_run_all_seeders_with_cloud_env_vars(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """run_all_seeders succeeds when SILVASONIC_CLOUD_REMOTE_* vars are set.
 
@@ -296,8 +292,7 @@ class TestRunAllSeedersCloudSync:
             "SILVASONIC_ENCRYPTION_KEY": key,
         }
 
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(
             engine,
             class_=AsyncSession,
@@ -323,7 +318,7 @@ class TestRunAllSeedersCloudSync:
 
     async def test_run_all_seeders_without_cloud_env_vars(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """run_all_seeders succeeds with default cloud_sync (no env vars).
 
@@ -335,8 +330,7 @@ class TestRunAllSeedersCloudSync:
         from silvasonic.controller.seeder import run_all_seeders
         from silvasonic.core.database.models.system import SystemConfig
 
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(
             engine,
             class_=AsyncSession,
@@ -367,7 +361,7 @@ class TestRunAllSeedersCloudSync:
 
     async def test_run_all_seeders_idempotent_with_cloud_env(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Running run_all_seeders twice with cloud env vars is safe.
 
@@ -389,8 +383,7 @@ class TestRunAllSeedersCloudSync:
             "SILVASONIC_ENCRYPTION_KEY": key,
         }
 
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(
             engine,
             class_=AsyncSession,
@@ -431,7 +424,7 @@ class TestSeederIsolation:
 
     async def test_partial_seeder_failure_commits_successful(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
     ) -> None:
         """Failed seeder does not roll back other seeders' committed data."""
         from unittest.mock import patch as _patch
@@ -439,8 +432,7 @@ class TestSeederIsolation:
         from silvasonic.controller.seeder import run_all_seeders
         from silvasonic.core.database.models.system import SystemConfig
 
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(
             engine,
             class_=AsyncSession,

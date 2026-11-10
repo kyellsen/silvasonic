@@ -4,7 +4,7 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
@@ -79,20 +79,13 @@ class TestUnsupportedSampleRate:
         recording = MagicMock()
         recording.id = 3
         recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
-        recording.analysis_state = {}
+        recording.file_processed = "mic/data/processed/cd_rate.wav"
 
         class FakeSession:
             async def execute(self, *args: Any, **kwargs: Any) -> Any:
                 result = MagicMock()
-                result.scalar_one_or_none.return_value = recording
                 result.scalar_one.return_value = 1
                 return result
-
-            async def commit(self) -> None:
-                pass
-
-            async def rollback(self) -> None:
-                pass
 
         class FakeSessionCtx:
             async def __aenter__(self) -> FakeSession:
@@ -105,11 +98,14 @@ class TestUnsupportedSampleRate:
             service._shutdown_event.set()
             raise UnsupportedSampleRateError("cd_rate.wav is at 44100 Hz")
 
+        finish = AsyncMock()
         with (
             patch("builtins.open"),
             patch("silvasonic.birdnet.service.Interpreter"),
             patch("silvasonic.birdnet.service.get_session", return_value=FakeSessionCtx()),
             patch.object(service, "_refresh_config"),
+            patch.object(service, "_claim_next_recording", AsyncMock(return_value=recording)),
+            patch.object(service, "_finish_recording", finish),
             patch.object(service, "_previous_segment_path", return_value=None),
             patch.object(service, "_process_recording", side_effect=process),
             patch.object(
@@ -119,4 +115,4 @@ class TestUnsupportedSampleRate:
         ):
             await service.run()
 
-        assert recording.analysis_state == {"birdnet": "skipped_sample_rate"}
+        finish.assert_awaited_once_with(3, "skipped_sample_rate")

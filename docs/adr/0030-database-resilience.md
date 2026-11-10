@@ -2,6 +2,8 @@
 
 > **Status:** Accepted • **Date:** 2026-04-06
 
+> **NOTE ([ADR-0037](0037-sqlite-station-database.md)):** The station database is a SQLite file and cannot restart. The transient error a loop now meets is a writer waiting past the busy timeout (`database is locked`); it is soft-failed the same way.
+
 ## 1. Context & Problem
 The Silvasonic workers (Controller, Processor, BirdNET) all run continuous background polling loops (`while not _shutdown_event.is_set():`) pulling jobs from the database. Historically, the documentation and service blueprint did not explicitly outline how a worker should behave when the PostgreSQL database restarts or is transiently unavailable (e.g., during backups or network burps). 
 This lack of standard led to an architectural drift in BirdNET, which followed a "Let-It-Crash" philosophy, dying entirely on `InterfaceError` because its database connection was unshielded in the outer loop. While `SilvaService` ensures safe pod-level restarts (dying-gasp), a container crash causes massive performance penalties for ML workers by forcing them to dump and re-allocate gigabytes of tensor memory.

@@ -1,7 +1,7 @@
 """Unit tests for BirdNET worker loops."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from silvasonic.birdnet.service import BirdNETService
@@ -105,6 +105,9 @@ class TestBirdNETResilience:
             svc = BirdNETService()
             svc.birdnet_config = MagicMock()
             svc.system_config = MagicMock()
+            # The config refresh opens a real session from core; a unit test
+            # must not touch a database file.
+            svc._refresh_config = AsyncMock()
             return svc
 
     @pytest.mark.asyncio

@@ -21,7 +21,7 @@ All bind mounts in the workspace MUST use the `:z` (lowercase, shared) SELinux s
 ### 2.1. Named Volume Exceptions
 Named Volumes are permitted **only** for services whose internal storage format is managed by a third-party image and must not be directly accessed by other services or the host user:
 
-*   **`database`** (TimescaleDB/PostgreSQL) — Uses the `db-data` named volume for `/var/lib/postgresql/data`. Direct host access to PostgreSQL data files would risk corruption.
+*   ~~**`database`**~~ — Since [ADR-0037](0037-sqlite-station-database.md) the database is a SQLite file in the `database/` workspace directory, a bind mount like every other service's data.
 *   **`redis`** — Uses a named volume for ephemeral data (persistence disabled by default). Same rationale as database.
 
 These exceptions are explicitly documented. All other services MUST use host bind mounts.

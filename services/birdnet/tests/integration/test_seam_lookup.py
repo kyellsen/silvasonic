@@ -11,7 +11,6 @@ from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import get_session
-from testcontainers.postgres import PostgresContainer
 
 T0 = datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
 
@@ -30,9 +29,7 @@ def _recording(sensor: str, start: datetime, rel: str) -> Recording:
 
 
 @pytest.mark.integration
-async def test_previous_segment_lookup(
-    postgres_container: PostgresContainer, tmp_path: Path
-) -> None:
+async def test_previous_segment_lookup(station_db: Path, tmp_path: Path) -> None:
     """Same device, contiguous, on disk: anything else gives no lead-in."""
     await check_database_connection()
     for rel in ("mic-a/first.wav", "mic-a/second.wav", "mic-b/other.wav"):

@@ -21,24 +21,19 @@ from __future__ import annotations
 
 import wave
 from pathlib import Path
-from typing import Any
 
 import pytest
 from silvasonic.controller.container_spec import build_recorder_spec, generate_workspace_name
 from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
-from silvasonic.core.database.session import _get_engine, _get_session_factory
+from silvasonic.core.database.session import (
+    _get_engine,
+    _get_session_factory,
+    create_station_engine,
+)
 from silvasonic.processor import indexer
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
-
-
-def _build_async_url(container: PostgresContainer) -> str:
-    """Build an asyncpg connection URL from a testcontainer."""
-    host = container.get_container_host_ip()
-    port = container.get_exposed_port(5432)
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 def _create_wav(path: Path, *, duration_s: float = 10.0, sample_rate: int = 48000) -> None:
@@ -68,18 +63,14 @@ class TestWorkspaceDeviceContract:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
         """Inject testcontainer DB credentials into environment."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
 
     async def test_controller_workspace_matches_processor_lookup(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Recordings in Controller-created workspace are indexed by Processor.
 
@@ -87,8 +78,7 @@ class TestWorkspaceDeviceContract:
         (Ultramic 384K EVO) to match the exact production scenario from the
         log analysis.
         """
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         # --- Step 1: Simulate Controller's device scan ---

@@ -480,8 +480,9 @@ class TestRunCleanupErrorHandling:
                 disk_pct=75.0,
             )
 
-        # Rollback MUST have been called
-        session.rollback.assert_awaited_once()
+        # Rollback MUST have been called: once to release the read lock before
+        # touching files (ADR-0037), once for the aborted cycle.
+        assert session.rollback.await_count == 2
         # Commit must NOT have been called (cycle aborted)
         session.commit.assert_not_awaited()
 

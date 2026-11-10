@@ -1,16 +1,13 @@
 """Shared Docker/Podman container fixtures for Silvasonic integration tests.
 
-All fixtures are ``session``-scoped, meaning each container is started exactly
-**once** per ``pytest`` invocation and shared across every integration test that
-declares it as a parameter. This is critical for performance: a TimescaleDB
-container takes ~10 s to start, so starting it once vs. once-per-test-class
-makes a significant difference.
+All fixtures are ``session``-scoped: each is created exactly **once** per
+``pytest`` process and shared across every integration test that declares it.
 
 Usage (in a test file — no import needed if consumed via root conftest.py):
 
     @pytest.mark.integration
-    async def test_something(postgres_container: PostgresContainer) -> None:
-        url = build_postgres_url(postgres_container)
+    async def test_something(station_db: Path) -> None:
+        engine = create_station_engine(station_db)
         ...
 
 """
@@ -20,7 +17,6 @@ from pathlib import Path
 
 import pytest
 from testcontainers.core.network import Network
-from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 
@@ -51,54 +47,18 @@ def shared_network() -> Iterator[Network]:
 
 
 @pytest.fixture(scope="session")
-def postgres_container(shared_network: Network) -> Iterator[PostgresContainer]:
-    """Provide a session-scoped TimescaleDB container with the Silvasonic schema.
+def station_db(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Provide a session-scoped station database file (SQLite, ADR-0037).
 
-    Mounts the real init SQL scripts from ``services/database/init/`` so the
-    schema matches production exactly. This ensures integration tests run
-    against the same table structure, hypertables, and indexes as the live DB.
-
-    Network aliases ``silvasonic-postgres`` and ``db`` allow other containers
-    (e.g. Controller) to resolve the database by name inside the shared network.
+    One file per ``pytest`` process, so every xdist worker has its own.  The
+    schema is created by the first connection, exactly as on a station.
+    Point services at it with ``SILVASONIC_DB_PATH`` or create an engine
+    with ``silvasonic.core.database.create_station_engine(station_db)``.
 
     Yields:
-        A running ``PostgresContainer`` instance. Use ``build_postgres_url()``
-        from :mod:`silvasonic.test_utils.helpers` to get a connection URL.
+        Path of the database file (it may not exist until first connect).
     """
-    repo_root = _get_repo_root()
-    init_dir = repo_root / "services" / "database" / "init"
-
-    postgres = PostgresContainer(
-        image="docker.io/timescale/timescaledb:2.19.3-pg17",
-        username="silvasonic",
-        password="silvasonic",
-        dbname="silvasonic_test",
-    )
-    postgres.with_network(shared_network)
-    postgres.with_network_aliases("silvasonic-postgres", "db")
-
-    # Mount real init scripts so the schema is identical to production.
-    init_extensions = init_dir / "00-init-extensions.sql"
-    init_schema = init_dir / "01-init-schema.sql"
-
-    if init_extensions.exists():
-        postgres.with_volume_mapping(
-            str(init_extensions),
-            "/docker-entrypoint-initdb.d/00-init-extensions.sql",
-            mode="z",
-        )
-    if init_schema.exists():
-        postgres.with_volume_mapping(
-            str(init_schema),
-            "/docker-entrypoint-initdb.d/01-init-schema.sql",
-            mode="z",
-        )
-
-    # Use tmpfs for data directory: no disk I/O → faster init + writes.
-    postgres.with_kwargs(tmpfs={"/var/lib/postgresql/data": "rw"})
-
-    with postgres:
-        yield postgres
+    yield tmp_path_factory.mktemp("database") / "silvasonic.db"
 
 
 @pytest.fixture(scope="session")

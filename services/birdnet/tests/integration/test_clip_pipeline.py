@@ -16,13 +16,10 @@ from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import get_session
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture
-async def seeded_clip_db(
-    postgres_container: PostgresContainer, tmp_path: Path
-) -> AsyncGenerator[Path]:
+async def seeded_clip_db(station_db: Path, tmp_path: Path) -> AsyncGenerator[Path]:
     """Seed the database with a pending recording and return the workspace path."""
     await check_database_connection()
 
@@ -64,9 +61,7 @@ async def seeded_clip_db(
 class TestClipPipeline:
     """Verify that end-to-end BirdNET inference extracts audio clips and sets database path."""
 
-    async def test_successful_clip_extraction(
-        self, postgres_container: PostgresContainer, seeded_clip_db: Path
-    ) -> None:
+    async def test_successful_clip_extraction(self, station_db: Path, seeded_clip_db: Path) -> None:
         """Integration test for full clip generation pipeline to DB update."""
         with patch.dict(
             "os.environ",

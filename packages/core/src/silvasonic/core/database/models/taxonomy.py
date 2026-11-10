@@ -1,8 +1,7 @@
 from typing import Any
 
 from silvasonic.core.database.models.base import Base
-from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -21,8 +20,8 @@ class Taxonomy(Base):
     scientific_name: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Localized maps: {"de": "Amsel", "en": "Blackbird"}
-    common_names: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    description: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    common_names: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    description: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Static asset paths
     image_path: Mapped[str] = mapped_column(Text, nullable=True)

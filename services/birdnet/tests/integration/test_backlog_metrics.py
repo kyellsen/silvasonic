@@ -13,11 +13,10 @@ from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
 from silvasonic.core.database.models.system import Device
 from silvasonic.core.database.session import get_session
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture
-async def seeded_backlog_db(postgres_container: PostgresContainer) -> AsyncGenerator[None]:
+async def seeded_backlog_db(station_db: Path) -> AsyncGenerator[None]:
     """Seed the database with pending and analyzed recordings."""
     await check_database_connection()
 
@@ -88,7 +87,7 @@ class TestBacklogMetrics:
 
     async def test_backlog_count_pending_recordings(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
         seeded_backlog_db: None,
         tmp_path: Path,
     ) -> None:
@@ -127,7 +126,7 @@ class TestBacklogMetrics:
 
     async def test_backlog_zero_when_all_analyzed(
         self,
-        postgres_container: PostgresContainer,
+        station_db: Path,
         tmp_path: Path,
     ) -> None:
         """When all recordings are analyzed or deleted, backlog is zero."""

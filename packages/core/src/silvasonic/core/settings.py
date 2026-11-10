@@ -1,23 +1,24 @@
-"""Database connection settings loaded from environment variables."""
+"""Database location loaded from environment variables (ADR-0037)."""
+
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_DB_PATH = Path("/data/database/silvasonic.db")
+
 
 class DatabaseSettings(BaseSettings):
-    """Database configuration settings."""
+    """Where the station database file lives.
 
-    POSTGRES_USER: str = "silvasonic"
-    POSTGRES_PASSWORD: str = "silvasonic"
-    POSTGRES_DB: str = "silvasonic"
-    SILVASONIC_DB_HOST: str = "localhost"
-    SILVASONIC_DB_PORT: int = 5432
+    Every service with database access mounts the same host directory at
+    the same path, so the default works inside every container.
+    """
+
+    SILVASONIC_DB_PATH: Path = DEFAULT_DB_PATH
 
     @property
     def database_url(self) -> str:
-        """Construct the database URL from individual settings."""
-        return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.SILVASONIC_DB_HOST}:{self.SILVASONIC_DB_PORT}/{self.POSTGRES_DB}"
-        )
+        """SQLAlchemy URL of the database file (async ``aiosqlite`` driver)."""
+        return f"sqlite+aiosqlite:///{self.SILVASONIC_DB_PATH}"
 
     model_config = SettingsConfigDict(env_prefix="", case_sensitive=True)

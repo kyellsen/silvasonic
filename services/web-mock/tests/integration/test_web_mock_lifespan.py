@@ -73,7 +73,7 @@ def lifespan_client() -> Generator[TestClient]:
       - Avoids 15s Docker container startup for zero correctness benefit
 
     DB (get_db / get_station / get_settings) mocked because:
-      - No PostgreSQL container is started for these tests
+      - No database is opened for these tests
       - Page routes depend on get_station → get_db; without mocking,
         asyncpg raises "another operation is in progress"
       - DB integration is covered by test_web_mock_db.py

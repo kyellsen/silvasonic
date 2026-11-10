@@ -2,7 +2,7 @@
 
 Tests the complete Controller lifecycle pipeline using:
 - Real Podman socket (host-mounted)
-- Real PostgreSQL (testcontainers)
+- A real station database file (SQLite)
 - Mocked hardware (/proc/asound/cards)
 
 No real USB microphone required.

@@ -117,7 +117,7 @@
 
 The Recorder is an **immutable Tier 2** service. This means:
 
-- **No database access.** The Recorder has no connection to TimescaleDB or any other database. This is strictly forbidden (ADR-0013).
+- **No database access.** The Recorder does not open the station database. This is strictly forbidden (ADR-0013).
 - **Profile Injection.** All configuration is provided via environment variables set by the Controller at container creation time.
 - **No self-modification.** The Recorder does not change its own state or configuration at runtime.
 - **Stateless container.** The only persistent artifact is the audio data written to the bind-mounted workspace volume.

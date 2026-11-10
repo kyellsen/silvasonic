@@ -1,6 +1,6 @@
 # ADR-0026: Database Engine Selection for Edge Analytics
 
-> **Status:** Accepted • **Date:** 2026-04-02
+> **Status:** Superseded by [ADR-0037](0037-sqlite-station-database.md) • **Date:** 2026-04-02
 
 ## 1. Context & Problem
 

@@ -55,7 +55,7 @@ The root of the Workspace must contain only folders matching the service names d
     *   Internal structure is created by the BirdNET service at startup.
     *   The Web-Interface (v0.9.0) mounts this directory as `:ro` for media serving.
 
-> **NOTE:** `database` uses a **Named Volume** and does not reside in the user-accessible Workspace to prevent permission errors and accidental corruption.
+> **NOTE:** `database/` holds the station database (one SQLite file plus its `-wal` and `-shm` files, ADR-0037). Every service with DB access mounts the directory read-write; SQLite needs the directory, not only the file. Copy it only with `sqlite3 silvasonic.db ".backup …"` or `VACUUM INTO`, never with `cp` while services run.
 
 ### Logging Policy
 *   Services must output structured JSON logs to `stdout`.
@@ -90,7 +90,7 @@ As the host is Fedora with SELinux, all container definitions must adhere to the
 ### Mount Strategy
 *   **Host Bind Mounts** are mandatory for all User Data (Recordings, Configs).
 *   Each service mounts its entire Workspace subdirectory as a single volume (e.g., `workspace/recorder:/app/workspace:z`).
-*   **Named Volumes:** Are permitted **only** for `database` internal state.
+*   **Named Volumes:** Are not used for application state; the database is a file in the workspace (ADR-0037).
 
 ### SELinux Labeling
 *   All Bind Mounts in the Workspace must be suffixed with `:z` (lowercase).

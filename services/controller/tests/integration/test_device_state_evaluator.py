@@ -14,9 +14,8 @@ from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
 from silvasonic.controller.reconciler import DeviceStateEvaluator
 from silvasonic.controller.seeder import ProfileBootstrapper
-from silvasonic.test_utils.helpers import build_postgres_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.core.database.session import create_station_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 pytestmark = [
     pytest.mark.integration,
@@ -26,11 +25,10 @@ pytestmark = [
 @pytest.mark.asyncio
 async def test_evaluate_golden_path_yields_spec(
     tmp_path: Path,
-    postgres_container: PostgresContainer,
+    station_db: Path,
 ) -> None:
     """Evaluator generates a valid Tier2ServiceSpec for an online, enrolled device."""
-    url = build_postgres_url(postgres_container)
-    engine = create_async_engine(url)
+    engine = create_station_engine(station_db)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     # 1. Seed a valid SystemProfile via Bootstrapper

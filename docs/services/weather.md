@@ -32,11 +32,10 @@
 
 *   **Data Normalization:** Converts provider-specific formats to the canonical `weather` table schema.
 *   **Deduplication:** Ensures no duplicate observations for the same timestamp and source.
-*   **TimescaleDB Partitioning:** Inserts into the `weather` hypertable with time-based partitioning.
 
 ### Outputs
 
-*   **Database Rows:** INSERTs into `weather` table (TimescaleDB hypertable).
+*   **Database Rows:** INSERTs into the `weather` table (keyed by time and source).
 *   **Redis Heartbeats:** Via `SilvaService` base class (ADR-0019).
 
 ## 4. Operational Constraints & Rules
@@ -85,7 +84,7 @@
 
 ## 9. References
 
-*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/schema.sql) — authoritative definition of the `weather` table hypertable schema.
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — QoS priority for analysis services
 *   [Future Features & Ideas](#) — Sensor recommendations

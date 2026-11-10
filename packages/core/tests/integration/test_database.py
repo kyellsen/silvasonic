@@ -1,78 +1,125 @@
-"""Integration tests for silvasonic-core database connectivity.
+"""Integration tests for the station database (SQLite, ADR-0037).
 
-Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
-(via root ``conftest.py``) to spin up a real TimescaleDB instance with the
-Silvasonic schema already applied.
-
-Requires Podman to be available on the host. The container is started once
-per session and shared with all other integration tests that declare the
-``postgres_container`` fixture.
+Uses the shared ``station_db`` fixture from ``silvasonic-test-utils``: a
+database file per test process, created by its first connection.
 """
 
+import asyncio
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from silvasonic.test_utils.helpers import build_postgres_url
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from silvasonic.core.database.schema import SCHEMA_VERSION, SchemaVersionError
+from silvasonic.core.database.session import create_station_engine
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 
 @pytest.mark.integration
-class TestDatabaseConnectivity:
-    """Verify that core can connect to a real TimescaleDB instance."""
+class TestStationDatabase:
+    """Every connection gets the schema and the same pragmas."""
 
-    async def test_database_connection(self, postgres_container: PostgresContainer) -> None:
-        """Connect to the shared Testcontainers Postgres instance and execute a query."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
-        async_session = async_sessionmaker(engine, class_=AsyncSession)
-
-        async with async_session() as session:
-            result = await session.execute(text("SELECT version()"))
-            version = result.scalar_one()
-
+    async def test_first_connection_creates_schema(self, tmp_path: Path) -> None:
+        """A new file holds every table and the current schema version."""
+        engine = create_station_engine(tmp_path / "new.db")
+        async with engine.connect() as conn:
+            version = (await conn.exec_driver_sql("PRAGMA user_version")).scalar_one()
+            tables = {
+                row[0]
+                for row in await conn.exec_driver_sql(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
         await engine.dispose()
 
-        assert "PostgreSQL" in str(version)
+        assert version == SCHEMA_VERSION
+        assert {"recordings", "detections", "devices", "system_config", "uploads"} <= tables
 
-    async def test_timescaledb_extension_active(
-        self, postgres_container: PostgresContainer
-    ) -> None:
-        """Verify that the TimescaleDB extension is loaded (confirms init SQL ran)."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
-        async_session = async_sessionmaker(engine, class_=AsyncSession)
+    async def test_concurrent_first_connections_create_schema_once(self, tmp_path: Path) -> None:
+        """Services starting at the same time do not race on CREATE TABLE."""
+        path = tmp_path / "race.db"
+        engines = [create_station_engine(path) for _ in range(4)]
 
-        async with async_session() as session:
-            result = await session.execute(
-                text("SELECT extname FROM pg_extension WHERE extname = 'timescaledb'")
-            )
-            ext = result.scalar_one_or_none()
+        async def touch(engine: AsyncEngine) -> int:
+            async with engine.connect() as conn:
+                return int((await conn.exec_driver_sql("PRAGMA user_version")).scalar_one())
 
+        versions = await asyncio.gather(*(touch(e) for e in engines))
+        for engine in engines:
+            await engine.dispose()
+
+        assert versions == [SCHEMA_VERSION] * 4
+
+    async def test_pragmas_on_every_connection(self, station_db: Path) -> None:
+        """WAL, foreign keys and the busy timeout are set per connection."""
+        engine = create_station_engine(station_db)
+        async with engine.connect() as conn:
+            journal = (await conn.exec_driver_sql("PRAGMA journal_mode")).scalar_one()
+            foreign_keys = (await conn.exec_driver_sql("PRAGMA foreign_keys")).scalar_one()
+            busy_timeout = (await conn.exec_driver_sql("PRAGMA busy_timeout")).scalar_one()
         await engine.dispose()
 
-        assert ext == "timescaledb", "TimescaleDB extension was not initialised by init SQL"
+        assert journal == "wal"
+        assert foreign_keys == 1
+        assert busy_timeout > 0
+
+    async def test_foreign_keys_enforced(self, station_db: Path) -> None:
+        """A recording must reference an existing device."""
+        engine = create_station_engine(station_db)
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql(
+                    "INSERT INTO recordings (time, sensor_id, file_raw, duration, "
+                    "sample_rate, filesize_raw) VALUES (0, 'no-such-device', 'a.wav', 1, 1, 1)"
+                )
+        await engine.dispose()
+
+    async def test_strict_tables_reject_wrong_types(self, station_db: Path) -> None:
+        """A STRICT table refuses a value that cannot become its column type."""
+        engine = create_station_engine(station_db)
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql(
+                    "INSERT INTO managed_services (name, enabled, updated_at) "
+                    "VALUES ('x', 1, 'yesterday')"
+                )
+        await engine.dispose()
+
+    async def test_unknown_schema_version_is_refused(self, tmp_path: Path) -> None:
+        """A file from another schema version stops the service instead of being used."""
+        path = tmp_path / "future.db"
+        engine = create_station_engine(path)
+        async with engine.begin() as conn:  # user_version is transactional
+            await conn.exec_driver_sql(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+        await engine.dispose()
+
+        engine = create_station_engine(path)
+        with pytest.raises((SchemaVersionError, OperationalError)):
+            async with engine.connect() as conn:
+                await conn.exec_driver_sql("SELECT 1")
+        await engine.dispose()
 
 
 @pytest.mark.integration
 class TestCheckDatabaseConnection:
-    """Verify ``check_database_connection()`` against a real TimescaleDB instance.
+    """Verify ``check_database_connection()`` against a real station database.
 
     This is the cross-package integration test that was previously missing:
     Controller calls ``check_database_connection()`` (from ``core.database.check``)
     which internally uses ``get_session()`` → ``AsyncSessionLocal`` → real DB.
 
     We patch the session module's engine + session factory to point at the
-    Testcontainer instead of the default (env-based) connection URL.
+    test database instead of the default (env-based) file.
     """
 
-    async def test_check_returns_true_on_live_db(
-        self, postgres_container: PostgresContainer
-    ) -> None:
-        """check_database_connection() returns True against a running Postgres."""
-        url = build_postgres_url(postgres_container)
-        engine = create_async_engine(url)
+    async def test_check_returns_true_on_live_db(self, station_db: Path) -> None:
+        """check_database_connection() returns True against a reachable database."""
+        engine = create_station_engine(station_db)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         with patch(
@@ -88,7 +135,8 @@ class TestCheckDatabaseConnection:
 
     async def test_check_returns_false_on_dead_db(self) -> None:
         """check_database_connection() returns False when the DB is unreachable."""
-        bad_engine = create_async_engine("postgresql+asyncpg://bad:bad@localhost:1/gone")
+        # A directory that does not exist: SQLite cannot create the file
+        bad_engine = create_async_engine("sqlite+aiosqlite:////nonexistent/dir/gone.db")
         bad_session = async_sessionmaker(bad_engine, class_=AsyncSession, expire_on_commit=False)
 
         with patch(

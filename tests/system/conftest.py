@@ -1,7 +1,7 @@
 """Shared fixtures for system and system_hw_auto / system_hw_manual tests.
 
-These fixtures manage Podman sockets, database containers, and isolated
-PostgreSQL and Redis (session-scoped).
+These fixtures manage Podman sockets, the station database file and an
+isolated Redis (session-scoped).
 - Real ``SilvasonicPodmanClient`` connected to the host Podman socket.
 - ``ContainerManager`` with automatic cleanup of test containers.
 - Async SQLAlchemy session factory wired to the testcontainers DB.
@@ -26,10 +26,9 @@ import yaml
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
+from silvasonic.core.database.session import create_station_engine
 from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
-from silvasonic.test_utils.helpers import build_postgres_url
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 log = structlog.get_logger()
 
@@ -396,15 +395,14 @@ def container_manager(
 
 @pytest.fixture()
 def session_factory(
-    postgres_container: PostgresContainer,
+    station_db: Path,
 ) -> async_sessionmaker[AsyncSession]:
     """Provide an async session factory for the testcontainers DB.
 
-    Uses the shared, session-scoped ``postgres_container`` fixture
+    Uses the shared, session-scoped ``station_db`` fixture
     from the root ``conftest.py``.
     """
-    url = build_postgres_url(postgres_container)
-    engine = create_async_engine(url)
+    engine = create_station_engine(station_db)
     return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

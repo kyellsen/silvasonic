@@ -1,6 +1,6 @@
 """Integration tests for the Janitor module.
 
-Uses the shared ``postgres_container`` Testcontainer fixture (conftest.py)
+Uses the shared ``station_db`` Testcontainer fixture (conftest.py)
 to verify the full Janitor cycle against a real database:
 - Correct SQL query execution per retention mode
 - Soft-delete pattern (physical file removal + DB flag update)
@@ -18,14 +18,18 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from silvasonic.core.database.session import _get_engine, _get_session_factory
+from silvasonic.core.database.session import (
+    _get_engine,
+    _get_session_factory,
+    create_station_engine,
+)
+from silvasonic.core.database.types import to_epoch_us
 from silvasonic.processor.janitor import (
     RetentionMode,
     run_cleanup,
 )
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from testcontainers.postgres import PostgresContainer
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 pytestmark = [pytest.mark.integration]
 
@@ -33,13 +37,6 @@ pytestmark = [pytest.mark.integration]
 # (shutil.disk_usage) which cannot be controlled in CI containers.
 # This is NOT a database mock and therefore not forbidden by the
 # integration test rules.  See: docs/development/testing.md §5.1.
-
-
-def _build_async_url(container: PostgresContainer) -> str:
-    """Build an asyncpg connection URL from a testcontainer."""
-    host = container.get_container_host_ip()
-    port = container.get_exposed_port(5432)
-    return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
 
 
 def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000) -> None:
@@ -74,7 +71,7 @@ async def _seed_recording(
     file_raw: str,
     file_processed: str,
     uploaded: bool = False,
-    analysis_state_sql: str = "'{}'::jsonb",
+    analysis_state_sql: str = "'{}'",
     local_deleted: bool = False,
     time: datetime,
 ) -> int:
@@ -94,7 +91,7 @@ async def _seed_recording(
                 RETURNING id
             """),
             {
-                "time": time,
+                "time": to_epoch_us(time),
                 "sensor_id": sensor_id,
                 "file_raw": file_raw,
                 "file_processed": file_processed,
@@ -122,17 +119,18 @@ async def _seed_detection(
                 INSERT INTO detections (
                     time, end_time, recording_id, worker, label, confidence, clip_path, details
                 ) VALUES (
-                    now(), 
-                    now() + interval '3 seconds', 
-                    :recording_id, 
-                    :worker, 
-                    'TestLabel', 
-                    0.9, 
-                    :clip_path, 
-                    '{}'::jsonb
+                    :now_us,
+                    :now_us + 3000000,
+                    :recording_id,
+                    :worker,
+                    'TestLabel',
+                    0.9,
+                    :clip_path,
+                    '{}'
                 )
             """),
             {
+                "now_us": to_epoch_us(datetime.now(UTC)),
                 "recording_id": recording_id,
                 "worker": worker,
                 "clip_path": clip_path,
@@ -147,8 +145,8 @@ async def _enable_upload_config(factory: async_sessionmaker[Any]) -> None:
         await session.execute(
             text("""
                 INSERT INTO system_config (key, value)
-                VALUES ('cloud_sync', '{"enabled": true}'::jsonb)
-                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": true}'::jsonb
+                VALUES ('cloud_sync', '{"enabled": true}')
+                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": true}'
             """)
         )
         await session.commit()
@@ -160,8 +158,8 @@ async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
         await session.execute(
             text("""
                 INSERT INTO system_config (key, value)
-                VALUES ('cloud_sync', '{"enabled": false}'::jsonb)
-                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": false}'::jsonb
+                VALUES ('cloud_sync', '{"enabled": false}')
+                ON CONFLICT (key) DO UPDATE SET value = '{"enabled": false}'
             """)
         )
         await session.commit()
@@ -173,25 +171,20 @@ async def _disable_upload_config(factory: async_sessionmaker[Any]) -> None:
 
 
 class TestJanitorIntegration:
-    """Janitor integration tests with real PostgreSQL (shared postgres_container)."""
+    """Janitor integration tests with a real station database (shared station_db)."""
 
     @pytest.fixture(autouse=True)
-    def setup_env(self, monkeypatch: pytest.MonkeyPatch, postgres_container: Any) -> None:
+    def setup_env(self, monkeypatch: pytest.MonkeyPatch, station_db: Path) -> None:
         """Inject testcontainer DB credentials into environment."""
         _get_engine.cache_clear()
         _get_session_factory.cache_clear()
-        monkeypatch.setenv("SILVASONIC_DB_HOST", postgres_container.get_container_host_ip())
-        monkeypatch.setenv("SILVASONIC_DB_PORT", str(postgres_container.get_exposed_port(5432)))
-        monkeypatch.setenv("POSTGRES_USER", "silvasonic")
-        monkeypatch.setenv("POSTGRES_PASSWORD", "silvasonic")
-        monkeypatch.setenv("POSTGRES_DB", "silvasonic_test")
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(station_db))
 
     async def test_housekeeping_deletes_correct_files(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """75% disk + Cloud Sync → only uploaded+analyzed files deleted."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "hk-mic")
@@ -208,7 +201,7 @@ class TestJanitorIntegration:
             file_raw="hk-mic/data/raw/uploaded.wav",
             file_processed="hk-mic/data/processed/uploaded.wav",
             uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            analysis_state_sql='\'{"birdnet": "true"}\'',
             time=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
@@ -244,20 +237,19 @@ class TestJanitorIntegration:
             row_del = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": del_id}
             )
-            assert row_del.scalar() is True
+            assert bool(row_del.scalar()) is True
             row_kept = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": kept_id}
             )
-            assert row_kept.scalar() is False
+            assert bool(row_kept.scalar()) is False
 
         await engine.dispose()
 
     async def test_housekeeping_deletes_worker_clips(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """75% disk + Cloud Sync → uploaded files deleted AND associated clips removed."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "hk2-mic")
@@ -283,7 +275,7 @@ class TestJanitorIntegration:
             file_raw="hk2-mic/data/raw/uploaded.wav",
             file_processed="hk2-mic/data/processed/uploaded.wav",
             uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            analysis_state_sql='\'{"birdnet": "true"}\'',
             time=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
@@ -343,12 +335,9 @@ class TestJanitorIntegration:
 
         await engine.dispose()
 
-    async def test_housekeeping_cloud_sync_fallback(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_housekeeping_cloud_sync_fallback(self, station_db: Path, tmp_path: Path) -> None:
         """75% disk + NO Cloud Sync → 'uploaded' condition skipped, fallback active."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _disable_upload_config(factory)
@@ -365,7 +354,7 @@ class TestJanitorIntegration:
             file_raw="fb-mic/data/raw/analyzed.wav",
             file_processed="fb-mic/data/processed/analyzed.wav",
             uploaded=False,
-            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            analysis_state_sql='\'{"birdnet": "true"}\'',
             time=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
@@ -386,16 +375,13 @@ class TestJanitorIntegration:
             row = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
             )
-            assert row.scalar() is True
+            assert bool(row.scalar()) is True
 
         await engine.dispose()
 
-    async def test_defensive_deletes_uploaded_only(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_defensive_deletes_uploaded_only(self, station_db: Path, tmp_path: Path) -> None:
         """85% disk + Cloud Sync → uploaded files deleted even without analysis."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "def-mic")
@@ -430,16 +416,13 @@ class TestJanitorIntegration:
             row = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
             )
-            assert row.scalar() is True
+            assert bool(row.scalar()) is True
 
         await engine.dispose()
 
-    async def test_defensive_cloud_sync_fallback(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_defensive_cloud_sync_fallback(self, station_db: Path, tmp_path: Path) -> None:
         """85% disk + NO Cloud Sync → all non-deleted recordings eligible."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _disable_upload_config(factory)
@@ -475,16 +458,13 @@ class TestJanitorIntegration:
             row = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
             )
-            assert row.scalar() is True
+            assert bool(row.scalar()) is True
 
         await engine.dispose()
 
-    async def test_panic_deletes_oldest(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_panic_deletes_oldest(self, station_db: Path, tmp_path: Path) -> None:
         """95% disk → oldest file deleted first, newer file preserved (batch_size=1)."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "panic-mic")
@@ -532,20 +512,17 @@ class TestJanitorIntegration:
             row_old = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": old_id}
             )
-            assert row_old.scalar() is True
+            assert bool(row_old.scalar()) is True
             row_new = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": new_id}
             )
-            assert row_new.scalar() is False
+            assert bool(row_new.scalar()) is False
 
         await engine.dispose()
 
-    async def test_batch_size_limits_deletions(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_batch_size_limits_deletions(self, station_db: Path, tmp_path: Path) -> None:
         """Panic mode with batch_size=2 only deletes 2 of 5 files."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "batch-mic")
@@ -612,12 +589,9 @@ class TestJanitorIntegration:
         assert not (sensor_dir / "old.wav").exists()
         assert (sensor_dir / "newer.wav").exists()
 
-    async def test_already_deleted_not_redeleted(
-        self, postgres_container: PostgresContainer, tmp_path: Path
-    ) -> None:
+    async def test_already_deleted_not_redeleted(self, station_db: Path, tmp_path: Path) -> None:
         """Rows with local_deleted=true are not picked up for deletion."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "skip-mic")
@@ -645,11 +619,10 @@ class TestJanitorIntegration:
         await engine.dispose()
 
     async def test_partial_deletion_failure_does_not_abort_soft_delete(
-        self, postgres_container: PostgresContainer, tmp_path: Path
+        self, station_db: Path, tmp_path: Path
     ) -> None:
         """Partial deletion failure ensures DB strictly limits updates to successful unlinks."""
-        url = _build_async_url(postgres_container)
-        engine = create_async_engine(url, echo=False)
+        engine = create_station_engine(station_db)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         await _seed_device(factory, "partial-mic")
@@ -680,7 +653,7 @@ class TestJanitorIntegration:
             file_raw="partial-mic/data/raw/uploaded.wav",
             file_processed="partial-mic/data/processed/uploaded.wav",
             uploaded=True,
-            analysis_state_sql='\'{"birdnet": "true"}\'::jsonb',
+            analysis_state_sql='\'{"birdnet": "true"}\'',
             time=datetime(2026, 1, 1, tzinfo=UTC),
         )
 
@@ -730,6 +703,6 @@ class TestJanitorIntegration:
             row_rec = await session.execute(
                 text("SELECT local_deleted FROM recordings WHERE id = :id"), {"id": rec_id}
             )
-            assert row_rec.scalar() is True
+            assert bool(row_rec.scalar()) is True
 
         await engine.dispose()

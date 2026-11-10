@@ -45,7 +45,7 @@
 | Aspect           | Value / Rule                                              |
 | ---------------- | --------------------------------------------------------- |
 | **Immutable**    | No (managed by Compose/Quadlet, standard Redis config)    |
-| **DB Access**    | No — Redis is independent of PostgreSQL                   |
+| **DB Access**    | No — Redis is independent of the station database                   |
 | **Concurrency**  | Single-threaded event loop (Redis default)                |
 | **State**        | Ephemeral — all data is volatile, no persistence required |
 | **Privileges**   | Rootless (ADR-0007)                                       |

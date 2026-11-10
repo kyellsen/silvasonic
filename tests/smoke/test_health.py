@@ -6,8 +6,9 @@ the dev stack, no host-filesystem writes, automatic cleanup.
 """
 
 import json
-import socket
+import sqlite3
 import time
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -20,17 +21,25 @@ from testcontainers.core.container import DockerContainer
 class TestServiceHealth:
     """Verify all services respond to health probes via testcontainers."""
 
-    def test_database_healthy(self, database_container: DockerContainer) -> None:
-        """Database accepts TCP connections on its exposed port."""
-        host = database_container.get_container_host_ip()
-        port = int(database_container.get_exposed_port(5432))
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5.0)
+    def test_database_created(
+        self, controller_container: DockerContainer, database_dir: Path
+    ) -> None:
+        """The Controller's first connection creates the station database file.
+
+        SQLite has no server to probe: the database is healthy when the file
+        exists in the shared directory and carries the schema (ADR-0037).
+        """
+        _ = controller_container
+        db = database_dir / "silvasonic.db"
+        assert db.is_file(), f"no database file in {database_dir}"
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         try:
-            result = sock.connect_ex((host, port))
-            assert result == 0, f"Database not reachable on {host}:{port}"
+            version = con.execute("PRAGMA user_version").fetchone()[0]
+            tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master")}
         finally:
-            sock.close()
+            con.close()
+        assert version == 1
+        assert "recordings" in tables
 
     def test_controller_healthy(self, controller_container: DockerContainer) -> None:
         """Controller /healthy returns 200 with status ok."""
@@ -223,128 +232,62 @@ class TestServiceHeartbeats:
         redis_client.close()
 
 
-def _extract_pg_errors(logs: str) -> list[str]:
-    """Extract PostgreSQL ERROR and FATAL log lines with their DETAIL/HINT context.
-
-    PostgreSQL logs multi-line error blocks like::
-
-        ERROR:  insert or update on table "recordings" violates foreign key ...
-        DETAIL:  Key (sensor_id)=(ghost) is not present in table "devices".
-        STATEMENT:  INSERT INTO recordings ...
-
-    This function collects the ERROR/FATAL line plus any immediately following
-    DETAIL, HINT, CONTEXT, or STATEMENT lines as a single block.
-
-    Returns:
-        A list of error blocks, each as a joined multi-line string.
-    """
-    lines = logs.splitlines()
-    errors: list[str] = []
-    i = 0
-    # Context prefixes that PostgreSQL appends after an ERROR line
-    continuation_markers = ("DETAIL:", "HINT:", "CONTEXT:", "STATEMENT:")
-
-    while i < len(lines):
-        line = lines[i]
-        # Match PostgreSQL log format: "... ERROR:" or "... FATAL:"
-        if " ERROR:" in line or " FATAL:" in line:
-            block = [line.strip()]
-            # Collect continuation lines (DETAIL, HINT, STATEMENT)
-            j = i + 1
-            while j < len(lines):
-                next_line = lines[j].strip()
-                # Check if line contains any continuation marker
-                if any(marker in next_line for marker in continuation_markers):
-                    block.append(next_line)
-                    j += 1
-                else:
-                    break
-            errors.append("\n".join(block))
-            i = j
-        else:
-            i += 1
-
-    return errors
-
-
-def _deduplicate_errors(errors: list[str]) -> list[str]:
-    """Remove duplicate error blocks, preserving order."""
-    seen: set[str] = set()
-    unique: list[str] = []
-    for err in errors:
-        if err not in seen:
-            seen.add(err)
-            unique.append(err)
-    return unique
+# Errors a database client logs when SQLite refuses or delays its work
+_DB_ERROR_MARKERS = (
+    "IntegrityError",
+    "OperationalError",
+    "database is locked",
+    "database.slow_transaction",
+    "SchemaVersionError",
+)
 
 
 @pytest.mark.smoke
 class TestDatabaseIntegrity:
-    """Verify the database container has no errors during smoke test operation.
+    """Verify the station database stayed consistent during smoke test operation.
 
-    This is a generic safety-net test that catches any PostgreSQL errors
-    (FK violations, constraint errors, connection failures, etc.) that
-    occurred while other smoke tests were running.  If this test fails,
-    the assertion message includes the exact error lines from the DB logs
-    for immediate debugging.
+    SQLite has no server log: errors surface in the clients.  This safety net
+    checks the file itself (integrity, foreign keys) and scans the logs of
+    the services that wrote to it while the other smoke tests ran.
     """
 
     def test_no_database_errors(
         self,
-        database_container: DockerContainer,
+        database_dir: Path,
         controller_container: DockerContainer,
         processor_container: DockerContainer,
     ) -> None:
-        """Database container logs must contain zero ERROR or FATAL entries.
+        """The file passes SQLite's checks and no client logged a database error.
 
-        Depends on controller and processor containers to ensure their
-        interactions with the database have already occurred before we
-        inspect the logs.  This catches issues like:
-        - Foreign key constraint violations
-        - Schema migration failures
-        - Connection pool exhaustion
-        - Data type mismatches
+        Catches, among others:
+        - Foreign key violations (device not enrolled before recording indexed)
+        - Schema mismatches between schema.sql and the ORM models
+        - Writers waiting past the busy timeout ("database is locked")
         """
-        # Ensure fixtures ran — no-op but establishes dependency ordering
-        _ = controller_container
-        _ = processor_container
+        db = database_dir / "silvasonic.db"
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            integrity = con.execute("PRAGMA integrity_check").fetchall()
+            fk_violations = con.execute("PRAGMA foreign_key_check").fetchall()
+        finally:
+            con.close()
+        assert integrity == [("ok",)], f"integrity_check: {integrity}"
+        assert fk_violations == [], f"foreign_key_check: {fk_violations}"
 
-        # Give the DB a moment to flush any pending log writes
-        time.sleep(1)
-
-        _stdout, stderr = database_container.get_logs()
-        db_logs = (stderr or b"").decode(errors="replace")
-
-        # PostgreSQL writes errors to stderr
-        errors = _extract_pg_errors(db_logs)
-
-        # Filter out expected, harmless messages
-        filtered: list[str] = []
-        harmless_patterns = [
-            # TimescaleDB startup noise
-            "FATAL:  the database system is starting up",
-            "FATAL:  the database system is shutting down",
-        ]
-        for err in errors:
-            if not any(pattern in err for pattern in harmless_patterns):
-                filtered.append(err)
-
-        filtered = _deduplicate_errors(filtered)
-
-        if filtered:
-            # Build a detailed failure message for debugging
-            error_report = "\n\n".join(f"  [{i + 1}] {err}" for i, err in enumerate(filtered))
-            msg = (
-                f"\n{'=' * 72}\n"
-                f"  DATABASE ERROR LOG — {len(filtered)} error(s) detected\n"
-                f"{'=' * 72}\n\n"
-                f"{error_report}\n\n"
-                f"{'=' * 72}\n"
-                f"  These errors occurred during smoke test operation.\n"
-                f"  Common causes:\n"
-                f"    • FK violation: device not enrolled before recording indexed\n"
-                f"    • Schema mismatch: init SQL out of sync with application code\n"
-                f"    • Connection issues: service started before DB was ready\n"
-                f"{'=' * 72}"
+        problems: list[str] = []
+        for name, container in (
+            ("controller", controller_container),
+            ("processor", processor_container),
+        ):
+            stdout, stderr = container.get_logs()
+            logs = (stdout or b"").decode(errors="replace") + (stderr or b"").decode(
+                errors="replace"
             )
-            pytest.fail(msg)
+            problems += [
+                f"{name}: {line.strip()}"
+                for line in logs.splitlines()
+                if any(marker in line for marker in _DB_ERROR_MARKERS)
+            ]
+        assert not problems, "database errors in service logs:\n" + "\n".join(
+            dict.fromkeys(problems)
+        )

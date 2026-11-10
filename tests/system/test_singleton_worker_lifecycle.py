@@ -2,7 +2,7 @@
 
 Tests the Controller's ability to start and stop background worker containers
 like BirdNET based on the `enabled` state in the `managed_services` database table,
-using a real Podman socket and testcontainers PostgreSQL.
+using a real Podman socket and a real station database file.
 
 Skip conditions:
 - Podman socket not available → all tests skipped
@@ -89,6 +89,17 @@ class TestSingletonWorkerLifecycle:
 
         # Phase 1: Setup test environment
         monkeypatch.setenv("SILVASONIC_NETWORK", system_network)
+
+        # The worker mounts <workspace>/database and <workspace>/recorder. On a
+        # station the Controller sees the same database directory at its own
+        # SILVASONIC_DB_PATH; here the Controller runs on the host, so both
+        # name one directory (ADR-0037).
+        workspace = tmp_path / "workspace"
+        for sub in ("database", "recorder"):
+            (workspace / sub).mkdir(parents=True)
+            (workspace / sub).chmod(0o777)
+        monkeypatch.setenv("SILVASONIC_WORKSPACE_PATH", str(workspace))
+        monkeypatch.setenv("SILVASONIC_DB_PATH", str(workspace / "database" / "silvasonic.db"))
 
         # Seed defaults to prepare required configs
         defaults_path = seed_test_defaults(tmp_path)

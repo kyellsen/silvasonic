@@ -4,6 +4,8 @@
 
 > **NOTE:** The `processor` (v0.5.0) is implemented. References to `birdnet` or `batdetect` refer to planned services.
 
+> **NOTE ([ADR-0037](0037-sqlite-station-database.md)):** The station database is SQLite, which has no row locks. The pattern stays; the claim becomes one short `UPDATE … RETURNING` transaction that marks the recording as running with a lease, so no lock is held while the worker analyses. The SQL below shows the PostgreSQL original.
+
 ## 1. Context & Problem
 
 Analysis workers (BirdNET, BatDetect) need to process recordings produced by the Recorder and indexed by the Processor. The question is: **who decides what a worker should process next?**

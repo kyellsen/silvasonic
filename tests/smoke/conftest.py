@@ -4,11 +4,12 @@ Provides isolated, ephemeral containers for each Silvasonic service.
 All containers use random ephemeral ports to avoid conflicts with
 the dev stack or any other running containers.
 
-No host-filesystem writes: workspace volumes use tmpfs.
+Workspace volumes use tmpfs. The one host directory is the shared station
+database (SQLite, ADR-0037) in a pytest temp dir: SQLite needs every
+client to see the same files, which a per-container tmpfs cannot give.
 """
 
 import subprocess
-import time
 from collections.abc import Generator
 from pathlib import Path
 
@@ -51,29 +52,15 @@ def smoke_network() -> Generator[Network]:
 
 
 @pytest.fixture(scope="session")
-def database_container(smoke_network: Network) -> Generator[DockerContainer]:
-    """Start an isolated TimescaleDB container.
+def database_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Directory of the station database, shared by every DB client container.
 
-    Session-scoped: shared across all smoke tests for performance.
-    Uses tmpfs for the data directory to avoid host-filesystem writes.
+    The first container that connects creates ``silvasonic.db`` and its
+    schema, as on a station.
     """
-    _require_image("silvasonic_database")
-    container = (
-        DockerContainer("silvasonic_database")
-        .with_exposed_ports(5432)
-        .with_env("POSTGRES_USER", "silvasonic")
-        .with_env("POSTGRES_PASSWORD", "silvasonic")
-        .with_env("POSTGRES_DB", "silvasonic")
-        .with_network(smoke_network)
-        .with_network_aliases("test-database")
-        .with_kwargs(tmpfs={"/var/lib/postgresql/data": "rw"})
-    )
-    container.start()
-    wait_for_log(container, "database system is ready to accept connections")
-    # Small grace period for pg_isready
-    time.sleep(2)
-    yield container
-    container.stop()
+    path = tmp_path_factory.mktemp("database")
+    path.chmod(0o777)  # container root is the host user under rootless Podman
+    return path
 
 
 # ── Redis ─────────────────────────────────────────────────────────────────────
@@ -106,29 +93,24 @@ def redis_container_smoke(smoke_network: Network) -> Generator[DockerContainer]:
 @pytest.fixture(scope="session")
 def controller_container(
     smoke_network: Network,
-    database_container: DockerContainer,
+    database_dir: Path,
     redis_container_smoke: DockerContainer,
 ) -> Generator[DockerContainer]:
-    """Start an isolated Controller container connected to test database and Redis.
+    """Start an isolated Controller container with the shared database and Redis.
 
     Session-scoped: shared across all smoke tests for performance.
-    Connects to the database via 'test-database' alias and to Redis via
-    'test-redis' alias on the shared smoke_network.
+    Opens the shared station database through ``database_dir`` and reaches
+    Redis via the 'test-redis' alias on the shared smoke_network.
     Uses tmpfs for workspace directories.
     """
     _require_image("silvasonic_controller")
     # Ensure fixtures are used (dependency ordering)
-    _ = database_container
     _ = redis_container_smoke
 
     container = (
         DockerContainer("silvasonic_controller")
         .with_exposed_ports(9100)
-        .with_env("SILVASONIC_DB_HOST", "test-database")
-        .with_env("POSTGRES_USER", "silvasonic")
-        .with_env("POSTGRES_PASSWORD", "silvasonic")
-        .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("SILVASONIC_DB_PORT", "5432")
+        .with_volume_mapping(str(database_dir), "/data/database", "z")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw", "/app/recorder-workspace": "rw"})
@@ -147,29 +129,24 @@ def controller_container(
 @pytest.fixture(scope="session")
 def processor_container(
     smoke_network: Network,
-    database_container: DockerContainer,
+    database_dir: Path,
     redis_container_smoke: DockerContainer,
 ) -> Generator[DockerContainer]:
-    """Start an isolated Processor container connected to test database and Redis.
+    """Start an isolated Processor container with the shared database and Redis.
 
     Session-scoped: shared across all smoke tests for performance.
-    Connects to the database via 'test-database' alias and to Redis via
-    'test-redis' alias on the shared smoke_network.
+    Opens the shared station database through ``database_dir`` and reaches
+    Redis via the 'test-redis' alias on the shared smoke_network.
     Uses tmpfs for workspace directories (no host writes).
     """
     _require_image("silvasonic_processor")
     # Ensure fixtures are used (dependency ordering)
-    _ = database_container
     _ = redis_container_smoke
 
     container = (
         DockerContainer("silvasonic_processor")
         .with_exposed_ports(9200)
-        .with_env("SILVASONIC_DB_HOST", "test-database")
-        .with_env("POSTGRES_USER", "silvasonic")
-        .with_env("POSTGRES_PASSWORD", "silvasonic")
-        .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("SILVASONIC_DB_PORT", "5432")
+        .with_volume_mapping(str(database_dir), "/data/database", "z")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_env("SILVASONIC_ENCRYPTION_KEY", "zVwzBZb-B2UaAqyP3jDihh01e_-80u2rD5pYtQYkUaQ=")
         .with_network(smoke_network)
@@ -223,22 +200,17 @@ def recorder_container(
 @pytest.fixture()
 def birdnet_container(
     smoke_network: Network,
-    database_container: DockerContainer,
+    database_dir: Path,
     redis_container_smoke: DockerContainer,
 ) -> Generator[DockerContainer]:
-    """Start an isolated BirdNET container connected to test database and Redis."""
+    """Start an isolated BirdNET container with the shared database and Redis."""
     _require_image("silvasonic_birdnet")
-    _ = database_container
     _ = redis_container_smoke
 
     container = (
         DockerContainer("silvasonic_birdnet")
         .with_exposed_ports(9500)
-        .with_env("SILVASONIC_DB_HOST", "test-database")
-        .with_env("POSTGRES_USER", "silvasonic")
-        .with_env("POSTGRES_PASSWORD", "silvasonic")
-        .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("SILVASONIC_DB_PORT", "5432")
+        .with_volume_mapping(str(database_dir), "/data/database", "z")
         .with_env("SILVASONIC_REDIS_URL", "redis://test-redis:6379/0")
         .with_network(smoke_network)
         .with_kwargs(tmpfs={"/app/workspace": "rw"})
@@ -275,24 +247,19 @@ def web_mock_container() -> Generator[DockerContainer]:
 @pytest.fixture()
 def db_viewer_container(
     smoke_network: Network,
-    database_container: DockerContainer,
+    database_dir: Path,
 ) -> Generator[DockerContainer]:
     """Start an isolated DB-Viewer container.
 
     Function-scoped: fresh container per test.
-    Connects to the test database.
+    Opens the shared station database through ``database_dir``.
     """
     _require_image("silvasonic_db-viewer")
-    _ = database_container
 
     container = (
         DockerContainer("silvasonic_db-viewer")
         .with_exposed_ports(8002)
-        .with_env("SILVASONIC_DB_HOST", "test-database")
-        .with_env("POSTGRES_USER", "silvasonic")
-        .with_env("POSTGRES_PASSWORD", "silvasonic")
-        .with_env("POSTGRES_DB", "silvasonic")
-        .with_env("SILVASONIC_DB_PORT", "5432")
+        .with_volume_mapping(str(database_dir), "/data/database", "z")
         .with_network(smoke_network)
     )
     container.start()

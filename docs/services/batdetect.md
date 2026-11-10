@@ -28,7 +28,7 @@
 ### Inputs
 
 *   **Audio Files:** High sample-rate **Raw** recordings (384 kHz+) from the Recorder workspace. Only recordings from microphones with ultrasonic capability are processed — standard 48 kHz recordings are skipped. Mounted **read-only** (Consumer Principle, ADR-0009).
-*   **Database Queue:** Polls the `recordings` table for unanalyzed files via Worker Pull Pattern (`SELECT … FOR UPDATE SKIP LOCKED`, ADR-0018). Filters by `sample_rate >= 192000` to ensure only ultrasonic-capable recordings are processed.
+*   **Database Queue:** Polls the `recordings` table for unanalyzed files via Worker Pull Pattern (short claim with a lease, ADR-0018, ADR-0037). Filters by `sample_rate >= 192000` to ensure only ultrasonic-capable recordings are processed.
 
 ### Processing
 
@@ -116,7 +116,7 @@ Runtime-tunable settings stored in the `system_config` table under key `batdetec
 
 ## 9. References
 
-*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `detections` table schema.
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/schema.sql) — authoritative definition of the `detections` table schema.
 *   [ADR-0009](../adr/0009-zero-trust-data-sharing.md) — Consumer Principle (read-only mounts)
 *   [ADR-0018](../adr/0018-worker-pull-orchestration.md) — Worker Pull Orchestration
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService lifecycle

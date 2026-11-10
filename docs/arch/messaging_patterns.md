@@ -16,7 +16,7 @@ To satisfy **Data Capture Integrity**, the system employs a **Hybrid Architectur
 **Philosophy:** The Filesystem and Database are the Source of Truth. No message broker dependency.
 
 *   **Recorder → Processor:** **Filesystem Polling.** The Processor watches the Recorder's workspace directories for new audio files and indexes them into the `recordings` table.
-*   **Processor → Workers:** **Database Polling.** Workers (BirdNET, BatDetect) independently poll the `recordings` table for unanalyzed files using `SELECT ... FOR UPDATE SKIP LOCKED`. See [ADR-0018](../adr/0018-worker-pull-orchestration.md).
+*   **Processor → Workers:** **Database Polling.** Workers (BirdNET, BatDetect) independently poll the `recordings` table for unanalyzed files using a short claim (`UPDATE … RETURNING` with a lease, ADR-0037). See [ADR-0018](../adr/0018-worker-pull-orchestration.md).
 
 > [!TIP]
 > The critical path has **zero dependency on Redis**. If Redis goes down, recording, ingestion, and analysis continue uninterrupted.
@@ -123,8 +123,8 @@ The nudge is a simple wake-up signal — not a command. If the nudge is lost (Co
 │                                                             │
 │  Recorder ──[WAV files]──► Processor ──[DB INSERT]──► DB    │
 │                                                             │
-│  BirdNET ──[SELECT FOR UPDATE SKIP LOCKED]──► DB            │
-│  BatDetect ──[SELECT FOR UPDATE SKIP LOCKED]──► DB          │
+│  BirdNET ──[UPDATE … RETURNING claim]──► DB                 │
+│  BatDetect ──[UPDATE … RETURNING claim]──► DB               │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
