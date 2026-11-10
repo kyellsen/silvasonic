@@ -27,6 +27,8 @@ log = structlog.get_logger()
 MODEL_SR = 48000
 WINDOW_SECS = 3.0
 WINDOW_SAMPLES = int(WINDOW_SECS * MODEL_SR)
+# A recording shorter than this is not worth one zero-padded window.
+MIN_CHUNK_SAMPLES = int(1.5 * MODEL_SR)
 
 MODEL_DIR = Path(os.environ.get("SILVASONIC_BIRDNET_MODEL_DIR", "/app/models"))
 MODEL_PATH = MODEL_DIR / "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite"
@@ -41,6 +43,34 @@ def _derive_model_version(filename: str) -> str:
     if match:
         return f"v{match.group(1)}"
     return "v0.0-unknown"
+
+
+def window_starts(n_samples: int, step: int) -> list[int]:
+    """Return the start offsets of the analysis windows for one recording.
+
+    Windows advance by ``step`` samples. When the last regular window ends
+    before the recording does, one more window is aligned to the recording's
+    end, so every sample is analysed at least once: a 10 s segment with 3 s
+    windows and no overlap gets windows at 0, 3, 6 and 7 s. A recording
+    shorter than one window gets a single zero-padded window, provided it
+    holds at least ``MIN_CHUNK_SAMPLES``.
+
+    Args:
+        n_samples: Length of the recording in samples.
+        step: Window advance in samples (window length minus overlap).
+
+    Returns:
+        Ascending window start offsets in samples.
+    """
+    if n_samples < MIN_CHUNK_SAMPLES:
+        return []
+    if n_samples <= WINDOW_SAMPLES:
+        return [0]
+    last_start = n_samples - WINDOW_SAMPLES
+    starts = list(range(0, last_start + 1, step))
+    if starts[-1] != last_start:
+        starts.append(last_start)
+    return starts
 
 
 def _flat_sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
@@ -189,7 +219,6 @@ class BirdNETService(SilvaService):
         # Slice segments
         overlap = self.birdnet_config.overlap
         step = int((WINDOW_SECS - overlap) * MODEL_SR)
-        min_samples = int(1.5 * MODEL_SR)
 
         detections: list[Detection] = []
         input_idx = interpreter.get_input_details()[0]["index"]
@@ -198,13 +227,11 @@ class BirdNETService(SilvaService):
         # Fast inversion for sigmoid according to spike v3
         adj_sens = max(0.5, min(1.0 - (self.birdnet_config.sensitivity - 1.0), 1.5))
 
-        for start_idx in range(0, len(audio), step):
+        for start_idx in window_starts(len(audio), step):
             if self._shutdown_event.is_set():
                 break
 
             chunk = audio[start_idx : start_idx + WINDOW_SAMPLES]
-            if len(chunk) < min_samples:
-                break
             if len(chunk) < WINDOW_SAMPLES:
                 padded = np.zeros(WINDOW_SAMPLES, dtype=np.float32)
                 padded[: len(chunk)] = chunk
