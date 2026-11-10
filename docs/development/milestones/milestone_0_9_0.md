@@ -1,155 +1,108 @@
-# Milestone v0.9.0 — Web-Interface (Dashboard & Service Control)
+# Milestone v0.9.0 — Station Data Foundation
 
-> **Target:** v0.9.0 — Real-time status dashboard, service control via DB + nudge
+> **Target:** v0.9.0 — The schema and database engine the station keeps from v1.0.0 on, and versioned migrations from this release on
 >
-> **Status:** ⏳ Planned
+> **Status:** ⏳ Planned (naming done, SQLite implemented on a branch)
 >
-> **References:** [ADR-0003](../../adr/0003-frontend-architecture.md), [ADR-0017](../../adr/0017-service-state-management.md), [ADR-0019](../../adr/0019-unified-service-infrastructure.md), [ADR-0021](../../adr/0021-frontend-design-system.md), [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
+> **References:** [ADR-0033](../../adr/0033-unified-naming-and-global-identifiers.md), [ADR-0037](../../adr/0037-sqlite-station-database.md), [ADR-0018](../../adr/0018-worker-pull-orchestration.md), [ADR-0030](../../adr/0030-database-resilience.md), [ROADMAP.md](https://github.com/kyellsen/silvasonic/blob/main/ROADMAP.md)
 >
-> **User Stories:** [Web-Interface Stories](../../user_stories/web_interface.md)
+> **User Stories:** `n/a` (foundation for [API](../../user_stories/api.md) and [Dashboard](../../user_stories/dashboard.md))
 
 ---
 
 ## Overview
 
-The Web-Interface replaces the `web-mock` dev UI with a production-grade
-dashboard built on FastAPI, Jinja2, htmx, Alpine.js, TailwindCSS/DaisyUI,
-ECharts, and WaveSurfer.js (ADR-0003, ADR-0021).
+Everything after this release builds on the station's data: the API (v0.10.0), the interface (v0.11.0) and the update mechanism (v0.14.0). This milestone changes the schema for the last time by editing the init script: names and identifiers per ADR-0033, the engine per ADR-0037. From v0.9.0 on, every schema change ships as a versioned migration, because a station in the field cannot be recreated.
 
-### Key Capabilities
-
-- Real-time service status via Redis Read+Subscribe pattern (ADR-0017)
-- Service control: enable/disable Tier-2 singletons via `managed_services` table + nudge
-- Configuration editor for `system_config` values
-- Recording browser with audio playback (WaveSurfer.js)
-- Detection timeline with species visualizations (ECharts)
+A station on v0.8.1 recreates its database once when it updates to v0.9.0. The recordings on disk are kept and indexed again; detections and upload history are lost.
 
 ### Prerequisites
 
-| Milestone  | Feature                                          |
-| ---------- | ------------------------------------------------ |
-| **v0.5.0** | Processor (Indexer + Janitor)                    |
-| **v0.6.0** | Uploader (FLAC compression, remote sync)         |
-| **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS)             |
-| **v0.8.0** | BirdNET (On-device Avian Inference)              |
+| Milestone  | Feature                    |
+| ---------- | -------------------------- |
+| **v0.8.1** | Field Hardening (released) |
 
 ---
 
-## Deferred Items from Earlier Milestones
+## Phase 1: Decisions
 
-### `managed_services` Table Seeding & Reconciliation (from v0.5.0 Phase 5)
-
-> **Context:** v0.5.0 originally planned seeding `processor` into a
-> service registry table. This was deferred because:
->
-> 1. The `managed_services` table did not yet exist — lifecycle toggles were
->    temporarily stored as `enabled: bool` inside `system_config` JSONB (ADR-0029).
-> 2. The Controller Reconciler derives desired state from `devices` +
->    `microphone_profiles` (for Recorders) and `compose.yml` dependencies
->    (for Tier 1 services like Processor).
-> 3. Seeding rows without a consumer is dead code.
->
-> **v0.9.0 is the right milestone** because the Web-Interface is the first
-> consumer: it reads `managed_services.enabled` to show toggle switches, and
-> writes `enabled=false` + publishes a nudge to disable Tier-2 services (ADR-0017).
->
-> **Scope:** `managed_services` tracks exclusively Tier-2 singletons (BirdNET,
-> BatDetect, Weather). Tier-1 services (Processor, Controller) are managed
-> externally via Compose and are NOT tracked in this table.
->
-> See: [ADR-0017](../../adr/0017-service-state-management.md) §2 "Desired State → Database"
-
-#### Tasks
-
-- [ ] Implement `ManagedServiceSeeder` in Controller seeder (if not already done in v0.8.0):
-  - Seed Tier 2 singletons: `birdnet` (`enabled=true`), later `batdetect`, `weather`
-  - Tier 1 services and multi-instance Tier 2 (Recorder) are NOT seeded here
-- [ ] Web-Interface: render `managed_services` rows as toggle switches in the admin panel
-- [ ] Web-Interface: toggle writes `enabled` to `managed_services` + `PUBLISH silvasonic:nudge "reconcile"`
-
-#### Tests
-
-- [ ] Unit: `test_managed_service_seeder` — seeds expected Tier-2 rows
-- [ ] Unit: `test_reconciler_reads_managed_services` — `enabled=false` → stops container
-- [ ] Integration: `test_controller_seeds_managed_services` — fresh DB contains expected rows
-- [ ] E2E: `test_toggle_service_via_ui` — Playwright: click toggle → service stops → heartbeat disappears
-
----
-
-## Phase 1: Service Architecture
-
-**Goal:** Create the `web` service following the Service Blueprint, replacing `web-mock`.
+**Goal:** Every ADR this milestone implements is accepted before its code lands.
 
 ### Tasks
 
-- [ ] Scaffold `services/web/` following the Service Blueprint
-- [ ] Migrate relevant `web-mock` functionality
-- [ ] FastAPI + Jinja2 + htmx + Alpine.js stack (ADR-0003)
-- [ ] TailwindCSS v4 + DaisyUI v5 build pipeline (ADR-0021)
-- [ ] SSE endpoint for real-time Redis status updates
-- [ ] Compose integration with Gateway dependency
+- [x] ADR-0033 (naming and global identifiers) accepted
+- [x] Accept or reject ADR-0037 (SQLite); on acceptance set ADR-0026 to *Superseded* and carry out the document changes ADR-0037 lists
+- [ ] ADR-0039: the migration tool (required by ADR-0033 before v1.0.0); it must rebuild tables, as SQLite's `ALTER TABLE` cannot change types or constraints (ADR-0037)
+- [ ] Reference hardware for v1.0.0 decided (Raspberry Pi 4 or 5, RAM), based on the v0.8.1 measurement
+- [ ] ADR-0040: storage classes and the hardware floor, superseding ADR-0015 (SD card allowed for 48 kHz stations, SSD required for ultrasonic recording)
 
 ---
 
-## Phase 2: Dashboard & Status
+## Phase 2: One Name per Concept (ADR-0033)
 
-**Goal:** Real-time service status dashboard using Read+Subscribe pattern.
+**Goal:** A field means the same in the database, the models, the API and the interface.
 
 ### Tasks
 
-- [ ] Dashboard page: service cards with live health status (Redis heartbeats)
-- [ ] System overview: disk usage, CPU, memory (from heartbeat `meta.resources`)
-- [ ] Recording statistics: total indexed, pending analysis, storage used
-- [ ] Service control toggles (requires `managed_services` seeding above)
+- [x] Schema, ORM models, services, microphone profiles and tests renamed; UUIDv7 identifiers
+- [x] System tests pass after the rename
+- [ ] Settings schema evolution: how a new or renamed field in `settings` reaches an existing station (covered by the migration ADR)
 
 ---
 
-## Phase 3: Configuration & Settings
+## Phase 3: SQLite Station Database (ADR-0037)
 
-**Goal:** Operator-facing configuration editor for `system_config` values.
+**Goal:** One database file in WAL mode instead of a database server.
 
 ### Tasks
 
-- [ ] Settings page: form-based editing of `system_config` JSONB values
-- [ ] Validation against Pydantic schemas before DB write
-- [ ] Nudge on save → Controller restarts affected service
-- [ ] User management: password change, RBAC (admin/viewer)
+- [x] `silvasonic.core.database` opens every connection with WAL, `synchronous=NORMAL`, foreign keys and a busy timeout; `STRICT` tables
+- [x] BirdNET claims a recording in a short transaction with a lease instead of a row lock held during inference
+- [ ] Hourly rollups per microphone and species, written with each detection
+- [ ] Janitor: batched retention of old detections, regular WAL checkpoint
+- [x] Remove the `database` container, its port and the `POSTGRES_*` variables
+- [x] Integration tests run against a temporary database file instead of a TimescaleDB container
 
 ---
 
-## Phase 4: Recording Browser & Audio
+## Phase 4: Versioned Migrations
 
-**Goal:** Browse, filter, and playback recorded audio segments.
+**Goal:** A station can be updated without losing data from here on.
 
 ### Tasks
 
-- [ ] Recording list with sort/filter (time, sensor, duration, status)
-- [ ] Audio player using WaveSurfer.js v7 (ADR-0021)
-- [ ] Spectrogram visualization
-- [ ] Detection overlay on waveform (using BirdNET results)
+- [ ] Migration tool integrated per its ADR
+- [ ] Baseline migration equals the v0.9.0 schema; the init script is retired or generated from it
+- [ ] A test that upgrades a database at the baseline to the current head
 
 ---
 
-## Phase 5: Visualization & Charts
+## Phase 5: Species Reference Data
 
-**Goal:** ECharts-based detection timeline and species statistics.
+**Goal:** Detected species carry a description and image for the interface.
 
 ### Tasks
 
-- [ ] Detection timeline: species activity over time
-- [ ] Species frequency chart: top-N detected species
-- [ ] Environmental correlation: detections vs. weather data (when available)
+- [ ] Wikipedia enrichment into the `species` row (implemented, not yet committed)
+- [ ] Run enrichment as its own background task instead of inside the analysis loop, so a station without internet never waits on it
+- [ ] Store author and licence of each image before the interface shows it
+
+---
+
+## Phase 6: Release
+
+### Tasks
+
+- [ ] `just ci` passes, including smoke and system tests
+- [ ] Repeat the v0.8.1 measurement on the same hardware with the same script: SQLite against PostgreSQL, RAM per container, fsync load on the SD card
+- [ ] Release Checklist (Feature Release)
+- [ ] Station: recreate the database once (last time), rebuild images
 
 ---
 
 ## Out of Scope (Deferred)
 
-| Item                                     | Target Version |
-| ---------------------------------------- | -------------- |
-| Multi-station central dashboard          | post-v1.0.0    |
-| Live Opus audio stream (Icecast embed)   | v1.1.0         |
-| Mobile-optimized responsive layout       | post-v1.0.0    |
-| Alert/notification system                | post-v1.0.0    |
-
-> **Note:** The `web-mock` service remains available as a dev/debug tool
-> alongside the production `web` service until v1.0.0 stabilization.
+| Item                                         | Target Version |
+| -------------------------------------------- | -------------- |
+| Station API on the new schema                | v0.10.0        |
+| Fleet server database (TimescaleDB fits there) | post-v1.0.0    |

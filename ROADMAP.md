@@ -1,6 +1,6 @@
 # Silvasonic — Roadmap
 
-> **Status:** v0.8.0 — BirdNET ✅
+> **Status:** v0.8.0 — BirdNET ✅ · in progress: v0.8.1 — Field Hardening
 
 ---
 
@@ -20,15 +20,24 @@
 | **v0.7.0** | Gateway (Caddy reverse proxy, HTTPS termination, internal routing)                                                                                                                                                                                                        | ✅ Done        |
 | **v0.7.1** | DB-Viewer — Database inspector, Data Export UI & Custom SQL Execution                                                                                                                                                                                                     | ✅ Done        |
 | **v0.8.0** | BirdNET — On-device avian species classification (Worker Pull via DB, ADR-0018)                                                                                                                                                                                           | ✅ Current     |
-| v0.9.0     | Web-Interface — Real-time status dashboard (Read+Subscribe), service control via DB + nudge                                                                                                                                                                               | 🔨 In Progress |
-| v0.10.0    | Marketing Landing Page (Astro) — Public-facing website hosted independently via GitHub Pages (Repo: `kyellsen/silvasonic.de`)                                                                                                                                             | ⏳ Planned     |
-| v1.0.0     | MVP — Production-ready field deployment, stabilization (Podman Quadlets, Ansible)                                                                                                                                                                                         | ⏳ Planned     |
+| v0.8.1     | Field Hardening (patch) — analysis gaps closed, true segment start times, clock-sync marker, flat Indexer cost, heartbeat grace period, OOM order under rootless Podman, internal ports off the network, per-installation Gateway login                                   | 🔨 In Progress |
+| v0.9.0     | Station Data Foundation — one name per concept and global identifiers (ADR-0033), SQLite station database (ADR-0037), versioned schema migrations from this release on                                                                                                     | ⏳ Planned     |
+| v0.10.0    | Station API — one versioned HTTP API as the only way clients read or change a station (ADR-0032), sessions, tokens and roles (ADR-0034), service status and logs without Redis (ADR-0041)                                                                                 | ⏳ Planned     |
+| v0.11.0    | Web-Interface — Svelte single-page app on the Station API (ADR-0036): dashboard, recordings, detections, settings, service control. Replaces `web-mock`                                                                                                                   | ⏳ Planned     |
+| v0.12.0    | Secure Access — HTTPS on every hostname (ADR-0035), remote access via Tailscale                                                                                                                                                                                           | ⏳ Planned     |
+| v0.13.0    | Supervisor & Quadlets — systemd runs every service: Quadlets for Tier 1, template units for Recorders and workers; recording starts without Controller and database (ADR-0042)                                                                                            | ⏳ Planned     |
+| v0.14.0    | Rollout & Updates — versioned images built by CI, station installation, update pulled by the station with backup, migration and rollback (ADR-0043)                                                                                                                       | ⏳ Planned     |
+| v1.0.0     | MVP — a complete station that runs locally and autonomously, reachable on site and via Tailscale: hardening, security and licensing review, field trial on the reference hardware, operator documentation                                                                 | ⏳ Planned     |
 | v1.0.0+    |                                                                                                                                                                                                                                                                           |               |
 | v1.1.0     | Icecast — Live Opus audio stream from Recorder to Web-Interface                                                                                                                                                                                                           | ⏳ Planned     |
 | v1.2.0     | Weather — Environmental data correlation                                                                                                                                                                                                                                  | ⏳ Planned     |
 | v1.3.0     | BatDetect — On-device bat species classification                                                                                                                                                                                                                          | ⏳ Planned     |
 | v1.4.0     | Metadata Export — Daily Parquet snapshot of recordings, detections, weather to cloud (Cloud-Sync extension, analytics-optimized)                                                                                                                                             | ⏳ Planned     |
-| v1.5.0     | Tailscale — Secure remote access, VPN mesh networking                                                                                                                                                                                                                     | ⏳ Planned     |
+| v1.5.0     | Metered Uplinks — what a station uploads over LTE or satellite, by data tier and connection class (ADR-0038)                                                                                                                                                              | ⏳ Planned     |
+
+> **Pending decisions:** v0.9.0 to v0.14.0 build on ADRs that are still *Proposed* (0032, 0034–0038) or not yet written (0039–0043). The first task of each milestone is to accept or reject its ADRs; a rejection re-plans the milestone, not the code. Measurements on real hardware in v0.8.1 and v0.9.0 feed the decisions of v0.13.0 and v0.14.0.
+>
+> **Moved:** Tailscale was planned for v1.5.0 and is now part of v0.12.0, because v1.0.0 is reachable remotely. The marketing website (formerly v0.10.0) is its own project, `kyellsen/silvasonic.de`, and no longer a station version.
 
 ---
 
@@ -45,9 +54,14 @@ For concrete, phase-level implementation tasks see:
 - **[Milestone v0.7.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_0.md)** — Gateway (Caddy reverse proxy, HTTPS termination, internal routing)
 - **[Milestone v0.7.1](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_7_1.md)** — DB-Viewer
 - **[Milestone v0.8.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_0.md)** — BirdNET (On-device Avian Inference)
-- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Web-Interface (Dashboard, Service Control, `modules` Seeding)
-- **[Milestone v0.10.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md)** — Marketing Landing Page (Astro) -> *`silvasonic.de` repo*
-- **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md)** — MVP Production Deployment (Quadlets, Ansible, Hardening)
+- **[Milestone v0.8.1](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_8_1.md)** — Field Hardening (patch release)
+- **[Milestone v0.9.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_9_0.md)** — Station Data Foundation (naming, SQLite, migrations)
+- **[Milestone v0.10.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_10_0.md)** — Station API (contract, authentication, roles)
+- **[Milestone v0.11.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_11_0.md)** — Web-Interface (Svelte single-page app)
+- **[Milestone v0.12.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_12_0.md)** — Secure Access (HTTPS, Tailscale)
+- **[Milestone v0.13.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_13_0.md)** — Supervisor & Quadlets (systemd units)
+- **[Milestone v0.14.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_0_14_0.md)** — Rollout & Updates
+- **[Milestone v1.0.0](https://github.com/kyellsen/silvasonic/blob/main/docs/development/milestones/milestone_1_0_0.md)** — MVP (hardening, security and licensing review, field trial, operator docs)
 
 ---
 
