@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import warnings
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -371,6 +372,22 @@ class TestGetExtraMeta:
             bare_service._check_clock()
 
         assert bare_service.get_extra_meta()["recording"]["clock_synchronized"] is False
+
+    def test_extra_meta_reports_effective_oom_score(
+        self, bare_service: "RecorderService", tmp_path: Path
+    ) -> None:
+        """The heartbeat shows the OOM score the kernel applies, not the requested one."""
+        proc_file = tmp_path / "oom_score_adj"
+        proc_file.write_text("200\n")  # rootless Podman clamped -999 to the session's value
+        with patch("silvasonic.recorder.__main__._OOM_SCORE_ADJ", proc_file):
+            assert bare_service.get_extra_meta()["recording"]["oom_score_adj"] == 200
+
+    def test_oom_score_unreadable_gives_none(self, tmp_path: Path) -> None:
+        """Without /proc the value is unknown, not an error."""
+        from silvasonic.recorder.__main__ import oom_score_adj
+
+        with patch("silvasonic.recorder.__main__._OOM_SCORE_ADJ", tmp_path / "missing"):
+            assert oom_score_adj() is None
 
 
 # ---------------------------------------------------------------------------

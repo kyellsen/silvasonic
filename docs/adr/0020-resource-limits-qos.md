@@ -45,11 +45,21 @@ The `oom_score_adj` parameter tells the Linux kernel which processes to kill fir
 | OOM Priority     | `oom_score_adj` | Services                    | Rationale                                             |
 | ---------------- | --------------- | --------------------------- | ----------------------------------------------------- |
 | **Protected**    | `-999`          | Recorder                    | Data Capture Integrity is paramount. Never kill.      |
-| **Default**      | `0`             | Tier 1 infrastructure       | Managed by Compose/Quadlets, default kernel behavior. |
+| **Infrastructure** | `300`         | Tier 1 infrastructure       | Restartable; must sit above the Recorder (§2.3).      |
 | **Expendable**   | `500`           | BirdNET, BatDetect, Weather | Optional features — safe to kill and restart.         |
 
 > [!IMPORTANT]
 > The Recorder MUST always set `oom_score_adj=-999`. This is the **last line of defense** for Data Capture Integrity. Even if resource limits are misconfigured or a bug causes a memory leak, the kernel will kill every other container before touching the Recorder.
+
+### 2.3. Rootless Podman Clamps the Recorder
+
+**AS-IS:** Lowering `oom_score_adj` below the value of the process that starts the container needs `CAP_SYS_RESOURCE`, which rootless Podman lacks. It clamps the request silently: the Recorder asks for `-999` and runs with the user session's own value, `200` under a desktop or systemd user session, `0` under SSH (measured with Podman 5.8). Raising is always allowed, so the hierarchy holds by keeping every other container *above* that floor:
+
+*   **Tier 1** containers start with `300`. podman-compose (1.6) ignores the compose key `oom_score_adj`, so `scripts/compose.py` passes `--podman-run-args=--oom-score-adj=300` to every compose run. Quadlets (v1.0.0) can pass the same flag with `PodmanArgs=`.
+*   **Analysis workers** keep `500`, set by the Controller.
+*   The **Recorder** still requests `-999`, which takes full effect under rootful Podman. It logs the value the kernel applies (`recorder.oom_score_adj`) and reports it in its heartbeat (`meta.recording.oom_score_adj`), so the protection is observed, not assumed.
+
+Rootless, the Recorder is therefore killed last among Silvasonic's containers, but no earlier than other host processes at the same floor.
 
 ## 3. Options Considered
 

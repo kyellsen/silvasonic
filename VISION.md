@@ -74,7 +74,7 @@
 3. **Reproducibility** — Fully containerized builds with pinned versions. A fresh deployment must produce identical behavior.
 4. **Transparency** — Structured logging (JSON), health metrics, and remote observability built in from day one.
 5. **Security by Default** — Container isolation, minimal attack surface.
-6. **Resource Isolation** — Every managed container runs with explicit memory and CPU limits (cgroups v2). The Recorder is protected from the OOM Killer via `oom_score_adj=-999`. Analysis workers are expendable; the recording stream is not. See [ADR-0020](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0020-resource-limits-qos.md).
+6. **Resource Isolation** — Every managed container runs with explicit memory and CPU limits (cgroups v2). The Recorder requests `oom_score_adj=-999`; rootless Podman clamps that to the user session's value, so every other container runs above it and the OOM Killer takes the Recorder last. Analysis workers are expendable; the recording stream is not. See [ADR-0020](https://github.com/kyellsen/silvasonic/blob/main/docs/adr/0020-resource-limits-qos.md).
 
 ---
 

@@ -17,6 +17,14 @@ from common import load_env_value, print_error, run_command
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# OOM priority of every container compose starts, i.e. Tier 1 (ADR-0020):
+# above the Recorder, below the analysis workers (500). Rootless Podman clamps
+# the Recorder's -999 to the user session's own value (0 or 200), so the
+# Recorder dies last only if everything else sits above that. podman-compose
+# ignores the compose key ``oom_score_adj``, so the value goes in as a podman
+# argument; ``podman-compose`` applies its run arguments to ``create`` too.
+TIER1_OOM_SCORE_ADJ = 300
+
 
 def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
     """Run a podman-compose command.
@@ -58,7 +66,8 @@ def compose(*args: str, check: bool = True, quiet: bool = False) -> None:
     if db_viewer_run:
         profiles.extend(["--profile", "db-viewer"])
 
-    cmd = [binary, *compose_files, *profiles, *args]
+    oom_args = [f"--podman-run-args=--oom-score-adj={TIER1_OOM_SCORE_ADJ}"]
+    cmd = [binary, *oom_args, *compose_files, *profiles, *args]
 
     if quiet:
         subprocess.run(

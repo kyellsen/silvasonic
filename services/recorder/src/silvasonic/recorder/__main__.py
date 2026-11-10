@@ -15,6 +15,7 @@ the subprocess lifecycle and atomic segment promotion.
 
 import asyncio
 import contextlib
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -27,6 +28,21 @@ from silvasonic.recorder.watchdog import RecordingWatchdog
 from silvasonic.recorder.workspace import ensure_workspace
 
 log = structlog.get_logger()
+
+_OOM_SCORE_ADJ = Path("/proc/self/oom_score_adj")
+
+
+def oom_score_adj() -> int | None:
+    """Return the OOM score adjustment this process really runs with (ADR-0020).
+
+    The Controller requests -999. Rootless Podman cannot go below the value
+    of the user session that runs it (often 0 or 200) and clamps silently,
+    so the effective value is reported instead of assumed.
+    """
+    try:
+        return int(_OOM_SCORE_ADJ.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 class RecorderService(SilvaService):
@@ -94,6 +110,7 @@ class RecorderService(SilvaService):
                 if self._watchdog
                 else None,
                 "clock_synchronized": self._clock_synced,
+                "oom_score_adj": oom_score_adj(),
             },
         }
         return meta
@@ -112,6 +129,7 @@ class RecorderService(SilvaService):
         recovery chain (Watchdog → Container Restart → Reconciliation) handles it.
         """
         self.health.update_status("recorder", True, "running")
+        log.info("recorder.oom_score_adj", value=oom_score_adj())
 
         # Step 1: Ensure workspace
         workspace = self._cfg.workspace_path
