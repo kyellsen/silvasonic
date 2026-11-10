@@ -31,8 +31,8 @@ class Recording(Base):
         Text, ForeignKey("devices.name"), nullable=False, index=True
     )
 
-    file_raw: Mapped[str] = mapped_column(Text, nullable=False)
-    file_processed: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_raw: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    file_processed: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
     duration: Mapped[float] = mapped_column(Float, nullable=False)
     sample_rate: Mapped[int] = mapped_column(Integer, nullable=False)

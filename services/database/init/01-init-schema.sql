@@ -115,6 +115,9 @@ CREATE TABLE recordings (
 );
 CREATE INDEX ix_recordings_time ON recordings (time);
 CREATE INDEX ix_recordings_sensor_id ON recordings (sensor_id);
+-- Indexer existence checks look recordings up by file path
+CREATE INDEX ix_recordings_file_raw ON recordings (file_raw);
+CREATE INDEX ix_recordings_file_processed ON recordings (file_processed);
 
 -- Worker Pull (ADR-0018): Analysis workers claim unprocessed recordings.
 -- Covers queries filtering on local_deleted, replacing standalone ix_recordings_local_deleted.

@@ -163,7 +163,12 @@ class TestIdempotency:
 
         # Mock session that says "row exists"
         mock_result = MagicMock()
-        mock_result.fetchone.return_value = (1,)  # Row exists
+        mock_result.all.return_value = [
+            (
+                "mic-01/data/raw/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav",
+                "mic-01/data/processed/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav",
+            )
+        ]
 
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
@@ -204,7 +209,7 @@ class TestDeviceExistenceCheck:
 
         # Mock: idempotency → not indexed
         idempotency_result = MagicMock()
-        idempotency_result.fetchone.return_value = None
+        idempotency_result.all.return_value = []
 
         # Mock: device check → NOT in DB
         device_result = MagicMock()
@@ -255,6 +260,103 @@ class TestSkipFiles:
 
 
 # ===================================================================
+# Cost per cycle (known-file cache, batched existence check)
+# ===================================================================
+
+
+def _exists_result(rows: list[tuple[str, str | None]]) -> MagicMock:
+    result = MagicMock()
+    result.all.return_value = rows
+    return result
+
+
+def _device_result(name: str | None) -> MagicMock:
+    result = MagicMock()
+    result.fetchone.return_value = (name,) if name is not None else None
+    return result
+
+
+@pytest.mark.unit
+class TestCyclesStayCheap:
+    """A cycle queries the DB only for files it has not seen before."""
+
+    async def test_known_files_cost_no_query(self, tmp_path: Path) -> None:
+        """Once indexed, a file is skipped without touching the DB."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav")
+
+        session = AsyncMock()
+        session.execute = AsyncMock(
+            side_effect=[_exists_result([]), _device_result("mic-01"), MagicMock()]
+        )
+        known: set[str] = set()
+
+        first = await indexer.index_recordings(session, tmp_path, known_files=known)
+        assert first.new == 1
+        assert known == {"mic-01/data/processed/2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"}
+
+        session.execute.reset_mock()
+        second = await indexer.index_recordings(session, tmp_path, known_files=known)
+
+        assert second.new == 0
+        assert second.skipped == 1
+        session.execute.assert_not_called()
+
+    async def test_existing_files_checked_in_one_query(self, tmp_path: Path) -> None:
+        """Many unseen files that the DB already holds cost a single query."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        rows: list[tuple[str, str | None]] = []
+        for seq in range(50):
+            name = f"2026-03-26T01-35-{seq:02d}Z_10s_1a2b3c4d_{seq:08d}.wav"
+            _create_wav(dev_dir / name)
+            rows.append((f"mic-01/data/raw/{name}", f"mic-01/data/processed/{name}"))
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=_exists_result(rows))
+        known: set[str] = set()
+
+        result = await indexer.index_recordings(session, tmp_path, known_files=known)
+
+        assert result.skipped == 50
+        assert session.execute.await_count == 1
+        assert len(known) == 50
+
+    async def test_deleted_files_leave_the_cache(self, tmp_path: Path) -> None:
+        """Files the Janitor removed are dropped, so the cache stays bounded."""
+        known = {"mic-01/data/processed/gone.wav"}
+        session = AsyncMock()
+
+        await indexer.index_recordings(session, tmp_path, known_files=known)
+
+        assert known == set()
+
+    async def test_failing_file_keeps_earlier_inserts(self, tmp_path: Path) -> None:
+        """Each insert commits on its own; a later failure rolls back only itself."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        good = "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav"
+        bad = "2026-03-26T01-35-10Z_10s_1a2b3c4d_00000001.wav"
+        _create_wav(dev_dir / good)
+        (dev_dir / bad).write_bytes(b"corrupt")
+
+        session = AsyncMock()
+        session.execute = AsyncMock(
+            side_effect=[_exists_result([]), _device_result("mic-01"), MagicMock()]
+        )
+        known: set[str] = set()
+
+        result = await indexer.index_recordings(session, tmp_path, known_files=known)
+
+        assert result.new == 1
+        assert result.errors == 1
+        session.commit.assert_awaited_once()
+        session.rollback.assert_awaited_once()
+        assert known == {f"mic-01/data/processed/{good}"}
+
+
+# ===================================================================
 # Realistic Production Naming (Name-Mismatch)
 # ===================================================================
 
@@ -297,7 +399,7 @@ class TestRealisticProductionNaming:
         # Mock DB responses:
         # 1. Idempotency check → not indexed yet
         idempotency_result = MagicMock()
-        idempotency_result.fetchone.return_value = None
+        idempotency_result.all.return_value = []
 
         # 2. Device lookup by workspace_name → returns the stable device name
         device_result = MagicMock()

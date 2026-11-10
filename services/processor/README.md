@@ -28,7 +28,7 @@
 *   **Database:** Real-time system configuration updates and metadata.
 
 ### Processing
-*   **Indexer:** Registers new audio files idempotently. Extracts metadata (duration, sample rate) and resolves matching raw file paths.
+*   **Indexer:** Registers new audio files idempotently. Extracts metadata (duration, sample rate) and resolves matching raw file paths. It remembers which files are indexed, so each poll queries the database once, in a batch, for the files it has not seen yet; the cost of a cycle does not grow with the segments the disk retains. Each new recording commits on its own.
 *   **Reconciliation Audit:** Heals split-brain states on startup (e.g., handling files blindly deleted during database outages).
 *   **Upload Worker:** Intelligently batches and compresses pending recordings to lossless formats (e.g., FLAC), then transparently pushes them to configured cloud storage targets via encrypted credentials.
 *   **Janitor:** Enforces retention thresholds by safely deleting files based on NVMe capacity and synchronization state.

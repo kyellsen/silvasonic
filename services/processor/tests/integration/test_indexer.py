@@ -148,6 +148,37 @@ class TestIndexerIntegration:
 
         await engine.dispose()
 
+    async def test_raw_only_reindex_and_path_indexes(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """Raw-only files are found again by file_raw; lookups use the path indexes."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with factory() as session:
+            await _seed_device(session, "rode-01")
+
+        _create_wav(
+            tmp_path / "rode-01" / "data" / "raw" / "2026-01-01T05-00-00Z_10s_1a2b3c4d_00000000.wav"
+        )
+
+        async with factory() as session:
+            r1 = await indexer.index_recordings(session, tmp_path)
+        async with factory() as session:
+            r2 = await indexer.index_recordings(session, tmp_path)
+
+        assert (r1.new, r2.new, r2.skipped) == (1, 0, 1)
+
+        async with factory() as session:
+            rows = await session.execute(
+                text("SELECT indexname FROM pg_indexes WHERE tablename = 'recordings'")
+            )
+            names = {row[0] for row in rows}
+        assert {"ix_recordings_file_raw", "ix_recordings_file_processed"} <= names
+
+        await engine.dispose()
+
     async def test_multiple_sensors_indexed(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:

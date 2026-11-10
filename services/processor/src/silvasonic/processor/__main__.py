@@ -136,12 +136,21 @@ class ProcessorService(SilvaService):
             log.exception("processor.reconciliation_failed")
             self.health.update_status("indexer", False, "reconciliation_failed")
 
-    async def _run_indexer_cycle(self, errored_files: set[str], stats: "IndexerStats") -> None:
+    async def _run_indexer_cycle(
+        self,
+        errored_files: set[str],
+        stats: "IndexerStats",
+        known_files: set[str] | None = None,
+    ) -> None:
         """Run one cycle of the Indexer."""
         try:
             async with get_session() as session:
                 result = await indexer.index_recordings(
-                    session, self._recordings_dir, errored_files=errored_files, stats=stats
+                    session,
+                    self._recordings_dir,
+                    errored_files=errored_files,
+                    known_files=known_files,
+                    stats=stats,
                 )
             if result.new > 0:
                 self._total_indexed += result.new
@@ -243,6 +252,8 @@ class ProcessorService(SilvaService):
         # they get one fresh attempt — intentional, since the segment file could
         # theoretically have been replaced on disk.
         errored_files: set[str] = set()
+        # Files known to be indexed: each cycle queries the DB only for new ones
+        known_files: set[str] = set()
 
         while not self._shutdown_event.is_set():
             # --- Snapshot Refresh: reload processor tuning parameters (ADR-0031) ---
@@ -253,7 +264,7 @@ class ProcessorService(SilvaService):
             )
 
             # --- Indexer (every cycle) ---
-            await self._run_indexer_cycle(errored_files, self._indexer_stats)
+            await self._run_indexer_cycle(errored_files, self._indexer_stats, known_files)
             self._indexer_stats.maybe_emit_summary()
 
             # --- Janitor (every N cycles) ---

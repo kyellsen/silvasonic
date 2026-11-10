@@ -9,6 +9,11 @@ Idempotent: checks for existing entries by ``file_processed`` (dual-stream)
 or ``file_raw`` (raw-only) before insert.
 Never touches ``.buffer/`` directories (only promoted, complete segments).
 
+Cost per cycle: the caller keeps the set of files already known to be
+indexed, so a cycle sends one batched existence query for the files it has
+not seen yet instead of one query per file on disk.  Without that set the
+work would grow with every segment the disk retains.
+
 Supports both dual-stream devices (raw + processed) and raw-only devices
 where ``processed_enabled=false`` in the microphone profile.
 """
@@ -45,6 +50,10 @@ class WavMeta:
     duration: float
     sample_rate: int
     filesize: int
+
+
+# Upper bound for the paths sent in one existence query.
+_EXISTS_BATCH_SIZE = 1000
 
 
 @dataclass
@@ -181,11 +190,36 @@ def _relative_path(wav_path: Path, recordings_dir: Path) -> str:
     return str(wav_path.relative_to(recordings_dir))
 
 
+async def _already_indexed(session: AsyncSession, rel_paths: list[str]) -> set[str]:
+    """Return the paths among ``rel_paths`` that the recordings table already holds.
+
+    A path counts as indexed when it equals a row's ``file_raw`` or
+    ``file_processed``.  One query per ``_EXISTS_BATCH_SIZE`` paths, served
+    by the indexes on both columns.
+    """
+    found: set[str] = set()
+    for i in range(0, len(rel_paths), _EXISTS_BATCH_SIZE):
+        rows = await session.execute(
+            text(
+                "SELECT file_raw, file_processed FROM recordings "
+                "WHERE file_raw = ANY(CAST(:paths AS TEXT[])) "
+                "OR file_processed = ANY(CAST(:paths AS TEXT[]))"
+            ),
+            {"paths": rel_paths[i : i + _EXISTS_BATCH_SIZE]},
+        )
+        for file_raw, file_processed in rows.all():
+            found.add(file_raw)
+            if file_processed is not None:
+                found.add(file_processed)
+    return found
+
+
 async def index_recordings(
     session: AsyncSession,
     recordings_dir: Path,
     *,
     errored_files: set[str] | None = None,
+    known_files: set[str] | None = None,
     stats: IndexerStats | None = None,
 ) -> IndexResult:
     """Scan workspace and register new WAV files in the recordings table.
@@ -196,10 +230,16 @@ async def index_recordings(
     Uses ``devices.workspace_name`` to resolve the filesystem directory
     name to the device's stable identifier (``devices.name``).
 
+    Each new recording is committed on its own, so a failing file never
+    rolls back the ones indexed before it in the same cycle.
+
     Args:
         session: Active DB session
         recordings_dir: Base directory for the workspace
         errored_files: Set of relative paths that failed extraction and should be skipped
+        known_files: Relative paths known to be indexed, kept by the caller
+            across cycles.  Updated in place: committed files are added and
+            files gone from disk are dropped.  ``None`` checks every file.
         stats: Two-Phase Logging stats object
 
     Returns:
@@ -207,49 +247,53 @@ async def index_recordings(
     """
     result = IndexResult()
     _errored = errored_files or set()
+    _known = known_files if known_files is not None else set()
     wav_files = scan_workspace(recordings_dir)
+    rel_by_path = {p: _relative_path(p, recordings_dir) for p in wav_files}
 
-    for wav_path in wav_files:
+    # Forget files the Janitor removed, so the set stays bounded by the disk
+    _known.intersection_update(rel_by_path.values())
+
+    candidates: list[Path] = []
+    for wav_path, rel_path in rel_by_path.items():
+        # Skip files already indexed, or failed extraction in a previous cycle
+        if rel_path in _known or rel_path in _errored:
+            result.skipped += 1
+            if stats:
+                stats.record_skipped()
+            continue
+        candidates.append(wav_path)
+
+    if not candidates:
+        return result
+
+    in_db = await _already_indexed(session, [rel_by_path[p] for p in candidates])
+    device_names: dict[str, str | None] = {}
+
+    for wav_path in candidates:
         is_raw = _is_raw_path(wav_path)
-        rel_path = _relative_path(wav_path, recordings_dir)
+        rel_path = rel_by_path[wav_path]
 
-        # Skip files that failed extraction in a previous cycle
-        if rel_path in _errored:
+        if rel_path in in_db:
+            _known.add(rel_path)
             result.skipped += 1
             if stats:
                 stats.record_skipped()
             continue
 
         try:
-            # Idempotency check — different column depending on stream type
-            if is_raw:
-                exists = await session.execute(
-                    text("SELECT 1 FROM recordings WHERE file_raw = :fr LIMIT 1"),
-                    {"fr": rel_path},
-                )
-            else:
-                exists = await session.execute(
-                    text("SELECT 1 FROM recordings WHERE file_processed = :fp LIMIT 1"),
-                    {"fp": rel_path},
-                )
-            if exists.fetchone() is not None:
-                result.skipped += 1
-                if stats:
-                    stats.record_skipped()
-                continue
-
-            # Extract metadata
-            meta = extract_metadata(wav_path)
-            timestamp = parse_timestamp(wav_path.name)
             workspace_dir = resolve_sensor_id(wav_path, recordings_dir)
 
             # Resolve device: look up by workspace_name (cross-service contract)
-            device_row = await session.execute(
-                text("SELECT name FROM devices WHERE workspace_name = :ws_name LIMIT 1"),
-                {"ws_name": workspace_dir},
-            )
-            row = device_row.fetchone()
-            if row is None:
+            if workspace_dir not in device_names:
+                device_row = await session.execute(
+                    text("SELECT name FROM devices WHERE workspace_name = :ws_name LIMIT 1"),
+                    {"ws_name": workspace_dir},
+                )
+                row = device_row.fetchone()
+                device_names[workspace_dir] = row[0] if row is not None else None
+            device_name = device_names[workspace_dir]
+            if device_name is None:
                 result.skipped += 1
                 if stats:
                     stats.record_skipped()
@@ -260,8 +304,9 @@ async def index_recordings(
                 )
                 continue
 
-            # Use the actual device name (stable_device_id) for the FK
-            device_name = row[0]
+            # Extract metadata
+            meta = extract_metadata(wav_path)
+            timestamp = parse_timestamp(wav_path.name)
 
             # Resolve file paths for both streams
             if is_raw:
@@ -300,6 +345,8 @@ async def index_recordings(
                     "filesize_processed": filesize_processed,
                 },
             )
+            await session.commit()
+            _known.add(rel_path)
             result.new += 1
             if stats:
                 stats.record_indexed(
@@ -323,8 +370,5 @@ async def index_recordings(
                 stats.record_error(rel_path)
             else:
                 log.exception("indexer.error", file=rel_path)
-
-    if result.new > 0:
-        await session.commit()
 
     return result
