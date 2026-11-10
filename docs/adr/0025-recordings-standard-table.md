@@ -25,10 +25,10 @@ A single microphone at 30-second segments produces ~2,880 rows/day. With 2 micro
 
 ### Catalog, Not Time-Series
 
-Unlike `weather` and `detections` (which are true time-series with high insert rates and range-scan queries), `recordings` is a **status-tracking catalog**. Its primary query patterns are:
+Unlike `weather_observations` and `detections` (which are true time-series with high insert rates and range-scan queries), `recordings` is a **status-tracking catalog**. Its primary query patterns are:
 
-*   Worker Pull: `SELECT ... WHERE analysis_state->>'worker' IS NULL AND local_deleted = false ... FOR UPDATE SKIP LOCKED` (ADR-0018)
-*   Janitor: `SELECT ... WHERE uploaded = true AND local_deleted = false ORDER BY time ASC`
+*   Worker Pull: `SELECT ... WHERE NOT analysis_state ? '<analyzer>' AND deleted_at IS NULL ... FOR UPDATE SKIP LOCKED` (ADR-0018)
+*   Janitor: `SELECT ... WHERE uploaded_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at ASC`
 *   Dashboard: count/status aggregations
 
 These are classic OLTP queries that benefit from B-Tree indices, not chunk-based partitioning.
@@ -43,8 +43,8 @@ The `FOR UPDATE SKIP LOCKED` pattern (ADR-0018) works optimally on standard tabl
 
 ```sql
 CREATE INDEX ix_recordings_analysis_pending
-ON recordings (time ASC)
-WHERE local_deleted = false;
+ON recordings (started_at ASC)
+WHERE deleted_at IS NULL;
 ```
 
 ## 3. Options Considered
@@ -61,5 +61,5 @@ WHERE local_deleted = false;
     *   No TimescaleDB-specific complexity or workarounds.
     *   Schema remains simple and auditable.
 *   **Negative:**
-    *   No automatic chunk-based compression or retention. If the table grows beyond expectations (unlikely given the Janitor's `local_deleted` lifecycle), manual `VACUUM` tuning or table partitioning can be added later.
+    *   No automatic chunk-based compression or retention. If the table grows beyond expectations (unlikely given the Janitor's `deleted_at` lifecycle), manual `VACUUM` tuning or table partitioning can be added later.
     *   No continuous aggregates on `recordings`. Dashboard statistics must use standard SQL aggregation (sufficient for ~2M rows/year).

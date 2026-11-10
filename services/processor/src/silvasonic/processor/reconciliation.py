@@ -1,10 +1,11 @@
 """Reconciliation Audit — Split-Brain healing on Processor startup.
 
 Runs once before the Indexer polling loop begins. Queries all ``recordings``
-rows where ``local_deleted = false`` and verifies the referenced
-``file_processed`` exists on disk.  Missing files are marked
-``local_deleted = true`` to heal Split-Brain state caused by Panic-Mode
-blind deletion (Phase 4) during DB outages.
+rows where ``deleted_at IS NULL`` and verifies the referenced
+``processed_path`` exists on disk.  Rows whose file is gone get
+``deleted_at = now()`` and ``deletion_reason = 'missing'`` to heal
+Split-Brain state caused by Panic-Mode blind deletion (Phase 4) during
+DB outages.
 """
 
 from __future__ import annotations
@@ -17,6 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
 
+#: ``recordings.deletion_reason`` for a file found missing on disk.
+DELETION_REASON_MISSING = "missing"
+
 
 async def run_audit(
     session: AsyncSession,
@@ -24,10 +28,10 @@ async def run_audit(
 ) -> int:
     """Reconcile database state with filesystem.
 
-    For each recording where ``local_deleted = false``, verify that the
-    primary audio file exists on disk.  For dual-stream devices this is
-    ``file_processed``; for raw-only devices it is ``file_raw``.
-    If the file is missing, set ``local_deleted = true``.
+    For each recording where ``deleted_at IS NULL``, verify that the
+    primary audio file exists on disk.  For dual-stream microphones this is
+    ``processed_path``; for raw-only microphones it is ``raw_path``.
+    If the file is missing, set ``deleted_at`` and ``deletion_reason = 'missing'``.
 
     Args:
         session: Active async DB session.
@@ -38,33 +42,36 @@ async def run_audit(
     """
     result = await session.execute(
         text("""
-            SELECT id, file_processed, file_raw
+            SELECT id, processed_path, raw_path
             FROM recordings
-            WHERE local_deleted = false
+            WHERE deleted_at IS NULL
         """)
     )
     rows = result.fetchall()
 
     reconciled = 0
-    for row_id, file_processed, file_raw in rows:
-        if file_processed is None and file_raw is None:
+    for row_id, processed_path, raw_path in rows:
+        if processed_path is None and raw_path is None:
             continue
 
         missing_file = None
-        if file_processed is not None and not (recordings_dir / file_processed).exists():
-            missing_file = file_processed
-        elif file_raw is not None and not (recordings_dir / file_raw).exists():
-            missing_file = file_raw
+        if processed_path is not None and not (recordings_dir / processed_path).exists():
+            missing_file = processed_path
+        elif raw_path is not None and not (recordings_dir / raw_path).exists():
+            missing_file = raw_path
 
         if missing_file is not None:
             await session.execute(
-                text("UPDATE recordings SET local_deleted = true WHERE id = :id"),
-                {"id": row_id},
+                text(
+                    "UPDATE recordings SET deleted_at = now(), deletion_reason = :reason "
+                    "WHERE id = :id"
+                ),
+                {"id": row_id, "reason": DELETION_REASON_MISSING},
             )
             reconciled += 1
             log.warning(
                 "reconciliation.file_missing",
-                recording_id=row_id,
+                recording_id=str(row_id),
                 file=missing_file,
                 reason="reconciliation",
             )

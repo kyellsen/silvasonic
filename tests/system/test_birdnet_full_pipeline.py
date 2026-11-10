@@ -25,7 +25,7 @@ from ._system_helpers import (
     psql_query,
     require_birdnet_image,
     require_processor_image,
-    seed_processor_config,
+    seed_storage_settings,
     wait_for_db_rows,
     wait_for_detection,
     wait_for_wavs,
@@ -59,20 +59,20 @@ class TestBirdNETFullPipeline:
         # -----------------------------------------------------
         # Seed configurations
         # -----------------------------------------------------
-        seed_processor_config(db_name)
+        seed_storage_settings(db_name)
 
-        # Seed BirdNET config into system_config
+        # Seed BirdNET config into the settings table
         birdnet_cfg = {
             "processing_order": "newest_first",
-            "overlap": 0.0,
-            "confidence_threshold": 0.0,  # Zero guarantees pipeline throughput
+            "overlap_s": 0.0,
+            "min_confidence": 0.0,  # Zero guarantees pipeline throughput
         }
         cfg_json = json.dumps(birdnet_cfg)
         psql_query(
             db_name,
-            f"""INSERT INTO system_config (key, value)
+            f"""INSERT INTO settings (section, value)
                VALUES ('birdnet', '{cfg_json}'::jsonb)
-               ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+               ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value""",
         )
 
         test_device = "mic-aaa"
@@ -122,7 +122,8 @@ class TestBirdNETFullPipeline:
                         '{"stream": {"segment_duration_s": 5, '
                         '"raw_enabled": false, "processed_enabled": true}, '
                         '"processing": {"gain_db": 0.0}, '
-                        '"audio": {"sample_rate": 48000, "channels": 1, "format": "S16LE"}}'
+                        '"audio": {"sample_rate_hz": 48000, "channels": 1, '
+                        '"sample_format": "S16LE"}}'
                     ),
                 },
                 volumes=[

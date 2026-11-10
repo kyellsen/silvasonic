@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import uuid
 from unittest.mock import patch
 
 import pytest
 from silvasonic.birdnet.birdnet_stats import BirdnetStats
+
+
+def _rid(n: int) -> uuid.UUID:
+    """A deterministic recording UUID for test number *n*."""
+    return uuid.UUID(int=n)
 
 
 @pytest.mark.unit
@@ -12,30 +18,30 @@ class TestBirdnetStatsStartupPhase:
         stats = BirdnetStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_analyzed(100, 5.5, 3)
-            stats.record_analyzed(101, 2.1, 0)
+            stats.record_analyzed(_rid(100), 5.5, 3)
+            stats.record_analyzed(_rid(101), 2.1, 0)
 
         info_calls = [c for c in mock_log.info.call_args_list if c[0][0] == "birdnet.analyzed"]
         assert len(info_calls) == 2
 
-        assert info_calls[0].kwargs["recording_id"] == 100
+        assert info_calls[0].kwargs["recording_id"] == _rid(100)
         assert info_calls[0].kwargs["duration_s"] == 5.5
         assert info_calls[0].kwargs["hits"] == 3
 
-        assert info_calls[1].kwargs["recording_id"] == 101
+        assert info_calls[1].kwargs["recording_id"] == _rid(101)
         assert info_calls[1].kwargs["hits"] == 0
 
     def test_error_tracking(self) -> None:
         stats = BirdnetStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_error(200, RuntimeError("model fail"))
+            stats.record_error(_rid(200), RuntimeError("model fail"))
 
         error_calls = [
             c for c in mock_log.error.call_args_list if c[0][0] == "birdnet.inference_error"
         ]
         assert len(error_calls) == 1
-        assert error_calls[0].kwargs["recording_id"] == 200
+        assert error_calls[0].kwargs["recording_id"] == _rid(200)
         assert error_calls[0].kwargs["error"] == "model fail"
         assert stats.total_errors == 1
 
@@ -49,7 +55,7 @@ class TestBirdnetStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=9999.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_analyzed(1, 1.0, 1)
+            stats.record_analyzed(_rid(1), 1.0, 1)
 
         analyzed_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "birdnet.analyzed"]
         assert len(analyzed_logs) == 0
@@ -70,8 +76,8 @@ class TestBirdnetStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_analyzed(1, 2.5, 4)
-            stats.record_error(2, ValueError("bad audio"))
+            stats.record_analyzed(_rid(1), 2.5, 4)
+            stats.record_error(_rid(2), ValueError("bad audio"))
             stats.maybe_emit_summary()
 
         summary_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "birdnet.summary"]
@@ -101,11 +107,11 @@ class TestBirdnetStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_analyzed(1, 1.0, 2)
+            stats.record_analyzed(_rid(1), 1.0, 2)
             stats.maybe_emit_summary()
 
-            stats.record_analyzed(2, 1.0, 5)
-            stats.record_analyzed(3, 1.0, 3)
+            stats.record_analyzed(_rid(2), 1.0, 5)
+            stats.record_analyzed(_rid(3), 1.0, 3)
             stats.maybe_emit_summary()
 
         summary_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "birdnet.summary"]
@@ -124,8 +130,8 @@ class TestBirdnetStatsFinalSummary:
         stats = BirdnetStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.birdnet.birdnet_stats.log") as mock_log:
-            stats.record_analyzed(1, 4.5, 2)
-            stats.record_error(2, Exception("err"))
+            stats.record_analyzed(_rid(1), 4.5, 2)
+            stats.record_error(_rid(2), Exception("err"))
             stats.emit_final_summary()
 
         final_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "birdnet.shutdown"]

@@ -76,7 +76,7 @@
 | `SILVASONIC_RECORDER_PORT`          | Health endpoint port                               | `9500`                                                                 |
 | `SILVASONIC_RECORDER_DEVICE`        | ALSA device identifier                             | `hw:1,0`                                                               |
 | `SILVASONIC_RECORDER_PROFILE_SLUG`  | Microphone Profile slug                            | `ultramic_384_evo`                                                     |
-| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile configuration parameters              | `{"audio":{"sample_rate":384000,...}}`                                 |
+| `SILVASONIC_RECORDER_CONFIG_JSON`   | Full profile configuration parameters              | `{"audio":{"sample_rate_hz":384000,...}}`                               |
 | `SILVASONIC_ICECAST_URL`            | Target for Opus Stream                             | `icecast://user:pass@host:port/mount`                                  |
 | `/dev/snd`                          | ALSA audio device access                           | (device mapping)                                                       |
 | Workspace mount                     | NVMe recording workspace (instance-isolated)       | `${SILVASONIC_WORKSPACE_PATH}/recorder/{workspace_dir}:/app/workspace:z` |

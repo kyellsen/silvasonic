@@ -28,7 +28,7 @@
 ### Inputs
 
 *   **Audio Files:** High sample-rate **Raw** recordings (384 kHz+) from the Recorder workspace. Only recordings from microphones with ultrasonic capability are processed — standard 48 kHz recordings are skipped. Mounted **read-only** (Consumer Principle, ADR-0009).
-*   **Database Queue:** Polls the `recordings` table for unanalyzed files via Worker Pull Pattern (`SELECT … FOR UPDATE SKIP LOCKED`, ADR-0018). Filters by `sample_rate >= 192000` to ensure only ultrasonic-capable recordings are processed.
+*   **Database Queue:** Polls the `recordings` table for unanalyzed files via Worker Pull Pattern (`SELECT … FOR UPDATE SKIP LOCKED`, ADR-0018). Filters by `sample_rate_hz >= 192000` to ensure only ultrasonic-capable recordings are processed.
 
 ### Processing
 
@@ -37,7 +37,7 @@
 
 ### Outputs
 
-*   **Database Rows:** Inserts classification results into the `detections` table (species label, confidence score, time range, common name).
+*   **Database Rows:** Inserts classification results into the `detections` table (analyzer label, species, confidence score, time range).
 *   **Audio Clips:** Extracts short WAV clips (detection range ± padding) from raw recordings and saves them to the BatDetect workspace (`batdetect/clips/`). The relative file path is stored in `detections.clip_path`.
 *   **Redis Events:** Publishes detection notifications (best-effort, fire-and-forget).
 
@@ -71,19 +71,17 @@
 
 ### Dynamic Configuration (Database)
 
-Runtime-tunable settings stored in the `system_config` table under key `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup. The container lifecycle toggle (`enabled`) is managed via the `managed_services` table (ADR-0029), not via `system_config`.
+Runtime-tunable settings stored in the `settings` table under section `batdetect` (ADR-0023). As an **Immutable Container** (ADR-0019), BatDetect reads these settings *once* on startup. The container lifecycle toggle (`enabled`) is managed via the `modules` table (ADR-0029), not via `settings`.
 
 | Setting                | Default  | Description                                                  |
 | :--------------------- | :------- | :----------------------------------------------------------- |
-| `confidence_threshold` | `0.25`   | Minimum confidence for species detection                     |
-| `min_sample_rate`      | `192000` | Minimum recording sample rate to process (Hz)                |
-| `schedule_start_hour`  | `19`     | Hour (local time) when analysis window begins (dusk)         |
-| `schedule_end_hour`    | `7`      | Hour (local time) when analysis window ends (dawn)           |
-| `schedule_enabled`     | `true`   | If true, only recordings within the time window are analyzed |
+| `min_confidence`       | `0.25`   | Minimum confidence for species detection                     |
+| `min_sample_rate_hz`   | `192000` | Minimum recording sample rate to process (Hz)                |
+| `window`               | `{start: "19:00", end: "07:00"}` | Daily analysis window (dusk to dawn); `null` analyses every recording |
 
 **Update Mechanism (State Reconciliation):**
 1. User changes settings in Web UI.
-2. Frontend updates `system_config` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
+2. Frontend updates `settings` in DB and publishes a `silvasonic:nudge` event to the Controller (per ADR-0017).
 3. The Controller restarts the BatDetect container.
 4. BatDetect reads the new settings from the database upon startup.
 

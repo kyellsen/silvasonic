@@ -1,4 +1,4 @@
-"""Unit tests for silvasonic.core.schemas (devices + cloud sync)."""
+"""Unit tests for silvasonic.core.schemas (microphones, analysis, species, cloud sync)."""
 
 import pytest
 from pydantic import ValidationError
@@ -11,7 +11,7 @@ from silvasonic.core.schemas.cloud_sync import (
     validate_rclone_config,
 )
 from silvasonic.core.schemas.detections import BirdnetDetectionDetails
-from silvasonic.core.schemas.devices import (
+from silvasonic.core.schemas.microphones import (
     AudioConfig,
     MicrophoneProfile,
     ProcessingConfig,
@@ -19,7 +19,7 @@ from silvasonic.core.schemas.devices import (
 )
 
 # ---------------------------------------------------------------------------
-# Device Schemas
+# Microphone Profile Schemas
 # ---------------------------------------------------------------------------
 
 
@@ -28,22 +28,23 @@ class TestAudioConfig:
     """Tests for AudioConfig schema."""
 
     def test_valid_config(self) -> None:
-        """Constructs with a required sample_rate."""
-        cfg = AudioConfig(sample_rate=48000)
-        assert cfg.sample_rate == 48000
+        """Constructs with a required sample_rate_hz."""
+        cfg = AudioConfig(sample_rate_hz=48000)
+        assert cfg.sample_rate_hz == 48000
         assert cfg.channels == 1
-        assert cfg.format == "S16LE"
-        assert cfg.match_pattern is None
+        assert cfg.sample_format == "S16LE"
+        assert cfg.match is None
+        assert "match_pattern" not in AudioConfig.model_fields
 
     def test_missing_sample_rate_raises(self) -> None:
-        """sample_rate is required — omitting it raises ValidationError."""
+        """sample_rate_hz is required — omitting it raises ValidationError."""
         with pytest.raises(ValidationError):
             AudioConfig()  # ty: ignore[missing-argument]
 
     def test_custom_format(self) -> None:
-        """Accepts valid literal format values."""
-        cfg = AudioConfig(sample_rate=384000, format="S24LE")
-        assert cfg.format == "S24LE"
+        """Accepts valid literal sample_format values."""
+        cfg = AudioConfig(sample_rate_hz=384000, sample_format="S24LE")
+        assert cfg.sample_format == "S24LE"
 
 
 @pytest.mark.unit
@@ -54,12 +55,12 @@ class TestProcessingConfig:
         """All fields have sensible defaults."""
         cfg = ProcessingConfig()
         assert cfg.gain_db == 0.0
-        assert cfg.chunk_size == 4096
+        assert cfg.chunk_frames == 4096
         assert cfg.highpass_filter_hz is None
 
     def test_override(self) -> None:
         """Custom values are accepted."""
-        cfg = ProcessingConfig(gain_db=3.5, chunk_size=2048, highpass_filter_hz=200.0)
+        cfg = ProcessingConfig(gain_db=3.5, chunk_frames=2048, highpass_filter_hz=200.0)
         assert cfg.gain_db == 3.5
         assert cfg.highpass_filter_hz == 200.0
 
@@ -89,10 +90,11 @@ class TestMicrophoneProfile:
             description="High-end ultrasonic mic",
             manufacturer="Dodotronic",
             model="Ultramic 384K Evo",
-            audio=AudioConfig(sample_rate=384000, format="S24LE"),
+            audio=AudioConfig(sample_rate_hz=384000, sample_format="S24LE"),
         )
         assert profile.slug == "ultramic_384_evo"
-        assert profile.audio.sample_rate == 384000
+        assert profile.audio.sample_rate_hz == 384000
+        assert profile.schema_version == "2.0"
         assert profile.processing.gain_db == 0.0  # default
         assert profile.stream.raw_enabled is True  # default
 
@@ -106,29 +108,29 @@ class TestMicrophoneProfile:
         profile = MicrophoneProfile(
             slug="test",
             name="Test Mic",
-            audio=AudioConfig(sample_rate=48000),
+            audio=AudioConfig(sample_rate_hz=48000),
         )
         d = profile.model_dump()
         assert d["slug"] == "test"
-        assert d["audio"]["sample_rate"] == 48000
+        assert d["audio"]["sample_rate_hz"] == 48000
 
     def test_raw_only_profile_at_48k_is_valid(self) -> None:
         """A 48 kHz microphone may skip the processed stream (ADR-0011)."""
         profile = MicrophoneProfile(
             slug="rode",
             name="Rode",
-            audio=AudioConfig(sample_rate=48000),
+            audio=AudioConfig(sample_rate_hz=48000),
             stream=StreamConfig(processed_enabled=False),
         )
         assert profile.stream.processed_enabled is False
 
     def test_raw_only_profile_off_48k_raises(self) -> None:
         """Without a processed stream, analysis would read 44.1 kHz audio as 48 kHz."""
-        with pytest.raises(ValidationError, match=r"requires audio\.sample_rate 48000"):
+        with pytest.raises(ValidationError, match=r"requires audio\.sample_rate_hz 48000"):
             MicrophoneProfile(
                 slug="cd",
                 name="CD-rate mic",
-                audio=AudioConfig(sample_rate=44100),
+                audio=AudioConfig(sample_rate_hz=44100),
                 stream=StreamConfig(processed_enabled=False),
             )
 
@@ -241,8 +243,8 @@ class TestBirdnetDetectionDetails:
         payload = {
             "model_version": "v2.4",
             "sensitivity": 1.0,
-            "overlap": 0.0,
-            "confidence_threshold": 0.5,
+            "overlap_s": 0.0,
+            "min_confidence": 0.5,
             "location_filter_active": True,
             "lat": 51.5,
             "lon": 10.5,
@@ -264,8 +266,8 @@ class TestBirdnetDetectionDetails:
         payload = {
             "model_version": "v2.4",
             "sensitivity": 1.0,
-            "overlap": 0.0,
-            "confidence_threshold": 0.5,
+            "overlap_s": 0.0,
+            "min_confidence": 0.5,
             "location_filter_active": False,
         }
         det = BirdnetDetectionDetails.model_validate(payload)

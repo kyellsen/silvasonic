@@ -1,7 +1,7 @@
-"""Integration tests: DeviceScanner + upsert_device ↔ real DB.
+"""Integration tests: DeviceScanner + upsert_microphone ↔ real DB.
 
 Verifies that DeviceScanner can read ``/proc/asound/cards`` on the host
-and that ``upsert_device`` correctly persists device rows into PostgreSQL.
+and that ``upsert_microphone`` correctly persists microphone rows into PostgreSQL.
 
 Tests are **skipped** when:
 - ``/proc/asound/cards`` does not exist (CI / non-Linux)
@@ -15,11 +15,11 @@ import pathlib
 from pathlib import Path
 
 import pytest
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import (
     DeviceInfo,
     DeviceScanner,
 )
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -68,13 +68,13 @@ class TestDeviceScannerHostRead:
 
 
 class TestUpsertDeviceDB:
-    """Verify upsert_device writes to real PostgreSQL."""
+    """Verify upsert_microphone writes to real PostgreSQL."""
 
     async def test_upsert_inserts_new_device(
         self,
         postgres_container: PostgresContainer,
     ) -> None:
-        """upsert_device creates a new device row in the DB."""
+        """upsert_microphone creates a new microphone row in the DB."""
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -89,25 +89,25 @@ class TestUpsertDeviceDB:
         )
 
         async with session_factory() as session:
-            await upsert_device(device_info, session)
+            await upsert_microphone(device_info, session)
             await session.commit()
 
         # Verify in the DB
         async with session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT name, status, enrollment_status, model "
-                    "FROM devices WHERE name = 'dead-beef-INT-TEST-001'"
+                    "SELECT hardware_id, connection_state, enrollment_state, model "
+                    "FROM microphones WHERE hardware_id = 'dead-beef-INT-TEST-001'"
                 )
             )
             row = result.one_or_none()
 
         await engine.dispose()
 
-        assert row is not None, "Device not found in DB after upsert"
-        assert row[0] == "dead-beef-INT-TEST-001"  # name
-        assert row[1] == "online"  # status
-        assert row[2] == "pending"  # enrollment_status
+        assert row is not None, "Microphone not found in DB after upsert"
+        assert row[0] == "dead-beef-INT-TEST-001"  # hardware_id
+        assert row[1] == "connected"  # connection_state
+        assert row[2] == "pending"  # enrollment_state
         assert row[3] == "IntegrationTestMic"  # model
 
     @pytest.mark.system_hw_auto
@@ -115,7 +115,7 @@ class TestUpsertDeviceDB:
         self,
         postgres_container: PostgresContainer,
     ) -> None:
-        """Calling upsert_device twice does not create duplicates."""
+        """Calling upsert_microphone twice does not create duplicates."""
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -131,30 +131,30 @@ class TestUpsertDeviceDB:
 
         # Insert twice
         async with session_factory() as session:
-            await upsert_device(device_info, session)
+            await upsert_microphone(device_info, session)
             await session.commit()
 
         async with session_factory() as session:
-            await upsert_device(device_info, session)
+            await upsert_microphone(device_info, session)
             await session.commit()
 
         # Verify only one row
         async with session_factory() as session:
             result = await session.execute(
-                text("SELECT count(*) FROM devices WHERE name = '1234-5678-IDEM-001'")
+                text("SELECT count(*) FROM microphones WHERE hardware_id = '1234-5678-IDEM-001'")
             )
             count = result.scalar_one()
 
         await engine.dispose()
 
-        assert count == 1, f"Expected 1 device row, got {count}"
+        assert count == 1, f"Expected 1 microphone row, got {count}"
 
     async def test_upsert_with_profile_auto_enroll(
         self,
         tmp_path: Path,
         postgres_container: PostgresContainer,
     ) -> None:
-        """upsert_device with profile_slug sets enrollment to 'enrolled'."""
+        """upsert_microphone with profile_slug sets enrollment to 'enrolled'."""
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -166,17 +166,17 @@ class TestUpsertDeviceDB:
         profiles_dir.mkdir()
         (profiles_dir / "test_profile.yml").write_text(
             """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: test_profile
 name: Test Profile
 description: For integration test.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -201,19 +201,19 @@ stream:
         )
 
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug="test_profile",
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         async with session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT enrollment_status, profile_slug "
-                    "FROM devices WHERE name = 'abcd-ef01-AUTO-001'"
+                    "SELECT enrollment_state, profile_slug "
+                    "FROM microphones WHERE hardware_id = 'abcd-ef01-AUTO-001'"
                 )
             )
             row = result.one_or_none()
@@ -224,7 +224,7 @@ stream:
         assert row[0] == "enrolled"
         assert row[1] == "test_profile"
 
-    async def test_upsert_device_updates_volatile_hardware_config(
+    async def test_upsert_microphone_updates_volatile_hardware_facts(
         self,
         postgres_container: PostgresContainer,
     ) -> None:
@@ -244,7 +244,7 @@ stream:
             usb_bus_path="1-1.1",
         )
         async with session_factory() as session:
-            await upsert_device(initial_info, session)
+            await upsert_microphone(initial_info, session)
             await session.commit()
 
         # --- SCHRITT 2: Re-Plug (Simulated Drift) ---
@@ -258,13 +258,15 @@ stream:
             usb_bus_path="1-1.2",
         )
         async with session_factory() as session:
-            await upsert_device(new_info, session)
+            await upsert_microphone(new_info, session)
             await session.commit()
 
         # --- SCHRITT 3: Verify DB updates using RAW SQL (Consistency) ---
         async with session_factory() as session:
             result = await session.execute(
-                text("SELECT model, config FROM devices WHERE name = '1234-5678-SN-999'")
+                text(
+                    "SELECT model, hardware FROM microphones WHERE hardware_id = '1234-5678-SN-999'"
+                )
             )
             row = result.one_or_none()
 
@@ -272,10 +274,10 @@ stream:
 
         assert row is not None
         model = row[0]
-        config = row[1]
+        hardware = row[1]
 
         # Verify changes were persisted by SQLAlchemy correctly
         assert model == "TestMic (Updated)", "Model string did not update!"
-        assert config["alsa_device"] == "hw:2,0", "ALSA device string did not update!"
-        assert config["alsa_card_index"] == 2, "ALSA card index did not update!"
-        assert config["usb_bus_path"] == "1-1.2", "USB bus path did not update!"
+        assert hardware["alsa_device"] == "hw:2,0", "ALSA device string did not update!"
+        assert hardware["alsa_card_index"] == 2, "ALSA card index did not update!"
+        assert hardware["usb_bus_path"] == "1-1.2", "USB bus path did not update!"

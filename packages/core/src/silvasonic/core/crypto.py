@@ -1,6 +1,6 @@
 """Fernet encryption helpers for cloud storage credentials (v0.6.0).
 
-Sensitive values (user, pass) in ``system_config`` JSONB are stored with
+Sensitive values (user, pass) in the ``settings`` JSONB (section ``sync``) are stored with
 an ``enc:`` prefix.  The decryption key lives in ``.env`` as
 ``SILVASONIC_ENCRYPTION_KEY``.
 

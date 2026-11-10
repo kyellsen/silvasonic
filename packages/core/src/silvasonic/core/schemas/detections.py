@@ -12,8 +12,8 @@ class BirdnetDetectionDetails(BaseModel):
         description="Dynamic model version from file name (min 2 digits).",
     )
     sensitivity: float
-    overlap: float
-    confidence_threshold: float
+    overlap_s: float
+    min_confidence: float
     location_filter_active: bool
     lat: float | None = None
     lon: float | None = None

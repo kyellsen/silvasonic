@@ -26,7 +26,7 @@ import yaml
 from silvasonic.controller.container_manager import ContainerManager
 from silvasonic.controller.container_spec import Tier2ServiceSpec
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
-from silvasonic.core.schemas.devices import MicrophoneProfile as MicProfileSchema
+from silvasonic.core.schemas.microphones import MicrophoneProfile as MicProfileSchema
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
@@ -271,7 +271,7 @@ class HwMicConfig:
     vid: str
     pid: str
     alsa_contains: str
-    sample_rate: int
+    sample_rate_hz: int
     profile_data: dict[str, Any]
 
 
@@ -305,7 +305,7 @@ def load_hw_mic_config(profile_slug: str) -> HwMicConfig:
         vid=match["usb_vendor_id"],
         pid=match["usb_product_id"],
         alsa_contains=match.get("alsa_name_contains", ""),
-        sample_rate=validated.audio.sample_rate,
+        sample_rate_hz=validated.audio.sample_rate_hz,
         profile_data=raw,
     )
 
@@ -479,8 +479,10 @@ def seed_test_defaults(tmp_path: Path) -> Path:
     defaults_path = tmp_path / "defaults.yml"
     defaults_path.write_text(
         """\
-system:
-  station_name: "System Test Station"
+station:
+  name: "System Test Station"
+
+recording:
   auto_enrollment: true
 
 auth:

@@ -25,7 +25,7 @@
 ## 3. Core Responsibilities
 ### Inputs
 *   **Hardware:** USB Audio devices (detected via `sysfs`).
-*   **Desired State:** `devices` and `microphone_profiles` from DB (via HTTP nudges).
+*   **Desired State:** `microphones`, `microphone_profiles` and `modules` from DB (via HTTP nudges).
 ### Processing
 *   **Reconciliation:** Compare actual running containers against DB desired state and auto-repair/restart as needed.
 *   **Profile Injection:** Pass DB profiles as EnvVars to Recorders.
@@ -37,7 +37,7 @@
 | Aspect           | Value / Rule                                                   |
 | ---------------- | -------------------------------------------------------------- |
 | **Immutable**    | Yes (State authority is DB + Podman)                           |
-| **DB Access**    | Yes (Reads devices/profiles/config)                            |
+| **DB Access**    | Yes (Reads microphones/profiles/modules/settings)              |
 | **Concurrency**  | Single Control Loop (Event Loop + Polling)                     |
 | **State**        | Stateless                                                      |
 | **Privileges**   | Privileged (Rootless Podman Socket Group)                      |
@@ -103,8 +103,8 @@
 
 | Concept                   | DB Table              | Role                                                                                                       |
 | ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Device Inventory**      | `devices`             | Tracks *what* hardware is plugged in — serial number, model, administrative state (`enrollment_status`).   |
-| **Configuration Catalog** | `microphone_profiles` | Defines *how* a Recorder should behave for a given class of device — sample rate, channels, match pattern. |
+| **Microphone Inventory**  | `microphones`         | Tracks *what* hardware is plugged in — hardware id, serial number, model, user label, `connection_state`, administrative state (`enrollment_state`). |
+| **Configuration Catalog** | `microphone_profiles` | Defines *how* a Recorder should behave for a given class of device — sample rate, channels, match criteria. |
 
 The Controller reads both tables and decides which Recorders to start.
 
@@ -114,11 +114,11 @@ The Controller reads both tables and decides which Recorders to start.
 
 > **Status:** ✅ Implemented · **User Stories:** [US-C06](../../docs/user_stories/controller.md#us-c06-mikrofon-profile-verwalten-), [US-C08](../../docs/user_stories/controller.md#us-c08-funktioniert-sofort-nach-installation-)
 
-On every startup, the Controller runs three idempotent seeders in sequence:
+On every startup, the Controller runs idempotent seeders in sequence (Config → Profiles → Modules → Cloud Sync → Auth):
 
 ### 1. Config Seeder
 
-Populates `system_config` with default key-value pairs (e.g., `auto_enrollment: true`, `device_name`). Each key is only inserted if it does **not** already exist — user-modified values are never overwritten.
+Populates the `settings` table with one row per section from `config/defaults.yml` (`station`, `recording`, `storage`, `sync`, `birdnet`; e.g. `recording.auto_enrollment: true`). Each section is only inserted if it does **not** already exist — user-modified values are never overwritten. When the `station` section is first created, it receives a UUIDv7 `id` from the database (`SELECT uuidv7()`); an existing id is never overwritten. Every write increments the section's `revision` (database trigger).
 
 ### 2. Profile Bootstrapper
 
@@ -128,9 +128,13 @@ Reads YAML seed files from the bundled `profiles/` directory and writes them to 
 *   **Exists → skip.** This protects user-created or user-modified profiles.
 *   **Does not exist → insert** the system profile.
 
-All profiles (seed and user-created) are validated against the [`MicrophoneProfile` Pydantic schema](../../packages/core/src/silvasonic/core/schemas/devices.py) before being persisted. Invalid profiles are rejected with an error in the log.
+All profiles (seed and user-created) are validated against the [`MicrophoneProfile` Pydantic schema](../../packages/core/src/silvasonic/core/schemas/microphones.py) before being persisted. Invalid profiles are rejected with an error in the log. Seeded profiles are marked `built_in`.
 
-### 3. Auth Seeder
+### 3. Module Seeder
+
+Inserts one row per optional feature into the `modules` table: each Tier 2 singleton worker of `SYSTEM_WORKERS` (switched on) and `cloud_sync` (switched off until a remote target is configured). Existing rows are never overwritten. The Cloud Sync Seeder switches `cloud_sync` on when all `SILVASONIC_CLOUD_REMOTE_*` variables are set and writes the target into the `sync` section.
+
+### 4. Auth Seeder
 
 Creates a default admin user on first startup ([ADR-0023 §2.4](../../docs/adr/0023-configuration-management.md)):
 
@@ -144,35 +148,35 @@ If the database is wiped, the next Controller startup restores all defaults auto
 
 ---
 
-### Device State Evaluation
+### Microphone State Evaluation
 
 > **Status:** ✅ Implemented
 
-The Controller starts a Recorder for a Device **only** when all of the following conditions are met:
+The Controller starts a Recorder for a Microphone **only** when all of the following conditions are met:
 
-*   The hardware is verified as physically present and active.
-*   The device is administratively enabled by a user.
-*   The device has successfully completed the enrollment process.
-*   A specific Microphone Profile is firmly assigned to the device.
+*   The hardware is verified as physically present (`connection_state = connected`).
+*   The microphone is administratively enabled by a user (`enabled`).
+*   The microphone has successfully completed the enrollment process (`enrollment_state = enrolled`).
+*   A specific Microphone Profile is firmly assigned to the microphone (`profile_slug`).
 
-If any condition is not met, the Controller will not start (or will stop) the Recorder for that Device.
+If any condition is not met, the Controller will not start (or will stop) the Recorder for that Microphone.
 
 ### Enrollment State Machine
 
 | Transition           | Payload Effect                                       | Controller Action                                            |
 | -------------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
-| **Enroll**           | `enrollment_status → enrolled`, `profile_slug` set   | Next reconcile loop starts a Recorder for this Device.       |
-| **Unenroll / Reset** | `enrollment_status → pending`, `profile_slug → null` | Controller stops the running Recorder immediately.           |
-| **Ignore**           | `enrollment_status → ignored`                        | Controller suppresses logs for this Device, never starts it. |
-| **Emergency Stop**   | `enabled → false`                                    | Immediate stop, regardless of enrollment status.             |
+| **Enroll**           | `enrollment_state → enrolled`, `profile_slug` set    | Next reconcile loop starts a Recorder for this Microphone.       |
+| **Unenroll / Reset** | `enrollment_state → pending`, `profile_slug → null`  | Controller stops the running Recorder immediately.               |
+| **Ignore**           | `enrollment_state → ignored`                         | Controller suppresses logs for this Microphone, never starts it. |
+| **Emergency Stop**   | `enabled → false`                                    | Immediate stop, regardless of enrollment state.                  |
 
-### Enrollment Status Values
+### Enrollment State Values
 
 | Value      | Meaning                                                             |
 | ---------- | ------------------------------------------------------------------- |
-| `pending`  | New device detected, not yet assigned a profile. Default state.     |
-| `enrolled` | Assigned a Microphone Profile. Eligible for recording.              |
-| `ignored`  | Suppressed. Controller will never start a Recorder for this device. |
+| `pending`  | New microphone detected, not yet assigned a profile. Default state.     |
+| `enrolled` | Assigned a Microphone Profile. Eligible for recording.                  |
+| `ignored`  | Suppressed. Controller will never start a Recorder for this microphone. |
 
 ---
 
@@ -188,10 +192,10 @@ A background hardware scanning routine runs inside the reconciliation loop (inte
 
 *   Enumerates all ALSA cards via `/proc/asound/cards`.
 *   Correlates each card with its USB parent via `sysfs` to extract stable identifiers (VID, PID, Serial).
-*   Detects new devices → DB write + profile matching + recorder spawning.
-*   Detects removed devices → debounces transient drops (grace period) → sets `status=offline` + safely stops recorder.
+*   Detects new devices → `microphones` row (new rows: `name` = model, `first_seen_at` = now) + profile matching + recorder spawning.
+*   Detects removed devices → debounces transient drops (grace period) → sets `connection_state=disconnected` + safely stops recorder.
 
-**Timing:** USB plug → kernel detects (~50 ms) → next poll cycle (≤ 1 s) → DB write + reconcile → **device online ≤ 1 second**. Disconnects are delayed by a configurable grace period (e.g. 3s) to prevent USB flapping.
+**Timing:** USB plug → kernel detects (~50 ms) → next poll cycle (≤ 1 s) → DB write + reconcile → **microphone connected ≤ 1 second**. Disconnects are delayed by a configurable grace period (e.g. 3s) to prevent USB flapping.
 
 > **Design Decision:** Polling was chosen over event-driven udev monitoring (Netlink) because Netlink sockets do not function in rootless Podman containers (User-Namespace limitation). USB metadata is read directly from `sysfs` attribute files (`pathlib`) — no external libraries required.
 
@@ -230,7 +234,7 @@ Re-plugging a microphone must re-activate the same Recorder with the same worksp
 | USB device **with** serial number    | `{vendor_id}-{product_id}-{serial}`       | ✅ Globally unique, survives port changes   |
 | USB device **without** serial number | `{vendor_id}-{product_id}-port{bus_path}` | ⚠️ Stable as long as same physical USB port |
 
-The stable device ID is stored as `devices.name` (primary key) and determines:
+The stable device ID is stored as `microphones.hardware_id` (unique; the primary key `microphones.id` is a UUIDv7 that other tables reference) and determines:
 
 *   **Recorder container name:** `silvasonic-recorder-{slug}-{suffix}` (e.g. `silvasonic-recorder-ultramic-384-evo-034f`)
 *   **Workspace directory:** `workspace/recorder/{slug}-{suffix}/`
@@ -240,7 +244,7 @@ The **suffix** is derived from the device's hardware identity (last 4 chars of U
 
 This ensures that **re-plugging a microphone re-activates the same Recorder** with the same workspace, storage, and identity — no duplicate Recorders are created.
 
-> **Note:** Not all USB devices provide a serial number. Budget USB microphones often omit it. In this case, the port-based fallback is used. Moving the microphone to a different USB port will create a new device entry (with a warning in the Web-Interface).
+> **Note:** Not all USB devices provide a serial number. Budget USB microphones often omit it. In this case, the port-based fallback is used. Moving the microphone to a different USB port will create a new microphone entry (with a warning in the Web-Interface).
 
 ---
 
@@ -271,9 +275,9 @@ audio:
 
 ### Auto-Enrollment Setting
 
-Auto-Enrollment is controlled by the `auto_enrollment` flag in `system_config` (key `system`). Default: `true`. Can be changed at runtime via the Web-Interface — the Controller reads this setting on every reconciliation cycle (no restart required).
+Auto-Enrollment is controlled by the `auto_enrollment` flag in the `recording` section of the `settings` table. Default: `true`. Can be changed at runtime via the Web-Interface — the Controller reads this setting on every reconciliation cycle (no restart required).
 
-When `auto_enrollment` is `false`, all new devices remain `pending` regardless of match score — the user must always confirm enrollment manually.
+When `auto_enrollment` is `false`, all new microphones remain `pending` regardless of match score — the user must always confirm enrollment manually.
 
 See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full profile specification.
 
@@ -281,9 +285,9 @@ See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full p
 
 > **Status:** ✅ Implemented
 
-The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from `devices` and `microphone_profiles` tables) against **actual state** (running containers queried via Podman labels).
+The Controller runs a periodic reconciliation loop (interval: see `DEFAULT_RECONCILE_INTERVAL_S` in `reconciler.py`) that compares **desired state** (from the `microphones`, `microphone_profiles` and `modules` tables) against **actual state** (running containers queried via Podman labels).
 
-Recorders are mapped 1:1 to plugged devices. Upload is handled internally by the Processor's Cloud-Sync-Worker (v0.6.0) and is not managed by the Controller.
+Recorders are mapped 1:1 to plugged devices. Upload is handled internally by the Processor's Cloud-Sync-Worker (v0.6.0) and is not managed by the Controller: the `cloud_sync` row of the `modules` table is read by the Processor, while the Controller orchestrates only the Tier 2 singleton workers of `SYSTEM_WORKERS` whose module is switched on.
 
 Every Tier 2 container is tagged with labels for lifecycle management:
 
@@ -312,7 +316,7 @@ The Recorder has **no database access** (ADR-0013). The Controller injects all c
 Profiles are bootstrapped from YAML seed files into the database on every Controller startup (see §Startup & Seeding above, [ADR-0016](../../docs/adr/0016-hybrid-yaml-db-profiles.md)).
 
 *   **KISS principle:** If a profile with the same `slug` already exists → skip. User profiles are never overwritten.
-*   All profiles are validated against the [`MicrophoneProfile` Pydantic schema](../../packages/core/src/silvasonic/core/schemas/devices.py) before persistence.
+*   All profiles are validated against the [`MicrophoneProfile` Pydantic schema](../../packages/core/src/silvasonic/core/schemas/microphones.py) before persistence.
 
 See [Microphone Profiles](../../docs/arch/microphone_profiles.md) for the full profile specification.
 

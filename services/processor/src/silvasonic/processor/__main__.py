@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from silvasonic.core.database.session import get_session
-from silvasonic.core.schemas.system_config import ProcessorSettings
+from silvasonic.core.schemas.settings import StorageSettings
 from silvasonic.core.service import SilvaService
 from silvasonic.processor import indexer, janitor, reconciliation
 from silvasonic.processor.janitor import RetentionMode
@@ -52,7 +52,7 @@ class ProcessorService(SilvaService):
             heartbeat_interval=self._env_config.HEARTBEAT_INTERVAL_S,
         )
         # Runtime config from DB — loaded in load_config(), defaults until then
-        self._settings = ProcessorSettings()
+        self._settings = StorageSettings()
         self._recordings_dir = Path(self._env_config.RECORDINGS_DIR)
 
         # Indexer metrics (reported in heartbeat)
@@ -68,29 +68,29 @@ class ProcessorService(SilvaService):
         self._janitor_counter: int = 0
         self._janitor_every_n: int = 1
 
-        # Snapshot Refresh: monitor processor tuning parameters (ADR-0031)
-        self._config_keys = ["processor"]
+        # Snapshot Refresh: monitor storage settings and tuning (ADR-0031)
+        self._config_sections = ["storage"]
 
     async def load_config(self) -> None:
-        """Read ProcessorSettings from system_config table (ADR-0023).
+        """Read StorageSettings from the ``storage`` settings section (ADR-0023).
 
         Called by ``SilvaService._setup()`` before ``run()``.  Best-effort:
         if the DB is unreachable the base class logs a warning and the
         service starts with Pydantic defaults.
         """
-        from silvasonic.core.database.models.system import SystemConfig
+        from silvasonic.core.database.models.system import SettingsSection
 
         async with get_session() as session:
-            row = await session.get(SystemConfig, "processor")
+            row = await session.get(SettingsSection, "storage")
             if row is not None and isinstance(row.value, dict):
-                self._settings = ProcessorSettings(**row.value)
+                self._settings = StorageSettings(**row.value)
                 log.info(
                     "processor.config_loaded",
-                    janitor_warning=self._settings.janitor_threshold_warning,
-                    janitor_critical=self._settings.janitor_threshold_critical,
-                    janitor_emergency=self._settings.janitor_threshold_emergency,
-                    janitor_interval=self._settings.janitor_interval_seconds,
-                    indexer_interval=self._settings.indexer_poll_interval,
+                    warning_percent=self._settings.warning_percent,
+                    critical_percent=self._settings.critical_percent,
+                    emergency_percent=self._settings.emergency_percent,
+                    cleanup_interval_s=self._settings.cleanup_interval_s,
+                    index_interval_s=self._settings.index_interval_s,
                 )
             else:
                 log.info("processor.config_using_defaults")
@@ -231,20 +231,20 @@ class ProcessorService(SilvaService):
         # --- Phase 2: Indexer + Janitor polling loop ---
         self._janitor_every_n = max(
             1,
-            int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
+            int(self._settings.cleanup_interval_s / self._settings.index_interval_s),
         )
         self._janitor_counter = 0
 
         log.info(
             "processor.indexer_started",
-            interval=self._settings.indexer_poll_interval,
+            interval=self._settings.index_interval_s,
             recordings_dir=str(self._recordings_dir),
         )
         log.info(
             "processor.janitor_started",
-            interval=self._settings.janitor_interval_seconds,
+            interval=self._settings.cleanup_interval_s,
             every_n_cycles=self._janitor_every_n,
-            batch_size=self._settings.janitor_batch_size,
+            batch_size=self._settings.cleanup_batch_files,
         )
 
         # Prevent log-flood: files that fail metadata extraction (corrupt WAV)
@@ -256,11 +256,11 @@ class ProcessorService(SilvaService):
         known_files: set[str] = set()
 
         while not self._shutdown_event.is_set():
-            # --- Snapshot Refresh: reload processor tuning parameters (ADR-0031) ---
+            # --- Snapshot Refresh: reload storage settings and tuning (ADR-0031) ---
             await self._refresh_config()
             self._janitor_every_n = max(
                 1,
-                int(self._settings.janitor_interval_seconds / self._settings.indexer_poll_interval),
+                int(self._settings.cleanup_interval_s / self._settings.index_interval_s),
             )
 
             # --- Indexer (every cycle) ---
@@ -276,7 +276,7 @@ class ProcessorService(SilvaService):
             )
 
             self.health.touch()
-            await asyncio.sleep(self._settings.indexer_poll_interval)
+            await asyncio.sleep(self._settings.index_interval_s)
 
         # Emit final shutdown summaries
         self._indexer_stats.emit_final_summary()

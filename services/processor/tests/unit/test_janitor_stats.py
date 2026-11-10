@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import uuid
 from unittest.mock import patch
 
 import pytest
 from silvasonic.processor.modules.janitor_stats import JanitorStats
+
+REC_A = uuid.UUID(int=100)
+REC_B = uuid.UUID(int=101)
+REC_C = uuid.UUID(int=200)
 
 
 @pytest.mark.unit
@@ -12,32 +17,32 @@ class TestJanitorStatsStartupPhase:
         stats = JanitorStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_deleted(100, "proc1.wav", "housekeeping", False)
-            stats.record_deleted(101, None, "defensive", True)
+            stats.record_deleted(REC_A, "proc1.wav", "housekeeping", False)
+            stats.record_deleted(REC_B, None, "defensive", True)
 
         info_calls = [c for c in mock_log.info.call_args_list if c[0][0] == "janitor.deleted"]
         assert len(info_calls) == 2
 
-        assert info_calls[0].kwargs["recording_id"] == 100
+        assert info_calls[0].kwargs["recording_id"] == str(REC_A)
         assert info_calls[0].kwargs["mode"] == "housekeeping"
         assert info_calls[0].kwargs["cloud_sync_fallback"] is False
 
-        assert info_calls[1].kwargs["recording_id"] == 101
-        assert info_calls[1].kwargs["file_processed"] is None
+        assert info_calls[1].kwargs["recording_id"] == str(REC_B)
+        assert info_calls[1].kwargs["processed_path"] is None
         assert info_calls[1].kwargs["cloud_sync_fallback"] is True
 
     def test_error_tracking(self) -> None:
         stats = JanitorStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_error(200, "proc.wav")
+            stats.record_error(REC_C, "proc.wav")
 
         error_calls = [
             c for c in mock_log.exception.call_args_list if c[0][0] == "janitor.delete_error"
         ]
         assert len(error_calls) == 1
-        assert error_calls[0].kwargs["recording_id"] == 200
-        assert error_calls[0].kwargs["file_processed"] == "proc.wav"
+        assert error_calls[0].kwargs["recording_id"] == str(REC_C)
+        assert error_calls[0].kwargs["processed_path"] == "proc.wav"
         assert stats.total_errors == 1
 
 
@@ -50,7 +55,7 @@ class TestJanitorStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=9999.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_deleted(1, "f.wav", "housekeeping", False)
+            stats.record_deleted(REC_A, "f.wav", "housekeeping", False)
 
         deleted_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "janitor.deleted"]
         assert len(deleted_logs) == 0
@@ -71,8 +76,8 @@ class TestJanitorStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_deleted(1, "f.wav", "housekeeping", False)
-            stats.record_error(2, "f2.wav")
+            stats.record_deleted(REC_A, "f.wav", "housekeeping", False)
+            stats.record_error(REC_B, "f2.wav")
             stats.maybe_emit_summary("defensive", 85.5, True)
 
         summary_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "janitor.summary"]
@@ -102,11 +107,11 @@ class TestJanitorStatsSteadyState:
         stats = self._make_steady_state_stats(summary_interval_s=0.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_deleted(1, "f.wav", "housekeeping", False)
+            stats.record_deleted(REC_A, "f.wav", "housekeeping", False)
             stats.maybe_emit_summary("housekeeping", 50.0, False)
 
-            stats.record_deleted(2, "f2.wav", "housekeeping", False)
-            stats.record_deleted(3, "f3.wav", "housekeeping", False)
+            stats.record_deleted(REC_B, "f2.wav", "housekeeping", False)
+            stats.record_deleted(REC_C, "f3.wav", "housekeeping", False)
             stats.maybe_emit_summary("housekeeping", 50.0, False)
 
         summary_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "janitor.summary"]
@@ -123,8 +128,8 @@ class TestJanitorStatsFinalSummary:
         stats = JanitorStats(startup_duration_s=9999.0)
 
         with patch("silvasonic.processor.modules.janitor_stats.log") as mock_log:
-            stats.record_deleted(1, "f.wav", "h", False)
-            stats.record_error(2, "f2.wav")
+            stats.record_deleted(REC_A, "f.wav", "h", False)
+            stats.record_error(REC_B, "f2.wav")
             stats.emit_final_summary()
 
         final_logs = [c for c in mock_log.info.call_args_list if c[0][0] == "janitor.shutdown"]

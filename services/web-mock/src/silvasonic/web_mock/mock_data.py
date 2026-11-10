@@ -186,13 +186,13 @@ class RecorderMock:
     label: str
     device: str
     status: str  # "recording" | "idle" | "error"
-    sample_rate: int  # Hz
+    sample_rate_hz: int  # Hz
     channels: int
     segment_s: int  # seconds
     gain_db: float
     level_pct: int  # 0-100 simulated live level
     last_segment: str
-    enrollment_status: str  # "enrolled" | "generic" | "pending"
+    enrollment_state: str  # "enrolled" | "generic" | "pending"
     watchdog_restarts: int
     watchdog_max_restarts: int
 
@@ -203,13 +203,13 @@ RECORDERS: list[RecorderMock] = [
         label="Ultramic-01",
         device="/dev/snd/pcmC1D0c",
         status="recording",
-        sample_rate=192_000,
+        sample_rate_hz=192_000,
         channels=1,
         segment_s=300,
         gain_db=12.0,
         level_pct=72,
         last_segment="2026-02-23T17:43:00Z",
-        enrollment_status="enrolled",
+        enrollment_state="enrolled",
         watchdog_restarts=0,
         watchdog_max_restarts=5,
     ),
@@ -218,13 +218,13 @@ RECORDERS: list[RecorderMock] = [
         label="Ultramic-02",
         device="/dev/snd/pcmC2D0c",
         status="recording",
-        sample_rate=96_000,
+        sample_rate_hz=96_000,
         channels=1,
         segment_s=300,
         gain_db=6.0,
         level_pct=45,
         last_segment="2026-02-23T17:43:05Z",
-        enrollment_status="generic",
+        enrollment_state="generic",
         watchdog_restarts=2,
         watchdog_max_restarts=5,
     ),
@@ -233,13 +233,13 @@ RECORDERS: list[RecorderMock] = [
         label="Audiomoth-01",
         device="/dev/snd/pcmC3D0c",
         status="idle",
-        sample_rate=48_000,
+        sample_rate_hz=48_000,
         channels=1,
         segment_s=300,
         gain_db=24.0,
         level_pct=0,
         last_segment="2026-02-23T17:00:00Z",
-        enrollment_status="pending",
+        enrollment_state="pending",
         watchdog_restarts=0,
         watchdog_max_restarts=5,
     ),
@@ -358,8 +358,8 @@ BIRD_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_sci": "Turdus merula",
         "count": 42,
         "max_confidence": 0.97,
-        "first_seen": "2026-02-10T08:15:00Z",
-        "last_seen": "2026-02-23T17:10:00Z",
+        "first_detected_at": "2026-02-10T08:15:00Z",
+        "last_detected_at": "2026-02-23T17:10:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Turdus_merula.jpg?width=320",
     },
     {
@@ -368,8 +368,8 @@ BIRD_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_sci": "Parus major",
         "count": 28,
         "max_confidence": 0.94,
-        "first_seen": "2026-02-12T09:20:00Z",
-        "last_seen": "2026-02-23T16:50:00Z",
+        "first_detected_at": "2026-02-12T09:20:00Z",
+        "last_detected_at": "2026-02-23T16:50:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Parus_major.jpg?width=320",
     },
     {
@@ -378,8 +378,8 @@ BIRD_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_sci": "Erithacus rubecula",
         "count": 19,
         "max_confidence": 0.88,
-        "first_seen": "2026-02-15T07:45:00Z",
-        "last_seen": "2026-02-23T14:22:00Z",
+        "first_detected_at": "2026-02-15T07:45:00Z",
+        "last_detected_at": "2026-02-23T14:22:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Erithacus_rubecula.jpg?width=320",
     },
 ]
@@ -401,7 +401,7 @@ BIRD_RAREST: dict[str, Any] = {
     "species_en": "Common Kingfisher",
     "species_sci": "Alcedo atthis",
     "count": 2,
-    "last_seen": "2026-02-23T08:15:00Z",
+    "last_detected_at": "2026-02-23T08:15:00Z",
 }
 
 # ---------------------------------------------------------------------------
@@ -482,7 +482,7 @@ BAT_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_en": "Common Pipistrelle",
         "species_sci": "Pipistrellus pipistrellus",
         "count": 87,
-        "last_seen": "2026-02-23T23:45:00Z",
+        "last_detected_at": "2026-02-23T23:45:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Pipistrellus_pipistrellus.jpg?width=320",
     },
     {
@@ -490,7 +490,7 @@ BAT_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_en": "Soprano Pipistrelle",
         "species_sci": "Pipistrellus pygmaeus",
         "count": 31,
-        "last_seen": "2026-02-23T22:30:00Z",
+        "last_detected_at": "2026-02-23T22:30:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Pipistrellus_pygmaeus.jpg?width=320",
     },
     {
@@ -498,7 +498,7 @@ BAT_SPECIES_SUMMARY: list[dict[str, Any]] = [
         "species_en": "Daubenton's Bat",
         "species_sci": "Myotis daubentonii",
         "count": 14,
-        "last_seen": "2026-02-24T00:12:00Z",
+        "last_detected_at": "2026-02-24T00:12:00Z",
         "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Myotis_daubentonii.jpg?width=320",
     },
 ]
@@ -520,7 +520,7 @@ BAT_RAREST: dict[str, Any] = {
     "species_en": "Barbastelle",
     "species_sci": "Barbastella barbastellus",
     "count": 1,
-    "last_seen": "2026-02-20T03:15:00Z",
+    "last_detected_at": "2026-02-20T03:15:00Z",
 }
 
 # ---------------------------------------------------------------------------
@@ -603,7 +603,7 @@ PROCESSOR_RETENTION_EVENTS: list[dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 SETTINGS: dict[str, Any] = {
-    "station_name": STATION["name"],
+    "station": {"name": STATION["name"]},
     "timezone": "Europe/Berlin",
     "latitude": 52.5200,
     "longitude": 13.4050,

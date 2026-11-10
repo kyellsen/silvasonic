@@ -145,7 +145,7 @@ rarest — rarest species dict
                             class="text-lg font-normal text-base-content/40">det.</span></div>
                     <div class="font-semibold text-lg text-base-content">{{ rarest.species_en }}</div>
                     <div class="text-[10px] text-base-content/50 italic">{{ rarest.species_sci }}</div>
-                    <div class="text-[10px] text-base-content/40 font-mono mt-4">Last seen: {{ rarest.last_seen |
+                    <div class="text-[10px] text-base-content/40 font-mono mt-4">Last seen: {{ rarest.last_detected_at |
                         truncate(16, true, '') }}</div>
                 </div>
             </div>
@@ -199,7 +199,7 @@ rarest — rarest species dict
                     <h3 class="font-semibold text-sm">{{ sp.species_en }}</h3>
                     <p class="text-xs text-base-content/50 italic">{{ sp.species_sci }}</p>
                     <div class="badge badge-outline badge-sm mt-1 text-base-content/70">{{ sp.count }} detections</div>
-                    <div class="text-[10px] text-base-content/40 font-mono mt-2">last: {{ sp.last_seen | truncate(16,
+                    <div class="text-[10px] text-base-content/40 font-mono mt-2">last: {{ sp.last_detected_at | truncate(16,
                         true, '') }}</div>
                 </div>
             </a>

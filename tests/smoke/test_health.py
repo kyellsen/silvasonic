@@ -229,7 +229,7 @@ def _extract_pg_errors(logs: str) -> list[str]:
     PostgreSQL logs multi-line error blocks like::
 
         ERROR:  insert or update on table "recordings" violates foreign key ...
-        DETAIL:  Key (sensor_id)=(ghost) is not present in table "devices".
+        DETAIL:  Key (microphone_id)=(...) is not present in table "microphones".
         STATEMENT:  INSERT INTO recordings ...
 
     This function collects the ERROR/FATAL line plus any immediately following

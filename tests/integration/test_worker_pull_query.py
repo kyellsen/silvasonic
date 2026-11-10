@@ -7,6 +7,7 @@ concurrent claim semantics.
 Requires a real PostgreSQL (Testcontainer) instance with the Silvasonic schema.
 """
 
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -24,31 +25,33 @@ def _build_async_url(container: PostgresContainer) -> str:
     return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
 
 
-async def _insert_test_recordings(session: AsyncSession, count: int = 3) -> list[int]:
+async def _insert_test_recordings(
+    session: AsyncSession, microphone_id: uuid.UUID, count: int = 3
+) -> list[uuid.UUID]:
     """Insert test recordings and return their IDs."""
-    ids: list[int] = []
+    ids: list[uuid.UUID] = []
     for i in range(count):
         result = await session.execute(
             text("""
                 INSERT INTO recordings (
-                    time, sensor_id, file_raw, file_processed,
-                    duration, sample_rate, filesize_raw, filesize_processed
+                    started_at, microphone_id, raw_path, processed_path,
+                    duration_s, sample_rate_hz, raw_size_bytes, processed_size_bytes
                 )
                 VALUES (
-                    :time, :sensor_id, :file_raw, :file_processed,
-                    :duration, :sample_rate, :filesize_raw, :filesize_processed
+                    :started_at, :microphone_id, :raw_path, :processed_path,
+                    :duration_s, :sample_rate_hz, :raw_size_bytes, :processed_size_bytes
                 )
                 RETURNING id
             """),
             {
-                "time": datetime(2026, 1, 1, i, 0, 0, tzinfo=UTC),
-                "sensor_id": "test-mic",
-                "file_raw": f"/data/recorder/test/raw_{i}.wav",
-                "file_processed": f"/data/recorder/test/processed_{i}.wav",
-                "duration": 30.0,
-                "sample_rate": 48000,
-                "filesize_raw": 2880000,
-                "filesize_processed": 1440000,
+                "started_at": datetime(2026, 1, 1, i, 0, 0, tzinfo=UTC),
+                "microphone_id": microphone_id,
+                "raw_path": f"/data/recorder/test/raw_{i}.wav",
+                "processed_path": f"/data/recorder/test/processed_{i}.wav",
+                "duration_s": 30.0,
+                "sample_rate_hz": 48000,
+                "raw_size_bytes": 2880000,
+                "processed_size_bytes": 1440000,
             },
         )
         row = result.fetchone()
@@ -79,20 +82,22 @@ class TestWorkerPullQuery:
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
 
-        # Seed a test device first
+        # Seed a test microphone first
         async with engine.begin() as conn:
-            await conn.execute(
+            result = await conn.execute(
                 text("""
-                    INSERT INTO devices (name, serial_number, model, config)
-                    VALUES ('test-mic', 'SN-TEST-001', 'TestMic', '{}')
-                    ON CONFLICT (name) DO NOTHING
+                    INSERT INTO microphones (hardware_id, name, serial_number, model, hardware)
+                    VALUES ('test-mic', 'TestMic', 'SN-TEST-001', 'TestMic', '{}')
+                    ON CONFLICT (hardware_id) DO UPDATE SET name = EXCLUDED.name
+                    RETURNING id
                 """)
             )
+            microphone_id = result.scalar_one()
 
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with session_factory() as session:
-            ids = await _insert_test_recordings(session, count=3)
+            ids = await _insert_test_recordings(session, microphone_id, count=3)
             assert len(ids) == 3
 
         # Session 1: Lock first available row
@@ -100,8 +105,8 @@ class TestWorkerPullQuery:
             result1 = await s1.execute(
                 text("""
                     SELECT id FROM recordings
-                    WHERE local_deleted = false
-                    ORDER BY time ASC
+                    WHERE deleted_at IS NULL
+                    ORDER BY started_at ASC
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 """)
@@ -115,8 +120,8 @@ class TestWorkerPullQuery:
                 result2 = await s2.execute(
                     text("""
                         SELECT id FROM recordings
-                        WHERE local_deleted = false
-                        ORDER BY time ASC
+                        WHERE deleted_at IS NULL
+                        ORDER BY started_at ASC
                         LIMIT 1
                         FOR UPDATE SKIP LOCKED
                     """)
@@ -130,7 +135,7 @@ class TestWorkerPullQuery:
         # Cleanup
         async with engine.begin() as conn:
             await conn.execute(text("DELETE FROM recordings"))
-            await conn.execute(text("DELETE FROM devices WHERE name = 'test-mic'"))
+            await conn.execute(text("DELETE FROM microphones WHERE hardware_id = 'test-mic'"))
 
         await engine.dispose()
 
@@ -146,8 +151,8 @@ class TestWorkerPullQuery:
                 text("""
                     EXPLAIN (FORMAT TEXT)
                     SELECT id FROM recordings
-                    WHERE local_deleted = false
-                    ORDER BY time ASC
+                    WHERE deleted_at IS NULL
+                    ORDER BY started_at ASC
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 """)
@@ -171,8 +176,8 @@ class TestWorkerPullQuery:
                 text("""
                     EXPLAIN (FORMAT TEXT)
                     SELECT id FROM recordings
-                    WHERE uploaded = false AND local_deleted = false
-                    ORDER BY time ASC
+                    WHERE uploaded_at IS NULL AND deleted_at IS NULL
+                    ORDER BY started_at ASC
                     LIMIT 1
                 """)
             )

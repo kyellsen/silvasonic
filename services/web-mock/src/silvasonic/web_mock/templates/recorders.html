@@ -19,11 +19,11 @@
                 <div class="flex items-center gap-2">
                     {{ status_badge(rec.status) }}
                     <h2 class="font-semibold text-sm">{{ rec.label }}</h2>
-                    {% if rec.enrollment_status == 'enrolled' %}
+                    {% if rec.enrollment_state == 'enrolled' %}
                     <span class="badge badge-success badge-outline badge-xs font-mono">enrolled</span>
-                    {% elif rec.enrollment_status == 'generic' %}
+                    {% elif rec.enrollment_state == 'generic' %}
                     <span class="badge badge-warning badge-outline badge-xs font-mono">generic</span>
-                    {% elif rec.enrollment_status == 'pending' %}
+                    {% elif rec.enrollment_state == 'pending' %}
                     <span class="badge badge-accent badge-outline badge-xs font-mono">pending</span>
                     {% endif %}
                 </div>
@@ -44,7 +44,7 @@
             <!-- Specs grid -->
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono">
                 <span class="text-base-content/40">Sample rate</span>
-                <span class="text-right">{{ "{:,}".format(rec.sample_rate) }} Hz</span>
+                <span class="text-right">{{ "{:,}".format(rec.sample_rate_hz) }} Hz</span>
                 <span class="text-base-content/40">Channels</span>
                 <span class="text-right">{{ rec.channels }}</span>
                 <span class="text-base-content/40">Segment</span>

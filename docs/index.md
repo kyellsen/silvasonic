@@ -70,7 +70,7 @@
 - [ADR-0030: Logging Cadence & Stats Extensibility](adr/0030-logging-cadence-and-stats.md)
 - [ADR-0031: Runtime Tuning via DB Snapshot Refresh](adr/0031-runtime-tuning-snapshot-refresh.md)
 - [ADR-0032: API-First Station Contract](adr/0032-api-first-station-contract.md) *(proposed)*
-- [ADR-0033: Unified Naming and Global Identifiers](adr/0033-unified-naming-and-global-identifiers.md) *(proposed)*
+- [ADR-0033: Unified Naming and Global Identifiers](adr/0033-unified-naming-and-global-identifiers.md)
 - [ADR-0034: Authentication and Authorization](adr/0034-authentication-and-authorization.md) *(proposed)*
 - [ADR-0035: HTTPS and Certificates](adr/0035-https-and-certificates.md) *(proposed)*
 - [ADR-0036: Svelte Single-Page Application on the Station API](adr/0036-svelte-spa-frontend.md) *(proposed)*

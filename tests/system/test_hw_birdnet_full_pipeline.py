@@ -35,8 +35,8 @@ from ._system_helpers import (
     psql_query,
     require_birdnet_image,
     require_processor_image,
-    seed_processor_config,
-    seed_test_devices,
+    seed_storage_settings,
+    seed_test_microphones,
     wait_for_db_rows,
     wait_for_detection,
     wait_for_wavs,
@@ -88,25 +88,25 @@ class TestHardwareBirdNETFullPipeline:
         # -----------------------------------------------------
         # Seed configurations
         # -----------------------------------------------------
-        seed_processor_config(db_name)
+        seed_storage_settings(db_name)
 
         birdnet_cfg = {
             "processing_order": "newest_first",
-            "overlap": 0.0,
+            "overlap_s": 0.0,
             # Because it's played out loud into a room, the match score drops
-            "confidence_threshold": 0.0,
+            "min_confidence": 0.0,
         }
         cfg_json = json.dumps(birdnet_cfg)
         psql_query(
             db_name,
-            f"""INSERT INTO system_config (key, value)
+            f"""INSERT INTO settings (section, value)
                VALUES ('birdnet', '{cfg_json}'::jsonb)
-               ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+               ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value""",
         )
 
         test_device = "mic-aaa"
-        # Overwrite device seed specifically with correct ID to test physical capture
-        seed_test_devices(db_name, [test_device])
+        # Overwrite the microphone seed with the correct ID to test physical capture
+        seed_test_microphones(db_name, [test_device])
 
         # -----------------------------------------------------
         # Prepare Workspaces
@@ -144,9 +144,9 @@ class TestHardwareBirdNETFullPipeline:
                     },
                     "processing": {"gain_db": 0.0},
                     "audio": {
-                        "sample_rate": mic.sample_rate,
+                        "sample_rate_hz": mic.sample_rate_hz,
                         "channels": 1,
-                        "format": "S16LE",
+                        "sample_format": "S16LE",
                     },
                 }
             )

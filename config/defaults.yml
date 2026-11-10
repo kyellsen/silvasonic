@@ -1,5 +1,5 @@
 # ==============================================================================
-# Factory Defaults - seeded into system_config on Controller startup (ADR-0023)
+# Factory Defaults - seeded into the settings table on Controller startup (ADR-0023)
 # ==============================================================================
 #
 # Values are inserted with ON CONFLICT DO NOTHING: user-modified values
@@ -10,63 +10,68 @@
 # Changes in the Web-UI are persisted in the database and take effect
 # immediately (or after service restart, depending on the service).
 #
-# The key names (system, auth, processor, cloud_sync, birdnet) map to entries
-# in the system_config table and are validated against Pydantic schemas
-# in packages/core/src/silvasonic/core/schemas/system_config.py.
+# The section names (station, recording, auth, storage, sync, birdnet) map to
+# rows of the settings table and are validated against Pydantic schemas
+# in packages/core/src/silvasonic/core/schemas/settings.py.
+# Key names follow ADR-0033: a quantity carries its unit (_s, _percent, ...).
 #
 # Schema defaults MUST match the values below.
 # See also: .env.example for infrastructure-level settings.
 #
 # Section order: cross-cutting first, then by roadmap milestone.
 
-# --- Station Identity & Limits (key: "system") ---
-system:
+# --- Station Identity (section: "station") ---
+# The station id (UUIDv7) is generated once by the Controller on first boot;
+# it is deliberately not set here.
+station:
+  # Human-readable name shown in the Web-UI header
+  name: "Silvasonic MVP"
   # GPS coordinates of the monitoring station (used for sunrise/sunset calculation)
   # Default is null (disables location filtering). To set location during development
   # without committing, create a config/defaults.override.yml file.
   latitude: null
   longitude: null
-  max_recorders: 5
-  # Human-readable name shown in the Web-UI header
-  station_name: "Silvasonic MVP"
+
+# --- Recording Behaviour (section: "recording") ---
+recording:
   # Automatically enroll newly detected USB microphones (true/false)
   auto_enrollment: true
+  # Maximum number of microphones recording at the same time
+  max_microphones: 5
 
-# --- Default Admin Credentials (key: "auth") ---
+# --- Default Admin Credentials (section: "auth") ---
 auth:
   default_username: "admin"
   default_password: "1234"  # MUST be changed in production!
 
-# --- Processor: Indexer & Storage Retention (key: "processor", v0.5.0) ---
-processor:
+# --- Storage Retention & Indexing (section: "storage", v0.5.0) ---
+storage:
   # Disk usage thresholds (%) that trigger escalating retention modes.
   # IDLE -> WARNING -> CRITICAL -> EMERGENCY (oldest files deleted first).
-  janitor_threshold_warning: 70.0
-  janitor_threshold_critical: 80.0
-  janitor_threshold_emergency: 90.0
+  warning_percent: 70.0
+  critical_percent: 80.0
+  emergency_percent: 90.0
   # How often (seconds) the Janitor checks disk usage.  Range: 10-600.
-  janitor_interval_seconds: 60
+  cleanup_interval_s: 60
   # Maximum files to delete per Janitor cycle.  Range: 10-500.
-  janitor_batch_size: 50
+  cleanup_batch_files: 50
   # How often (seconds) the Indexer scans for new WAV files.  Range: 1-30.
-  indexer_poll_interval: 2.0
+  index_interval_s: 2.0
 
-# --- Cloud Sync (key: "cloud_sync", v0.6.0) ---
+# --- Cloud Sync (section: "sync", v0.6.0) ---
+# The upload is switched on and off by the cloud_sync row of the modules table.
 # IMPORTANT: Remote target credentials (url, user, pass) are NOT seeded here.
 # They must be configured via Web-UI (v0.9.0) or direct DB insert.
-# The worker stays inactive (enabled: false) until remote_type is set.
-cloud_sync:
-  # Enable/disable cloud upload entirely
-  enabled: false
+# The module stays switched off until remote_type is set.
+sync:
   # Seconds between upload batch checks.  Range: 10-300.
-  poll_interval: 30
-  # Bandwidth limit for uploads (rsync/rclone format, e.g. "1M", "500k")
-  bandwidth_limit: "1M"
-  # Upload schedule (opt-in): restrict uploads to specific hours (24h format).
-  # Default: null/null = upload continuously 24/7.
-  # Example: start=22, end=6 → upload only between 22:00 and 06:00.
-  schedule_start_hour: null
-  schedule_end_hour: null
+  poll_interval_s: 30
+  # Upload bandwidth limit in bytes per second (null = unlimited). 1048576 = 1 MiB/s.
+  bandwidth_limit_bytes_per_s: 1048576
+  # Upload window (opt-in): restrict uploads to a daily window (UTC, "HH:MM").
+  # Default: null = upload continuously 24/7.
+  # Example: {start: "22:00", end: "06:00"} uploads only between 22:00 and 06:00.
+  window: null
   # Rclone backend type: "webdav", "s3", "sftp", "drive" (null = not configured)
   remote_type: null
   # Rclone remote name used in generated rclone.conf
@@ -74,20 +79,20 @@ cloud_sync:
   # Type-specific config dict (url, user, pass, etc.) — empty until configured
   remote_config: {}
 
-# --- BirdNET Inference (key: "birdnet", v0.7.0) ---
-# Lifecycle toggle (enabled) is in managed_services table (ADR-0029), NOT here.
+# --- BirdNET Inference (section: "birdnet", v0.7.0) ---
+# Lifecycle toggle (enabled) is in the modules table (ADR-0029), NOT here.
 birdnet:
   # Minimum confidence score (0.0-1.0) to accept a species detection.
   # Lower = more detections (but more false positives).
   # Higher = fewer detections (but higher accuracy).
-  confidence_threshold: 0.65
-  # Padding around detection window for clip extraction
-  clip_padding_seconds: 3.0
+  min_confidence: 0.65
+  # Padding (seconds) around the detection window for clip extraction
+  clip_padding_s: 3.0
   # Overlap between analysis windows (0.0-3.0 seconds)
-  overlap: 0.0
+  overlap_s: 0.0
   # Model sensitivity (0.5-1.5)
   sensitivity: 1.0
   # Number of inference threads
-  threads: 1
+  thread_count: 1
   # Processing order for backlog (oldest_first or newest_first)
   processing_order: "oldest_first"

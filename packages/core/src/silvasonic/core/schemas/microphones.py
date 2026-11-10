@@ -1,4 +1,4 @@
-"""Pydantic schemas for hardware devices and profiles."""
+"""Pydantic schemas for microphone profiles (ADR-0016, ADR-0033)."""
 
 from typing import Literal, Self
 
@@ -25,18 +25,13 @@ class MatchCriteria(BaseModel):
 class AudioConfig(BaseModel):
     """Low-level audio capture settings."""
 
-    sample_rate: PositiveInt = Field(
+    sample_rate_hz: PositiveInt = Field(
         ..., description="Target sample rate in Hz (e.g., 48000, 384000)"
     )
     channels: PositiveInt = Field(default=1, description="Number of audio channels")
-    format: Literal["S16LE", "S24LE", "S32LE"] = Field(
+    sample_format: Literal["S16LE", "S24LE", "S32LE"] = Field(
         default="S16LE", description="Audio sample format (bit depth)"
     )
-    # Legacy field — kept for backward compatibility
-    match_pattern: str | None = Field(
-        default=None, description="Regex or substring to match ALSA card name (legacy)"
-    )
-    # Structured match criteria (replaces match_pattern)
     match: MatchCriteria | None = Field(
         default=None, description="Structured USB/ALSA match criteria for auto-detection"
     )
@@ -46,7 +41,7 @@ class ProcessingConfig(BaseModel):
     """Software-side processing settings."""
 
     gain_db: float = Field(default=0.0, description="Software gain in dB")
-    chunk_size: PositiveInt = Field(default=4096, description="Buffer chunk size in frames")
+    chunk_frames: PositiveInt = Field(default=4096, description="Buffer chunk size in frames")
     highpass_filter_hz: float | None = Field(
         default=None, description="Optional High-pass filter cutoff"
     )
@@ -75,7 +70,7 @@ class MicrophoneProfile(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     # Metadata
-    schema_version: str = Field(default="1.0", description="Schema version")
+    schema_version: str = Field(default="2.0", description="Schema version")
     slug: str = Field(..., description="Unique identifier (e.g. 'ultramic_384_evo')")
     name: str = Field(..., description="Human-readable name")
     description: str | None = Field(default=None, description="User-friendly description")
@@ -100,10 +95,10 @@ class MicrophoneProfile(BaseModel):
         (ADR-0011). Only authored profiles are checked: the Recorder's
         runtime payload is not, so a bad profile never stops a recording.
         """
-        if not self.stream.processed_enabled and self.audio.sample_rate != ANALYSIS_SAMPLE_RATE:
+        if not self.stream.processed_enabled and self.audio.sample_rate_hz != ANALYSIS_SAMPLE_RATE:
             raise ValueError(
-                f"processed_enabled: false requires audio.sample_rate {ANALYSIS_SAMPLE_RATE}, "
-                f"got {self.audio.sample_rate}: analysis workers read the raw stream "
+                f"processed_enabled: false requires audio.sample_rate_hz {ANALYSIS_SAMPLE_RATE}, "
+                f"got {self.audio.sample_rate_hz}: analysis workers read the raw stream "
                 "and expect 48 kHz"
             )
         return self

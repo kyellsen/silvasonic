@@ -31,10 +31,10 @@ from silvasonic.controller.container_spec import (
     RestartPolicy,
     Tier2ServiceSpec,
 )
-from silvasonic.controller.device_repository import upsert_device
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
-from silvasonic.controller.reconciler import DeviceStateEvaluator
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ._hw_helpers import find_by_config, get_usb_devices, has_usb_audio_device, mic_connected
@@ -134,17 +134,18 @@ class TestRealProfileMatching:
         tmp_path: Path,
         session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
-        """Real USB device can be upserted into the devices table."""
+        """Real USB device can be upserted into the microphones table."""
         devices = get_usb_devices()
         assert len(devices) >= 1
 
         device_info = devices[0]
         async with session_factory() as session:
-            device = await upsert_device(device_info, session)
+            microphone = await upsert_microphone(device_info, session)
             await session.commit()
-            assert device.name == device_info.stable_device_id
-            assert device.status == "online"
-            assert device.model == device_info.alsa_name
+            assert microphone.hardware_id == device_info.stable_device_id
+            assert microphone.connection_state == "connected"
+            assert microphone.model == device_info.alsa_name
+            assert microphone.name == microphone.model
 
 
 # ---------------------------------------------------------------------------
@@ -196,16 +197,16 @@ class TestHardwareSpawnCycle:
 
         # Upsert as enrolled
         async with session_factory() as session:
-            await upsert_device(
+            await upsert_microphone(
                 device_info,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
 
         # Evaluate
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 

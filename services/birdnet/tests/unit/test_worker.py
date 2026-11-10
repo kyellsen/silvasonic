@@ -27,7 +27,7 @@ class TestBirdNETServiceUnit:
         """Service exits gracefully when shutdown event is set without pulling further."""
         # Trick the service into skipping DB init and jumping to loops
         mock_service.birdnet_config = MagicMock()
-        mock_service.system_config = MagicMock()
+        mock_service.station_config = MagicMock()
 
         # Prevent actually calling TFLite loading by throwing an Exception simulating no model
         # which will cause hit the fast return logic and exit immediately since shutdown is set
@@ -104,7 +104,7 @@ class TestBirdNETResilience:
         ):
             svc = BirdNETService()
             svc.birdnet_config = MagicMock()
-            svc.system_config = MagicMock()
+            svc.station_config = MagicMock()
             return svc
 
     @pytest.mark.asyncio
@@ -151,7 +151,7 @@ class TestBirdNETResilience:
 
     @pytest.mark.asyncio
     async def test_post_rollback_failure_caught(self, mock_service: BirdNETService) -> None:
-        """If writing the crashed state fails (e.g. DB commit drop), it soft-fails."""
+        """If writing the failed state fails (e.g. DB commit drop), it soft-fails."""
         from typing import Any
 
         call_count = 0

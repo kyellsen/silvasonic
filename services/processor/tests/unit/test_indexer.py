@@ -6,6 +6,7 @@ idempotency, and workspace scanning — all without a real DB.
 
 from __future__ import annotations
 
+import uuid
 import wave
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,16 +15,20 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from silvasonic.processor import indexer
 
+MIC_ID = uuid.UUID("0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f")
 
-def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000) -> None:
+
+def _create_wav(
+    path: Path, *, duration_s: float = 1.0, sample_rate_hz: int = 48000, channels: int = 1
+) -> None:
     """Create a minimal valid WAV file for testing."""
-    n_frames = int(duration_s * sample_rate)
+    n_frames = int(duration_s * sample_rate_hz)
     with wave.open(str(path), "w") as wf:
-        wf.setnchannels(1)
+        wf.setnchannels(channels)
         wf.setsampwidth(2)  # 16-bit
-        wf.setframerate(sample_rate)
+        wf.setframerate(sample_rate_hz)
         # Write silence (zeros)
-        wf.writeframes(b"\x00\x00" * n_frames)
+        wf.writeframes(b"\x00\x00" * channels * n_frames)
 
 
 @pytest.mark.unit
@@ -58,8 +63,8 @@ class TestScanWorkspace:
         result = indexer.scan_workspace(tmp_path)
         assert len(result) == 0
 
-    def test_multiple_sensors_discovered(self, tmp_path: Path) -> None:
-        """Files from multiple sensor directories are all discovered."""
+    def test_multiple_workspaces_discovered(self, tmp_path: Path) -> None:
+        """Files from multiple microphone directories are all discovered."""
         for name in ("mic-01", "mic-02"):
             d = tmp_path / name / "data" / "processed"
             d.mkdir(parents=True)
@@ -122,16 +127,16 @@ class TestClockMarker:
         """The suffix leaves the timestamp intact and sets the flag."""
         name = "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_unsynced.wav"
         assert indexer.parse_timestamp(name) == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
-        assert indexer.is_clock_unsynced(name) is True
+        assert indexer.is_clock_synced(name) is False
 
     def test_plain_segment_is_synced(self) -> None:
         """Names without the suffix, the normal case, are trusted."""
-        assert indexer.is_clock_unsynced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav") is False
+        assert indexer.is_clock_synced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav") is True
 
     def test_unknown_suffix_rejected(self) -> None:
         """Only the documented suffix is accepted."""
         with pytest.raises(ValueError):
-            indexer.is_clock_unsynced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_x.wav")
+            indexer.is_clock_synced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_x.wav")
 
     async def test_marker_reaches_the_insert(self, tmp_path: Path) -> None:
         """The indexer stores the flag with the recording."""
@@ -139,18 +144,19 @@ class TestClockMarker:
         dev_dir.mkdir(parents=True)
         _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_unsynced.wav")
 
-        device_result = MagicMock()
-        device_result.fetchone.return_value = ("mic-01",)
+        microphone_result = MagicMock()
+        microphone_result.fetchone.return_value = (MIC_ID,)
         exists_result = MagicMock()
         exists_result.all.return_value = []
         session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[exists_result, device_result, MagicMock()])
+        session.execute = AsyncMock(side_effect=[exists_result, microphone_result, MagicMock()])
 
         result = await indexer.index_recordings(session, tmp_path)
 
         assert result.new == 1
         insert_params = session.execute.await_args_list[-1].args[1]
-        assert insert_params["clock_unsynced"] is True
+        assert insert_params["clock_synced"] is False
+        assert insert_params["microphone_id"] == MIC_ID
 
 
 @pytest.mark.unit
@@ -160,23 +166,78 @@ class TestExtractMetadata:
     def test_wav_metadata_extraction(self, tmp_path: Path) -> None:
         """Extracted metadata matches the synthetic WAV properties."""
         wav = tmp_path / "test.wav"
-        _create_wav(wav, duration_s=2.0, sample_rate=48000)
+        _create_wav(wav, duration_s=2.0, sample_rate_hz=48000, channels=2)
 
         meta = indexer.extract_metadata(wav)
-        assert meta.sample_rate == 48000
-        assert abs(meta.duration - 2.0) < 0.01
-        assert meta.filesize > 0
+        assert meta.sample_rate_hz == 48000
+        assert meta.channels == 2
+        assert abs(meta.duration_s - 2.0) < 0.01
+        assert meta.size_bytes > 0
 
 
 @pytest.mark.unit
-class TestResolveSensorId:
-    """Verify sensor_id extraction from path structure."""
+class TestResolveWorkspaceName:
+    """Verify workspace name extraction from path structure."""
 
-    def test_sensor_id_from_path(self, tmp_path: Path) -> None:
+    def test_workspace_name_from_path(self, tmp_path: Path) -> None:
         """Path .../recorder/ultramic-01/data/processed/seg.wav → 'ultramic-01'."""
         wav = tmp_path / "ultramic-01" / "data" / "processed" / "seg.wav"
-        sensor_id = indexer.resolve_sensor_id(wav, tmp_path)
-        assert sensor_id == "ultramic-01"
+        workspace_name = indexer.resolve_workspace_name(wav, tmp_path)
+        assert workspace_name == "ultramic-01"
+
+
+@pytest.mark.unit
+class TestNativeSampleRate:
+    """sample_rate_hz and channels are the microphone's native values."""
+
+    async def _insert_params(self, tmp_path: Path) -> dict[str, object]:
+        session = AsyncMock()
+        exists_result = MagicMock()
+        exists_result.all.return_value = []
+        microphone_result = MagicMock()
+        microphone_result.fetchone.return_value = (MIC_ID,)
+        session.execute = AsyncMock(side_effect=[exists_result, microphone_result, MagicMock()])
+        result = await indexer.index_recordings(session, tmp_path)
+        assert result.new == 1
+        return session.execute.await_args_list[-1].args[1]
+
+    async def test_dual_stream_stores_raw_rate(self, tmp_path: Path) -> None:
+        """Raw at 384 kHz stereo, processed at 48 kHz mono → 384000 Hz, 2 channels."""
+        name = "2026-03-26T01-35-00Z_1s_1a2b3c4d_00000000.wav"
+        for stream in ("raw", "processed"):
+            (tmp_path / "mic-01" / "data" / stream).mkdir(parents=True)
+        _create_wav(tmp_path / "mic-01/data/raw" / name, sample_rate_hz=384000, channels=2)
+        _create_wav(tmp_path / "mic-01/data/processed" / name, sample_rate_hz=48000)
+
+        params = await self._insert_params(tmp_path)
+
+        assert params["sample_rate_hz"] == 384000
+        assert params["channels"] == 2
+        assert params["processed_path"] == f"mic-01/data/processed/{name}"
+        assert params["raw_path"] == f"mic-01/data/raw/{name}"
+
+    async def test_missing_raw_falls_back_to_processed(self, tmp_path: Path) -> None:
+        """Without the raw file the processed file's header is the fallback."""
+        name = "2026-03-26T01-35-00Z_1s_1a2b3c4d_00000000.wav"
+        (tmp_path / "mic-01" / "data" / "processed").mkdir(parents=True)
+        _create_wav(tmp_path / "mic-01/data/processed" / name, sample_rate_hz=48000)
+
+        params = await self._insert_params(tmp_path)
+
+        assert params["sample_rate_hz"] == 48000
+        assert params["channels"] == 1
+        assert params["raw_size_bytes"] == 0
+
+    async def test_raw_only_stores_raw_rate(self, tmp_path: Path) -> None:
+        """A raw-only microphone stores its raw file's rate."""
+        name = "2026-03-26T01-35-00Z_1s_1a2b3c4d_00000000.wav"
+        (tmp_path / "mic-01" / "data" / "raw").mkdir(parents=True)
+        _create_wav(tmp_path / "mic-01/data/raw" / name, sample_rate_hz=96000)
+
+        params = await self._insert_params(tmp_path)
+
+        assert params["sample_rate_hz"] == 96000
+        assert params["processed_path"] is None
 
 
 @pytest.mark.unit
@@ -232,13 +293,13 @@ class TestResolveRawPathFallback:
 
 
 @pytest.mark.unit
-class TestDeviceExistenceCheck:
-    """Verify Indexer checks device existence before INSERT."""
+class TestMicrophoneExistenceCheck:
+    """Verify Indexer checks microphone existence before INSERT."""
 
-    async def test_skips_file_when_device_not_registered(self, tmp_path: Path) -> None:
-        """File for unregistered device is skipped, not errored.
+    async def test_skips_file_when_microphone_not_registered(self, tmp_path: Path) -> None:
+        """File for unregistered microphone is skipped, not errored.
 
-        When the Controller hasn't registered a device yet, the Indexer
+        When the Controller hasn't registered a microphone yet, the Indexer
         must skip the file (not crash with FK violation) and count it
         as skipped — it's a transient timing issue, not a data problem.
         """
@@ -250,12 +311,12 @@ class TestDeviceExistenceCheck:
         idempotency_result = MagicMock()
         idempotency_result.all.return_value = []
 
-        # Mock: device check → NOT in DB
-        device_result = MagicMock()
-        device_result.fetchone.return_value = None
+        # Mock: microphone check → NOT in DB
+        microphone_result = MagicMock()
+        microphone_result.fetchone.return_value = None
 
         session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[idempotency_result, device_result])
+        session.execute = AsyncMock(side_effect=[idempotency_result, microphone_result])
         session.commit = AsyncMock()
 
         result = await indexer.index_recordings(session, tmp_path)
@@ -309,9 +370,9 @@ def _exists_result(rows: list[tuple[str, str | None]]) -> MagicMock:
     return result
 
 
-def _device_result(name: str | None) -> MagicMock:
+def _microphone_result(microphone_id: uuid.UUID | None) -> MagicMock:
     result = MagicMock()
-    result.fetchone.return_value = (name,) if name is not None else None
+    result.fetchone.return_value = (microphone_id,) if microphone_id is not None else None
     return result
 
 
@@ -327,7 +388,7 @@ class TestCyclesStayCheap:
 
         session = AsyncMock()
         session.execute = AsyncMock(
-            side_effect=[_exists_result([]), _device_result("mic-01"), MagicMock()]
+            side_effect=[_exists_result([]), _microphone_result(MIC_ID), MagicMock()]
         )
         known: set[str] = set()
 
@@ -382,7 +443,7 @@ class TestCyclesStayCheap:
 
         session = AsyncMock()
         session.execute = AsyncMock(
-            side_effect=[_exists_result([]), _device_result("mic-01"), MagicMock()]
+            side_effect=[_exists_result([]), _microphone_result(MIC_ID), MagicMock()]
         )
         known: set[str] = set()
 
@@ -402,30 +463,30 @@ class TestCyclesStayCheap:
 
 @pytest.mark.unit
 class TestRealisticProductionNaming:
-    """Verify Indexer handles realistic workspace dir vs. device name.
+    """Verify Indexer handles realistic workspace dir vs. microphone identity.
 
     In production, the Controller creates workspace directories using
-    profile-slug-based naming (e.g., "ultramic-384-evo-034f"), but
-    stores devices.name as the stable_device_id (e.g., "0869-0389-00000000034F").
-    The device's workspace_name column bridges the lookup.
+    profile-slug-based naming (e.g., "ultramic-384-evo-034f"), while the
+    microphone's key is a UUID and its hardware_id the Stable Device ID
+    (e.g., "0869-0389-00000000034F").  The microphone's workspace_name
+    column bridges the lookup.
 
     The Indexer extracts workspace_dir from the filesystem and queries
-    ``SELECT name FROM devices WHERE workspace_name = :ws_name``.
+    ``SELECT id FROM microphones WHERE workspace_name = :ws_name``.
 
-    See: Log Analysis Report 2026-03-30 — Name-Mismatch (workspace_name vs device.name).
+    See: Log Analysis Report 2026-03-30 — Name-Mismatch (workspace_name vs hardware_id).
     """
 
     async def test_indexes_file_with_production_workspace_name(self, tmp_path: Path) -> None:
-        """Indexer must index files when workspace dir differs from device.name.
+        """Indexer must index files when workspace dir differs from hardware_id.
 
         Setup mirrors the exact production scenario:
         - Workspace dir: "ultramic-384-evo-034f" (from container_spec)
-        - devices.name in DB: "0869-0389-00000000034F" (from device_scanner)
-        - devices.workspace_name in DB: "ultramic-384-evo-034f" (from reconciler)
-        - The DB contains the device, with workspace_name matching the dir.
+        - microphones.hardware_id in DB: "0869-0389-00000000034F" (from device_scanner)
+        - microphones.workspace_name in DB: "ultramic-384-evo-034f" (from reconciler)
+        - The DB contains the microphone, with workspace_name matching the dir.
         """
         workspace_dir = "ultramic-384-evo-034f"  # From build_recorder_spec
-        db_device_name = "0869-0389-00000000034F"  # From upsert_device
 
         # Create a WAV file in the production-style workspace
         dev_dir = tmp_path / workspace_dir / "data" / "processed"
@@ -440,15 +501,17 @@ class TestRealisticProductionNaming:
         idempotency_result = MagicMock()
         idempotency_result.all.return_value = []
 
-        # 2. Device lookup by workspace_name → returns the stable device name
-        device_result = MagicMock()
-        device_result.fetchone.return_value = (db_device_name,)
+        # 2. Microphone lookup by workspace_name → returns the microphone id
+        microphone_result = MagicMock()
+        microphone_result.fetchone.return_value = (MIC_ID,)
 
         # 3. INSERT
         insert_result = AsyncMock()
 
         session = AsyncMock()
-        session.execute = AsyncMock(side_effect=[idempotency_result, device_result, insert_result])
+        session.execute = AsyncMock(
+            side_effect=[idempotency_result, microphone_result, insert_result]
+        )
         session.commit = AsyncMock()
 
         result = await indexer.index_recordings(session, tmp_path)
@@ -456,29 +519,29 @@ class TestRealisticProductionNaming:
         # In the FIXED code: result.new should be 1
         assert result.new == 1, (
             f"Indexer failed to index recording from workspace dir "
-            f"'{workspace_dir}'. devices.name in DB is '{db_device_name}'. "
+            f"'{workspace_dir}'. "
             f"Got: new={result.new}, skipped={result.skipped}, errors={result.errors}"
         )
 
 
 # ===================================================================
-# Raw-Only Devices Invisible to Indexer
+# Raw-Only Microphones Invisible to Indexer
 # ===================================================================
 
 
 @pytest.mark.unit
-class TestRawOnlyDeviceDiscovery:
-    """Verify that scan_workspace discovers devices with only raw/ data.
+class TestRawOnlyMicrophoneDiscovery:
+    """Verify that scan_workspace discovers microphones with only raw/ data.
 
     Devices with ``processed_enabled: false`` (Rode NT-USB, Generic USB,
     Behringer, Focusrite — 4 of 8 profiles) only produce files in
     ``data/raw/``, not ``data/processed/``.
 
-    See: Gemini Log Analysis Report 2026-03-30 — RAW-Only device discovery.
+    See: Gemini Log Analysis Report 2026-03-30 — RAW-Only microphone discovery.
     """
 
-    def test_scan_workspace_discovers_raw_only_device(self, tmp_path: Path) -> None:
-        """scan_workspace must find WAV files from raw-only devices.
+    def test_scan_workspace_discovers_raw_only_microphone(self, tmp_path: Path) -> None:
+        """scan_workspace must find WAV files from raw-only microphones.
 
         A device like the Rode NT-USB (48kHz native, no downsampling)
         has processed_enabled=False. Its workspace only contains
@@ -495,7 +558,7 @@ class TestRawOnlyDeviceDiscovery:
         result = indexer.scan_workspace(tmp_path)
 
         assert len(result) >= 1, (
-            "scan_workspace() found 0 files for raw-only device. "
+            "scan_workspace() found 0 files for raw-only microphone. "
             "Devices with processed_enabled=False are invisible to the indexer. "
             "4 of 8 profiles are affected (rode_nt_usb, generic_usb, "
             "behringer_uphoria, focusrite_scarlett)."
@@ -504,7 +567,7 @@ class TestRawOnlyDeviceDiscovery:
     def test_scan_workspace_deduplicates_dual_stream(self, tmp_path: Path) -> None:
         """When both raw and processed exist, only processed is returned.
 
-        This prevents double-indexing for dual-stream devices.
+        This prevents double-indexing for dual-stream microphones.
         """
         device_dir = tmp_path / "ultramic-384-evo-034f"
         processed_dir = device_dir / "data" / "processed"

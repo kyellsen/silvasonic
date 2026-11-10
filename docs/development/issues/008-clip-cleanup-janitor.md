@@ -19,7 +19,7 @@ These orphaned clips will accumulate indefinitely and waste NVMe storage.
 ## 2. Context & Root Cause Analysis
 
 * **Component:** `Janitor` (in `services/processor/src/silvasonic/processor/janitor.py`)
-* **Mechanism:** The Janitor currently deletes recordings based on `local_deleted` flag and age thresholds. It has no awareness of the `detections.clip_path` column or the analysis worker workspace directories.
+* **Mechanism:** The Janitor currently deletes recordings based on the `deleted_at` column and age thresholds. It has no awareness of the `detections.clip_path` column or the analysis worker workspace directories.
 
 The `clip_path` column was introduced in v0.8.0 (BirdNET milestone) to store relative paths to detection audio clips. The clips are stored in per-worker workspace directories (e.g., `birdnet/clips/42_9000_12000_Turdus_merula.wav`).
 
@@ -37,7 +37,7 @@ The `clip_path` column was introduced in v0.8.0 (BirdNET milestone) to store rel
 
 ## 5. Expected Behavior
 
-When the Janitor marks a recording as `local_deleted=true` and removes its audio files, it should also:
+When the Janitor sets a recording's `deleted_at` and removes its audio files, it should also:
 1. Query `detections.clip_path` for all detections referencing the deleted `recording_id`.
 2. Delete the corresponding clip files from the analysis worker workspaces.
 3. Set `detections.clip_path = NULL` for the affected rows (or leave as-is if the path is just a reference).

@@ -12,11 +12,12 @@ Covers:
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from silvasonic.core.schemas.system_config import ProcessorSettings
+from silvasonic.core.schemas.settings import StorageSettings
 from silvasonic.processor.janitor import (
     RetentionMode,
     delete_files,
@@ -38,37 +39,37 @@ class TestEvaluateMode:
 
     def test_idle_below_all_thresholds(self) -> None:
         """60% usage → mode idle, no deletions needed."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(60.0, settings) == RetentionMode.IDLE
 
     def test_housekeeping_mode_triggers(self) -> None:
         """75% usage → mode housekeeping."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(75.0, settings) == RetentionMode.HOUSEKEEPING
 
     def test_defensive_mode_triggers(self) -> None:
         """85% usage → mode defensive."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(85.0, settings) == RetentionMode.DEFENSIVE
 
     def test_panic_mode_triggers(self) -> None:
         """95% usage → mode panic."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(95.0, settings) == RetentionMode.PANIC
 
     def test_exact_threshold_warning(self) -> None:
         """Exactly 70.0% → housekeeping (inclusive)."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(70.0, settings) == RetentionMode.HOUSEKEEPING
 
     def test_exact_threshold_critical(self) -> None:
         """Exactly 80.0% → defensive (inclusive)."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(80.0, settings) == RetentionMode.DEFENSIVE
 
     def test_exact_threshold_emergency(self) -> None:
         """Exactly 90.0% → panic (inclusive)."""
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         assert evaluate_mode(90.0, settings) == RetentionMode.PANIC
 
 
@@ -135,7 +136,7 @@ class TestDeleteWorkerClips:
         clip_path.write_bytes(b"\x00")
         assert clip_path.exists()
 
-        removed = await delete_worker_clips(session, 10, tmp_path)
+        removed = await delete_worker_clips(session, uuid.UUID(int=10), tmp_path)
         assert removed == 1
         assert not clip_path.exists()
 
@@ -143,7 +144,7 @@ class TestDeleteWorkerClips:
         assert session.execute.call_count == 2
         update_call = session.execute.call_args_list[1]
         assert "UPDATE detections" in str(update_call[0][0])
-        assert update_call[0][1] == {"id": 10, "clip_paths": ["clips/123.wav"]}
+        assert update_call[0][1] == {"id": uuid.UUID(int=10), "clip_paths": ["clips/123.wav"]}
 
     async def test_missing_files_are_graceful(self, tmp_path: Path) -> None:
         """Missing physical files do not crash the cleanup."""
@@ -156,14 +157,14 @@ class TestDeleteWorkerClips:
 
         # Do NOT create the file physically
 
-        removed = await delete_worker_clips(session, 10, tmp_path)
+        removed = await delete_worker_clips(session, uuid.UUID(int=10), tmp_path)
         assert removed == 1
 
         # DB update is still called because DB rows existed and missing files
         # are considered successfully removed
         assert session.execute.call_count == 2
         update_call = session.execute.call_args_list[1]
-        assert update_call[0][1] == {"id": 10, "clip_paths": ["clips/missing.wav"]}
+        assert update_call[0][1] == {"id": uuid.UUID(int=10), "clip_paths": ["clips/missing.wav"]}
 
     async def test_path_traversal_blocked(self, tmp_path: Path) -> None:
         """Path traversal clip_path is silently skipped, DB NOT nullified.
@@ -182,7 +183,7 @@ class TestDeleteWorkerClips:
         ]
         session.execute.return_value = mock_result
 
-        removed = await delete_worker_clips(session, 99, tmp_path)
+        removed = await delete_worker_clips(session, uuid.UUID(int=99), tmp_path)
 
         # Path traversal entry must be skipped entirely
         assert removed == 0
@@ -230,12 +231,12 @@ class TestDeleteWorkerClips:
             patch.object(Path, "unlink", selective_unlink),
             pytest.raises(OSError, match="Permission denied"),
         ):
-            await delete_worker_clips(session, 42, tmp_path)
+            await delete_worker_clips(session, uuid.UUID(int=42), tmp_path)
 
         # Partial nullification: DB update was called for ok.wav only
         assert session.execute.call_count == 2
         update_call = session.execute.call_args_list[1]
-        assert update_call[0][1] == {"id": 42, "clip_paths": ["clips/ok.wav"]}
+        assert update_call[0][1] == {"id": uuid.UUID(int=42), "clip_paths": ["clips/ok.wav"]}
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +320,7 @@ class TestRunCleanupSafe:
         """Below all thresholds → idle result, no session created."""
         from silvasonic.processor.janitor import run_cleanup_safe
 
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         with patch("silvasonic.processor.janitor.get_disk_usage", return_value=50.0):
             result = await run_cleanup_safe(Path("/data"), settings)
 
@@ -330,7 +331,7 @@ class TestRunCleanupSafe:
         """Above threshold + DB available → delegates to run_cleanup."""
         from silvasonic.processor.janitor import run_cleanup_safe
 
-        settings = ProcessorSettings()
+        settings = StorageSettings()
         mock_session = AsyncMock()
         mock_result_cloud_sync = MagicMock()
         mock_result_cloud_sync.fetchone.return_value = None
@@ -358,7 +359,7 @@ class TestRunCleanupSafe:
         """DB failure during Panic → falls back to mtime-based filesystem cleanup."""
         from silvasonic.processor.janitor import run_cleanup_safe
 
-        settings = ProcessorSettings()
+        settings = StorageSettings()
 
         # Create WAV files to delete
         sensor_dir = tmp_path / "mic" / "data" / "processed"
@@ -382,7 +383,7 @@ class TestRunCleanupSafe:
         """DB failure during Housekeeping → skips cycle, no data loss."""
         from silvasonic.processor.janitor import run_cleanup_safe
 
-        settings = ProcessorSettings()
+        settings = StorageSettings()
 
         with (
             patch("silvasonic.processor.janitor.get_disk_usage", return_value=75.0),
@@ -400,7 +401,7 @@ class TestRunCleanupSafe:
         """DB failure during Defensive → skips cycle, no data loss."""
         from silvasonic.processor.janitor import run_cleanup_safe
 
-        settings = ProcessorSettings()
+        settings = StorageSettings()
 
         with (
             patch("silvasonic.processor.janitor.get_disk_usage", return_value=85.0),
@@ -475,7 +476,7 @@ class TestRunCleanupErrorHandling:
             await run_cleanup(
                 session,
                 Path("/data/recorder"),
-                ProcessorSettings(),
+                StorageSettings(),
                 mode=RetentionMode.HOUSEKEEPING,
                 disk_pct=75.0,
             )
@@ -540,7 +541,7 @@ class TestRunCleanupErrorHandling:
             result = await run_cleanup(
                 session,
                 Path("/data/recorder"),
-                ProcessorSettings(),
+                StorageSettings(),
                 mode=RetentionMode.HOUSEKEEPING,
                 disk_pct=75.0,
             )
@@ -584,7 +585,7 @@ class TestRunCleanupErrorHandling:
             result = await run_cleanup(
                 session,
                 Path("/data/recorder"),
-                ProcessorSettings(),
+                StorageSettings(),
                 mode=RetentionMode.HOUSEKEEPING,
                 disk_pct=75.0,
             )
@@ -596,3 +597,42 @@ class TestRunCleanupErrorHandling:
         assert "proc/a.wav" in result.error_details
         # Commit is called — partial NULLs from clip deletion are preserved
         session.commit.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Soft delete and the cloud_sync module switch
+# ---------------------------------------------------------------------------
+
+
+class TestSoftDeleteAndModuleSwitch:
+    """soft_delete records time and cause; the fallback reads the modules table."""
+
+    async def test_soft_delete_sets_deleted_at_and_retention_reason(self) -> None:
+        """The Janitor's deletion sets deleted_at and deletion_reason 'retention'."""
+        from silvasonic.processor.janitor import soft_delete
+
+        session = AsyncMock()
+        rec_id = uuid.UUID(int=7)
+        await soft_delete(session, rec_id)
+
+        args = session.execute.await_args_list[-1].args
+        assert "deleted_at = now()" in str(args[0])
+        assert args[1] == {"id": rec_id, "reason": "retention"}
+
+    @pytest.mark.parametrize(
+        ("row", "expected"),
+        [(None, False), ((False,), False), ((True,), True)],
+    )
+    async def test_cloud_sync_switch_from_modules(
+        self, row: tuple[bool] | None, expected: bool
+    ) -> None:
+        """Absent or disabled cloud_sync module → fallback; enabled → no fallback."""
+        from silvasonic.processor.janitor import is_cloud_sync_enabled
+
+        result = MagicMock()
+        result.fetchone.return_value = row
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=result)
+
+        assert await is_cloud_sync_enabled(session) is expected
+        assert "FROM modules" in str(session.execute.await_args_list[-1].args[0])

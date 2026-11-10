@@ -22,7 +22,7 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   Streams and artifacts MUST be named `raw` and `processed`.
     *   We explicitly abandon names like `high`, `low`, `high_res`, `low_res` or specific bitrates (`384k`) in naming conventions (variables, directories, database columns).
     *   **Filename Format**: All files MUST adhere to the v0.6.0 collision-proof format: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}.wav`. Pre-v0.6.0 legacy fallback formats are strictly forbidden.
-    *   **Clock Marker**: A segment named while the system clock was not synchronised (`adjtimex(2)`, the rule `timedatectl` uses) gets the suffix `_unsynced` before `.wav`: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}_unsynced.wav`. Its timestamp may be off by however long the device ran without a time source; the Indexer stores the flag as `recordings.clock_unsynced` ([Issue 002](../development/issues/002-ntp-time-jump.md)). Both streams of a segment carry the same name, marker included.
+    *   **Clock Marker**: A segment named while the system clock was not synchronised (`adjtimex(2)`, the rule `timedatectl` uses) gets the suffix `_unsynced` before `.wav`: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}_unsynced.wav`. Its timestamp may be off by however long the device ran without a time source; the Indexer stores `recordings.clock_synced = false` for it ([Issue 002](../development/issues/002-ntp-time-jump.md)). Both streams of a segment carry the same name, marker included.
 
 3.  **Local Storage Format**:
     *   **Format**: `WAV` (linear PCM).
@@ -44,11 +44,11 @@ We need a standardized way to handle audio streams to ensure downstream services
 
 ## 4. Consequences
 *   **Positive:**
-    *   **Downstream Compatibility**: Services like BirdNET consume the preferred audio via `COALESCE(file_processed, file_raw)`, always receiving 48 kHz data without internal resampling.
+    *   **Downstream Compatibility**: Services like BirdNET consume the preferred audio via `COALESCE(processed_path, raw_path)`, always receiving 48 kHz data without internal resampling.
     *   **Hardware Independence**: Replacing a 384 kHz mic with a 96 kHz mic requires no code changes in downstream consumers, as `processed` remains 48 kHz, and `raw` is just handled as "the archival file".
-    *   **Database Schema**: The `recordings` table uses `file_raw` (NOT NULL) and `file_processed` (NULLABLE) columns. Raw-only devices insert `file_processed = NULL` and `filesize_processed = 0`.
+    *   **Database Schema**: The `recordings` table uses `raw_path` (NOT NULL) and `processed_path` (NULLABLE) columns. Raw-only microphones insert `processed_path = NULL` and `processed_size_bytes = 0`.
     *   **Filesystem**: The workspace directory structure uses `data/raw` and optionally `data/processed` within each microphone folder (see [Filesystem Governance](../arch/filesystem_governance.md)).
-    *   **Cross-Service Contract**: The Controller stores `devices.workspace_name` during enrollment, which the Processor Indexer uses to resolve filesystem paths to the device's stable identity (`devices.name`).
+    *   **Cross-Service Contract**: The Controller stores `microphones.workspace_name` during enrollment, which the Processor Indexer uses to resolve filesystem paths to the device's stable identity (`microphones.hardware_id`).
 *   **Negative:**
     *   Requires up to double the storage for local recordings when both streams are active (raw + processed).
     *   CPU overhead for real-time resampling to produce the processed stream (handled by FFmpeg, see ADR-0024).
@@ -82,12 +82,12 @@ We have decided to enforce **Data Capture Integrity** via an escalating retentio
 
 ### Batch Size Limit
 
-Deletions are limited to `janitor_batch_size` (default: **50**) files per cleanup cycle to prevent I/O storms and excessive database load. At 10-second segments, this corresponds to ~8 minutes of audio per batch.
+Deletions are limited to `cleanup_batch_files` (default: **50**) files per cleanup cycle to prevent I/O storms and excessive database load. At 10-second segments, this corresponds to ~8 minutes of audio per batch.
 
 ### Upload-Fallback (Pre-v0.6.0)
 
-When upload is not enabled (`CloudSyncSettings.enabled = false` in `system_config`), the `uploaded` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.cloud_sync_fallback_active`.
-If upload *is* enabled, the `uploaded` condition is strictly interpreted as meaning the file has been successfully uploaded to the configured remote target.
+When upload is not enabled (the `cloud_sync` row of the `modules` table is switched off or missing), the `uploaded_at` condition in Housekeeping and Defensive modes is skipped. This prevents the Janitor from remaining idle until the Panic threshold is reached. The fallback is logged at `WARNING` level with the key `janitor.cloud_sync_fallback_active`.
+If upload *is* enabled, the `uploaded_at` condition is strictly interpreted as meaning the file has been successfully uploaded to the configured remote target.
 
 The exact implementation details, thresholds, and deletion rules are maintained authoritatively in the **[Processor Service Documentation](../services/processor.md)**.
 

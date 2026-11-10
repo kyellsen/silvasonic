@@ -15,7 +15,7 @@
 
 - [x] New recordings are automatically detected and uploaded to the cloud — without manual intervention.
 - [x] Before upload, files are losslessly compressed (FLAC) to save bandwidth (~50% smaller).
-- [x] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (`uploaded=true`).
+- [x] After confirmed upload to the configured remote target, the file is marked as "uploaded" in the database (`uploaded_at` is set).
 - [x] The device also works without an internet connection — recordings are stored locally and caught up upon connection (Store & Forward).
 
 ### References
@@ -35,7 +35,7 @@
 
 ### Acceptance Criteria
 
-- [x] After confirmed upload to the configured remote target, the system marks the file as backed up (`uploaded=true`).
+- [x] After confirmed upload to the configured remote target, the system marks the file as backed up (`uploaded_at` is set).
 - [x] The storage cleanup service (Janitor) may only delete files marked as "uploaded" (→ US-P02).
 - [x] The interaction of upload and cleanup permanently keeps local storage below critical thresholds.
 - [x] In case of a permanent lack of internet connection, the Janitor still intervenes — recording always takes precedence over archiving.

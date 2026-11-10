@@ -31,17 +31,17 @@ Previously, profiles were loaded directly from YAML files at startup. This made 
     *   On every Controller startup, a `ProfileBootstrapper`:
         *   Reads the YAML files.
         *   **Inserts** them into the database if they do not exist (`ON CONFLICT DO NOTHING`).
-        *   Marks them as `is_system=True`.
+        *   Marks them as `built_in=True`.
     *   This ensures "Repo is Truth" for initial system profiles, but protects user modifications (e.g., custom gain settings) from being overwritten on restart.
 
 3.  **Strict Device Linking:**
-    *   The `devices` table has a Foreign Key (`profile_slug`) to `microphone_profiles.slug`.
+    *   The `microphones` table has a Foreign Key (`profile_slug`) to `microphone_profiles.slug`.
     *   Profile configuration is stored as validated JSONB (Pydantic V2) rather than loosely in a JSON column on the device.
 
 ### 2.1. Implementation Status
 The database schema is implemented:
-*   SQLAlchemy model: [`profiles.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/profiles.py) — `microphone_profiles` table with `slug`, `name`, `description`, `match_pattern`, `config` (JSONB), `is_system` (Boolean).
-*   Device FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `devices.profile_slug → microphone_profiles.slug`.
+*   SQLAlchemy model: [`profiles.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/profiles.py) — `microphone_profiles` table with `slug`, `name`, `description`, `config` (JSONB), `built_in` (Boolean).
+*   Microphone FK: [`system.py`](https://github.com/kyellsen/silvasonic/blob/main/packages/core/src/silvasonic/core/database/models/system.py) — `microphones.profile_slug → microphone_profiles.slug`.
 
 The ProfileBootstrapper and YAML seed files are implemented since v0.3.0 in [`seeder.py`](https://github.com/kyellsen/silvasonic/blob/main/services/controller/src/silvasonic/controller/seeder.py).
 

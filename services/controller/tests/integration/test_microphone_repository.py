@@ -1,15 +1,15 @@
-"""Integration tests for device_repository against a real DB.
+"""Integration tests for microphone_repository against a real DB.
 
-Verifies upsert_device behavior without needing deep SQLAlchemy mocks.
+Verifies upsert_microphone behavior without needing deep SQLAlchemy mocks.
 """
 
 from __future__ import annotations
 
 import pytest
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceInfo
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.core.database.models.profiles import MicrophoneProfile
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -44,35 +44,42 @@ def device_info() -> DeviceInfo:
     )
 
 
-class TestUpsertDevice:
-    """Tests for the upsert_device function with real DB session."""
+class TestUpsertMicrophone:
+    """Tests for the upsert_microphone function with real DB session."""
 
-    async def test_upsert_creates_new_device(
+    async def test_upsert_creates_new_microphone(
         self, session_factory: async_sessionmaker[AsyncSession], device_info: DeviceInfo
     ) -> None:
-        """New device is inserted into DB."""
+        """New microphone is inserted into DB with a UUIDv7 id from the database."""
         async with session_factory() as session:
-            device = await upsert_device(device_info, session)
+            microphone = await upsert_microphone(device_info, session)
             await session.commit()
 
-        assert device.name == f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
-        assert device.status == "online"
-        assert device.enrollment_status == "pending"
+        assert microphone.hardware_id == f"{_MOCK_VID}-{_MOCK_PID}-ABC123"
+        assert microphone.connection_state == "connected"
+        assert microphone.enrollment_state == "pending"
+        assert microphone.name == "UltraMic 384K"
+        assert microphone.first_seen_at is not None
 
-        # Verify it exists in DB
+        # Verify it exists in DB, keyed by a database-generated UUIDv7
+        assert microphone.id is not None
+        assert microphone.id.version == 7
         async with session_factory() as session:
-            db_device = await session.get(Device, device.name)
-            assert db_device is not None
-            assert db_device.model == "UltraMic 384K"
+            db_mic = await session.get(Microphone, microphone.id)
+            assert db_mic is not None
+            assert db_mic.model == "UltraMic 384K"
+            assert db_mic.first_seen_at == db_mic.last_seen_at
 
     async def test_upsert_updates_existing_device(
         self, session_factory: async_sessionmaker[AsyncSession], device_info: DeviceInfo
     ) -> None:
-        """Known device gets status=online and updated config."""
+        """Known microphone gets connection_state=connected and updated hardware facts."""
         # 1. First insert
         async with session_factory() as session:
-            await upsert_device(device_info, session)
+            first = await upsert_microphone(device_info, session)
             await session.commit()
+        first_seen_at = first.first_seen_at
+        first_id = first.id
 
         # 2. Modify device_info to simulate hardware drift
         device_info.alsa_card_index = 3
@@ -81,37 +88,41 @@ class TestUpsertDevice:
         device_info.usb_bus_path = "1-4.1"
 
         async with session_factory() as session:
-            device = await upsert_device(device_info, session)
+            microphone = await upsert_microphone(device_info, session)
             await session.commit()
 
-        assert device.status == "online"
-        assert device.last_seen is not None
-        assert device.model == "UltraMic 384K (Updated)"
-        assert device.config["alsa_card_index"] == 3
-        assert device.config["alsa_device"] == "hw:3,0"
-        assert device.config["alsa_name"] == "UltraMic 384K (Updated)"
-        assert device.config["usb_bus_path"] == "1-4.1"
-        assert device.config["usb_vendor_id"] == _MOCK_VID
+        assert microphone.connection_state == "connected"
+        assert microphone.last_seen_at is not None
+        assert microphone.model == "UltraMic 384K (Updated)"
+        assert microphone.hardware["alsa_card_index"] == 3
+        assert microphone.hardware["alsa_device"] == "hw:3,0"
+        assert microphone.hardware["alsa_name"] == "UltraMic 384K (Updated)"
+        assert microphone.hardware["usb_bus_path"] == "1-4.1"
+        assert microphone.hardware["usb_vendor_id"] == _MOCK_VID
+        # Identity, label and first sighting survive the update
+        assert microphone.id == first_id
+        assert microphone.name == "UltraMic 384K"
+        assert microphone.first_seen_at == first_seen_at
 
         # Ensure no duplicates were made
         async with session_factory() as session:
-            result = await session.execute(select(Device))
-            all_devices = list(result.scalars().all())
-            assert len(all_devices) == 1
+            result = await session.execute(select(Microphone))
+            all_microphones = list(result.scalars().all())
+            assert len(all_microphones) == 1
 
     async def test_upsert_assigns_profile_to_new_device(
         self, session_factory: async_sessionmaker[AsyncSession], device_info: DeviceInfo
     ) -> None:
-        """Profile slug is assigned when device is new and auto-enroll."""
+        """Profile slug is assigned when the microphone is new and auto-enroll."""
         async with session_factory() as session:
             session.add(MicrophoneProfile(slug="ultramic_384_evo", name="Test Profile", config={}))
-            device = await upsert_device(
-                device_info, session, profile_slug="ultramic_384_evo", enrollment_status="enrolled"
+            microphone = await upsert_microphone(
+                device_info, session, profile_slug="ultramic_384_evo", enrollment_state="enrolled"
             )
             await session.commit()
 
-        assert device.profile_slug == "ultramic_384_evo"
-        assert device.enrollment_status == "enrolled"
+        assert microphone.profile_slug == "ultramic_384_evo"
+        assert microphone.enrollment_state == "enrolled"
 
     async def test_upsert_keeps_existing_profile(
         self, session_factory: async_sessionmaker[AsyncSession], device_info: DeviceInfo
@@ -121,15 +132,17 @@ class TestUpsertDevice:
         async with session_factory() as session:
             session.add(MicrophoneProfile(slug="custom_profile", name="Custom Profile", config={}))
             session.add(MicrophoneProfile(slug="ultramic_384_evo", name="Test Profile", config={}))
-            await upsert_device(
-                device_info, session, profile_slug="custom_profile", enrollment_status="enrolled"
+            await upsert_microphone(
+                device_info, session, profile_slug="custom_profile", enrollment_state="enrolled"
             )
             await session.commit()
 
         # 2. Upsert again with new detected profile slug
         async with session_factory() as session:
-            device = await upsert_device(device_info, session, profile_slug="ultramic_384_evo")
+            microphone = await upsert_microphone(
+                device_info, session, profile_slug="ultramic_384_evo"
+            )
             await session.commit()
 
         # Should NOT overwrite existing profile
-        assert device.profile_slug == "custom_profile"
+        assert microphone.profile_slug == "custom_profile"

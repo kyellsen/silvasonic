@@ -1,6 +1,7 @@
 """BirdNET refuses audio that is not at the model's 48 kHz (ADR-0011)."""
 
 import asyncio
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -20,11 +21,11 @@ def service(tmp_path: Path) -> BirdNETService:
             "SILVASONIC_WORKSPACE_DIR": str(tmp_path),
         },
     ):
-        from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+        from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 
         svc = BirdNETService()
         svc.birdnet_config = BirdnetSettings()
-        svc.system_config = SystemSettings(latitude=53.5, longitude=10.0)
+        svc.station_config = StationSettings(latitude=53.5, longitude=10.0)
         return svc
 
 
@@ -50,7 +51,7 @@ class TestUnsupportedSampleRate:
         """44.1 kHz audio raises before any inference runs."""
         interpreter = MagicMock()
         recording = MagicMock()
-        recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
 
         with (
             patch(
@@ -77,8 +78,8 @@ class TestUnsupportedSampleRate:
     async def test_run_marks_recording_skipped(self, service: BirdNETService) -> None:
         """The worker records why, so the recording is not picked up again."""
         recording = MagicMock()
-        recording.id = 3
-        recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+        recording.id = uuid.UUID("0193f1c2-7b3a-7c4e-9d55-0a1b2c3d4e5f")
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
         recording.analysis_state = {}
 
         class FakeSession:
@@ -119,4 +120,86 @@ class TestUnsupportedSampleRate:
         ):
             await service.run()
 
-        assert recording.analysis_state == {"birdnet": "skipped_sample_rate"}
+        entry = recording.analysis_state["birdnet"]
+        assert entry["state"] == "skipped"
+        assert entry["reason"] == "sample_rate_unsupported"
+        assert entry["detection_count"] is None
+        assert entry["finished_at"].endswith("Z")
+        # The error text stays in the log
+        assert "44100" not in str(recording.analysis_state)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestNativeSampleRate:
+    """BirdNET judges the file it reads, not ``recordings.sample_rate_hz``.
+
+    Since ADR-0033 the column holds the microphone's native rate, e.g.
+    384 kHz for an ultrasonic microphone whose processed stream is 48 kHz.
+    """
+
+    async def test_native_rate_with_48k_processed_file_is_analysed(
+        self, service: BirdNETService, tmp_path: Path
+    ) -> None:
+        """A 384 kHz microphone's 48 kHz processed file is analysed."""
+        import soundfile as sf
+
+        processed = tmp_path / "processed.wav"
+        sf.write(str(processed), np.zeros(3 * 48_000, dtype=np.float32), 48_000)
+
+        interpreter = MagicMock()
+        interpreter.get_input_details.return_value = [{"index": 0}]
+        interpreter.get_output_details.return_value = [{"index": 0}]
+        interpreter.get_tensor.return_value = np.full((1, 1), -10.0, dtype=np.float32)
+
+        recording = MagicMock()
+        recording.sample_rate_hz = 384_000
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+
+        with patch(
+            "silvasonic.birdnet.service.asyncio.get_running_loop",
+            return_value=_inline_loop(),
+        ):
+            detections = await service._process_recording(
+                recording,
+                processed,
+                interpreter,
+                ["Turdus merula_Eurasian Blackbird"],
+                np.array([True]),
+                False,
+            )
+
+        assert detections == []
+        interpreter.invoke.assert_called()
+
+    async def test_raw_only_file_off_48k_is_refused(
+        self, service: BirdNETService, tmp_path: Path
+    ) -> None:
+        """A raw-only recording whose raw file is 96 kHz is refused, whatever the column says."""
+        import soundfile as sf
+
+        raw = tmp_path / "raw.wav"
+        sf.write(str(raw), np.zeros(3 * 96_000, dtype=np.float32), 96_000)
+
+        interpreter = MagicMock()
+        recording = MagicMock()
+        recording.sample_rate_hz = 48_000
+        recording.started_at = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+
+        with (
+            patch(
+                "silvasonic.birdnet.service.asyncio.get_running_loop",
+                return_value=_inline_loop(),
+            ),
+            pytest.raises(UnsupportedSampleRateError, match="96000 Hz"),
+        ):
+            await service._process_recording(
+                recording,
+                raw,
+                interpreter,
+                ["Turdus merula_Eurasian Blackbird"],
+                np.array([True]),
+                False,
+            )
+
+        interpreter.invoke.assert_not_called()

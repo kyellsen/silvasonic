@@ -90,9 +90,11 @@ class FFmpegConfig(BaseModel):
     (for development / unknown microphones).
     """
 
-    sample_rate: PositiveInt = Field(default=48000, description="Capture sample rate (Hz)")
+    sample_rate_hz: PositiveInt = Field(default=48000, description="Capture sample rate (Hz)")
     channels: PositiveInt = Field(default=1, description="Number of audio channels")
-    format: Literal["S16LE", "S24LE", "S32LE"] = Field(default="S16LE", description="Sample format")
+    sample_format: Literal["S16LE", "S24LE", "S32LE"] = Field(
+        default="S16LE", description="Sample format"
+    )
     segment_duration_s: PositiveInt = Field(default=10, description="Segment length (seconds)")
     gain_db: float = Field(default=0.0, description="Software gain in dB")
     raw_enabled: bool = Field(default=True, description="Write raw stream")
@@ -102,9 +104,9 @@ class FFmpegConfig(BaseModel):
     def from_injected_config(cls, config: RecorderRuntimeConfig) -> FFmpegConfig:
         """Build config from a validated controller-injected runtime config."""
         return cls(
-            sample_rate=config.audio.sample_rate,
+            sample_rate_hz=config.audio.sample_rate_hz,
             channels=config.audio.channels,
-            format=config.audio.format,
+            sample_format=config.audio.sample_format,
             segment_duration_s=config.stream.segment_duration_s,
             gain_db=config.processing.gain_db,
             raw_enabled=config.stream.raw_enabled,
@@ -114,12 +116,12 @@ class FFmpegConfig(BaseModel):
     @property
     def ffmpeg_codec(self) -> str:
         """Return the FFmpeg codec name for this format."""
-        return _FFMPEG_CODEC_MAP[self.format]
+        return _FFMPEG_CODEC_MAP[self.sample_format]
 
     @property
     def alsa_format(self) -> str:
         """Return the ALSA sample format string for FFmpeg input."""
-        return _ALSA_FORMAT_MAP[self.format]
+        return _ALSA_FORMAT_MAP[self.sample_format]
 
     @property
     def ffmpeg_volume_filter(self) -> str | None:
@@ -180,7 +182,7 @@ class FFmpegConfig(BaseModel):
                         "-f",
                         "lavfi",
                         "-i",
-                        f"sine=frequency=440:sample_rate={self.sample_rate}:duration=86400",
+                        f"sine=frequency=440:sample_rate={self.sample_rate_hz}:duration=86400",
                     ]
                 )
         else:
@@ -189,7 +191,7 @@ class FFmpegConfig(BaseModel):
                     "-f",
                     "alsa",
                     "-sample_rate",
-                    str(self.sample_rate),
+                    str(self.sample_rate_hz),
                     "-channels",
                     str(self.channels),
                     "-sample_fmt",
@@ -640,9 +642,9 @@ class FFmpegPipeline:
             "pipeline.starting",
             device=self._device if not self._mock_source else "mock (lavfi)",
             run_id=self.run_id,
-            sample_rate=self._config.sample_rate,
+            sample_rate_hz=self._config.sample_rate_hz,
             channels=self._config.channels,
-            format=self._config.format,
+            sample_format=self._config.sample_format,
             segment_s=self._config.segment_duration_s,
             raw_enabled=self._config.raw_enabled,
             processed_enabled=self._config.processed_enabled,

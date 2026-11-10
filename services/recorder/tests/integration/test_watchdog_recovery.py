@@ -53,9 +53,9 @@ class TestWatchdogRecovery:
         ensure_workspace(workspace)
 
         config = FFmpegConfig(
-            sample_rate=48000,
+            sample_rate_hz=48000,
             channels=1,
-            format="S16LE",
+            sample_format="S16LE",
             segment_duration_s=1,
             raw_enabled=True,
             processed_enabled=False,  # Single stream for speed

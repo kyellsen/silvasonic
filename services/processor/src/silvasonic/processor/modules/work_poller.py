@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from silvasonic.core.database.models.recordings import Recording, Upload
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.system import Microphone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class PendingUpload:
     """A recording that needs to be uploaded."""
 
-    recording_id: int
-    file_raw: Path
-    sensor_id: str
+    recording_id: uuid.UUID
+    raw_path: Path
+    hardware_id: str
     station_name: str
-    time: datetime
+    started_at: datetime
     profile_slug: str
 
 
@@ -38,7 +39,7 @@ async def find_pending_uploads(
     Args:
         session: Active database session.
         recordings_dir: Root of the Recorder workspace.  Prepended to the
-            relative ``file_raw`` column to produce absolute paths.
+            relative ``raw_path`` column to produce absolute paths.
         batch_size: Max number of recordings to return.
         max_retries: Maximum number of failed upload attempts before a
             recording is excluded from polling.
@@ -58,18 +59,18 @@ async def find_pending_uploads(
     )
 
     stmt = (
-        select(Recording, Device.name, Device.profile_slug)
-        .join(Device, Recording.sensor_id == Device.name)
+        select(Recording, Microphone.hardware_id, Microphone.profile_slug)
+        .join(Microphone, Recording.microphone_id == Microphone.id)
         .outerjoin(failed_attempts, Recording.id == failed_attempts.c.recording_id)
-        .where(Recording.uploaded.is_(False))
-        .where(Recording.local_deleted.is_(False))
+        .where(Recording.uploaded_at.is_(None))
+        .where(Recording.deleted_at.is_(None))
         .where(
             # Include recordings that have never been tried (NULL)
             # or have fewer than max_retries failed attempts
             (failed_attempts.c.attempt_count.is_(None))
             | (failed_attempts.c.attempt_count < max_retries)
         )
-        .order_by(Recording.time.asc())
+        .order_by(Recording.started_at.asc())
         .limit(batch_size)
     )
 
@@ -77,14 +78,14 @@ async def find_pending_uploads(
     rows = result.all()
 
     pending = []
-    for recording, device_name, profile_slug in rows:
+    for recording, hardware_id, profile_slug in rows:
         pending.append(
             PendingUpload(
                 recording_id=recording.id,
-                file_raw=recordings_dir / recording.file_raw,
-                sensor_id=device_name,
+                raw_path=recordings_dir / recording.raw_path,
+                hardware_id=hardware_id,
                 station_name="",  # Caller fills this in
-                time=recording.time,
+                started_at=recording.started_at,
                 profile_slug=profile_slug,
             )
         )

@@ -1,6 +1,6 @@
 # ADR-0033: Unified Naming and Global Identifiers
 
-> **Status:** Proposed • **Date:** 2026-11-10
+> **Status:** Accepted • **Date:** 2026-11-10
 
 ## 1. Context & Problem
 
@@ -67,18 +67,20 @@ No station has collected data worth keeping. Renaming now costs a refactoring; r
 | table `taxonomy`, key `(worker, label)` | `species`, key `id` (slug of the scientific name); `analyzer` + `label` unique; new `category`, `watched` | the API resource; non-species sound classes get a category |
 | `taxonomy.description` | `descriptions` | a dictionary by language, like `common_names` |
 | `uploads.id`, `attempt_at`, `size` | `id` (UUIDv7), `attempted_at`, `size_bytes` | rules above |
-| table `managed_services` | `modules`; `cloud_sync.enabled` moves here | one place for "is this feature switched on" |
+| table `managed_services`, key `name` | `modules`, key `id`; `cloud_sync.enabled` moves here | one place for "is this feature switched on" |
 | table `system_config`, column `key` | `settings`, column `section`; new `revision` | the API resource; `revision` backs `If-Match` |
 | section `system` | `station` (`id`, `name`, `latitude`, `longitude`, `elevation_m`, `timezone`, `language`) and `recording` (`auto_enrollment`, `max_microphones`) | identity apart from behaviour |
 | section `processor` | `storage` (`warning_percent`, `critical_percent`, `emergency_percent`, `max_age_days`) | named after what the user sets |
 | section `cloud_sync` | `sync` (`bandwidth_limit_bytes_per_s`, `window`); the target becomes its own record with an encrypted secret | unit rule; secrets apart from settings |
-| `birdnet.confidence_threshold`, `overlap`, `clip_padding_seconds` | `min_confidence`, `overlap_s`, `clip_padding_s` | unit rule |
+| `birdnet.confidence_threshold`, `overlap`, `clip_padding_seconds`, `threads` | `min_confidence`, `overlap_s`, `clip_padding_s`, `thread_count` | unit rule |
 | section `auth` (default credentials) | removed | [ADR-0034](0034-authentication-and-authorization.md) |
 | `users.id` (bigint), `is_active` | `id` (UUIDv7), `active`; new `role`, `display_name`, `language`, `last_login_at` | [ADR-0034](0034-authentication-and-authorization.md) |
 | table `weather`, `time`, `temp_c`, `humidity`, `cloud_cover`, `sunshine_duration`, `is_forecast` | `weather_observations`, `observed_at`, `temperature_c`, `humidity_percent`, `cloud_cover_percent`, `sunshine_duration_s`, `forecast` | glossary term; rules above |
-| — | new tables `sessions`, `api_tokens`, `events`, `alerts`, `audit_log`, `sync_target` | state the API needs |
+| — | new tables `sessions`, `api_tokens`, `events`, `alerts`, `audit_log`, `sync_target` | state the API needs; they arrive with the API service |
 
-Operational tuning that no user sets (`indexer_poll_interval`, `janitor_batch_size`, `threads`) follows the unit rule and stays outside the API. Redis keys and heartbeat payloads remain internal contracts in `silvasonic.core.schemas`; the API translates them into `components`.
+Operational tuning that no user sets follows the unit rule (`index_interval_s`, `cleanup_interval_s`, `cleanup_batch_files`, `poll_interval_s`, `thread_count`) and stays outside the API. Redis keys and heartbeat payloads remain internal contracts in `silvasonic.core.schemas`; the API translates them into `components`.
+
+**What is not built yet:** the new tables and the sync target record arrive with the API service; until then the target stays in the `sync` section. `station.elevation_m`, `timezone` and `language` and `storage.max_age_days` arrive with the code that reads them. Until the station has a time zone, `sync.window` is evaluated in UTC.
 
 ## 3. Options Considered
 
@@ -98,4 +100,3 @@ Operational tuning that no user sets (`indexer_poll_interval`, `janitor_batch_si
     *   One refactoring across the schema, the ORM models, all services, the microphone profile YAML and the tests. Existing development databases are recreated.
     *   UUIDs are 16 bytes where bigint was 8.
 *   **This is the last change made by editing the init schema.** From the first release on, a schema change needs a versioned migration, because stations in the field cannot be recreated. The tool is decided in its own ADR before v1.0.0.
-*   **On acceptance these documents change:** `docs/glossary.md` (Microphone, Station, Analyzer, Module, Species replace or join Device, Managed Service, Taxonomy), ADR-0011 (`_unsynced` marker ↔ `clock_synced`), ADR-0023 and ADR-0029 (table names), the service READMEs that name tables.

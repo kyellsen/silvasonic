@@ -1,7 +1,7 @@
 """Path builder for remote cloud storage.
 
 Constructs predictable hierarchical paths:
-`silvasonic/{station_name}/{sensor_id}/{YYYY-MM-DD}/{filename}.flac`
+`silvasonic/{station_name}/{profile_slug}-{hardware_id}/{YYYY-MM-DD}/{filename}.flac`
 """
 
 from __future__ import annotations
@@ -28,19 +28,19 @@ def slugify(text: str) -> str:
 
 
 def build_remote_path(
-    station_name: str, profile_slug: str, sensor_id: str, time: datetime, filename: str
+    station_name: str, profile_slug: str, hardware_id: str, started_at: datetime, filename: str
 ) -> str:
     """Build the target remote path for a recording.
 
-    Format: ``silvasonic/{station_slug}/{sensor_id}/{YYYY-MM-DD}/{filename}``
+    Format: ``silvasonic/{station_slug}/{profile_slug}-{hardware_id}/{YYYY-MM-DD}/{filename}``
     If the filename doesn't end in .flac, it is appended (if needed for target).
     However, the provided filename should already have the correct target extension.
 
     Args:
-        station_name: Raw station name from system config (may contain spaces).
+        station_name: Raw station name from the ``station`` settings (may contain spaces).
         profile_slug: Microphone profile slug (e.g. `ultramic_384_evo`).
-        sensor_id: The ID of the sensor (e.g. `mic_1`).
-        time: The start time of the recording.
+        hardware_id: The microphone's ``hardware_id`` (Stable Device ID, e.g. `mic_1`).
+        started_at: The start time of the recording.
         filename: The target filename (e.g. `20240101_120000.flac`).
 
     Returns:
@@ -49,12 +49,14 @@ def build_remote_path(
     station_slug = slugify(station_name)
     prof_slug = slugify(profile_slug)
     # Ensure time is UTC for path partitioning
-    time = time.replace(tzinfo=UTC) if time.tzinfo is None else time.astimezone(UTC)
+    started_at = (
+        started_at.replace(tzinfo=UTC) if started_at.tzinfo is None else started_at.astimezone(UTC)
+    )
 
-    date_str = time.strftime("%Y-%m-%d")
+    date_str = started_at.strftime("%Y-%m-%d")
 
     # Ensure it ends with .flac (standard for cloud sync)
     if not filename.endswith(".flac"):
         filename = f"{Path(filename).stem}.flac"
 
-    return f"silvasonic/{station_slug}/{prof_slug}-{sensor_id}/{date_str}/{filename}"
+    return f"silvasonic/{station_slug}/{prof_slug}-{hardware_id}/{date_str}/{filename}"

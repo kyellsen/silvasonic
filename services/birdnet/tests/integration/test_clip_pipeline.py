@@ -14,7 +14,8 @@ from silvasonic.core.database.check import check_database_connection
 from silvasonic.core.database.models.detections import Detection
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device
+from silvasonic.core.database.models.species import Species
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.database.session import get_session
 from testcontainers.postgres import PostgresContainer
 
@@ -36,21 +37,25 @@ async def seeded_clip_db(
     async with get_session() as session:
         prof = MicrophoneProfile(slug="test-prof-clip", name="test-prof", config={"gain_adjust": 0})
         session.add(prof)
-        dev = Device(
-            name="test-mic-clip", serial_number="9999", model="dummy", profile_slug="test-prof-clip"
+        dev = Microphone(
+            hardware_id="test-mic-clip",
+            name="dummy",
+            serial_number="9999",
+            model="dummy",
+            profile_slug="test-prof-clip",
         )
         session.add(dev)
         await session.flush()
 
         # Pending recording pointing to dummy file
         r1 = Recording(
-            time=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-            sensor_id="test-mic-clip",
-            file_raw="dummy.wav",
-            file_processed="dummy.wav",
-            duration=10.0,
-            sample_rate=48000,
-            filesize_raw=100,
+            started_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
+            microphone_id=dev.id,
+            raw_path="dummy.wav",
+            processed_path="dummy.wav",
+            duration_s=10.0,
+            sample_rate_hz=48000,
+            raw_size_bytes=100,
             analysis_state={},
         )
         session.add(r1)
@@ -116,7 +121,7 @@ class TestClipPipeline:
             patch.object(svc, "load_config"),
             patch.object(svc, "_refresh_config"),
             patch.object(svc, "birdnet_config"),
-            patch.object(svc, "system_config"),
+            patch.object(svc, "station_config"),
             patch(
                 "silvasonic.birdnet.service.sf.read",
                 return_value=(np.ones(5 * MODEL_SR, dtype=np.float32), MODEL_SR),
@@ -124,16 +129,16 @@ class TestClipPipeline:
             patch("silvasonic.birdnet.service.sf.write") as mock_sf_write,
         ):
             assert svc.birdnet_config is not None
-            assert svc.system_config is not None
+            assert svc.station_config is not None
             svc.birdnet_config.processing_order = "oldest_first"
-            svc.birdnet_config.threads = 1
-            svc.birdnet_config.overlap = 0.0
+            svc.birdnet_config.thread_count = 1
+            svc.birdnet_config.overlap_s = 0.0
             svc.birdnet_config.sensitivity = 1.0
-            svc.birdnet_config.confidence_threshold = 0.1
-            svc.birdnet_config.clip_padding_seconds = 3.0
+            svc.birdnet_config.min_confidence = 0.1
+            svc.birdnet_config.clip_padding_s = 3.0
 
-            svc.system_config.latitude = 0.0
-            svc.system_config.longitude = 0.0
+            svc.station_config.latitude = 0.0
+            svc.station_config.longitude = 0.0
 
             from unittest.mock import mock_open
 
@@ -146,16 +151,20 @@ class TestClipPipeline:
 
         # Query Database
         async with get_session() as session:
-            stmt = sa.select(Detection).where(Detection.worker == "birdnet")
+            stmt = sa.select(Detection).where(Detection.analyzer == "birdnet")
             result = await session.execute(stmt)
             detections = result.scalars().all()
+            species = await session.get(Species, "erithacus")
 
         assert len(detections) > 0
         det = detections[0]
 
-        # Check that it properly stripped common name and persisted path
+        # The raw label is kept; its meaning is the species row
         assert det.label == "Erithacus_rubecula"
-        assert det.common_name == "rubecula"
+        assert det.species_id == "erithacus"
+        assert species is not None
+        assert species.label == "Erithacus_rubecula"
+        assert species.common_names == {"en": "rubecula"}
         assert det.clip_path is not None
         assert det.clip_path.startswith("clips/")
         assert det.clip_path.endswith("Erithacusrubecula.wav")

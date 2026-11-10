@@ -13,15 +13,15 @@ from silvasonic.processor.modules.flac_encoder import encode_wav_to_flac
 @pytest.fixture
 def synthetic_wav(tmp_path: Path) -> Path:
     """Create a real, highly compressible 1-second synthetic WAV file using numpy."""
-    sample_rate = 48000
+    sample_rate_hz = 48000
     duration_s = 1.0
-    t = np.linspace(0, duration_s, int(sample_rate * duration_s), endpoint=False)
+    t = np.linspace(0, duration_s, int(sample_rate_hz * duration_s), endpoint=False)
 
     # 440 Hz Sine wave (Highly compressible by FLAC)
     audio = 0.5 * np.sin(2 * np.pi * 440 * t)
 
     wav_path = tmp_path / "test_audio.wav"
-    sf.write(wav_path, audio, sample_rate, format="WAV", subtype="PCM_16")
+    sf.write(wav_path, audio, sample_rate_hz, format="WAV", subtype="PCM_16")
 
     return wav_path
 

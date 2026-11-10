@@ -69,14 +69,14 @@ class TestDBViewerAPI:
 
             await session.execute(
                 text(
-                    "INSERT INTO system_config (key, value) "
+                    "INSERT INTO settings (section, value) "
                     "VALUES ('test_key', '{\"test\": \"test_value\"}')"
                 )
             )
             await session.commit()
 
         # Fetch snippet
-        response = await client.get("/snippets/table/system_config")
+        response = await client.get("/snippets/table/settings")
         assert response.status_code == 200
         html = response.text
         assert "test_key" in html
@@ -96,14 +96,14 @@ class TestDBViewerAPI:
 
             await session.execute(
                 text(
-                    "INSERT INTO system_config (key, value) "
+                    "INSERT INTO settings (section, value) "
                     "VALUES ('export_key', '{\"test\": \"export_val\"}')"
                 )
             )
             await session.commit()
 
         # Export table as CSV
-        response = await client.get("/export/system_config?fmt=csv")
+        response = await client.get("/export/settings?fmt=csv")
         assert response.status_code == 200
         assert "text/csv" in response.headers["content-type"]
         csv_data = response.text
@@ -111,7 +111,7 @@ class TestDBViewerAPI:
         # Verify CSV contents
         assert "export_key" in csv_data
         assert "export_val" in csv_data
-        assert "key" in csv_data
+        assert "section" in csv_data
 
     async def test_export_table_invalid_table(self, client: httpx.AsyncClient) -> None:
         """Verify export endpoint rejects invalid tables."""

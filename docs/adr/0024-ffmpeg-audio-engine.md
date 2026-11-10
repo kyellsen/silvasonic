@@ -27,7 +27,7 @@ FFmpeg writes segments to `.buffer/raw/` and `.buffer/processed/`. A Python `Seg
 This preserves the existing `.buffer/` → `data/` promotion pattern required by:
 - Filesystem Governance (§2): Processor/Indexer polls `data/` for complete files
 - ADR-0009 (Zero-Trust): Consumers mount `data/` as `:ro` — must never see partial files
-- DB Schema: `recordings.file_raw` / `recordings.file_processed` reference `data/` paths
+- DB Schema: `recordings.raw_path` / `recordings.processed_path` reference `data/` paths
 
 ### 2.2. Mock Source for CI
 

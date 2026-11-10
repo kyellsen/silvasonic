@@ -25,7 +25,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from silvasonic.core.database.models.system import SystemConfig
+from silvasonic.core.database.models.system import SettingsSection
 from silvasonic.core.database.session import get_db
 from silvasonic.core.service_context import ServiceContext
 from silvasonic.web_mock import __version__, mock_data
@@ -124,11 +124,11 @@ async def get_station(session: AsyncSession = Depends(get_db)) -> dict[str, str]
     """Retrieve station info from DB, fallback to mock data."""
     station = mock_data.STATION.copy()
     result = await session.execute(
-        select(SystemConfig).where(SystemConfig.key == "system_settings")
+        select(SettingsSection).where(SettingsSection.section == "station")
     )
     saved = result.scalar_one_or_none()
-    if saved and isinstance(saved.value, dict) and "station_name" in saved.value:
-        station["name"] = saved.value["station_name"]
+    if saved and isinstance(saved.value, dict) and saved.value.get("name"):
+        station["name"] = saved.value["name"]
     return station
 
 
@@ -136,13 +136,12 @@ async def get_settings(session: AsyncSession = Depends(get_db)) -> dict[str, Any
     """Retrieve full settings from DB, merge with mock data."""
     settings = mock_data.SETTINGS.copy()
     result = await session.execute(
-        select(SystemConfig).where(SystemConfig.key == "system_settings")
+        select(SettingsSection).where(SettingsSection.section == "station")
     )
     saved = result.scalar_one_or_none()
     if saved and isinstance(saved.value, dict):
-        settings.update(saved.value)
-        if "station_name" in saved.value:
-            settings["station_name"] = saved.value["station_name"]
+        # New dict: never mutate the module-level mock section
+        settings["station"] = {**settings["station"], **saved.value}
     return settings
 
 
@@ -160,7 +159,7 @@ async def healthy() -> dict[str, str]:
 class DBTestPayload(BaseModel):
     """Payload for the /api/test-db diagnostic endpoint."""
 
-    key: str
+    section: str
     value: dict[str, str]
 
 
@@ -171,19 +170,21 @@ async def test_db_connection(
 ) -> dict[str, object]:
     """Diagnostic endpoint to verify read/write access to the database."""
     # Write
-    config = SystemConfig(key=payload.key, value=payload.value)
+    config = SettingsSection(section=payload.section, value=payload.value)
     session.add(config)
     await session.commit()
 
     # Read
-    result = await session.execute(select(SystemConfig).where(SystemConfig.key == payload.key))
+    result = await session.execute(
+        select(SettingsSection).where(SettingsSection.section == payload.section)
+    )
     saved = result.scalar_one_or_none()
-    if saved is None or getattr(saved, "key", None) is None:  # Fallback safety check
+    if saved is None or getattr(saved, "section", None) is None:  # Fallback safety check
         raise HTTPException(status_code=500, detail="Failed to read back from DB")
 
     return {
         "status": "success",
-        "key": saved.key,
+        "section": saved.section,
         "value": saved.value,
     }
 
@@ -356,17 +357,17 @@ async def settings(
 
 @app.post("/settings/general")
 async def save_general_settings(
-    station_name: str = Form(...),
+    name: str = Form(...),
     session: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    """Save general settings including station name."""
+    """Save general settings: the ``name`` key of the ``station`` section."""
     result = await session.execute(
-        select(SystemConfig).where(SystemConfig.key == "system_settings")
+        select(SettingsSection).where(SettingsSection.section == "station")
     )
     saved = result.scalar_one_or_none()
 
     if not saved:
-        saved = SystemConfig(key="system_settings", value={"station_name": station_name})
+        saved = SettingsSection(section="station", value={"name": name})
         session.add(saved)
     else:
         new_val: dict[str, Any] = (
@@ -374,7 +375,7 @@ async def save_general_settings(
             if getattr(saved, "value", None) and isinstance(saved.value, dict)
             else {}
         )
-        new_val["station_name"] = station_name
+        new_val["name"] = name
         saved.value = new_val
 
     await session.commit()

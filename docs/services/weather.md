@@ -30,13 +30,13 @@
 
 ### Processing
 
-*   **Data Normalization:** Converts provider-specific formats to the canonical `weather` table schema.
+*   **Data Normalization:** Converts provider-specific formats to the canonical `weather_observations` table schema.
 *   **Deduplication:** Ensures no duplicate observations for the same timestamp and source.
-*   **TimescaleDB Partitioning:** Inserts into the `weather` hypertable with time-based partitioning.
+*   **TimescaleDB Partitioning:** Inserts into the `weather_observations` hypertable with time-based partitioning.
 
 ### Outputs
 
-*   **Database Rows:** INSERTs into `weather` table (TimescaleDB hypertable).
+*   **Database Rows:** INSERTs into `weather_observations` table (TimescaleDB hypertable).
 *   **Redis Heartbeats:** Via `SilvaService` base class (ADR-0019).
 
 ## 4. Operational Constraints & Rules
@@ -44,7 +44,7 @@
 | Aspect           | Value / Rule                                               |
 | ---------------- | ---------------------------------------------------------- |
 | **Immutable**    | Yes — config at startup, restart to reconfigure (ADR-0019) |
-| **DB Access**    | Yes — writes `weather` table, reads `system_config`        |
+| **DB Access**    | Yes — writes `weather_observations` table, reads `settings`        |
 | **Concurrency**  | Async event loop, periodic fetch (e.g., every 5–15 min)    |
 | **State**        | Stateless — last-fetched timestamp derived from DB         |
 | **Privileges**   | Rootless (ADR-0007)                                        |
@@ -85,7 +85,7 @@
 
 ## 9. References
 
-*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `weather` table hypertable schema.
+*   [Database Schema (DDL)](https://github.com/kyellsen/silvasonic/blob/main/services/database/init/01-init-schema.sql) — authoritative definition of the `weather_observations` table hypertable schema.
 *   [ADR-0019](../adr/0019-unified-service-infrastructure.md) — Immutable Container, SilvaService
 *   [ADR-0020](../adr/0020-resource-limits-qos.md) — QoS priority for analysis services
 *   [Future Features & Ideas](#) — Sensor recommendations

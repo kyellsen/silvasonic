@@ -151,7 +151,7 @@
 
 - [ ] The processing order ("Oldest first" vs "Newest first") is adjustable via the web interface.
 - [ ] This setting is constrained to strictly accept either "oldest_first" or "newest_first", ensuring the web interface can automatically render a dropdown.
-- [ ] The BirdNET worker dynamically alters its database pull query (`ORDER BY time ASC` vs `DESC`) based on the active setting.
+- [ ] The BirdNET worker dynamically alters its database pull query (`ORDER BY started_at ASC` vs `DESC`) based on the active setting.
 - [ ] Changes to the processing order are applied immediately or upon the next worker cycle.
 
 ---
@@ -165,7 +165,7 @@
 
 ### Acceptance Criteria
 
-- [ ] The system imports the BirdNET-Pi localization JSON files ([Source](https://github.com/Nachtzuster/BirdNET-Pi/tree/main/model/l18n)) as seed data into a taxonomy table.
+- [ ] The system imports the BirdNET-Pi localization JSON files ([Source](https://github.com/Nachtzuster/BirdNET-Pi/tree/main/model/l18n)) as seed data into the `species` table.
 - [ ] **License Requirement:** Since these files are licensed under **CC BY-NC-SA 4.0**, proper attribution and a license notice MUST be provided in the repository (e.g., a `LICENSE`/`README.md` in the seed data folder) to ensure coexistence with Silvasonic's Apache 2.0 repository. Commercial usage of this specific data is prohibited.
 - [ ] The backend delivers the translations as `JSONB` dictionaries per detection to the frontend (e.g., `{"de": "Blaumeise", "en": "Blue Tit"}`).
 - [ ] The frontend (v0.9.0) dynamically resolves the user's preferred language at runtime.

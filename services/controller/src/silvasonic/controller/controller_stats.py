@@ -9,7 +9,7 @@ Two-phase logging strategy (mirrors Recorder's RecordingStats):
 
 The summary includes:
   - Running containers (count + names)
-  - Online/offline device counts
+  - Connected/disconnected microphone counts
   - Reconciliation cycle count + errors
   - Container start/stop actions since last summary
   - DB and Podman connectivity

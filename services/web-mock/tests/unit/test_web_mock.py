@@ -157,7 +157,7 @@ class TestDetailRoutes:
 class TestSettingsBehavior:
     """Settings pages check integration behavior instead of internal helper dicts."""
 
-    def test_persisted_station_name_reflected_in_ui(self, client: TestClient) -> None:
+    def test_persisted_station_label_reflected_in_ui(self, client: TestClient) -> None:
         """Settings page shows the customized station name if provided by DB."""
 
         # Cleanly override the dependency for this single test to simulate DB load
@@ -188,7 +188,7 @@ class TestSettingsBehavior:
 
         resp = client.post(
             "/settings/general",
-            data={"station_name": "New-Station-Name"},
+            data={"name": "New-Station-Name"},
             follow_redirects=False,
         )
         assert resp.status_code == 303

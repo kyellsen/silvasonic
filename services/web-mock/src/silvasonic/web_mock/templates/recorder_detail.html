@@ -21,11 +21,11 @@
                 <h2 class="silva-label mb-2">Status</h2>
                 <div class="flex items-center gap-2">
                     {{ status_badge(recorder.status) }}
-                    {% if recorder.enrollment_status == 'enrolled' %}
+                    {% if recorder.enrollment_state == 'enrolled' %}
                     <span class="badge badge-success badge-outline badge-xs font-mono">enrolled</span>
-                    {% elif recorder.enrollment_status == 'generic' %}
+                    {% elif recorder.enrollment_state == 'generic' %}
                     <span class="badge badge-warning badge-outline badge-xs font-mono">generic</span>
-                    {% elif recorder.enrollment_status == 'pending' %}
+                    {% elif recorder.enrollment_state == 'pending' %}
                     <span class="badge badge-accent badge-outline badge-xs font-mono">pending</span>
                     {% endif %}
                 </div>
@@ -87,7 +87,7 @@
             <h2 class="silva-label mb-3">Audio Config</h2>
             <div class="space-y-2 text-sm font-mono">
                 <div class="flex justify-between"><span class="text-base-content/50">Sample Rate</span><span>{{
-                        "{:,}".format(recorder.sample_rate) }} Hz</span></div>
+                        "{:,}".format(recorder.sample_rate_hz) }} Hz</span></div>
                 <div class="flex justify-between"><span class="text-base-content/50">Channels</span><span>{{
                         recorder.channels }}</span></div>
                 <div class="flex justify-between"><span class="text-base-content/50">Gain</span><span>{{

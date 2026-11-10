@@ -137,17 +137,17 @@ class TestProcessorLifecycle:
             # Verify recording metadata
             rows_str = psql_query(
                 db_container,
-                "SELECT sensor_id, file_processed, duration, sample_rate FROM recordings",
+                "SELECT microphone_id, processed_path, duration_s, sample_rate_hz FROM recordings",
             )
             for line in rows_str.splitlines():
                 parts = line.split("|")
                 assert len(parts) >= 4, f"Unexpected row format: {line}"
-                sensor_id, file_proc = parts[0], parts[1]
-                duration, sample_rate = float(parts[2]), int(parts[3])
-                assert sensor_id, "sensor_id must not be empty"
-                assert file_proc, "file_processed must not be empty"
-                assert duration > 0, f"duration must be > 0, got {duration}"
-                assert sample_rate > 0, f"sample_rate must be > 0, got {sample_rate}"
+                microphone_id, processed_path = parts[0], parts[1]
+                duration_s, sample_rate_hz = float(parts[2]), int(parts[3])
+                assert microphone_id, "microphone_id must not be empty"
+                assert processed_path, "processed_path must not be empty"
+                assert duration_s > 0, f"duration_s must be > 0, got {duration_s}"
+                assert sample_rate_hz > 0, f"sample_rate_hz must be > 0, got {sample_rate_hz}"
 
             print(
                 f"\n  ✅ Pipeline verified: {count} recording(s) indexed from "
@@ -310,7 +310,7 @@ class TestProcessorLifecycle:
         tmp_path: Path,
         run_id: str,
     ) -> None:
-        """Disabled CloudSyncSettings skips upload worker processing safely."""
+        """A switched-off cloud_sync module skips upload worker processing safely."""
         require_processor_image()
 
         workspace = tmp_path / "recorder"
@@ -441,12 +441,12 @@ class TestProcessorLifecycle:
             count_str = psql_query(db_container, "SELECT COUNT(*) FROM recordings")
             count_second = int(count_str) if count_str else 0
 
-            # Check for duplicates: each file_processed must be unique
+            # Check for duplicates: each processed_path must be unique
             dup_str = psql_query(
                 db_container,
-                """SELECT file_processed, COUNT(*) as cnt
+                """SELECT processed_path, COUNT(*) as cnt
                    FROM recordings
-                   GROUP BY file_processed
+                   GROUP BY processed_path
                    HAVING COUNT(*) > 1""",
             )
             duplicate_rows = [line for line in dup_str.splitlines() if line.strip()]
@@ -533,11 +533,12 @@ class TestProcessorLifecycle:
                 timeout=30,
             )
 
-            sensor_str = psql_query(
+            hardware_str = psql_query(
                 db_container,
-                "SELECT DISTINCT sensor_id FROM recordings",
+                "SELECT DISTINCT m.hardware_id FROM recordings r "
+                "JOIN microphones m ON m.id = r.microphone_id",
             )
-            sensor_ids = {line.strip() for line in sensor_str.splitlines() if line.strip()}
+            hardware_ids = {line.strip() for line in hardware_str.splitlines() if line.strip()}
 
             if count == 0:
                 print(f"\n--- PROCESSOR LOGS ---\n{podman_logs(processor_name)}")
@@ -546,13 +547,13 @@ class TestProcessorLifecycle:
                 print(f"\n--- WORKSPACE ---\n{list(workspace_root.rglob('*.wav'))}")
 
             assert count >= 2, f"Expected recordings from both recorders, got {count}"
-            assert len(sensor_ids) == 2, f"Expected 2 distinct sensor_ids, got {sensor_ids}"
-            assert "mic-aaa" in sensor_ids, f"mic-aaa not in sensor_ids: {sensor_ids}"
-            assert "mic-bbb" in sensor_ids, f"mic-bbb not in sensor_ids: {sensor_ids}"
+            assert len(hardware_ids) == 2, f"Expected 2 distinct microphones, got {hardware_ids}"
+            assert "mic-aaa" in hardware_ids, f"mic-aaa not in hardware_ids: {hardware_ids}"
+            assert "mic-bbb" in hardware_ids, f"mic-bbb not in hardware_ids: {hardware_ids}"
 
             print(
                 f"\n  ✅ Concurrent indexing verified: {count} recordings "
-                f"from sensor_ids={sensor_ids}"
+                f"from hardware_ids={hardware_ids}"
             )
         finally:
             podman_stop_rm(processor_name)

@@ -42,7 +42,7 @@ The architecture is optimised for plug-and-play operation and robustness:
   calculations based on the system clock. The time chaos crashes processes or
   produces `.wav` files that internally claim to be weeks long ("50-year jump").
 * **System stability:** Container restarts whenever FFmpeg dies.
-* **Data layer:** The database time series (`start_time`, `end_time`) are
+* **Data layer:** The database time series (`started_at`, `ended_at`) are
   destroyed by wrong or overlapping timestamps, because time no longer advances
   monotonically.
 
@@ -92,7 +92,7 @@ the forest impossible — the recording logic is isolated:
 * **Per-recording marker:** a segment named while the clock is
   unsynchronised gets the suffix `_unsynced` before `.wav` (ADR-0011), the
   same in both streams. The Indexer stores it as
-  `recordings.clock_unsynced`, so stale timestamps can be found and
+  `recordings.clock_synced = false`, so stale timestamps can be found and
   corrected or excluded later. "Unsynchronised" means no time source
   disciplines the clock: a station without network that keeps time from a
   battery-backed RTC is marked too, although its drift is small.

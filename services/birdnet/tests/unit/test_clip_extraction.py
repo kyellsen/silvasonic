@@ -18,7 +18,7 @@ def service(tmp_path: Path) -> BirdNETService:
         },
     ):
         from silvasonic.birdnet.settings import BirdnetEnvSettings
-        from silvasonic.core.schemas.system_config import BirdnetSettings, SystemSettings
+        from silvasonic.core.schemas.settings import BirdnetSettings, StationSettings
 
         env_settings = BirdnetEnvSettings()
         svc = BirdNETService()
@@ -27,8 +27,8 @@ def service(tmp_path: Path) -> BirdNETService:
         svc.clips_dir = tmp_path / "clips"
         svc.clips_dir.mkdir(exist_ok=True)
 
-        svc.birdnet_config = BirdnetSettings(clip_padding_seconds=1.0)
-        svc.system_config = SystemSettings()
+        svc.birdnet_config = BirdnetSettings(clip_padding_s=1.0)
+        svc.station_config = StationSettings()
 
         return svc
 
@@ -79,7 +79,7 @@ class TestClipExtraction:
         # Mock time
         from datetime import UTC, datetime
 
-        recording.time = datetime(2024, 1, 1, tzinfo=UTC)
+        recording.started_at = datetime(2024, 1, 1, tzinfo=UTC)
 
         labels = ["Turdus_merula"]
         allowed_mask = np.array([True, True])
@@ -142,7 +142,7 @@ class TestClipExtraction:
         recording.id = 42
         from datetime import UTC, datetime
 
-        recording.time = datetime(2024, 1, 1, tzinfo=UTC)
+        recording.started_at = datetime(2024, 1, 1, tzinfo=UTC)
 
         labels = ["Corvus_corax"]
         allowed_mask = np.array([True, True])

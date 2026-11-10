@@ -5,7 +5,7 @@
 > 📋 **User Stories:** [birdnet.md](../../docs/user_stories/birdnet.md)
 
 **AS-IS:** On-device inference service for avian species classification using BirdNET's native TFLite model pipeline. Automatically analyzes indexed recordings, writes detections to the database, and extracts audio clips of detected bird calls.
-**Target:** Taxonomy-enriched species metadata (i18n, IUCN status), spectrogram overlays, custom model fine-tuning (v1.0.0+).
+**Target:** Enriched species metadata (i18n, IUCN status), spectrogram overlays, custom model fine-tuning (v1.0.0+).
 
 ---
 
@@ -19,7 +19,7 @@
 
 *   **Biodiversity Insight:** Automatic species lists per recording session, location, and time period — no manual listening required. (US-B01)
 *   **Location Awareness:** Species detection is restricted to regionally and seasonally occurring species using the BirdNET meta-model and station coordinates. (US-B03)
-*   **Tunable Accuracy:** Confidence threshold, sensitivity, overlap, and processing order are adjustable via database configuration. (US-B04, US-B07)
+*   **Tunable Accuracy:** Minimum confidence, sensitivity, overlap, and processing order are adjustable via database configuration. (US-B04, US-B07)
 *   **Backlog Processing:** The worker autonomously processes accumulated recordings when enabled or re-enabled. (US-B06)
 *   **Audio Evidence:** Each detection includes an extracted WAV clip with configurable padding for manual verification. (US-B01)
 
@@ -29,14 +29,14 @@
 
 ### Inputs
 
-*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace, or the raw file of a raw-only device, which is 48 kHz by profile rule (ADR-0011). Mounted **read-only** (Consumer Principle, ADR-0009). BirdNET does not resample: a file at another rate is not analysed and its `analysis_state` becomes `skipped_sample_rate`.
+*   **Audio Files:** Processed recordings (48 kHz) from the Recorder workspace, or the raw file of a raw-only microphone, which is 48 kHz by profile rule (ADR-0011). Mounted **read-only** (Consumer Principle, ADR-0009). BirdNET does not resample: a file at another rate is not analysed and its `analysis_state` entry becomes `skipped` with reason `sample_rate_unsupported`. The check reads the file itself, not `recordings.sample_rate_hz`, which holds the microphone's native rate.
 *   **Database Queue:** Polls for unanalyzed files via the Worker Pull Pattern (ADR-0018).
-*   **Database Configuration:** Reads runtime tuning parameters via Snapshot Refresh (ADR-0031).
+*   **Database Configuration:** Reads the `birdnet` and `station` sections of the `settings` table via Snapshot Refresh (ADR-0031): `min_confidence`, `sensitivity`, `overlap_s`, `clip_padding_s`, `thread_count`, `processing_order`, and the station's `latitude`/`longitude`.
 
 ### Processing
 
 *   **Native Inference:** Loads the BirdNET TFLite model once at startup via `ai-edge-litert` (resident in memory). Splits processed recordings into 3-second audio windows and runs inference per chunk on a background thread. When the windows do not divide the recording evenly, one extra window is aligned to its end, so every sample is analysed (a 10 s segment without overlap gets windows at 0, 3, 6 and 7 s). No CLI subprocess, no CSV intermediaries, no `birdnetlib` wrapper (ADR-0027).
-*   **Segment Boundaries:** The Recorder splits audio into segments, which can cut a call in two. When the previous segment of the same device ends where the current one starts (within 1 s) and is still on disk, its last 1.5 s are prepended and one extra *seam window* spans the boundary. Its detections belong to the current recording and start up to 1.5 s before it. A gap (FFmpeg restart, device unplugged) or a deleted predecessor skips the seam window. Cost: one more inference per segment.
+*   **Segment Boundaries:** The Recorder splits audio into segments, which can cut a call in two. When the previous segment of the same microphone ends where the current one starts (within 1 s) and is still on disk, its last 1.5 s are prepended and one extra *seam window* spans the boundary. Its detections belong to the current recording and start up to 1.5 s before it. A gap (FFmpeg restart, device unplugged) or a deleted predecessor skips the seam window. Cost: one more inference per segment.
 *   **Location Filtering:** Runs the BirdNET meta-model with station coordinates + week-of-year to generate a species mask. Species outside the geographic/seasonal range are excluded from results. The week (BirdNET's 48-week year, four per month) comes from each recording's own timestamp, so a backlog is filtered by the season it was recorded in; masks are cached per week and dropped when the location changes.
 *   **Clip Extraction:** Extracts WAV audio clips for each detection (detection time range ± configurable padding).
 
@@ -53,7 +53,7 @@
 | Aspect           | Value / Rule                                                                           |
 | ---------------- | -------------------------------------------------------------------------------------- |
 | **Immutable**    | Yes — config at startup + Snapshot Refresh per cycle, restart to reconfigure (ADR-0019) |
-| **DB Access**    | Yes — reads `recordings` + `system_config`, writes `detections`                        |
+| **DB Access**    | Yes — reads `recordings` + `settings`, writes `detections` + `species`                 |
 | **Concurrency**  | Queue Worker — blocking inference delegated to `run_in_executor` thread                |
 | **State**        | Stateless (clips are output artifacts, not internal state)                             |
 | **Privileges**   | Rootless                                                                               |
@@ -115,8 +115,12 @@
 BirdNET implements the Worker Pull Orchestration pattern (ADR-0018):
 1. Polls the database for files that have not yet been analyzed by this service.
 2. Claims a single recording atomically.
-3. After successful inference, marks the recording as done.
-4. On failure, securely logs the error state to prevent infinite retry loops.
+3. After successful inference, writes its `analysis_state` entry (`silvasonic.core.schemas.analysis.AnalysisState`): `{"state": "done", "reason": null, "finished_at": "<RFC 3339 UTC>", "detection_count": <n>}`.
+4. On failure it writes `failed` with a short reason code (`file_missing`, `error`), or `skipped` with `sample_rate_unsupported`, so the recording is not claimed again. The error text goes to the log, not the database.
+
+### Detections & Species
+
+Each detection stores `analyzer = "birdnet"`, `started_at`/`ended_at`, the label as BirdNET reported it (`"Turdus merula_Eurasian Blackbird"`) and `species_id`, the slug of the scientific name (`turdus-merula`, ADR-0033). The first time a label is detected, BirdNET inserts a minimal `species` row (`ON CONFLICT DO NOTHING`): `id`, `analyzer`, `label`, `scientific_name`, `common_names: {"en": …}`, empty `descriptions`, and `category` — `bird`, or `other` when both halves of the label are identical (a sound class such as `Dog_Dog`). Existing rows are never changed. The insert runs in its own short transaction, apart from the detections.
 
 ### Workspace & Path Structure
 
@@ -140,7 +144,7 @@ BirdNET implements the Worker Pull Orchestration pattern (ADR-0018):
 BirdNET uses the Snapshot Refresh pattern to dynamically react to configuration changes without requiring a full container restart:
 - Reads configuration values every poll cycle.
 - If latitude/longitude changed, the species mask is recomputed from the meta-model.
-- Tuning parameters (threshold, sensitivity, overlap) take effect on the next recording.
+- Tuning parameters (`min_confidence`, `sensitivity`, `overlap_s`) take effect on the next recording.
 
 ### Two-Phase Logging
 
@@ -160,9 +164,9 @@ Database outages do not crash the worker. Transient DB errors are caught, logged
 - [ADR-0018: Worker Pull Orchestration](../../docs/adr/0018-worker-pull-orchestration.md) — DB-based work claiming
 - [ADR-0019: Unified Service Infrastructure](../../docs/adr/0019-unified-service-infrastructure.md) — SilvaService lifecycle, heartbeats
 - [ADR-0020: Resource Limits & QoS](../../docs/adr/0020-resource-limits-qos.md) — `oom_score_adj=+500` (expendable)
-- [ADR-0023: Configuration Management](../../docs/adr/0023-configuration-management.md) — `system_config` JSONB blobs
+- [ADR-0023: Configuration Management](../../docs/adr/0023-configuration-management.md) — `settings` sections
 - [ADR-0027: BirdNET Inference Engine](../../docs/adr/0027-birdnet-inference-engine.md) — Native TFLite, no CLI wrapper
-- [ADR-0029: System Worker Orchestration](../../docs/adr/0029-system-worker-orchestration.md) — `managed_services` lifecycle toggle
+- [ADR-0029: System Worker Orchestration](../../docs/adr/0029-system-worker-orchestration.md) — `modules` lifecycle toggle
 - [ADR-0030: Database Runtime Resilience](../../docs/adr/0030-database-resilience.md) — Soft-Fail Loops
 - [ADR-0031: Runtime Tuning via DB Snapshot Refresh](../../docs/adr/0031-runtime-tuning-snapshot-refresh.md) — Snapshot Refresh
 - [Glossary](../../docs/glossary.md) — BirdNET, Worker Pull, Detection definitions

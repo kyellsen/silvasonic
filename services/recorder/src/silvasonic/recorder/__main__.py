@@ -74,9 +74,9 @@ class RecorderService(SilvaService):
             self._pipeline_config = FFmpegConfig.from_injected_config(injected_config)
             log.info(
                 "recorder.config_loaded",
-                sample_rate=self._pipeline_config.sample_rate,
+                sample_rate_hz=self._pipeline_config.sample_rate_hz,
                 channels=self._pipeline_config.channels,
-                format=self._pipeline_config.format,
+                sample_format=self._pipeline_config.sample_format,
                 raw_enabled=self._pipeline_config.raw_enabled,
                 processed_enabled=self._pipeline_config.processed_enabled,
             )
@@ -92,9 +92,9 @@ class RecorderService(SilvaService):
         meta: dict[str, Any] = {
             "recording": {
                 "device": self._cfg.RECORDER_DEVICE,
-                "sample_rate": self._pipeline_config.sample_rate,
+                "sample_rate_hz": self._pipeline_config.sample_rate_hz,
                 "channels": self._pipeline_config.channels,
-                "format": self._pipeline_config.format,
+                "sample_format": self._pipeline_config.sample_format,
                 "segment_duration_s": self._pipeline_config.segment_duration_s,
                 "active": self._pipeline.is_active if self._pipeline else False,
                 "segments_promoted": (self._pipeline.segments_promoted if self._pipeline else 0),
@@ -161,8 +161,8 @@ class RecorderService(SilvaService):
             log.exception(
                 "recorder.pipeline_start_failed",
                 device=device,
-                sample_rate=self._pipeline_config.sample_rate,
-                format=self._pipeline_config.format,
+                sample_rate_hz=self._pipeline_config.sample_rate_hz,
+                sample_format=self._pipeline_config.sample_format,
             )
             self.health.update_status("recorder", False, "Pipeline start failed")
             raise RuntimeError("Initial pipeline start failed") from exc

@@ -342,12 +342,14 @@ def wait_for_redis(host: str, port: int, timeout: float = 15) -> None:
 # ---------------------------------------------------------------------------
 
 
-def seed_test_devices(db_container: str, device_names: list[str]) -> None:
-    """Seed microphone_profiles and devices rows for system tests.
+def seed_test_microphones(db_container: str, hardware_ids: list[str]) -> None:
+    """Seed microphone_profiles and microphones rows for system tests.
 
-    The Indexer's INSERT into ``recordings`` requires a matching FK in
-    ``devices(name)``. In production, the Controller seeds these; in system
-    tests, we do it manually.
+    The Indexer resolves a workspace directory to ``microphones.id`` via
+    ``workspace_name``; its INSERT into ``recordings`` needs that row. In
+    production, the Controller seeds these; in system tests, we do it
+    manually. Each test microphone uses its hardware ID as name and
+    workspace name.
 
     Uses retries because under parallel load the PostgreSQL init scripts
     may briefly restart the server after ``wait_for_db`` succeeds.
@@ -359,53 +361,54 @@ def seed_test_devices(db_container: str, device_names: list[str]) -> None:
            ON CONFLICT (slug) DO NOTHING""",
         retries=10,
     )
-    for dev in device_names:
+    for hw_id in hardware_ids:
         psql_query(
             db_container,
             f"""
-                INSERT INTO devices (
-                    name, serial_number, model, config, profile_slug, workspace_name
+                INSERT INTO microphones (
+                    hardware_id, name, serial_number, model, hardware,
+                    profile_slug, workspace_name
                 )
                 VALUES (
-                    '{dev}', '{dev}-serial', 'test-model',
-                    '{{}}'::jsonb, 'test_profile', '{dev}'
+                    '{hw_id}', '{hw_id}', '{hw_id}-serial', 'test-model',
+                    '{{}}'::jsonb, 'test_profile', '{hw_id}'
                 )
-                ON CONFLICT (name) DO NOTHING
+                ON CONFLICT (hardware_id) DO NOTHING
             """,
             retries=10,
         )
 
 
-def seed_processor_config(
+def seed_storage_settings(
     db_container: str,
     *,
-    janitor_threshold_warning: float = 70.0,
-    janitor_threshold_critical: float = 80.0,
-    janitor_threshold_emergency: float = 90.0,
-    janitor_interval_seconds: int = 60,
-    janitor_batch_size: int = 50,
-    indexer_poll_interval: float = 2.0,
+    warning_percent: float = 70.0,
+    critical_percent: float = 80.0,
+    emergency_percent: float = 90.0,
+    cleanup_interval_s: int = 60,
+    cleanup_batch_files: int = 50,
+    index_interval_s: float = 2.0,
 ) -> None:
-    """Seed ProcessorSettings into system_config table.
+    """Seed StorageSettings into the ``storage`` section of the settings table.
 
     Allows tests to override Janitor thresholds and intervals.
     """
     import json
 
     config = {
-        "janitor_threshold_warning": janitor_threshold_warning,
-        "janitor_threshold_critical": janitor_threshold_critical,
-        "janitor_threshold_emergency": janitor_threshold_emergency,
-        "janitor_interval_seconds": janitor_interval_seconds,
-        "janitor_batch_size": janitor_batch_size,
-        "indexer_poll_interval": indexer_poll_interval,
+        "warning_percent": warning_percent,
+        "critical_percent": critical_percent,
+        "emergency_percent": emergency_percent,
+        "cleanup_interval_s": cleanup_interval_s,
+        "cleanup_batch_files": cleanup_batch_files,
+        "index_interval_s": index_interval_s,
     }
     config_json = json.dumps(config).replace("'", "''")
     psql_query(
         db_container,
-        f"""INSERT INTO system_config (key, value)
-           VALUES ('processor', '{config_json}'::jsonb)
-           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+        f"""INSERT INTO settings (section, value)
+           VALUES ('storage', '{config_json}'::jsonb)
+           ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value""",
         retries=10,
     )
 
@@ -469,7 +472,7 @@ def wait_for_detection(
     """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
     query = (
         "SELECT id, label, clip_path FROM detections "
-        f"WHERE label LIKE '{prefix_taxon}%' AND worker = 'birdnet' OFFSET 0 LIMIT 1"
+        f"WHERE label LIKE '{prefix_taxon}%' AND analyzer = 'birdnet' OFFSET 0 LIMIT 1"
     )
 
     def _check() -> dict[str, str]:
@@ -532,7 +535,7 @@ def system_db(
     """Start a PostgreSQL container on an isolated network.
 
     Yields ``(db_container_name, run_id)``.
-    Seeds test devices for FK satisfaction.
+    Seeds test microphones for FK satisfaction.
     """
     require_database_image()
 
@@ -553,7 +556,7 @@ def system_db(
 
     try:
         wait_for_db(name, timeout=30)
-        seed_test_devices(name, ["test-device", "mic-aaa", "mic-bbb"])
+        seed_test_microphones(name, ["test-device", "mic-aaa", "mic-bbb"])
         yield (name, run_id)
     finally:
         podman_stop_rm(name)

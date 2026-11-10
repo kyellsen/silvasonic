@@ -26,23 +26,25 @@ def _build_async_url(container: PostgresContainer) -> str:
     return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
 
 
-def _create_wav(path: Path, *, duration_s: float = 1.0, sample_rate: int = 48000) -> None:
+def _create_wav(
+    path: Path, *, duration_s: float = 1.0, sample_rate_hz: int = 48000, channels: int = 1
+) -> None:
     """Create a minimal valid WAV file for testing."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    n_frames = int(duration_s * sample_rate)
+    n_frames = int(duration_s * sample_rate_hz)
     with wave.open(str(path), "w") as wf:
-        wf.setnchannels(1)
+        wf.setnchannels(channels)
         wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
-        wf.writeframes(b"\x00\x00" * n_frames)
+        wf.setframerate(sample_rate_hz)
+        wf.writeframes(b"\x00\x00" * channels * n_frames)
 
 
-def _setup_workspace(base: Path, sensor: str = "mic-01", count: int = 2) -> list[Path]:
+def _setup_workspace(base: Path, workspace: str = "mic-01", count: int = 2) -> list[Path]:
     """Create a mock workspace with WAV files and returns created paths."""
     created = []
     for i in range(count):
         for stream in ("processed", "raw"):
-            d = base / sensor / "data" / stream
+            d = base / workspace / "data" / stream
             d.mkdir(parents=True, exist_ok=True)
             wav = d / f"2026-01-01T0{i}-00-00Z_10s_1a2b3c4d_0000{i:04d}.wav"
             _create_wav(wav, duration_s=10.0)
@@ -51,27 +53,35 @@ def _setup_workspace(base: Path, sensor: str = "mic-01", count: int = 2) -> list
     return created
 
 
-async def _seed_device(
-    session: AsyncSession, name: str = "mic-01", *, workspace_name: str | None = None
+async def _seed_microphone(
+    session: AsyncSession, hardware_id: str = "mic-01", *, workspace_name: str | None = None
 ) -> None:
-    """Insert a test device into the devices table.
+    """Insert a test microphone into the microphones table.
 
     Args:
         session: Active async DB session.
-        name: Device name (stable_device_id).
-        workspace_name: Workspace directory name. Defaults to ``name``
-            for simple test fixtures where dir name == device name.
+        hardware_id: Stable Device ID of the microphone.
+        workspace_name: Workspace directory name. Defaults to ``hardware_id``
+            for simple test fixtures where dir name == hardware_id.
     """
-    ws = workspace_name if workspace_name is not None else name
+    ws = workspace_name if workspace_name is not None else hardware_id
     await session.execute(
         text("""
-            INSERT INTO devices (name, serial_number, model, config, workspace_name)
-            VALUES (:name, :sn, 'TestMic', '{}', :ws)
-            ON CONFLICT (name) DO NOTHING
+            INSERT INTO microphones (hardware_id, name, serial_number, model, hardware,
+                                     workspace_name)
+            VALUES (:hw, 'TestMic', :sn, 'TestMic', '{}', :ws)
+            ON CONFLICT (hardware_id) DO NOTHING
         """),
-        {"name": name, "sn": f"SN-{name}", "ws": ws},
+        {"hw": hardware_id, "sn": f"SN-{hardware_id}", "ws": ws},
     )
     await session.commit()
+
+
+_HARDWARE_IDS_SQL = """
+    SELECT m.hardware_id FROM recordings r
+    JOIN microphones m ON m.id = r.microphone_id
+    ORDER BY m.hardware_id
+"""
 
 
 @pytest.mark.integration
@@ -98,7 +108,7 @@ class TestIndexerIntegration:
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
-            await _seed_device(session, "mic-01")
+            await _seed_microphone(session, "mic-01")
 
         _setup_workspace(tmp_path, "mic-01", count=2)
 
@@ -126,7 +136,7 @@ class TestIndexerIntegration:
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
-            await _seed_device(session, "mic-01")
+            await _seed_microphone(session, "mic-01")
 
         _setup_workspace(tmp_path, "mic-01", count=1)
 
@@ -151,13 +161,13 @@ class TestIndexerIntegration:
     async def test_raw_only_reindex_and_path_indexes(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Raw-only files are found again by file_raw; lookups use the path indexes."""
+        """Raw-only files are found again by raw_path; lookups use the path indexes."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
-            await _seed_device(session, "rode-01")
+            await _seed_microphone(session, "rode-01")
 
         _create_wav(
             tmp_path / "rode-01" / "data" / "raw" / "2026-01-01T05-00-00Z_10s_1a2b3c4d_00000000.wav"
@@ -175,20 +185,20 @@ class TestIndexerIntegration:
                 text("SELECT indexname FROM pg_indexes WHERE tablename = 'recordings'")
             )
             names = {row[0] for row in rows}
-        assert {"ix_recordings_file_raw", "ix_recordings_file_processed"} <= names
+        assert {"ix_recordings_raw_path", "ix_recordings_processed_path"} <= names
 
         await engine.dispose()
 
     async def test_unsynced_marker_is_stored(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """A segment named before NTP sync is flagged; a plain one is not."""
+        """A segment named before NTP sync is not clock_synced; a plain one is."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
-            await _seed_device(session, "rode-01")
+            await _seed_microphone(session, "rode-01")
 
         raw_dir = tmp_path / "rode-01" / "data" / "raw"
         _create_wav(raw_dir / "2026-01-01T05-00-00Z_10s_1a2b3c4d_00000000_unsynced.wav")
@@ -200,24 +210,24 @@ class TestIndexerIntegration:
 
         async with factory() as session:
             rows = await session.execute(
-                text("SELECT time, clock_unsynced FROM recordings ORDER BY time")
+                text("SELECT started_at, clock_synced FROM recordings ORDER BY started_at")
             )
             flags = [row[1] for row in rows]
-        assert flags == [True, False]
+        assert flags == [False, True]
 
         await engine.dispose()
 
-    async def test_multiple_sensors_indexed(
+    async def test_multiple_microphones_indexed(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Files from two sensor directories → correct sensor_id per row."""
+        """Files from two workspace directories → correct microphone_id per row."""
         url = _build_async_url(postgres_container)
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
         async with factory() as session:
-            await _seed_device(session, "mic-01")
-            await _seed_device(session, "mic-02")
+            await _seed_microphone(session, "mic-01")
+            await _seed_microphone(session, "mic-02")
 
         _setup_workspace(tmp_path, "mic-01", count=1)
         _setup_workspace(tmp_path, "mic-02", count=1)
@@ -227,24 +237,22 @@ class TestIndexerIntegration:
 
         assert result.new == 2
 
-        # Verify sensor_ids
+        # Verify microphone_ids resolve to the right microphones
         async with factory() as session:
-            rows = await session.execute(
-                text("SELECT sensor_id FROM recordings ORDER BY sensor_id")
-            )
-            sensors = [r[0] for r in rows.fetchall()]
-            assert sensors == ["mic-01", "mic-02"]
+            rows = await session.execute(text(_HARDWARE_IDS_SQL))
+            hardware_ids = [r[0] for r in rows.fetchall()]
+            assert hardware_ids == ["mic-01", "mic-02"]
 
         await engine.dispose()
 
-    async def test_unregistered_device_skipped_not_errored(
+    async def test_unregistered_microphone_skipped_not_errored(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Indexer skips files for unregistered devices instead of FK error.
+        """Indexer skips files for unregistered microphones instead of FK error.
 
         This is the exact scenario from the production bug: WAV files exist on
-        disk for a device that has not yet been enrolled by the Controller.
-        With the device existence check, the Indexer must:
+        disk for a microphone that has not yet been enrolled by the Controller.
+        With the microphone existence check, the Indexer must:
         1. Skip the file (count as skipped, not error).
         2. Never attempt the INSERT (no FK violation).
         3. Leave zero rows in the recordings table.
@@ -253,7 +261,7 @@ class TestIndexerIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        # Setup: WAV exists but device "ghost-mic" is NOT in the devices table
+        # Setup: WAV exists but microphone "ghost-mic" is NOT in the microphones table
         _setup_workspace(tmp_path, "ghost-mic", count=1)
 
         async with factory() as session:
@@ -271,15 +279,15 @@ class TestIndexerIntegration:
 
         await engine.dispose()
 
-    async def test_unregistered_device_does_not_block_valid_recordings(
+    async def test_unregistered_microphone_does_not_block_valid_recordings(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
-        """Unregistered device is skipped; valid device recordings still indexed.
+        """Unregistered microphone is skipped; valid microphone recordings still indexed.
 
-        Simulates a mixed workspace where one device directory has no matching
+        Simulates a mixed workspace where one microphone directory has no matching
         DB entry (skipped) and another does. The Indexer must:
-        1. Skip the unregistered device's file.
-        2. Successfully INSERT the recording for the known device.
+        1. Skip the unregistered microphone's file.
+        2. Successfully INSERT the recording for the known microphone.
         3. Report correct skipped and new counts.
         """
         url = _build_async_url(postgres_container)
@@ -288,9 +296,9 @@ class TestIndexerIntegration:
 
         # Seed only "good-mic", NOT "bad-mic"
         async with factory() as session:
-            await _seed_device(session, "good-mic")
+            await _seed_microphone(session, "good-mic")
 
-        # Create WAV files for both devices
+        # Create WAV files for both microphones
         _setup_workspace(tmp_path, "bad-mic", count=1)
         _setup_workspace(tmp_path, "good-mic", count=1)
 
@@ -307,9 +315,9 @@ class TestIndexerIntegration:
             count = rows.scalar()
             assert count == 1, f"Expected 1 recording, got {count}"
 
-            sensor_row = await session.execute(text("SELECT sensor_id FROM recordings"))
-            sensor_id = sensor_row.scalar()
-            assert sensor_id == "good-mic", f"Expected 'good-mic', got '{sensor_id}'"
+            hw_row = await session.execute(text(_HARDWARE_IDS_SQL))
+            hardware_id = hw_row.scalar()
+            assert hardware_id == "good-mic", f"Expected 'good-mic', got '{hardware_id}'"
 
         await engine.dispose()
 
@@ -326,9 +334,9 @@ class TestIndexerIntegration:
         engine = create_async_engine(url, echo=False)
         factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        # Seed device so device-check passes (we want to test corrupt WAV path)
+        # Seed microphone so the lookup passes (we want to test corrupt WAV path)
         async with factory() as session:
-            await _seed_device(session, "mic-01")
+            await _seed_microphone(session, "mic-01")
 
         # Create a corrupt WAV file
         corrupt_dir = tmp_path / "mic-01" / "data" / "processed"
@@ -349,5 +357,43 @@ class TestIndexerIntegration:
             )
         assert r2.skipped == 1, f"Expected 1 skipped, got {r2.skipped}"
         assert r2.errors == 0, f"Expected 0 errors, got {r2.errors}"
+
+        await engine.dispose()
+
+    async def test_native_sample_rate_from_raw_file(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """sample_rate_hz and channels come from the raw file, not the indexed one.
+
+        Dual stream: raw at 384 kHz stereo, processed at 48 kHz mono → 384000 / 2.
+        Raw file missing: the processed file's values are the fallback.
+        """
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with factory() as session:
+            await _seed_microphone(session, "ultra-01")
+
+        ws = tmp_path / "ultra-01" / "data"
+        both = "2026-01-01T05-00-00Z_1s_1a2b3c4d_00000000.wav"
+        processed_only = "2026-01-01T05-00-01Z_1s_1a2b3c4d_00000001.wav"
+        _create_wav(ws / "raw" / both, sample_rate_hz=384000, channels=2)
+        _create_wav(ws / "processed" / both, sample_rate_hz=48000)
+        _create_wav(ws / "processed" / processed_only, sample_rate_hz=48000)
+
+        async with factory() as session:
+            result = await indexer.index_recordings(session, tmp_path)
+        assert result.new == 2
+
+        async with factory() as session:
+            rows = await session.execute(
+                text(
+                    "SELECT sample_rate_hz, channels, raw_size_bytes > 0 "
+                    "FROM recordings ORDER BY started_at"
+                )
+            )
+            values = [tuple(r) for r in rows.fetchall()]
+        assert values == [(384000, 2, True), (48000, 1, False)]
 
         await engine.dispose()

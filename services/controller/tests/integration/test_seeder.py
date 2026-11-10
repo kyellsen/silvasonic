@@ -1,6 +1,6 @@
 """Integration tests: Seeders ↔ real TimescaleDB.
 
-Verifies that ConfigSeeder, ProfileBootstrapper, and AuthSeeder
+Verifies that ConfigSeeder, ProfileBootstrapper, ModuleSeeder and AuthSeeder
 actually insert data into a real PostgreSQL/TimescaleDB instance.
 
 Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
@@ -9,15 +9,17 @@ Uses the shared ``postgres_container`` fixture from ``silvasonic-test-utils``
 
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
 import pytest
 from silvasonic.controller.seeder import (
     AuthSeeder,
     ConfigSeeder,
-    ManagedServiceSeeder,
+    ModuleSeeder,
     ProfileBootstrapper,
 )
+from silvasonic.core.database.models.system import Module, SettingsSection
 from silvasonic.test_utils.helpers import build_postgres_url
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -29,12 +31,14 @@ def _make_defaults_yml(tmp_path: Path) -> Path:
     yml = tmp_path / "defaults.yml"
     yml.write_text(
         """
-system:
+station:
+  name: "Integration Test Station"
   latitude: null
   longitude: null
-  max_recorders: 5
-  station_name: "Integration Test Station"
+
+recording:
   auto_enrollment: true
+  max_microphones: 5
 
 auth:
   default_username: "admin"
@@ -52,17 +56,17 @@ def _make_profile_yml(tmp_path: Path) -> Path:
     yml = profiles_dir / "integration_mic.yml"
     yml.write_text(
         """
-schema_version: "1.0"
+schema_version: "2.0"
 slug: integration_mic
 name: Integration Test Microphone
 description: A profile for integration testing.
 audio:
-  sample_rate: 48000
+  sample_rate_hz: 48000
   channels: 1
-  format: S16LE
+  sample_format: S16LE
 processing:
   gain_db: 0.0
-  chunk_size: 4096
+  chunk_frames: 4096
 stream:
   raw_enabled: true
   processed_enabled: true
@@ -78,12 +82,12 @@ stream:
 class TestConfigSeederIntegration:
     """Verify ConfigSeeder inserts actual rows into a real PostgreSQL DB."""
 
-    async def test_seed_inserts_system_config(
+    async def test_seed_inserts_settings(
         self,
         tmp_path: Path,
         postgres_container: PostgresContainer,
     ) -> None:
-        """ConfigSeeder inserts 'system' key into system_config table."""
+        """ConfigSeeder inserts the station and recording sections into settings."""
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -97,16 +101,56 @@ class TestConfigSeederIntegration:
 
         # Verify the row exists in the real DB
         async with session_factory() as session:
-            result = await session.execute(
-                text("SELECT value FROM system_config WHERE key = 'system'")
-            )
-            row = result.scalar_one_or_none()
+            station = (
+                await session.execute(
+                    text("SELECT value, revision FROM settings WHERE section = 'station'")
+                )
+            ).one_or_none()
+            recording = (
+                await session.execute(
+                    text("SELECT value FROM settings WHERE section = 'recording'")
+                )
+            ).scalar_one_or_none()
 
         await engine.dispose()
 
-        assert row is not None, "system_config row not found after seeding"
-        assert row["station_name"] == "Integration Test Station"
-        assert row["auto_enrollment"] is True
+        assert station is not None, "station section not found after seeding"
+        assert station[0]["name"] == "Integration Test Station"
+        assert station[1] == 1, "revision starts at 1"
+        assert recording is not None, "recording section not found after seeding"
+        assert recording["auto_enrollment"] is True
+        assert recording["max_microphones"] == 5
+
+    async def test_station_id_is_uuidv7_and_kept(
+        self,
+        tmp_path: Path,
+        postgres_container: PostgresContainer,
+    ) -> None:
+        """The station gets a UUIDv7 id once; a second seeding keeps it."""
+        url = build_postgres_url(postgres_container)
+        engine = create_async_engine(url)
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        seeder = ConfigSeeder(defaults_path=_make_defaults_yml(tmp_path))
+        query = text("SELECT value ->> 'id' FROM settings WHERE section = 'station'")
+
+        async with session_factory() as session:
+            await seeder.seed(session)
+            await session.commit()
+        async with session_factory() as session:
+            first_id = (await session.execute(query)).scalar_one()
+
+        async with session_factory() as session:
+            await seeder.seed(session)
+            await session.commit()
+        async with session_factory() as session:
+            second_id = (await session.execute(query)).scalar_one()
+
+        await engine.dispose()
+
+        assert first_id is not None
+        assert uuid.UUID(first_id).version == 7
+        assert second_id == first_id, "station.id must never be overwritten"
 
     async def test_seed_is_idempotent(
         self,
@@ -133,7 +177,7 @@ class TestConfigSeederIntegration:
         # Verify only one row
         async with session_factory() as session:
             result = await session.execute(
-                text("SELECT count(*) FROM system_config WHERE key = 'system'")
+                text("SELECT count(*) FROM settings WHERE section = 'station'")
             )
             count = result.scalar_one()
 
@@ -167,7 +211,7 @@ class TestProfileBootstrapperIntegration:
         async with session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT name, is_system FROM microphone_profiles WHERE slug = 'integration_mic'"
+                    "SELECT name, built_in FROM microphone_profiles WHERE slug = 'integration_mic'"
                 )
             )
             row = result.one_or_none()
@@ -176,7 +220,7 @@ class TestProfileBootstrapperIntegration:
 
         assert row is not None, "microphone_profiles row not found after seeding"
         assert row[0] == "Integration Test Microphone"
-        assert row[1] is True  # is_system
+        assert row[1] is True  # built_in
 
 
 @pytest.mark.integration
@@ -223,7 +267,7 @@ class TestRunAllSeedersIntegration:
         tmp_path: Path,
         postgres_container: PostgresContainer,
     ) -> None:
-        """run_all_seeders populates system_config, microphone_profiles, and users."""
+        """Seeders populate settings, microphone_profiles, modules, and users."""
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -238,28 +282,28 @@ class TestRunAllSeedersIntegration:
             await ConfigSeeder(defaults_path=yml).seed(session)
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await AuthSeeder(defaults_path=yml).seed(session)
-            await ManagedServiceSeeder().seed(session)
+            await ModuleSeeder().seed(session)
             await session.commit()
 
         # Verify all tables have data
         async with session_factory() as session:
-            config_count = (
-                await session.execute(text("SELECT count(*) FROM system_config"))
+            settings_count = (
+                await session.execute(text("SELECT count(*) FROM settings"))
             ).scalar_one()
             profile_count = (
                 await session.execute(text("SELECT count(*) FROM microphone_profiles"))
             ).scalar_one()
             user_count = (await session.execute(text("SELECT count(*) FROM users"))).scalar_one()
-            managed_count = (
-                await session.execute(text("SELECT count(*) FROM managed_services"))
-            ).scalar_one()
+            modules = dict(
+                (await session.execute(text("SELECT id, enabled FROM modules"))).tuples().all()
+            )
 
         await engine.dispose()
 
-        assert config_count >= 1, "system_config should have at least 1 row"
+        assert settings_count >= 1, "settings should have at least 1 row"
         assert profile_count >= 1, "microphone_profiles should have at least 1 row"
         assert user_count >= 1, "users should have at least 1 row"
-        assert managed_count >= 1, "managed_services should have at least 1 row"
+        assert modules == {"birdnet": True, "cloud_sync": False}
 
 
 @pytest.mark.integration
@@ -268,7 +312,7 @@ class TestRunAllSeedersCloudSync:
 
     Verifies per-seeder transaction isolation resolves the historic
     duplicate-key bug (ConfigSeeder + CloudSyncSeeder both inserting
-    ``cloud_sync`` key).
+    the ``sync`` section).
     """
 
     async def test_run_all_seeders_with_cloud_env_vars(
@@ -277,7 +321,7 @@ class TestRunAllSeedersCloudSync:
     ) -> None:
         """run_all_seeders succeeds when SILVASONIC_CLOUD_REMOTE_* vars are set.
 
-        Regression: ConfigSeeder inserts cloud_sync with defaults, then
+        Regression: ConfigSeeder inserts the sync section with defaults, then
         CloudSyncSeeder UPSERTs with env-var credentials.  Both must
         coexist without IntegrityError.
         """
@@ -285,7 +329,6 @@ class TestRunAllSeedersCloudSync:
 
         from cryptography.fernet import Fernet
         from silvasonic.controller.seeder import run_all_seeders
-        from silvasonic.core.database.models.system import SystemConfig
 
         key = Fernet.generate_key().decode()
         env = {
@@ -309,14 +352,16 @@ class TestRunAllSeedersCloudSync:
             with _patch.dict("os.environ", env):
                 await run_all_seeders(session_factory)
 
-        # Verify: cloud_sync exists with enabled=True and encrypted creds
+        # Verify: sync section has encrypted creds and the module is switched on
         async with session_factory() as session:
-            row = await session.get(SystemConfig, "cloud_sync")
+            row = await session.get(SettingsSection, "sync")
+            module = await session.get(Module, "cloud_sync")
 
         await engine.dispose()
 
-        assert row is not None, "cloud_sync row must exist after seeding"
-        assert row.value["enabled"] is True
+        assert row is not None, "sync section must exist after seeding"
+        assert "enabled" not in row.value
+        assert module is not None and module.enabled is True
         assert row.value["remote_type"] == "webdav"
         assert row.value["remote_config"]["user"].startswith("enc:")
         assert row.value["remote_config"]["pass"].startswith("enc:")
@@ -325,15 +370,15 @@ class TestRunAllSeedersCloudSync:
         self,
         postgres_container: PostgresContainer,
     ) -> None:
-        """run_all_seeders succeeds with default cloud_sync (no env vars).
+        """run_all_seeders succeeds with the default sync section (no env vars).
 
-        Baseline: ConfigSeeder inserts cloud_sync with enabled=false.
-        CloudSyncSeeder does nothing without env vars.
+        Baseline: ConfigSeeder inserts the sync section, ModuleSeeder the
+        cloud_sync module switched off. CloudSyncSeeder does nothing
+        without env vars.
         """
         from unittest.mock import patch as _patch
 
         from silvasonic.controller.seeder import run_all_seeders
-        from silvasonic.core.database.models.system import SystemConfig
 
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
@@ -355,14 +400,15 @@ class TestRunAllSeedersCloudSync:
         with _patch.dict("os.environ", env_clear):
             await run_all_seeders(session_factory)
 
-        # Verify: cloud_sync exists with defaults (enabled=false)
+        # Verify: sync section exists with defaults, module switched off
         async with session_factory() as session:
-            row = await session.get(SystemConfig, "cloud_sync")
+            row = await session.get(SettingsSection, "sync")
+            module = await session.get(Module, "cloud_sync")
 
         await engine.dispose()
 
-        assert row is not None, "cloud_sync row must exist after seeding"
-        assert row.value["enabled"] is False
+        assert row is not None, "sync section must exist after seeding"
+        assert module is not None and module.enabled is False
         assert row.value["remote_type"] is None
 
     async def test_run_all_seeders_idempotent_with_cloud_env(
@@ -372,13 +418,13 @@ class TestRunAllSeedersCloudSync:
         """Running run_all_seeders twice with cloud env vars is safe.
 
         Simulates a Controller restart: second run should UPSERT
-        (not INSERT) the cloud_sync row without errors.
+        (not INSERT) the sync section without errors; the database trigger
+        increments its revision on every write.
         """
         from unittest.mock import patch as _patch
 
         from cryptography.fernet import Fernet
         from silvasonic.controller.seeder import run_all_seeders
-        from silvasonic.core.database.models.system import SystemConfig
 
         key = Fernet.generate_key().decode()
         env = {
@@ -409,16 +455,19 @@ class TestRunAllSeedersCloudSync:
         # Verify single row, updated values
         async with session_factory() as session:
             result = await session.execute(
-                text("SELECT count(*) FROM system_config WHERE key = 'cloud_sync'")
+                text("SELECT count(*) FROM settings WHERE section = 'sync'")
             )
             count = result.scalar_one()
-            row = await session.get(SystemConfig, "cloud_sync")
+            row = await session.get(SettingsSection, "sync")
+            module = await session.get(Module, "cloud_sync")
 
         await engine.dispose()
 
-        assert count == 1, f"Expected exactly 1 cloud_sync row, got {count}"
+        assert count == 1, f"Expected exactly 1 sync section, got {count}"
         assert row is not None
-        assert row.value["enabled"] is True
+        # Inserted (1), then updated by the first and the second CloudSyncSeeder run
+        assert row.revision == 3
+        assert module is not None and module.enabled is True
 
 
 @pytest.mark.integration
@@ -437,7 +486,6 @@ class TestSeederIsolation:
         from unittest.mock import patch as _patch
 
         from silvasonic.controller.seeder import run_all_seeders
-        from silvasonic.core.database.models.system import SystemConfig
 
         url = build_postgres_url(postgres_container)
         engine = create_async_engine(url)
@@ -448,20 +496,20 @@ class TestSeederIsolation:
             autoflush=False,
         )
 
-        # Patch ManagedServiceSeeder to crash
+        # Patch ModuleSeeder to crash
         with _patch(
-            "silvasonic.controller.seeder.ManagedServiceSeeder.seed",
+            "silvasonic.controller.seeder.ModuleSeeder.seed",
             side_effect=RuntimeError("boom"),
         ):
             failed = await run_all_seeders(session_factory)
 
-        # ManagedServiceSeeder should be the only failure
-        assert failed == ["managed_services"]
+        # ModuleSeeder should be the only failure
+        assert failed == ["modules"]
 
         # ConfigSeeder data must be committed (it ran before the crash)
         async with session_factory() as session:
-            system_row = await session.get(SystemConfig, "system")
-            assert system_row is not None, "ConfigSeeder data must persist"
+            station_row = await session.get(SettingsSection, "station")
+            assert station_row is not None, "ConfigSeeder data must persist"
 
         # ProfileBootstrapper data must be committed
         async with session_factory() as session:

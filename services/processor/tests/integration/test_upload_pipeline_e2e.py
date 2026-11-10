@@ -1,7 +1,7 @@
 """Integration tests for the Upload Worker pipeline against real PostgreSQL.
 
 This module tests the Database State-Machine boundary:
-DB (Pending) -> poller -> UploadWorker -> audit_logger -> DB (Uploaded).
+DB (Pending) -> poller -> UploadWorker -> audit_logger -> DB (uploaded_at set).
 We mock the network/I-O boundaries (ffmpeg, rclone) to isolate the database
 transitions and ensure the pipeline correctly logs to the uploads table.
 """
@@ -16,8 +16,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from silvasonic.core.database.models.profiles import MicrophoneProfile
 from silvasonic.core.database.models.recordings import Recording
-from silvasonic.core.database.models.system import Device
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.database.models.system import Microphone
+from silvasonic.core.schemas.settings import SyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.upload_worker import UploadWorker
 from sqlalchemy import text
@@ -57,10 +57,9 @@ def dummy_recordings_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def upload_settings() -> CloudSyncSettings:
+def upload_settings() -> SyncSettings:
     """Provide valid sync settings so the worker doesn't abort early."""
-    return CloudSyncSettings(
-        enabled=True,
+    return SyncSettings(
         remote_type="s3",
         remote_config={
             "access_key_id": "test",
@@ -76,12 +75,12 @@ def upload_settings() -> CloudSyncSettings:
 async def test_full_pipeline_mock_rclone(
     session_factory: Any,
     dummy_recordings_dir: Path,
-    upload_settings: CloudSyncSettings,
+    upload_settings: SyncSettings,
 ) -> None:
-    """Seed recording -> poll -> mock encode -> mock rclone -> audit -> uploaded=true."""
+    """Seed recording -> poll -> mock encode -> mock rclone -> audit -> uploaded_at set."""
     # 1. Create dummy local file
-    test_device = "mic-alpha"
-    rel_path = Path(test_device) / "data" / "raw" / "test1.wav"
+    test_microphone = "mic-alpha"
+    rel_path = Path(test_microphone) / "data" / "raw" / "test1.wav"
     abs_path = dummy_recordings_dir / rel_path
     abs_path.parent.mkdir(parents=True, exist_ok=True)
     abs_path.write_bytes(b"dummy audio")
@@ -89,25 +88,25 @@ async def test_full_pipeline_mock_rclone(
     # 2. Seed a pending recording
     async with session_factory() as session:
         session.add(MicrophoneProfile(slug="test-profile", name="Test Profile"))
-        session.add(
-            Device(
-                name=test_device,
-                serial_number=f"sn-{test_device}",
-                model="dummy",
-                profile_slug="test-profile",
-            )
+        microphone = Microphone(
+            hardware_id=test_microphone,
+            name="dummy",
+            serial_number=f"sn-{test_microphone}",
+            model="dummy",
+            profile_slug="test-profile",
+            hardware={},
         )
+        session.add(microphone)
         await session.flush()
         rec = Recording(
-            time=datetime.now(UTC),
-            sensor_id=test_device,
-            duration=15,
-            sample_rate=48000,
-            filesize_raw=5000,
-            file_raw=str(rel_path),
-            file_processed=str(rel_path).replace("raw", "processed"),
-            uploaded=False,
-            local_deleted=False,
+            started_at=datetime.now(UTC),
+            microphone_id=microphone.id,
+            duration_s=15,
+            sample_rate_hz=48000,
+            raw_size_bytes=5000,
+            raw_path=str(rel_path),
+            processed_path=str(rel_path).replace("raw", "processed"),
+            uploaded_at=None,
         )
         session.add(rec)
         await session.commit()
@@ -137,10 +136,10 @@ async def test_full_pipeline_mock_rclone(
 
     # 4. Verify Database State Changes
     async with session_factory() as session:
-        # Check that Recording.uploaded is now True
+        # Check that Recording.uploaded_at is now set
         updated_rec = await session.get(Recording, rec_id)
         assert updated_rec is not None
-        assert updated_rec.uploaded is True
+        assert updated_rec.uploaded_at is not None
 
         # Check that audit log was created
         result = await session.execute(
@@ -155,11 +154,11 @@ async def test_full_pipeline_mock_rclone(
 async def test_pipeline_skips_already_uploaded(
     session_factory: Any,
     dummy_recordings_dir: Path,
-    upload_settings: CloudSyncSettings,
+    upload_settings: SyncSettings,
 ) -> None:
-    """uploaded=true recordings are excluded by work_poller."""
-    test_device = "mic-beta"
-    rel_path = Path(test_device) / "data" / "raw" / "test2.wav"
+    """Recordings with uploaded_at set are excluded by work_poller."""
+    test_microphone = "mic-beta"
+    rel_path = Path(test_microphone) / "data" / "raw" / "test2.wav"
     abs_path = dummy_recordings_dir / rel_path
     abs_path.parent.mkdir(parents=True, exist_ok=True)
     abs_path.write_bytes(b"dummy audio")
@@ -167,25 +166,25 @@ async def test_pipeline_skips_already_uploaded(
     # Seed an ALREADY UPLOADED recording
     async with session_factory() as session:
         session.add(MicrophoneProfile(slug="test-profile", name="Test Profile"))
-        session.add(
-            Device(
-                name=test_device,
-                serial_number=f"sn-{test_device}",
-                model="dummy",
-                profile_slug="test-profile",
-            )
+        microphone = Microphone(
+            hardware_id=test_microphone,
+            name="dummy",
+            serial_number=f"sn-{test_microphone}",
+            model="dummy",
+            profile_slug="test-profile",
+            hardware={},
         )
+        session.add(microphone)
         await session.flush()
         rec = Recording(
-            time=datetime.now(UTC),
-            sensor_id=test_device,
-            duration=15,
-            sample_rate=48000,
-            filesize_raw=5000,
-            file_raw=str(rel_path),
-            file_processed=str(rel_path).replace("raw", "processed"),
-            uploaded=True,
-            local_deleted=False,
+            started_at=datetime.now(UTC),
+            microphone_id=microphone.id,
+            duration_s=15,
+            sample_rate_hz=48000,
+            raw_size_bytes=5000,
+            raw_path=str(rel_path),
+            processed_path=str(rel_path).replace("raw", "processed"),
+            uploaded_at=datetime.now(UTC),
         )
         session.add(rec)
         await session.commit()
@@ -203,7 +202,7 @@ async def test_pipeline_skips_already_uploaded(
     ):
         await worker._process_batch("station-alpha", upload_settings, b"dummy-key")
 
-    # I/O wrappers must not be called, since work_poller skips uploaded=True
+    # I/O wrappers must not be called, since work_poller skips rows with uploaded_at set
     mock_encode.assert_not_called()
     mock_upload.assert_not_called()
 
@@ -213,35 +212,35 @@ async def test_pipeline_skips_already_uploaded(
 async def test_pipeline_handles_missing_file(
     session_factory: Any,
     dummy_recordings_dir: Path,
-    upload_settings: CloudSyncSettings,
+    upload_settings: SyncSettings,
 ) -> None:
     """Recording exists in DB but WAV file missing from disk -> logged appropriately."""
     # Missing file path
-    test_device = "mic-gamma"
-    rel_path = Path(test_device) / "data" / "raw" / "ghost-file.wav"
+    test_microphone = "mic-gamma"
+    rel_path = Path(test_microphone) / "data" / "raw" / "ghost-file.wav"
     # DO NOT create the file on disk
 
     async with session_factory() as session:
         session.add(MicrophoneProfile(slug="test-profile", name="Test Profile"))
-        session.add(
-            Device(
-                name=test_device,
-                serial_number=f"sn-{test_device}",
-                model="dummy",
-                profile_slug="test-profile",
-            )
+        microphone = Microphone(
+            hardware_id=test_microphone,
+            name="dummy",
+            serial_number=f"sn-{test_microphone}",
+            model="dummy",
+            profile_slug="test-profile",
+            hardware={},
         )
+        session.add(microphone)
         await session.flush()
         rec = Recording(
-            time=datetime.now(UTC),
-            sensor_id=test_device,
-            duration=15,
-            sample_rate=48000,
-            filesize_raw=5000,
-            file_raw=str(rel_path),
-            file_processed=str(rel_path).replace("raw", "processed"),
-            uploaded=False,
-            local_deleted=False,
+            started_at=datetime.now(UTC),
+            microphone_id=microphone.id,
+            duration_s=15,
+            sample_rate_hz=48000,
+            raw_size_bytes=5000,
+            raw_path=str(rel_path),
+            processed_path=str(rel_path).replace("raw", "processed"),
+            uploaded_at=None,
         )
         session.add(rec)
         await session.commit()

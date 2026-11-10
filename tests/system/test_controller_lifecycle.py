@@ -30,11 +30,11 @@ from silvasonic.controller.container_spec import (
     RestartPolicy,
     Tier2ServiceSpec,
 )
-from silvasonic.controller.device_repository import upsert_device
 from silvasonic.controller.device_scanner import DeviceScanner, UsbInfo
+from silvasonic.controller.microphone_repository import upsert_microphone
 from silvasonic.controller.podman_client import SilvasonicPodmanClient
 from silvasonic.controller.profile_matcher import ProfileMatcher
-from silvasonic.controller.reconciler import DeviceStateEvaluator
+from silvasonic.controller.reconciler import MicrophoneStateEvaluator
 from silvasonic.controller.seeder import ConfigSeeder, ProfileBootstrapper
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -110,12 +110,12 @@ class TestSeedingAndDevicePipeline:
             await ProfileBootstrapper(profiles_dir=profiles_dir).seed(session)
             await session.commit()
 
-        # Verify system config exists
-        from silvasonic.core.database.models.system import SystemConfig
+        # Verify the recording settings section exists
+        from silvasonic.core.database.models.system import SettingsSection
 
         async with session_factory() as session:
-            config = await session.get(SystemConfig, "system")
-            assert config is not None, "system config should be seeded"
+            config = await session.get(SettingsSection, "recording")
+            assert config is not None, "recording settings should be seeded"
             assert config.value is not None
             assert isinstance(config.value, dict)
             assert config.value.get("auto_enrollment") is True
@@ -173,21 +173,21 @@ class TestSeedingAndDevicePipeline:
 
         # Upsert
         async with session_factory() as session:
-            device = await upsert_device(
+            microphone = await upsert_microphone(
                 info,
                 session,
                 profile_slug=match_result.profile_slug,
-                enrollment_status="enrolled",
+                enrollment_state="enrolled",
             )
             await session.commit()
-            device_name = device.name
-            device_status = device.status
+            hardware_id = microphone.hardware_id
+            connection_state = microphone.connection_state
 
-        assert device_name == MOCK_STABLE_ID
-        assert device_status == "online"
+        assert hardware_id == MOCK_STABLE_ID
+        assert connection_state == "connected"
 
         # Evaluate → spec
-        evaluator = DeviceStateEvaluator()
+        evaluator = MicrophoneStateEvaluator()
         async with session_factory() as session:
             specs = await evaluator.evaluate(session)
 

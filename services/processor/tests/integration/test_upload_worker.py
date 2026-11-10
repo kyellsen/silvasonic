@@ -6,18 +6,21 @@ while safely mocking only the final `.upload_file()` network call.
 
 from __future__ import annotations
 
+import json
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 from silvasonic.core.database.models.recordings import Recording
+from silvasonic.core.database.models.system import Microphone
 from silvasonic.core.database.session import _get_engine, _get_session_factory
 from silvasonic.core.health import HealthMonitor
-from silvasonic.core.schemas.system_config import CloudSyncSettings
+from silvasonic.core.schemas.settings import SyncSettings
 from silvasonic.processor.modules.rclone_client import RcloneResult
 from silvasonic.processor.upload_worker import UploadWorker
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
@@ -31,12 +34,23 @@ def _build_async_url(container: PostgresContainer) -> str:
     return f"postgresql+asyncpg://silvasonic:silvasonic@{host}:{port}/silvasonic_test"
 
 
-async def _seed_device_and_recording(session: AsyncSession, wav_path: Path) -> int:
-    """Seed DB with necessary records and return the recording ID."""
-    # Seed Device
+async def _set_cloud_sync_module(session: AsyncSession, enabled: bool) -> None:
+    """Upsert the ``cloud_sync`` row of the ``modules`` table."""
     await session.execute(
         text("""
-            INSERT INTO microphone_profiles (slug, name, is_system, config)
+            INSERT INTO modules (id, enabled) VALUES ('cloud_sync', :enabled)
+            ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled
+        """),
+        {"enabled": enabled},
+    )
+
+
+async def _seed_microphone_and_recording(session: AsyncSession, wav_path: Path) -> uuid.UUID:
+    """Seed DB with necessary records and return the recording ID."""
+    # Seed Microphone
+    await session.execute(
+        text("""
+            INSERT INTO microphone_profiles (slug, name, built_in, config)
             VALUES ('default', 'Default Profile', true, '{}')
             ON CONFLICT (slug) DO NOTHING
         """)
@@ -44,41 +58,42 @@ async def _seed_device_and_recording(session: AsyncSession, wav_path: Path) -> i
 
     await session.execute(
         text("""
-            INSERT INTO devices (name, serial_number, model, config, workspace_name, profile_slug)
-            VALUES ('mic-01', 'SN-01', 'TestMic', '{}', 'mic-01', 'default')
-            ON CONFLICT (name) DO NOTHING
+            INSERT INTO microphones (hardware_id, name, serial_number, model, hardware,
+                                     workspace_name, profile_slug)
+            VALUES ('mic-01', 'TestMic', 'SN-01', 'TestMic', '{}', 'mic-01', 'default')
+            ON CONFLICT (hardware_id) DO NOTHING
         """)
     )
 
-    import json
-
     sync_config = json.dumps(
         {
-            "enabled": True,
             "remote_type": "rclone",
             "remote_name": "gdrive",
-            "schedule_start_hour": None,
-            "schedule_end_hour": None,
+            "window": None,
         }
     )
 
     await session.execute(
         text("""
-            INSERT INTO system_config (key, value)
-            VALUES ('cloud_sync', :config)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            INSERT INTO settings (section, value)
+            VALUES ('sync', :config)
+            ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value
         """),
         {"config": sync_config},
     )
+    await _set_cloud_sync_module(session, True)
+
+    microphone_id = (
+        await session.execute(select(Microphone.id).where(Microphone.hardware_id == "mic-01"))
+    ).scalar_one()
 
     rec = Recording(
-        time=datetime.now(UTC),
-        sensor_id="mic-01",
-        file_raw=str(wav_path),
-        duration=10.0,
-        sample_rate=48000,
-        filesize_raw=1000,
-        uploaded=False,
+        started_at=datetime.now(UTC),
+        microphone_id=microphone_id,
+        raw_path=str(wav_path),
+        duration_s=10.0,
+        sample_rate_hz=48000,
+        raw_size_bytes=1000,
     )
     session.add(rec)
     await session.commit()
@@ -126,7 +141,7 @@ class TestUploadWorkerIntegration:
         _create_wav(wav_path)
 
         async with factory() as session:
-            rec_id = await _seed_device_and_recording(session, wav_path)
+            rec_id = await _seed_microphone_and_recording(session, wav_path)
 
         # Only the remote upload is faked
         mock_upload = mocker.patch(
@@ -145,7 +160,7 @@ class TestUploadWorkerIntegration:
 
         result = await worker._process_batch(
             station_name="silvasonic",
-            settings=CloudSyncSettings(enabled=True, remote_type="rclone", remote_name="remote"),
+            settings=SyncSettings(remote_type="rclone", remote_name="remote"),
             encryption_key=TEST_KEY,
         )
 
@@ -160,15 +175,54 @@ class TestUploadWorkerIntegration:
         async with factory() as session:
             rec = await session.get(Recording, rec_id)
             assert rec is not None
-            assert rec.uploaded is True
+            assert rec.uploaded_at is not None
 
             rows = await session.execute(
-                text("SELECT success, size, error_message FROM uploads WHERE recording_id = :rid"),
+                text(
+                    "SELECT success, size_bytes, error_message, id, attempted_at "
+                    "FROM uploads WHERE recording_id = :rid"
+                ),
                 {"rid": rec_id},
             )
             upload_logs = rows.fetchall()
             assert len(upload_logs) == 1
             assert upload_logs[0][0] is True  # success
             assert upload_logs[0][1] == 1024  # transferred bytes
+            assert isinstance(upload_logs[0][3], uuid.UUID)
+            assert upload_logs[0][3].version == 7  # UUIDv7 from the database
+            assert upload_logs[0][4] is not None
+
+        await engine.dispose()
+
+    @pytest.mark.parametrize("enabled", [False, True])
+    async def test_fetch_config_reads_module_switch(
+        self, postgres_container: PostgresContainer, tmp_path: Path, enabled: bool
+    ) -> None:
+        """The upload switch is the cloud_sync row of the modules table."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        wav_path = tmp_path / "mic-01" / "data" / "processed" / "test.wav"
+        _create_wav(wav_path)
+        async with factory() as session:
+            await _seed_microphone_and_recording(session, wav_path)
+            await _set_cloud_sync_module(session, enabled)
+            await session.execute(
+                text("""
+                    INSERT INTO settings (section, value)
+                    VALUES ('station', '{"name": "Waldstation"}')
+                    ON CONFLICT (section) DO UPDATE SET value = EXCLUDED.value
+                """)
+            )
+            await session.commit()
+
+        worker = UploadWorker(factory, HealthMonitor(), tmp_path)
+        station_name, settings, module_enabled = await worker._fetch_config()
+
+        assert station_name == "Waldstation"
+        assert settings is not None
+        assert settings.remote_type == "rclone"
+        assert module_enabled is enabled
 
         await engine.dispose()
