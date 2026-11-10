@@ -121,19 +121,21 @@ async def test_native_tflite_inference(
     interpreter = Interpreter(model_path=str(model_path), num_threads=1)
     interpreter.allocate_tensors()
 
-    # Precompute mask
-    with patch("silvasonic.birdnet.service.META_MODEL_PATH", meta_model_path):
-        allowed_mask, loc_active = worker._get_allowed_species_mask(labels)
-
-    assert loc_active is True
-
     # Create a fake Recording DB representation
     from datetime import UTC, datetime
 
+    from silvasonic.birdnet.service import birdnet_week
     from silvasonic.core.database.models.recordings import Recording
 
-    # Only ID is strictly used inside _process_recording
+    # Only ID and time are used inside _process_recording
     recording = Recording(id=999, time=datetime(2024, 5, 1, tzinfo=UTC))
+    week = birdnet_week(recording.time)
+
+    # Precompute mask for the recording's season
+    with patch("silvasonic.birdnet.service.META_MODEL_PATH", meta_model_path):
+        allowed_mask, loc_active = worker._get_allowed_species_mask(labels, week)
+
+    assert loc_active is True
 
     # Test Fixture 1: European Robin
     robin_path = fixtures_dir / "XC521936 - European Robin - Erithacus rubecula.wav"
@@ -146,6 +148,7 @@ async def test_native_tflite_inference(
         labels=labels,
         allowed_mask=allowed_mask,
         loc_filter_active=loc_active,
+        week=week,
     )
 
     assert len(dets) > 0, "No detections found for Robin fixture"
@@ -165,6 +168,7 @@ async def test_native_tflite_inference(
         labels=labels,
         allowed_mask=allowed_mask,
         loc_filter_active=loc_active,
+        week=week,
     )
 
     assert len(dets) > 0, "No detections found for Blackbird fixture"

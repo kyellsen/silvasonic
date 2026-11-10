@@ -1,4 +1,4 @@
-"""Unit tests for BirdNET analysis windows."""
+"""Unit tests for BirdNET analysis windows and the seasonal species filter."""
 
 import asyncio
 from datetime import UTC, datetime
@@ -12,6 +12,7 @@ from silvasonic.birdnet.service import (
     MODEL_SR,
     WINDOW_SAMPLES,
     BirdNETService,
+    birdnet_week,
     window_starts,
 )
 
@@ -72,12 +73,32 @@ class TestWindowStarts:
 
 
 @pytest.mark.unit
+class TestBirdnetWeek:
+    """BirdNET's year has 48 weeks, four per month."""
+
+    @pytest.mark.parametrize(
+        ("day", "week"),
+        [
+            (datetime(2026, 1, 1, tzinfo=UTC), 1),
+            (datetime(2026, 1, 8, tzinfo=UTC), 2),
+            (datetime(2026, 1, 31, tzinfo=UTC), 4),
+            (datetime(2026, 2, 1, tzinfo=UTC), 5),
+            (datetime(2026, 6, 15, tzinfo=UTC), 23),
+            (datetime(2026, 12, 31, tzinfo=UTC), 48),
+        ],
+    )
+    def test_week_mapping(self, day: datetime, week: int) -> None:
+        """Days 1-7 are the month's first week, 22 onwards its fourth."""
+        assert birdnet_week(day) == week
+
+
+@pytest.mark.unit
 @pytest.mark.asyncio
 class TestTailDetection:
     """A call in the last second of a segment is detected."""
 
     async def test_detection_in_final_second(self, service: BirdNETService) -> None:
-        """The model sees the end-aligned window; its hit starts 7 s in."""
+        """The model sees the end-aligned window and its hit is stored with the week."""
         audio = np.zeros(10 * MODEL_SR, dtype=np.float32)
         audio[int(9.5 * MODEL_SR)] = 1.0  # the "call" sits in the final second
 
@@ -121,9 +142,65 @@ class TestTailDetection:
                 ["Turdus merula_Eurasian Blackbird"],
                 np.array([True]),
                 True,
+                23,
             )
 
         assert len(detections) == 1
         det = detections[0]
         assert det.time == datetime(2026, 6, 15, 6, 0, 7, tzinfo=UTC)
         assert det.end_time == datetime(2026, 6, 15, 6, 0, 10, tzinfo=UTC)
+        assert det.details["week"] == 23
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestSeasonalMask:
+    """The species mask follows the recording's date, not the clock at startup."""
+
+    async def test_mask_built_for_recording_week(self, service: BirdNETService) -> None:
+        """A June recording analysed in any month is filtered with June's species."""
+        recording = MagicMock()
+        recording.time = datetime(2026, 6, 15, 6, 0, 0, tzinfo=UTC)
+        recording.analysis_state = {}
+
+        class FakeSession:
+            async def execute(self, *args: Any, **kwargs: Any) -> Any:
+                result = MagicMock()
+                result.scalar_one_or_none.return_value = recording
+                result.scalar_one.return_value = 1
+                result.scalars.return_value = []
+                return result
+
+            async def commit(self) -> None:
+                pass
+
+            async def rollback(self) -> None:
+                pass
+
+        class FakeSessionCtx:
+            async def __aenter__(self) -> FakeSession:
+                return FakeSession()
+
+            async def __aexit__(self, *exc: object) -> None:
+                pass
+
+        async def process(*args: Any, **kwargs: Any) -> list[Any]:
+            service._shutdown_event.set()
+            return []
+
+        with (
+            patch("builtins.open"),
+            patch("silvasonic.birdnet.service.Interpreter"),
+            patch("silvasonic.birdnet.service.get_session", return_value=FakeSessionCtx()),
+            patch.object(service, "_refresh_config"),
+            patch.object(service, "_process_recording", side_effect=process) as mock_process,
+            patch.object(
+                service, "_get_allowed_species_mask", return_value=(np.array([True]), True)
+            ) as mock_mask,
+            patch("silvasonic.birdnet.service.Path.exists", return_value=True),
+        ):
+            await service.run()
+
+        mock_mask.assert_called_once()
+        assert mock_mask.call_args.args[1] == 23
+        assert mock_process.call_args.args[-1] == 23

@@ -36,7 +36,7 @@
 ### Processing
 
 *   **Native Inference:** Loads the BirdNET TFLite model once at startup via `ai-edge-litert` (resident in memory). Splits processed recordings into 3-second audio windows and runs inference per chunk on a background thread. When the windows do not divide the recording evenly, one extra window is aligned to its end, so every sample is analysed (a 10 s segment without overlap gets windows at 0, 3, 6 and 7 s). No CLI subprocess, no CSV intermediaries, no `birdnetlib` wrapper (ADR-0027).
-*   **Location Filtering:** Runs the BirdNET meta-model with station coordinates + week-of-year to generate a species mask. Species outside the geographic/seasonal range are excluded from results.
+*   **Location Filtering:** Runs the BirdNET meta-model with station coordinates + week-of-year to generate a species mask. Species outside the geographic/seasonal range are excluded from results. The week (BirdNET's 48-week year, four per month) comes from each recording's own timestamp, so a backlog is filtered by the season it was recorded in; masks are cached per week and dropped when the location changes.
 *   **Clip Extraction:** Extracts WAV audio clips for each detection (detection time range ± configurable padding).
 
 ### Outputs

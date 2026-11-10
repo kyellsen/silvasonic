@@ -5,6 +5,7 @@ import gc
 import os
 import re
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,15 @@ def window_starts(n_samples: int, step: int) -> list[int]:
     if starts[-1] != last_start:
         starts.append(last_start)
     return starts
+
+
+def birdnet_week(moment: datetime) -> int:
+    """Map a date to BirdNET's 48-week year (four weeks per month, 1-48).
+
+    The meta-model's species list depends on the season, so the week comes
+    from the recording's own timestamp, not from the time of analysis.
+    """
+    return (moment.month - 1) * 4 + min(3, (moment.day - 1) // 7) + 1
 
 
 def _flat_sigmoid(x: np.ndarray, sensitivity: float = 1.0) -> np.ndarray:
@@ -144,8 +154,16 @@ class BirdNETService(SilvaService):
             self.birdnet_config = BirdnetSettings(**configs.get("birdnet", {}))
             self.system_config = SystemSettings(**configs.get("system", {}))
 
-    def _get_allowed_species_mask(self, labels: list[str]) -> tuple[np.ndarray, bool]:
-        """Generate static numpy boolean mask for allowed species in current location."""
+    def _get_allowed_species_mask(self, labels: list[str], week: int) -> tuple[np.ndarray, bool]:
+        """Build the boolean mask of species plausible at the location in ``week``.
+
+        Args:
+            labels: Model labels, one per output class.
+            week: BirdNET week (1-48) of the recordings the mask applies to.
+
+        Returns:
+            The mask and whether the location filter is active.
+        """
         assert self.system_config is not None
 
         loc_filter_active = False
@@ -155,18 +173,13 @@ class BirdNETService(SilvaService):
             # We must run the meta-model to determine allowed species
             loc_filter_active = True
             try:
-                from datetime import UTC, datetime
-
-                # Calculate week of year (1-52), mapping to 1-48 for BirdNET
-                week_48 = max(1, min(48, int(datetime.now(UTC).isocalendar()[1] * 48 / 52)))
-
                 meta_interp = Interpreter(model_path=str(META_MODEL_PATH), num_threads=1)
                 meta_interp.allocate_tensors()
                 meta_in = meta_interp.get_input_details()[0]["index"]
                 meta_out = meta_interp.get_output_details()[0]["index"]
 
                 meta_input = np.array(
-                    [[self.system_config.latitude, self.system_config.longitude, week_48]],
+                    [[self.system_config.latitude, self.system_config.longitude, week]],
                     dtype=np.float32,
                 )
                 meta_interp.set_tensor(meta_in, meta_input)
@@ -178,6 +191,7 @@ class BirdNETService(SilvaService):
                 log.info(
                     "birdnet.location_filter_active",
                     species_allowed=int(np.sum(allowed_mask)),
+                    week=week,
                 )
             except Exception as e:
                 log.warning("birdnet.location_filter_failed", error=str(e))
@@ -193,8 +207,13 @@ class BirdNETService(SilvaService):
         labels: list[str],
         allowed_mask: np.ndarray,
         loc_filter_active: bool,
+        week: int | None = None,
     ) -> list[Detection]:
-        """Perform native inference on a single recording."""
+        """Perform native inference on a single recording.
+
+        ``week`` is the BirdNET week the species mask was built for; it is
+        stored in each detection's details while the location filter is on.
+        """
         assert self.birdnet_config is not None
         assert self.system_config is not None
 
@@ -250,8 +269,6 @@ class BirdNETService(SilvaService):
             mask = (scores >= self.birdnet_config.confidence_threshold) & allowed_mask
             hits = np.where(mask)[0]
 
-            from datetime import timedelta
-
             w_start_td = timedelta(seconds=start_idx / MODEL_SR)
             w_end_td = w_start_td + timedelta(seconds=WINDOW_SECS)
 
@@ -270,7 +287,7 @@ class BirdNETService(SilvaService):
                     location_filter_active=loc_filter_active,
                     lat=self.system_config.latitude,
                     lon=self.system_config.longitude,
-                    week=None,  # Week logic simplified out of payload for brevity
+                    week=week if loc_filter_active else None,
                 )
 
                 # Extraction: Create a WAV file clip
@@ -339,8 +356,6 @@ class BirdNETService(SilvaService):
             )
             interpreter.allocate_tensors()
 
-            allowed_mask, loc_filter_active = self._get_allowed_species_mask(labels)
-
         except Exception as e:
             log.error("birdnet.init_failed", error=str(e))
             self.health.update_status("birdnet", False, str(e))
@@ -350,6 +365,9 @@ class BirdNETService(SilvaService):
 
         self.health.update_status("birdnet", True, "idle")
 
+        # Species masks by BirdNET week, valid for the current location only.
+        species_masks: dict[int, tuple[np.ndarray, bool]] = {}
+
         while not self._shutdown_event.is_set():
             self.health.touch()
             self.stats.maybe_emit_summary()
@@ -358,13 +376,13 @@ class BirdNETService(SilvaService):
             prev_lat = self.system_config.latitude if self.system_config else None
             prev_lon = self.system_config.longitude if self.system_config else None
             await self._refresh_config()
-            # Recompute species mask only if location actually changed
+            # A new location invalidates every cached species mask
             if self.system_config and (
                 self.system_config.latitude != prev_lat or self.system_config.longitude != prev_lon
             ):
-                allowed_mask, loc_filter_active = self._get_allowed_species_mask(labels)
+                species_masks.clear()
                 log.info(
-                    "birdnet.species_mask_recomputed",
+                    "birdnet.species_masks_reset",
                     lat=self.system_config.latitude,
                     lon=self.system_config.longitude,
                 )
@@ -423,6 +441,11 @@ class BirdNETService(SilvaService):
                     start_time = time.perf_counter()
 
                     try:
+                        week = birdnet_week(recording.time)
+                        if week not in species_masks:
+                            species_masks[week] = self._get_allowed_species_mask(labels, week)
+                        allowed_mask, loc_filter_active = species_masks[week]
+
                         detections = await self._process_recording(
                             recording,
                             audio_path,
@@ -430,6 +453,7 @@ class BirdNETService(SilvaService):
                             labels,
                             allowed_mask,
                             loc_filter_active,
+                            week,
                         )
 
                         if detections:
