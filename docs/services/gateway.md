@@ -47,7 +47,7 @@
 | **State**        | Stateless (request routing) + TLS certificate state (`caddy_data`)     |
 | **Privileges**   | Rootless (binds to 80/443 inside container; Podman maps to host ports) |
 | **Resources**    | Low — minimal CPU and memory footprint                                 |
-| **QoS Priority** | `oom_score_adj=0` (default) — Tier 1 infrastructure                    |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 > [!NOTE]
 > In production, the Gateway is the **only** service exposing ports to the host (80/443). All other services communicate exclusively via the internal `silvasonic-net` Podman network.

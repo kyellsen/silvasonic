@@ -40,7 +40,7 @@
 | **State**        | Stateful (Caddy data and certificates are persisted)           |
 | **Privileges**   | Rootless (runs internally, maps out to host 80/443)            |
 | **Resources**    | Low                                                            |
-| **QoS Priority** | `oom_score_adj=0`                                              |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 ## 5. Configuration & Environment
 

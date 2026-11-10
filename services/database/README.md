@@ -46,7 +46,7 @@
 | **State**        | Stateful (Named Volume `db-data`)                                           |
 | **Privileges**   | Rootless (Podman rootless mode, no `USER` directive)                        |
 | **Resources**    | Medium (Steady memory footprint, I/O bound)                                |
-| **QoS Priority** | `oom_score_adj=0` (Default Tier 1)                                          |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 ## 5. Configuration & Environment
 

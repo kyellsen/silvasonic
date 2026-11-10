@@ -47,7 +47,7 @@
 | **State**        | Stateful — stores node keys, peer state, and authentication tokens                                       |
 | **Privileges**   | Requires `NET_ADMIN` capability and `/dev/net/tun` device access (NOT `privileged: true` — see ADR-0007) |
 | **Resources**    | Low — minimal CPU and memory footprint                                                                   |
-| **QoS Priority** | `oom_score_adj=0` (default) — Tier 1 infrastructure                                                      |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 > [!IMPORTANT]
 > Tailscale must **NOT** use `privileged: true` (ADR-0007). Instead, grant the specific capabilities it needs: `cap_add: [NET_ADMIN, NET_RAW]` and device access `/dev/net/tun`. This follows the principle of least privilege.

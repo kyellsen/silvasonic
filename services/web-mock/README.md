@@ -33,7 +33,7 @@ When building the real web-interface, clone this service and replace `mock_data`
 | **State**        | Stateless                                                      |
 | **Privileges**   | Rootless                                                       |
 | **Resources**    | Low                                                            |
-| **QoS Priority** | `oom_score_adj=0`                                              |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 ## 5. Configuration & Environment
 

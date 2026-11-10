@@ -48,7 +48,7 @@
 | **State**        | Stateless (runtime) but explicitly mutates the filesystem                |
 | **Privileges**   | Rootless — no hardware access required (ADR-0007)                        |
 | **Resources**    | Low — periodic polling and I/O, optimized file operations                |
-| **QoS Priority** | `oom_score_adj=0` (Tier 1 Infrastructure Default)                        |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 > [!IMPORTANT]
 > The Processor is **Tier 1 (Infrastructure)** because the Janitor is critical for system survival — without it, the NVMe fills up and the Recorder halts. Despite being Tier 1, it follows the **Immutable Container** pattern like Tier 2 services (ADR-0019).

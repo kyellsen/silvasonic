@@ -50,7 +50,7 @@
 | **State**        | Ephemeral — all data is volatile, no persistence required |
 | **Privileges**   | Rootless (ADR-0007)                                       |
 | **Resources**    | Low — minimal memory footprint (< 10 MB)                  |
-| **QoS Priority** | `oom_score_adj=0` (default) — Tier 1 infrastructure       |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 > [!IMPORTANT]
 > Redis is **best-effort infrastructure**. If Redis goes down, the critical path (recording, ingestion, analysis) continues uninterrupted via filesystem/DB polling. Only the Web-Interface loses real-time status updates. See [Messaging Patterns](../arch/messaging_patterns.md) §1.1.

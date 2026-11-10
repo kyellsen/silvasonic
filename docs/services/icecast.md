@@ -47,7 +47,7 @@
 | **State**        | Stateless — no persistent data, ephemeral stream relay              |
 | **Privileges**   | Rootless (ADR-0007)                                                 |
 | **Resources**    | Low — minimal CPU (relay only, no transcoding)                      |
-| **QoS Priority** | `oom_score_adj=0` (default) — Tier 1 infrastructure                 |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 > [!NOTE]
 > The live stream is **best-effort**. If Icecast is unavailable or a Recorder cannot connect, recording continues unaffected — Data Capture Integrity is never compromised (ADR-0011).

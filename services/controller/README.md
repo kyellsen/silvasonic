@@ -42,7 +42,7 @@
 | **State**        | Stateless                                                      |
 | **Privileges**   | Privileged (Rootless Podman Socket Group)                      |
 | **Resources**    | Low (API commands and sysfs reads)                             |
-| **QoS Priority** | `oom_score_adj=0` (Tier 1 Default)                             |
+| **QoS Priority** | `oom_score_adj=300` — Tier 1, above the Recorder (ADR-0020 §2.3) |
 
 ## 5. Configuration & Environment
 
