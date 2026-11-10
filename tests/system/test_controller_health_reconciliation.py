@@ -50,11 +50,14 @@ class TestControllerHealthReconciliation:
     ) -> None:
         """Controller explicitly stops containers with stale/missing heartbeats.
 
-        1. Start a real container.
+        1. Start a real container that publishes one heartbeat and then goes
+           silent, like a deadlocked service.
         2. Wait for it to exist.
-        3. Clear its heartbeat in Redis, simulating a deadlock.
-        4. Trigger reconciliation loop.
-        5. Verify the Reconciler neutralizes the zombie and replaces it.
+        3. Clear its heartbeat in Redis.
+        4. Trigger reconciliation: the container is kept, since a missing
+           heartbeat may only mean it is booting or Redis restarted.
+        5. Once the heartbeat has been missing for longer than the stale
+           timeout, the Reconciler neutralizes the zombie and replaces it.
         """
         require_recorder_image()
 
@@ -77,7 +80,8 @@ class TestControllerHealthReconciliation:
                 "SILVASONIC_RECORDER_MOCK_SOURCE": "true",
                 "SILVASONIC_REDIS_URL": redis_container_url,
                 "SILVASONIC_INSTANCE_ID": "zombie-device",
-                "SILVASONIC_HEARTBEAT_INTERVAL_S": "1.0",
+                # First heartbeat at startup, then silence for the rest of the test
+                "SILVASONIC_HEARTBEAT_INTERVAL_S": "3600",
             },
             labels={
                 "io.silvasonic.tier": "2",
@@ -93,6 +97,9 @@ class TestControllerHealthReconciliation:
             cpu_limit=1.0,
             oom_score_adj=-999,
         )
+        # As build_recorder_spec() does: without the label every cycle would
+        # see config drift and recreate the container, heartbeat or not.
+        spec.labels["io.silvasonic.config_hash"] = spec.config_hash
 
         client = SilvasonicPodmanClient(
             socket_path=PODMAN_SOCKET,
@@ -145,7 +152,15 @@ class TestControllerHealthReconciliation:
             await redis.delete(key)
             await redis.aclose()
 
-            # Second sync: should detect missing heartbeat, kill the old one, and start a new one!
+            # Second sync: the missing heartbeat starts the grace period only
+            await reconciler._reconcile_once()
+            kept = mgr.get(container_name)
+            assert kept is not None and kept["id"] == original_cid, (
+                "Reconciler killed the container on the first missing heartbeat"
+            )
+
+            # Third sync after the stale timeout: kill the old one, start a new one
+            await asyncio.sleep(3.5)
             await reconciler._reconcile_once()
 
             new_running = mgr.get(container_name)

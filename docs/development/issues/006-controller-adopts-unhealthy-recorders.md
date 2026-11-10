@@ -62,9 +62,13 @@ Implement one or both of the following:
 2. **Controller-side health-aware reconciliation** ✅ **RESOLVED**
    - The `ReconciliationLoop._reconcile_once()` now evaluates heartbeat freshness
      via Redis (`silvasonic:status:<device_id>`) before executing `sync_state`.
-   - Containers with missing, stale (>45s), or error-status heartbeats are
+   - Containers with a stale heartbeat (timestamp older than 45 s) are
      actively evicted via `ContainerManager.stop_and_remove()` and excluded
      from the `actual` list, causing `sync_state` to recreate them.
+   - A missing, unparseable or error-status heartbeat is evicted the same way
+     once it has persisted for the stale timeout (45 s). Evicting on the first
+     sighting killed Recorders that were still booting, and every Recorder
+     after a Redis restart, which keeps no keys (`--save ""`).
    - System test: `tests/system/test_controller_health_reconciliation.py`
      validates the full zombie-detection-and-replacement cycle.
 

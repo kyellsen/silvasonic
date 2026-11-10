@@ -147,18 +147,60 @@ class TestReconcilerHeartbeatHealth:
         assert actual[0]["name"] == "silvasonic-recorder-mic1"
         mgr.stop_and_remove.assert_not_called()
 
-    async def test_missing_heartbeat_removes_container(self) -> None:
-        """No Redis entry for device → treated as unhealthy, stopped."""
+    async def test_missing_heartbeat_tolerated_during_grace(self) -> None:
+        """No Redis entry yet → kept: the container may still be booting.
+
+        Redis also loses every key on restart (``--save ""``); killing on the
+        first missing heartbeat would take down every running Recorder.
+        """
         container = {
             "name": "silvasonic-recorder-mic2",
             "labels": {"io.silvasonic.device_id": "mic2"},
         }
-        loop = _make_loop(actual_containers=[container])
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+
+        mgr, (_desired, actual) = await self._run_with_redis(loop, {})
+
+        assert len(actual) == 1
+        mgr.stop_and_remove.assert_not_called()
+
+    async def test_missing_heartbeat_removes_container_after_grace(self) -> None:
+        """Missing for longer than stale_timeout → unhealthy, stopped."""
+        name = "silvasonic-recorder-mic2"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic2"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+        loop._unhealthy_since[name] = time.monotonic() - 46.0
 
         mgr, (_desired, actual) = await self._run_with_redis(loop, {})
 
         assert len(actual) == 0
-        mgr.stop_and_remove.assert_called_once_with("silvasonic-recorder-mic2")
+        mgr.stop_and_remove.assert_called_once_with(name)
+        assert name not in loop._unhealthy_since
+
+    async def test_recovered_heartbeat_resets_grace(self) -> None:
+        """A heartbeat that comes back clears the unhealthy mark."""
+        name = "silvasonic-recorder-mic2"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic2"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+        loop._unhealthy_since[name] = time.monotonic() - 30.0
+
+        heartbeat = _make_heartbeat(timestamp=time.time(), health_status="ok")
+        mgr, (_desired, actual) = await self._run_with_redis(
+            loop, {"silvasonic:status:mic2": heartbeat}
+        )
+
+        assert len(actual) == 1
+        mgr.stop_and_remove.assert_not_called()
+        assert name not in loop._unhealthy_since
+
+    async def test_unhealthy_mark_dropped_for_vanished_container(self) -> None:
+        """Bookkeeping for a container that no longer exists is discarded."""
+        loop = _make_loop(actual_containers=[])
+        loop._unhealthy_since["silvasonic-recorder-gone"] = time.monotonic()
+
+        await self._run_with_redis(loop, {})
+
+        assert loop._unhealthy_since == {}
 
     async def test_stale_heartbeat_removes_container(self) -> None:
         """Heartbeat older than stale_timeout → unhealthy, stopped."""
@@ -177,36 +219,38 @@ class TestReconcilerHeartbeatHealth:
         assert len(actual) == 0
         mgr.stop_and_remove.assert_called_once()
 
-    async def test_error_health_status_removes_container(self) -> None:
-        """Heartbeat with health.status != ok/starting → unhealthy."""
-        container = {
-            "name": "silvasonic-recorder-mic4",
-            "labels": {"io.silvasonic.device_id": "mic4"},
-        }
-        loop = _make_loop(actual_containers=[container])
+    async def test_error_health_status_removes_container_after_grace(self) -> None:
+        """health.status != ok/starting → kept at first, stopped once it persists."""
+        name = "silvasonic-recorder-mic4"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic4"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
 
         heartbeat = _make_heartbeat(timestamp=time.time(), health_status="error")
         redis_data = {"silvasonic:status:mic4": heartbeat}
 
         mgr, (_desired, actual) = await self._run_with_redis(loop, redis_data)
+        assert len(actual) == 1
+        mgr.stop_and_remove.assert_not_called()
+
+        loop._unhealthy_since[name] = time.monotonic() - 46.0
+        mgr, (_desired, actual) = await self._run_with_redis(loop, redis_data)
 
         assert len(actual) == 0
-        mgr.stop_and_remove.assert_called_once()
+        mgr.stop_and_remove.assert_called_once_with(name)
 
-    async def test_invalid_heartbeat_json_removes_container(self) -> None:
-        """Unparseable JSON → treated as unhealthy."""
-        container = {
-            "name": "silvasonic-recorder-mic5",
-            "labels": {"io.silvasonic.device_id": "mic5"},
-        }
-        loop = _make_loop(actual_containers=[container])
+    async def test_invalid_heartbeat_json_removes_container_after_grace(self) -> None:
+        """Unparseable JSON → treated as unhealthy once it persists."""
+        name = "silvasonic-recorder-mic5"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic5"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+        loop._unhealthy_since[name] = time.monotonic() - 46.0
 
         redis_data = {"silvasonic:status:mic5": "not-valid-json{{{"}
 
         mgr, (_desired, actual) = await self._run_with_redis(loop, redis_data)
 
         assert len(actual) == 0
-        mgr.stop_and_remove.assert_called_once()
+        mgr.stop_and_remove.assert_called_once_with(name)
 
     async def test_container_without_device_label_always_healthy(
         self,

@@ -12,6 +12,7 @@ and reconciles against actual state from Podman (running containers queried by l
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import TYPE_CHECKING, NoReturn
 
@@ -33,6 +34,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
+    from redis.asyncio import Redis
     from silvasonic.controller.controller_stats import ControllerStats
     from silvasonic.controller.device_scanner import DeviceInfo
 
@@ -143,6 +145,8 @@ class ReconciliationLoop:
         self._redis_url = redis_url
         self._stale_timeout_s = stale_timeout_s
         self._missing_devices: dict[str, float] = {}
+        # Container name → monotonic time it was first seen unhealthy
+        self._unhealthy_since: dict[str, float] = {}
         self._trigger_event = asyncio.Event()
         self._stats: ControllerStats | None = None
 
@@ -219,69 +223,20 @@ class ReconciliationLoop:
         actual = await asyncio.to_thread(self._manager.list_managed)
 
         # Step 3.5: Health Evaluation (Issue 006)
-        # Verify heartbeat freshness via Redis. If a container is "running" but its
-        # heartbeat is missing or stale, it's unhealthy (e.g. deadlocked).
-        # We actively stop it and exclude it from `actual`, so `sync_state` recreates it.
+        # Verify heartbeat freshness via Redis. A container whose heartbeat is
+        # stale is stopped at once and excluded from `actual`, so `sync_state`
+        # recreates it. A missing or error heartbeat is tolerated for
+        # `stale_timeout_s`: a container that is still booting has not
+        # published yet, and Redis keeps no keys across a restart.
         if self._redis_url:
-            import json
-
             from silvasonic.core.redis import get_redis_connection
 
             redis = await get_redis_connection(self._redis_url)
             if redis is not None:
-                healthy_actual = []
-                now = time.time()
-                for c in actual:
-                    name = str(c.get("name", ""))
-                    labels = c.get("labels", {})
-                    device_id = (
-                        labels.get("io.silvasonic.device_id") if isinstance(labels, dict) else None
-                    )
-                    if not device_id:
-                        healthy_actual.append(c)
-                        continue
-
-                    key = f"silvasonic:status:{device_id}"
-                    val = await redis.get(key)
-                    is_healthy = True
-
-                    if not val:
-                        # No heartbeat in Redis
-                        log.warning(
-                            "reconciler.heartbeat_missing", container=name, device_id=device_id
-                        )
-                        is_healthy = False
-                    else:
-                        try:
-                            payload = json.loads(val)
-                            timestamp = payload.get("timestamp", 0.0)
-                            if now - timestamp > self._stale_timeout_s:
-                                log.warning(
-                                    "reconciler.heartbeat_stale",
-                                    container=name,
-                                    device_id=device_id,
-                                    age_s=round(now - timestamp, 1),
-                                )
-                                is_healthy = False
-                            elif payload.get("health", {}).get("status") not in ("ok", "starting"):
-                                log.warning(
-                                    "reconciler.heartbeat_reports_error",
-                                    container=name,
-                                    device_id=device_id,
-                                )
-                                is_healthy = False
-                        except Exception:
-                            log.warning("reconciler.heartbeat_invalid", container=name)
-                            is_healthy = False
-
-                    if is_healthy:
-                        healthy_actual.append(c)
-                    else:
-                        # Actively kill the unhealthy container
-                        await asyncio.to_thread(self._manager.stop_and_remove, name)
-
-                await redis.aclose()
-                actual = healthy_actual
+                try:
+                    actual = await self._filter_healthy(actual, redis)
+                finally:
+                    await redis.aclose()
 
         # Step 4: Track container actions in stats (before sync)
         if self._stats is not None:
@@ -313,6 +268,81 @@ class ReconciliationLoop:
             desired,
             actual,
         )
+
+    def _heartbeat_problem(self, raw: bytes | str | None, now: float) -> tuple[str | None, bool]:
+        """Classify one heartbeat.
+
+        Returns:
+            ``(problem, immediate)``: ``problem`` is ``None`` for a healthy
+            heartbeat, else the log event name; ``immediate`` is true when
+            the container is to be removed without a grace period.
+        """
+        if not raw:
+            return "reconciler.heartbeat_missing", False
+        try:
+            payload = json.loads(raw)
+            timestamp = float(payload.get("timestamp", 0.0))
+            status = payload.get("health", {}).get("status")
+        except (ValueError, TypeError, AttributeError):
+            return "reconciler.heartbeat_invalid", False
+        if now - timestamp > self._stale_timeout_s:
+            return "reconciler.heartbeat_stale", True
+        if status not in ("ok", "starting"):
+            return "reconciler.heartbeat_reports_error", False
+        return None, False
+
+    async def _filter_healthy(
+        self, actual: list[dict[str, object]], redis: Redis
+    ) -> list[dict[str, object]]:
+        """Stop unhealthy device containers and return the ones kept.
+
+        Containers without a device label are not heartbeat-checked.
+        """
+        healthy: list[dict[str, object]] = []
+        now = time.time()
+        mono_now = time.monotonic()
+        seen: set[str] = set()
+
+        for c in actual:
+            name = str(c.get("name", ""))
+            labels = c.get("labels", {})
+            device_id = labels.get("io.silvasonic.device_id") if isinstance(labels, dict) else None
+            if not device_id:
+                healthy.append(c)
+                continue
+
+            seen.add(name)
+            raw = await redis.get(f"silvasonic:status:{device_id}")
+            problem, immediate = self._heartbeat_problem(raw, now)
+
+            if problem is None:
+                self._unhealthy_since.pop(name, None)
+                healthy.append(c)
+                continue
+
+            first_seen = self._unhealthy_since.get(name)
+            if first_seen is None:
+                first_seen = self._unhealthy_since[name] = mono_now
+                log.warning(problem, container=name, device_id=device_id)
+
+            unhealthy_for = mono_now - first_seen
+            if immediate or unhealthy_for >= self._stale_timeout_s:
+                log.warning(
+                    "reconciler.unhealthy_container_removed",
+                    container=name,
+                    device_id=device_id,
+                    reason=problem,
+                    unhealthy_for_s=round(unhealthy_for, 1),
+                )
+                await asyncio.to_thread(self._manager.stop_and_remove, name)
+                self._unhealthy_since.pop(name, None)
+            else:
+                healthy.append(c)
+
+        # Forget containers that are gone
+        for name in set(self._unhealthy_since) - seen:
+            del self._unhealthy_since[name]
+        return healthy
 
     async def scan_and_sync_devices(self) -> int:
         """Scan USB devices, match profiles, and sync state to DB.
