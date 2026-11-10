@@ -1,9 +1,10 @@
 http://{$SILVASONIC_DOMAIN_NAME:silvasonic.local} {
     #tls internal
 
-    # Default: admin / 1234 (bcrypt, generated via `caddy hash-password`)
+    # Per-installation login from .env: `just setup` generates the password,
+    # prints it once and stores only its bcrypt hash (scripts/setup.py).
     basic_auth /* {
-        admin $2a$14$b.//IEDTIDhEMk9xFbExbuQKcnoY.HUwtyj1I92QbqkzS89JrnJEG
+        {$SILVASONIC_GATEWAY_USER:admin} {$SILVASONIC_GATEWAY_PASSWORD_HASH}
     }
 
     log {

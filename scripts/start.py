@@ -3,12 +3,15 @@
 
 from common import ensure_initialized, print_banner, print_header, print_success
 from compose import compose
+from setup import ensure_gateway_credentials
 
 
 def main() -> None:
     """Start all Silvasonic services."""
     print_banner()
     ensure_initialized()
+    # A .env from before per-installation Gateway passwords has none yet
+    ensure_gateway_credentials()
 
     print_header("Starting Silvasonic Services")
     compose("up", "-d")
