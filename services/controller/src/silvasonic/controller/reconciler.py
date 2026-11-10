@@ -147,6 +147,10 @@ class ReconciliationLoop:
         self._missing_microphones: dict[str, float] = {}
         # Container name → monotonic time it was first seen unhealthy
         self._unhealthy_since: dict[str, float] = {}
+        # Container name → (heartbeat timestamp, monotonic time it was first read).
+        # Freshness is measured on this clock, never against the wall clock:
+        # an NTP step at boot moves `time.time()` but not the monotonic clock.
+        self._heartbeat_seen: dict[str, tuple[float, float]] = {}
         self._trigger_event = asyncio.Event()
         self._stats: ControllerStats | None = None
 
@@ -223,10 +227,11 @@ class ReconciliationLoop:
         actual = await asyncio.to_thread(self._manager.list_managed)
 
         # Step 3.5: Health Evaluation (Issue 006)
-        # Verify heartbeat freshness via Redis. A container whose heartbeat is
-        # stale is stopped at once and excluded from `actual`, so `sync_state`
-        # recreates it. A missing or error heartbeat is tolerated for
-        # `stale_timeout_s`: a container that is still booting has not
+        # Verify heartbeat freshness via Redis. A container whose heartbeat has
+        # not changed for `stale_timeout_s` (measured on the Controller's
+        # monotonic clock) is stopped at once and excluded from `actual`, so
+        # `sync_state` recreates it. A missing or error heartbeat is tolerated
+        # for `stale_timeout_s`: a container that is still booting has not
         # published yet, and Redis keeps no keys across a restart.
         if self._redis_url:
             from silvasonic.core.redis import get_redis_connection
@@ -269,8 +274,16 @@ class ReconciliationLoop:
             actual,
         )
 
-    def _heartbeat_problem(self, raw: bytes | str | None, now: float) -> tuple[str | None, bool]:
+    def _heartbeat_problem(
+        self, name: str, raw: bytes | str | None, mono_now: float
+    ) -> tuple[str | None, bool]:
         """Classify one heartbeat.
+
+        A heartbeat is stale when its timestamp has not changed for
+        ``stale_timeout_s`` on the Controller's monotonic clock. The
+        timestamp only marks a new publish; comparing it with the wall clock
+        would misfire when NTP steps the clock (Issue 002): a forward step
+        made a live Recorder look stale, a backward step hid a hung one.
 
         Returns:
             ``(problem, immediate)``: ``problem`` is ``None`` for a healthy
@@ -285,7 +298,10 @@ class ReconciliationLoop:
             status = payload.get("health", {}).get("status")
         except (ValueError, TypeError, AttributeError):
             return "reconciler.heartbeat_invalid", False
-        if now - timestamp > self._stale_timeout_s:
+        seen = self._heartbeat_seen.get(name)
+        if seen is None or seen[0] != timestamp:
+            seen = self._heartbeat_seen[name] = (timestamp, mono_now)
+        if mono_now - seen[1] > self._stale_timeout_s:
             return "reconciler.heartbeat_stale", True
         if status not in ("ok", "starting"):
             return "reconciler.heartbeat_reports_error", False
@@ -299,7 +315,6 @@ class ReconciliationLoop:
         Containers without a device label are not heartbeat-checked.
         """
         healthy: list[dict[str, object]] = []
-        now = time.time()
         mono_now = time.monotonic()
         seen: set[str] = set()
 
@@ -313,7 +328,7 @@ class ReconciliationLoop:
 
             seen.add(name)
             raw = await redis.get(f"silvasonic:status:{device_id}")
-            problem, immediate = self._heartbeat_problem(raw, now)
+            problem, immediate = self._heartbeat_problem(name, raw, mono_now)
 
             if problem is None:
                 self._unhealthy_since.pop(name, None)
@@ -336,12 +351,17 @@ class ReconciliationLoop:
                 )
                 await asyncio.to_thread(self._manager.stop_and_remove, name)
                 self._unhealthy_since.pop(name, None)
+                # Its successor starts with a fresh clock, even while Redis
+                # still holds the old heartbeat
+                self._heartbeat_seen.pop(name, None)
             else:
                 healthy.append(c)
 
         # Forget containers that are gone
         for name in set(self._unhealthy_since) - seen:
             del self._unhealthy_since[name]
+        for name in set(self._heartbeat_seen) - seen:
+            del self._heartbeat_seen[name]
         return healthy
 
     async def scan_and_sync_devices(self) -> int:

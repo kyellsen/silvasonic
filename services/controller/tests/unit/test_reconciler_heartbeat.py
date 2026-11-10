@@ -197,27 +197,88 @@ class TestReconcilerHeartbeatHealth:
         """Bookkeeping for a container that no longer exists is discarded."""
         loop = _make_loop(actual_containers=[])
         loop._unhealthy_since["silvasonic-recorder-gone"] = time.monotonic()
+        loop._heartbeat_seen["silvasonic-recorder-gone"] = (time.time(), time.monotonic())
 
         await self._run_with_redis(loop, {})
 
         assert loop._unhealthy_since == {}
+        assert loop._heartbeat_seen == {}
 
     async def test_stale_heartbeat_removes_container(self) -> None:
-        """Heartbeat older than stale_timeout → unhealthy, stopped."""
-        container = {
-            "name": "silvasonic-recorder-mic3",
-            "labels": {"io.silvasonic.device_id": "mic3"},
-        }
+        """A heartbeat unchanged for longer than stale_timeout → stopped at once."""
+        name = "silvasonic-recorder-mic3"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic3"}}
         loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
 
-        old_ts = time.time() - 120.0  # 2 minutes ago
-        heartbeat = _make_heartbeat(timestamp=old_ts, health_status="ok")
-        redis_data = {"silvasonic:status:mic3": heartbeat}
+        ts = time.time() - 46.0
+        loop._heartbeat_seen[name] = (ts, time.monotonic() - 46.0)
+        heartbeat = _make_heartbeat(timestamp=ts, health_status="ok")
 
-        mgr, (_desired, actual) = await self._run_with_redis(loop, redis_data)
+        mgr, (_desired, actual) = await self._run_with_redis(
+            loop, {"silvasonic:status:mic3": heartbeat}
+        )
 
         assert len(actual) == 0
-        mgr.stop_and_remove.assert_called_once()
+        mgr.stop_and_remove.assert_called_once_with(name)
+        # The successor is judged on its own heartbeats
+        assert name not in loop._heartbeat_seen
+
+    async def test_forward_clock_step_does_not_evict(self) -> None:
+        """An NTP step at boot makes the last heartbeat look hours old: kept.
+
+        A Pi without a real-time clock boots with a stale time and jumps
+        forward on its first NTP sync (Issue 002). Comparing the heartbeat
+        with the wall clock replaced every Recorder at that moment.
+        """
+        name = "silvasonic-recorder-mic3"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic3"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+
+        ts = time.time() - 3 * 3600.0  # written before the clock stepped 3 h ahead
+        loop._heartbeat_seen[name] = (ts, time.monotonic() - 5.0)
+        heartbeat = _make_heartbeat(timestamp=ts, health_status="ok")
+
+        mgr, (_desired, actual) = await self._run_with_redis(
+            loop, {"silvasonic:status:mic3": heartbeat}
+        )
+
+        assert len(actual) == 1
+        mgr.stop_and_remove.assert_not_called()
+
+    async def test_backward_clock_step_still_detects_a_hang(self) -> None:
+        """A heartbeat from the future no longer hides a Recorder that stopped publishing."""
+        name = "silvasonic-recorder-mic3"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic3"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+
+        ts = time.time() + 3600.0  # written before the clock stepped 1 h back
+        loop._heartbeat_seen[name] = (ts, time.monotonic() - 46.0)
+        heartbeat = _make_heartbeat(timestamp=ts, health_status="ok")
+
+        mgr, (_desired, actual) = await self._run_with_redis(
+            loop, {"silvasonic:status:mic3": heartbeat}
+        )
+
+        assert len(actual) == 0
+        mgr.stop_and_remove.assert_called_once_with(name)
+
+    async def test_new_heartbeat_restarts_the_clock(self) -> None:
+        """Each new publish counts as fresh, whatever its timestamp says."""
+        name = "silvasonic-recorder-mic3"
+        container = {"name": name, "labels": {"io.silvasonic.device_id": "mic3"}}
+        loop = _make_loop(actual_containers=[container], stale_timeout_s=45.0)
+
+        loop._heartbeat_seen[name] = (time.time() - 60.0, time.monotonic() - 60.0)
+        new_ts = time.time() - 50.0  # older than stale_timeout by the wall clock
+        heartbeat = _make_heartbeat(timestamp=new_ts, health_status="ok")
+
+        mgr, (_desired, actual) = await self._run_with_redis(
+            loop, {"silvasonic:status:mic3": heartbeat}
+        )
+
+        assert len(actual) == 1
+        mgr.stop_and_remove.assert_not_called()
+        assert loop._heartbeat_seen[name][0] == new_ts
 
     async def test_error_health_status_removes_container_after_grace(self) -> None:
         """health.status != ok/starting → kept at first, stopped once it persists."""

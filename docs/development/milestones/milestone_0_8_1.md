@@ -52,6 +52,7 @@ This milestone was written after the work was done, to bring the roadmap back in
 - [x] Indexer: known-file cache, batched existence query, path indexes
 - [x] Indexer: commit each recording on its own, so one bad file does not roll back the others
 - [x] Controller: a missing or erroneous heartbeat is tolerated for the stale timeout before the Recorder is replaced — [Issue 006](../issues/006-controller-adopts-unhealthy-recorders.md)
+- [x] Controller: heartbeat age measured on its monotonic clock, so an NTP step neither evicts live Recorders nor hides a hung one
 
 ---
 

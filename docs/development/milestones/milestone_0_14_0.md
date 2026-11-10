@@ -50,6 +50,7 @@ For v1.0.0 the update works at application level: images, database and configura
 - [ ] CI builds every image for `arm64` and publishes it with the release version
 - [ ] Release tags drive image publishing (Release Checklist)
 - [ ] Recorder and worker images are referenced by version, not `latest`
+- [ ] Every image installs from the lockfile (`uv sync --frozen`); the BirdNET image still installs with `uv pip install -e`, past the lockfile
 
 ---
 

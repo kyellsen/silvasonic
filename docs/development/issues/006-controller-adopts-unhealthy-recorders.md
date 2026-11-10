@@ -62,9 +62,13 @@ Implement one or both of the following:
 2. **Controller-side health-aware reconciliation** ✅ **RESOLVED**
    - The `ReconciliationLoop._reconcile_once()` now evaluates heartbeat freshness
      via Redis (`silvasonic:status:<device_id>`) before executing `sync_state`.
-   - Containers with a stale heartbeat (timestamp older than 45 s) are
-     actively evicted via `ContainerManager.stop_and_remove()` and excluded
-     from the `actual` list, causing `sync_state` to recreate them.
+   - Containers with a stale heartbeat (one that has not changed for 45 s)
+     are actively evicted via `ContainerManager.stop_and_remove()` and
+     excluded from the `actual` list, causing `sync_state` to recreate them.
+     The Controller measures that age on its own monotonic clock; the
+     heartbeat's timestamp only marks a new publish. Comparing it with the
+     wall clock misfired when NTP stepped the clock ([Issue 002](002-ntp-time-jump.md)):
+     a forward step could evict live Recorders, a backward step hid a hung one.
    - A missing, unparseable or error-status heartbeat is evicted the same way
      once it has persisted for the stale timeout (45 s). Evicting on the first
      sighting killed Recorders that were still booting, and every Recorder
