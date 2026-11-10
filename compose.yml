@@ -1,6 +1,10 @@
 # ==============================================================================
 # Silvasonic Compose Configuration
 # Podman-only (see ADR-0004, ADR-0013)
+#
+# Host ports: only the Gateway listens on the network. Database, Redis and the
+# service APIs bind to SILVASONIC_INTERNAL_BIND_ADDRESS (default 127.0.0.1),
+# reachable from this host for development but not from the LAN.
 # ==============================================================================
 
 services:
@@ -38,7 +42,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
     ports:
-      - "${SILVASONIC_DB_PORT:-5432}:5432"
+      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
@@ -64,7 +68,7 @@ services:
       SILVASONIC_RECORDER_WORKSPACE_LOCAL: /app/recorder-workspace
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
-      - "${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
+      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_CONTROLLER_PORT:-9100}:9100"
     volumes:
       - ${SILVASONIC_WORKSPACE_PATH}/controller:/app/workspace:z
       - ${SILVASONIC_WORKSPACE_PATH}/recorder:/app/recorder-workspace:z
@@ -100,7 +104,7 @@ services:
       SILVASONIC_DB_HOST: database
       SILVASONIC_REDIS_URL: redis://redis:6379/0
     ports:
-      - "${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
+      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_PROCESSOR_PORT:-9200}:9200"
     volumes:
       # Recorder workspace: RW — Processor is the ONLY non-Recorder service
       # with write access (Janitor delete authority, ADR-0009).
@@ -191,7 +195,7 @@ services:
     # Disable persistence — all Redis data (heartbeats, status) is volatile by design.
     command: [ "redis-server", "--save", "" ]
     ports:
-      - "${SILVASONIC_REDIS_PORT:-6379}:6379"
+      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -220,7 +224,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
       SILVASONIC_API_ROOT_PATH: /web-mock
     ports:
-      - "${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
+      - "${SILVASONIC_INTERNAL_BIND_ADDRESS:-127.0.0.1}:${SILVASONIC_WEB_MOCK_PORT:-8001}:8001"
     depends_on:
       redis:
         condition: service_healthy

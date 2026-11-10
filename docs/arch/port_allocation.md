@@ -32,7 +32,8 @@ All Silvasonic services use a consistent port scheme. Ports are configured via `
 3. **`91XX` range** for Silvasonic service APIs (Controller 9100, Processor 9200)
 4. **`9500`** unified internal health port for services without their own API
 5. All host-exposed ports configurable via `.env`
-6. **No internal port collisions** — each service uses a unique internal port to avoid confusion
+6. **Only the Gateway listens on the network.** Every other host port binds to `SILVASONIC_INTERNAL_BIND_ADDRESS` (default `127.0.0.1`): reachable from the device itself for development, not from the LAN. Remote access goes through the Gateway and its authentication.
+7. **No internal port collisions** — each service uses a unique internal port to avoid confusion
 
 ## Health Port Convention
 
