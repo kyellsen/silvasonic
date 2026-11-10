@@ -285,7 +285,9 @@ class TestProcessorResilience:
             # and switch the cloud_sync module on.
             db_query(
                 db_container,
-                "UPDATE recordings SET uploaded_at = NOW() "
+                # Times are epoch microseconds (ADR-0037)
+                "UPDATE recordings SET uploaded_at = "
+                "CAST((julianday('now') - 2440587.5) * 86400000000 AS INTEGER) "
                 "WHERE id = (SELECT id FROM recordings LIMIT 1)",
             )
             db_query(

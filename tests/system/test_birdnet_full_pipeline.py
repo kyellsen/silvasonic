@@ -66,7 +66,11 @@ class TestBirdNETFullPipeline:
         birdnet_cfg = {
             "processing_order": "newest_first",
             "overlap_s": 0.0,
-            "min_confidence": 0.0,  # Zero guarantees pipeline throughput
+            # Low enough that the mock source's robin is detected in every
+            # segment (it scores up to 0.87), high enough to skip the rest:
+            # at 0.0 every one of BirdNET's ~6,500 classes is a detection with
+            # its own clip, about 13,000 clips (6 GB) per 10 s segment.
+            "min_confidence": 0.1,
         }
         cfg_json = json.dumps(birdnet_cfg)
         db_query(

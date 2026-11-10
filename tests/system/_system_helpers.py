@@ -475,7 +475,7 @@ def wait_for_detection(
     """Poll for a BirdNET detection by taxon prefix and return its id, label, clip_path."""
     query = (
         "SELECT id, label, clip_path FROM detections "
-        f"WHERE label LIKE '{prefix_taxon}%' AND analyzer = 'birdnet' OFFSET 0 LIMIT 1"
+        f"WHERE label LIKE '{prefix_taxon}%' AND analyzer = 'birdnet' LIMIT 1"
     )
 
     def _check() -> dict[str, str]:
