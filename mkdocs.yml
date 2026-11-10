@@ -22,6 +22,7 @@ nav:
       - "Messaging Patterns & Protocols": arch/messaging_patterns.md
       - Port Allocation: arch/port_allocation.md
       - Microphone Profiles: arch/microphone_profiles.md
+      - Station API: api/index.md
   - Services:
       - Controller Service: services/controller.md
       - Database Service: services/database.md
@@ -30,6 +31,7 @@ nav:
       - Web-Mock Service: services/web_mock.md
       - Processor Service: services/processor.md
       - Gateway Service: services/gateway.md
+      - API Service: services/api.md
       - Web-Interface Service: services/web_interface.md
       - "UI/UX Design System": arch/frontend_design_system.md
       - "Web-Interface Feature Specs": arch/frontend_features.md
@@ -65,6 +67,11 @@ nav:
       - "ADR-0022: Live Log Streaming": adr/0022-live-log-streaming.md
       - "ADR-0023: Configuration Management": adr/0023-configuration-management.md
       - "ADR-0024: FFmpeg Audio Engine": adr/0024-ffmpeg-audio-engine.md
+      - "ADR-0032: API-First Station Contract": adr/0032-api-first-station-contract.md
+      - "ADR-0033: Unified Naming and Global Identifiers": adr/0033-unified-naming-and-global-identifiers.md
+      - "ADR-0034: Authentication and Authorization": adr/0034-authentication-and-authorization.md
+      - "ADR-0035: HTTPS and Certificates": adr/0035-https-and-certificates.md
+      - "ADR-0036: Svelte SPA Frontend": adr/0036-svelte-spa-frontend.md
   - Development:
       - "Milestone v0.1.0": development/milestones/milestone_0_1_0.md
       - "Milestone v0.2.0": development/milestones/milestone_0_2_0.md
@@ -90,6 +97,8 @@ nav:
       - Icecast: user_stories/icecast.md
       - Cloud Sync: user_stories/cloud_sync.md
       - Web-Interface: user_stories/web_interface.md
+      - Dashboard: user_stories/dashboard.md
+      - API: user_stories/api.md
   - Hardware: hardware.md
   - Glossary: glossary.md
 

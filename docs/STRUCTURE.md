@@ -43,6 +43,7 @@ A Service README is explicitly limited to the structured headers defined in **`s
 ## 5. Domain Documentation (`docs/`)
 
 - **`docs/arch/*.md`**: System-wide architecture patterns that span multiple services (e.g., filesystem governance, port allocation).
+- **`docs/api/`**: The Station API contract (`openapi.yaml`) and the page that explains how to read it. The contract owns every endpoint and field; no other document lists them.
 - **`docs/user_stories/*.md`**: The **Who** and **What**. Focus on clear functional descriptions. Technical specifications (e.g., database fields, Redis keys, system paths) may be included in Acceptance Criteria *only* if necessary for exactness, but always prefer expressing the core requirement without them if possible.
 - **`docs/adr/*.md`**: ADRs are generally historical records of Past Decisions. If a major architectural path changes, prefer creating a new ADR and setting the old one to `Superseded by ADR-XXX`. However, completely deleting obsolete ADRs or making minor retroactive context updates is permissible in special cases to avoid repository bloat.
 - **`docs/hardware.md`**: Central configuration or technical context that cuts across multiple domains.
