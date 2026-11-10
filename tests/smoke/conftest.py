@@ -309,11 +309,6 @@ def gateway_container(
         .with_network(smoke_network)
         .with_network_aliases("web-mock")
     )
-    backend.start()
-    bhost = backend.get_container_host_ip()
-    bport = int(backend.get_exposed_port(8001))
-    wait_for_http(bhost, bport)
-
     caddyfile = str(Path(__file__).resolve().parents[2] / "services" / "gateway" / "Caddyfile")
     container = (
         DockerContainer("docker.io/library/caddy:2-alpine")
@@ -325,11 +320,17 @@ def gateway_container(
         .with_network_aliases("test-gateway")
         .with_volume_mapping(caddyfile, "/etc/caddy/Caddyfile", "ro")
     )
-    container.start()
-    wait_for_log(container, "serving initial configuration")
 
+    # Stop both containers whatever fails: a Caddy that never comes up used
+    # to leave its web-mock backend running after the test.
+    backend.start()
     try:
-        yield container
+        wait_for_http(backend.get_container_host_ip(), int(backend.get_exposed_port(8001)))
+        container.start()
+        try:
+            wait_for_log(container, "serving initial configuration")
+            yield container
+        finally:
+            container.stop()
     finally:
-        container.stop()
         backend.stop()
