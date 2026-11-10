@@ -80,3 +80,6 @@ package-lock.json
 docs/development/refactoring_uploader_to_processor.md
 
 temp/*
+
+# Agent worktrees (git worktrees of this repository, one per session)
+.claude/

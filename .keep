@@ -38,6 +38,7 @@ prompts/
 
 # === VCS & IDE (hidden, always kept) ===
 .agent/
+.claude/
 .gemini/
 .git/
 .github/
