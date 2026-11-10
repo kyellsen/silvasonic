@@ -91,6 +91,20 @@
 | **Apply** | Tear down the database container and recreate — no incremental migrations during dev.                                 |
 | **Sync**  | Every change to the SQL DDL **must** be mirrored in the SQLAlchemy models (`packages/core/…/models/`) and vice-versa. |
 
+The init script runs only on an empty volume. Recreating the database keeps the recordings on disk (the Indexer finds them again) but loses detections and upload history. To bring an **existing** database up to date without that loss, apply the changes since its creation by hand; every statement is safe to repeat:
+
+```bash
+podman exec -i silvasonic-database psql -U silvasonic -d silvasonic <<'SQL'
+-- Indexer existence checks by file path
+CREATE INDEX IF NOT EXISTS ix_recordings_file_raw ON recordings (file_raw);
+CREATE INDEX IF NOT EXISTS ix_recordings_file_processed ON recordings (file_processed);
+-- Segments named while the clock was unsynchronised (Issue 002)
+ALTER TABLE recordings ADD COLUMN IF NOT EXISTS clock_unsynced BOOLEAN NOT NULL DEFAULT FALSE;
+SQL
+```
+
+Without the column the Indexer cannot insert new recordings; without the indexes it only runs slower.
+
 ---
 
 ### Type Conventions
