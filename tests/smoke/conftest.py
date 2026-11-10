@@ -306,6 +306,21 @@ def db_viewer_container(
 # ── Gateway (Caddy) ──────────────────────────────────────────────────────────
 
 
+# Test-only login for the gateway. The Caddyfile reads SILVASONIC_GATEWAY_USER and
+# SILVASONIC_GATEWAY_PASSWORD_HASH (per-installation credentials, see
+# scripts/setup.py). The hash is bcrypt of the plaintext below, generated with
+# `caddy hash-password --plaintext smoke-test-password`.
+_GATEWAY_TEST_USER = "smoke"
+_GATEWAY_TEST_PASSWORD = "smoke-test-password"
+_GATEWAY_TEST_PASSWORD_HASH = "$2a$14$T0vFTVr0QOSNT4/fbg.h0.GFYp9mdKI8iyDF7IdBndoovRnhW.mVa"
+
+
+@pytest.fixture()
+def gateway_credentials() -> tuple[str, str]:
+    """Return the (user, plaintext password) the smoke gateway accepts."""
+    return (_GATEWAY_TEST_USER, _GATEWAY_TEST_PASSWORD)
+
+
 @pytest.fixture()
 def gateway_container(
     smoke_network: Network,
@@ -337,6 +352,8 @@ def gateway_container(
         DockerContainer("docker.io/library/caddy:2-alpine")
         .with_exposed_ports(80)
         .with_env("SILVASONIC_DOMAIN_NAME", "localhost")
+        .with_env("SILVASONIC_GATEWAY_USER", _GATEWAY_TEST_USER)
+        .with_env("SILVASONIC_GATEWAY_PASSWORD_HASH", _GATEWAY_TEST_PASSWORD_HASH)
         .with_network(smoke_network)
         .with_network_aliases("test-gateway")
         .with_volume_mapping(caddyfile, "/etc/caddy/Caddyfile", "ro")

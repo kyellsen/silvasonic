@@ -80,11 +80,10 @@ class TestServiceHealth:
         assert resp.status_code == 200
         assert "html" in resp.headers.get("content-type", "").lower()
 
-    def test_gateway_serves_http(self, gateway_container: DockerContainer) -> None:
-        """Gateway (Caddy) accepts HTTP and enforces basic auth from Caddyfile."""
+    def test_gateway_rejects_missing_credentials(self, gateway_container: DockerContainer) -> None:
+        """Gateway answers 401 without credentials (per-installation login, 23d5e6f)."""
         host = gateway_container.get_container_host_ip()
         port = int(gateway_container.get_exposed_port(80))
-        # Caddy's Caddyfile has basic_auth — unauthenticated requests get 401
         resp = httpx.get(
             f"http://{host}:{port}/web-mock/healthy",
             timeout=5.0,
@@ -94,17 +93,32 @@ class TestServiceHealth:
             f"Gateway should return 401 (basic_auth) but got {resp.status_code}"
         )
 
-    def test_gateway_proxies_to_web_mock(self, gateway_container: DockerContainer) -> None:
-        """Gateway proxies authenticated requests through to web-mock."""
+    def test_gateway_serves_http(
+        self, gateway_container: DockerContainer, gateway_credentials: tuple[str, str]
+    ) -> None:
+        """Gateway (Caddy) serves HTTP to a client logged in with the test credential."""
         host = gateway_container.get_container_host_ip()
         port = int(gateway_container.get_exposed_port(80))
-        # Default credentials matching the bcrypt hash in services/gateway/Caddyfile.
-        # These are development-only defaults; production overrides via a mounted Caddyfile.
         resp = httpx.get(
             f"http://{host}:{port}/web-mock/healthy",
             timeout=5.0,
             headers={"Host": "localhost"},
-            auth=("admin", "1234"),
+            auth=gateway_credentials,
+        )
+        assert resp.status_code != 401, "Valid credentials must pass basic_auth"
+        assert resp.status_code < 500
+
+    def test_gateway_proxies_to_web_mock(
+        self, gateway_container: DockerContainer, gateway_credentials: tuple[str, str]
+    ) -> None:
+        """Gateway proxies authenticated requests through to web-mock."""
+        host = gateway_container.get_container_host_ip()
+        port = int(gateway_container.get_exposed_port(80))
+        resp = httpx.get(
+            f"http://{host}:{port}/web-mock/healthy",
+            timeout=5.0,
+            headers={"Host": "localhost"},
+            auth=gateway_credentials,
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
