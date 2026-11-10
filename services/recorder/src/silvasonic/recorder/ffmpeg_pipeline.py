@@ -19,6 +19,12 @@ Completeness Signal:
     Therefore, if ≥2 files exist in ``.buffer/{stream}/``, all but the
     newest are guaranteed complete.  After FFmpeg exits (SIGINT), **all**
     remaining files are complete.  No segment-list CSV needed.
+
+Segment Timestamps:
+    The timestamp in a promoted filename is the wall-clock time of the
+    segment's first sample: the file's mtime (FFmpeg's last write, when it
+    closes the segment) minus the audio duration in its WAV header.  The
+    time of promotion would be the segment's end, delayed by polling.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ import subprocess
 import threading
 import time
 import uuid
+import wave
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -242,14 +249,57 @@ class FFmpegConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Segment start time
+# ---------------------------------------------------------------------------
+def wav_duration_s(path: Path) -> float | None:
+    """Return the audio duration of a WAV file from its header.
+
+    Args:
+        path: WAV file whose header FFmpeg has finalised.
+
+    Returns:
+        Duration in seconds, or ``None`` if the header cannot be read.
+    """
+    try:
+        with wave.open(str(path), "rb") as wav:
+            rate = wav.getframerate()
+            return wav.getnframes() / rate if rate > 0 else None
+    except (wave.Error, EOFError, OSError):
+        return None
+
+
+def segment_start_time(path: Path, nominal_duration_s: float) -> datetime.datetime:
+    """Return the wall-clock time of a closed segment's first sample.
+
+    FFmpeg's last write to a segment happens when it closes the file, right
+    after the last sample, so the file's mtime marks the segment's end. The
+    start is that end minus the audio duration; the nominal segment duration
+    stands in when the header cannot be read.
+
+    Args:
+        path: Completed segment in ``.buffer/``.
+        nominal_duration_s: Configured segment duration (fallback).
+
+    Returns:
+        Timezone-aware UTC datetime of the first sample.
+    """
+    end = datetime.datetime.fromtimestamp(path.stat().st_mtime_ns / 1e9, datetime.UTC)
+    duration = wav_duration_s(path)
+    if duration is None:
+        duration = float(nominal_duration_s)
+    return end - datetime.timedelta(seconds=duration)
+
+
+# ---------------------------------------------------------------------------
 # TimestampRegistry
 # ---------------------------------------------------------------------------
 class TimestampRegistry:
-    """Provides thread-safe, monotonically-increasing UTC timestamps.
+    """Hands out one timestamp per segment, shared by both streams.
 
     Used by SegmentPromoter to ensure that raw and processed streams
     receive the exact identical timestamp string for the same segment
-    sequence, even if CPU scheduling delays one promoter thread.
+    sequence, even if CPU scheduling delays one promoter thread.  The
+    first promoter to reach a segment fixes its timestamp.
     """
 
     def __init__(self, max_size: int = 128) -> None:
@@ -258,18 +308,24 @@ class TimestampRegistry:
         self._lock = threading.Lock()
         self._max_size = max_size
 
-    def get_timestamp(self, key: tuple[str, int]) -> str:
-        """Get or generate the UTC timestamp for (run_id, seq)."""
+    def get_timestamp(self, key: tuple[str, int], start: datetime.datetime) -> str:
+        """Get the timestamp for (run_id, seq), fixing it to ``start`` on first use.
+
+        Args:
+            key: ``(run_id, seq)`` of the segment.
+            start: Segment start time, used only if the key is new.
+
+        Returns:
+            Timestamp string ``YYYY-MM-DDTHH-MM-SSZ``, rounded to the second.
+        """
         with self._lock:
             if key not in self._times:
                 # Evict oldest if we hit the safe limit
                 if len(self._times) >= self._max_size:
                     oldest_key = next(iter(self._times))
                     del self._times[oldest_key]
-                # Format: YYYY-MM-DDTHH-MM-SSZ
-                self._times[key] = datetime.datetime.now(datetime.UTC).strftime(
-                    "%Y-%m-%dT%H-%M-%SZ"
-                )
+                rounded = (start + datetime.timedelta(milliseconds=500)).replace(microsecond=0)
+                self._times[key] = rounded.astimezone(datetime.UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
             return self._times[key]
 
 
@@ -384,8 +440,14 @@ class SegmentPromoter(threading.Thread):
             target_name = src.name
             log.warning("segment.invalid_name", filename=src.name, stream=self._stream_name)
         else:
-            # Generate deterministic identical timestamp for this exact (run_id, seq) pair
-            ts_str = self._registry.get_timestamp((run_id, seq))
+            # Identical start timestamp for this exact (run_id, seq) pair in both streams
+            try:
+                start = segment_start_time(src, self._segment_duration_s)
+            except OSError:  # pragma: no cover — file vanished between glob and stat
+                start = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+                    seconds=self._segment_duration_s
+                )
+            ts_str = self._registry.get_timestamp((run_id, seq), start)
             target_name = f"{ts_str}_{self._segment_duration_s}s_{run_id}_{seq:08d}.wav"
 
         dst = self._data_dir / target_name

@@ -6,10 +6,13 @@ FFmpeg subprocess — no real audio hardware or FFmpeg binary needed.
 
 from __future__ import annotations
 
+import os
 import signal
 import subprocess
+import wave
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from silvasonic.recorder.ffmpeg_pipeline import (
@@ -19,7 +22,25 @@ from silvasonic.recorder.ffmpeg_pipeline import (
     FFmpegPipeline,
     SegmentPromoter,
     TimestampRegistry,
+    segment_start_time,
+    wav_duration_s,
 )
+
+
+def _write_wav(path: Path, duration_s: float, sample_rate: int = 8000) -> None:
+    """Write a mono 16-bit WAV file of silence."""
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(b"\x00\x00" * int(duration_s * sample_rate))
+
+
+def _set_mtime(path: Path, moment: datetime) -> None:
+    """Set a file's mtime to ``moment``."""
+    ts = moment.timestamp()
+    os.utime(path, (ts, ts))
+
 
 # ===================================================================
 # FFmpegConfig
@@ -210,29 +231,94 @@ class TestTimestampRegistry:
         registry = TimestampRegistry()
         key1 = ("1a2b3c4d", 0)
 
-        # First query inserts the time
-        ts1 = registry.get_timestamp(key1)
-        # Second query simply fetches the exact same time
-        ts2 = registry.get_timestamp(key1)
-        assert ts1 == ts2
+        start = datetime(2026, 3, 30, 10, 30, 0, 400_000, tzinfo=UTC)
 
-        # A different seq or run_id might produce a different timestamp (mocking sleep ideally)
-        key2 = ("1a2b3c4d", 1)
-        ts3 = registry.get_timestamp(key2)
-        assert isinstance(ts3, str)
-        assert "Z" in ts3
+        # First query fixes the time, rounded to the second
+        ts1 = registry.get_timestamp(key1, start)
+        # Second query fetches the same time, whatever start it passes
+        ts2 = registry.get_timestamp(key1, start + timedelta(seconds=5))
+        assert ts1 == ts2 == "2026-03-30T10-30-00Z"
+
+        # A different seq gets its own start
+        ts3 = registry.get_timestamp(
+            ("1a2b3c4d", 1), start + timedelta(seconds=10, milliseconds=200)
+        )
+        assert ts3 == "2026-03-30T10-30-11Z"
 
     def test_evicts_old_entries(self) -> None:
         """Registry clears oldest elements when exceeding 128 elements."""
         registry = TimestampRegistry()
+        start = datetime(2026, 3, 30, tzinfo=UTC)
         for i in range(130):
-            registry.get_timestamp(("run_x", i))
+            registry.get_timestamp(("run_x", i), start)
 
         # Size should be clamped to 128
         assert len(registry._times) == 128
         # Sequence 0 and 1 should be gone
         assert ("run_x", 0) not in registry._times
         assert ("run_x", 1) not in registry._times
+
+
+# ===================================================================
+# Segment start time
+# ===================================================================
+
+
+@pytest.mark.unit
+class TestSegmentStartTime:
+    """The filename timestamp is the segment's first sample, not its promotion."""
+
+    def test_wav_duration_from_header(self, tmp_path: Path) -> None:
+        """Duration comes from the frame count in the WAV header."""
+        seg = tmp_path / "seg.wav"
+        _write_wav(seg, 3.25)
+        assert wav_duration_s(seg) == pytest.approx(3.25)
+
+    def test_wav_duration_unreadable_header(self, tmp_path: Path) -> None:
+        """A file that is not a WAV yields None."""
+        seg = tmp_path / "seg.wav"
+        seg.write_text("not a wav")
+        assert wav_duration_s(seg) is None
+
+    def test_start_is_mtime_minus_duration(self, tmp_path: Path) -> None:
+        """A segment closed at 10:30:10 holding 10 s of audio started at 10:30:00."""
+        seg = tmp_path / "seg.wav"
+        _write_wav(seg, 10.0)
+        _set_mtime(seg, datetime(2026, 3, 30, 10, 30, 10, tzinfo=UTC))
+
+        assert segment_start_time(seg, 10) == datetime(2026, 3, 30, 10, 30, 0, tzinfo=UTC)
+
+    def test_short_final_segment_uses_real_duration(self, tmp_path: Path) -> None:
+        """The last segment of a run is shorter than nominal; its header says how much."""
+        seg = tmp_path / "seg.wav"
+        _write_wav(seg, 4.0)
+        _set_mtime(seg, datetime(2026, 3, 30, 10, 30, 10, tzinfo=UTC))
+
+        assert segment_start_time(seg, 10) == datetime(2026, 3, 30, 10, 30, 6, tzinfo=UTC)
+
+    def test_falls_back_to_nominal_duration(self, tmp_path: Path) -> None:
+        """Without a readable header the configured duration is used."""
+        seg = tmp_path / "seg.wav"
+        seg.write_text("not a wav")
+        _set_mtime(seg, datetime(2026, 3, 30, 10, 30, 10, tzinfo=UTC))
+
+        assert segment_start_time(seg, 10) == datetime(2026, 3, 30, 10, 30, 0, tzinfo=UTC)
+
+    def test_promoted_name_carries_segment_start(self, tmp_path: Path) -> None:
+        """Promotion long after the segment closed still names it by its start."""
+        buffer_dir = tmp_path / ".buffer" / "raw"
+        data_dir = tmp_path / "data" / "raw"
+        buffer_dir.mkdir(parents=True)
+        data_dir.mkdir(parents=True)
+
+        seg = buffer_dir / "1a2b3c4d_00000000.wav"
+        _write_wav(seg, 10.0)
+        _set_mtime(seg, datetime(2026, 3, 30, 10, 30, 10, tzinfo=UTC))
+        (buffer_dir / "1a2b3c4d_00000001.wav").write_bytes(b"")
+
+        SegmentPromoter(buffer_dir, data_dir, segment_duration_s=10)._poll_and_promote()
+
+        assert (data_dir / "2026-03-30T10-30-00Z_10s_1a2b3c4d_00000000.wav").exists()
 
 
 # ===================================================================
@@ -273,7 +359,7 @@ class TestSegmentPromoter:
         assert expected_target.exists()
         assert promoter.segments_promoted == 1
 
-        mock_registry.get_timestamp.assert_called_once_with(("1a2b3c4d", 0))
+        mock_registry.get_timestamp.assert_called_once_with(("1a2b3c4d", 0), ANY)
 
     def test_skips_single_file(self, tmp_path: Path) -> None:
         """When only 1 file exists, nothing is promoted (still active)."""
