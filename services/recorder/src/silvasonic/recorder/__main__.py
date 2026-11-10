@@ -19,6 +19,7 @@ from typing import Any
 
 import structlog
 from silvasonic.core.service import SilvaService
+from silvasonic.recorder.clock import clock_synchronized
 from silvasonic.recorder.ffmpeg_pipeline import FFmpegConfig, FFmpegPipeline
 from silvasonic.recorder.recording_stats import RecordingStats
 from silvasonic.recorder.settings import RecorderSettings
@@ -38,6 +39,10 @@ class RecorderService(SilvaService):
 
     service_name = "recorder"
     service_port = 9500
+
+    # Clock sync state (Issue 002): None until checked or if unreadable
+    _clock_synced: bool | None = None
+    _clock_checked: bool = False
 
     def __init__(self) -> None:
         """Initialize with settings from environment."""
@@ -88,6 +93,7 @@ class RecorderService(SilvaService):
                 "watchdog_last_failure": self._watchdog.last_failure_reason
                 if self._watchdog
                 else None,
+                "clock_synchronized": self._clock_synced,
             },
         }
         return meta
@@ -165,8 +171,27 @@ class RecorderService(SilvaService):
                 self._pipeline.stop()
                 self._pipeline = None
 
+    def _check_clock(self) -> None:
+        """Track the clock sync state and log every change (Issue 002).
+
+        Segments recorded while the clock is unsynchronised carry the stale
+        boot time in their timestamps; the warning makes that visible.
+        """
+        synced = clock_synchronized()
+        if self._clock_checked and synced == self._clock_synced:
+            return
+        self._clock_checked = True
+        self._clock_synced = synced
+        if synced is False:
+            log.warning("recorder.clock_unsynchronized")
+        elif synced is True:
+            log.info("recorder.clock_synchronized")
+        else:
+            log.info("recorder.clock_state_unknown")
+
     def _monitor_recording_once(self) -> None:
         """Check FFmpeg status and update health synchronously."""
+        self._check_clock()
         if self._pipeline is not None:
             is_recording = self._pipeline.is_active
             segments = self._pipeline.segments_promoted

@@ -365,6 +365,44 @@ class TestGetExtraMeta:
         assert meta["recording"]["watchdog_giving_up"] is False
         assert "returncode=-9" in meta["recording"]["watchdog_last_failure"]
 
+    def test_extra_meta_includes_clock_state(self, bare_service: "RecorderService") -> None:
+        """Heartbeat metadata reports the clock sync state (Issue 002)."""
+        with patch("silvasonic.recorder.__main__.clock_synchronized", return_value=False):
+            bare_service._check_clock()
+
+        assert bare_service.get_extra_meta()["recording"]["clock_synchronized"] is False
+
+
+# ---------------------------------------------------------------------------
+# Clock sync tracking
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestClockCheck:
+    """The Recorder logs each change of the clock sync state once."""
+
+    def test_logs_only_on_change(self, bare_service: "RecorderService") -> None:
+        """Unsynced at boot warns once; the switch to synced is logged once."""
+        states = iter([False, False, True, True])
+        with (
+            patch(
+                "silvasonic.recorder.__main__.clock_synchronized",
+                side_effect=lambda: next(states),
+            ),
+            patch("silvasonic.recorder.__main__.log") as mock_log,
+        ):
+            for _ in range(4):
+                bare_service._check_clock()
+
+        mock_log.warning.assert_called_once_with("recorder.clock_unsynchronized")
+        mock_log.info.assert_called_once_with("recorder.clock_synchronized")
+        assert bare_service._clock_synced is True
+
+    def test_clock_synchronized_reads_kernel_state(self) -> None:
+        """On Linux the adjtimex query returns a bool."""
+        from silvasonic.recorder.clock import clock_synchronized
+
+        assert clock_synchronized() in (True, False)
+
 
 # ---------------------------------------------------------------------------
 # __main__ guard

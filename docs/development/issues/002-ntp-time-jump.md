@@ -78,7 +78,22 @@ the forest impossible — the recording logic is isolated:
   watches for the clock becoming plausible (NTP-synchronised) and only then
   assigns correct epochs, or records "un-synced" in the metadata.
 
-## 7. Relevant documentation links
+## 7. Resolution status
+
+* **Segment timestamps** are the wall-clock time of each segment's first
+  sample: the segment file's mtime (FFmpeg's last write, when it closes the
+  segment) minus the audio duration in its WAV header. Previously the
+  promotion time was used, which is the segment's *end* plus polling delay.
+  A clock step during a run affects only the segments that close before it.
+* **Clock sync state** is checked with `adjtimex(2)`, the rule `timedatectl`
+  uses. The Recorder logs every change (`recorder.clock_unsynchronized`,
+  `recorder.clock_synchronized`) and reports `clock_synchronized` in its
+  heartbeat.
+* **Still open:** recordings made while the clock was unsynchronised are not
+  marked as such in the filename or the `recordings` table, so their stale
+  timestamps cannot be told apart later.
+
+## 8. Relevant documentation links
 
 * [AGENTS.md](https://github.com/kyellsen/silvasonic/blob/main/AGENTS.md)
 * [VISION.md](https://github.com/kyellsen/silvasonic/blob/main/VISION.md)
