@@ -144,6 +144,8 @@ workspace/recorder/
             └── *.wav
 ```
 
+A segment named while the system clock is not synchronised ends in `_unsynced.wav` instead of `.wav` (ADR-0011, Issue 002).
+
 **Container view** (`/app/workspace`):
 ```
 /app/workspace/

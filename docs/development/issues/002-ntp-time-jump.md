@@ -89,9 +89,13 @@ the forest impossible — the recording logic is isolated:
   uses. The Recorder logs every change (`recorder.clock_unsynchronized`,
   `recorder.clock_synchronized`) and reports `clock_synchronized` in its
   heartbeat.
-* **Still open:** recordings made while the clock was unsynchronised are not
-  marked as such in the filename or the `recordings` table, so their stale
-  timestamps cannot be told apart later.
+* **Per-recording marker:** a segment named while the clock is
+  unsynchronised gets the suffix `_unsynced` before `.wav` (ADR-0011), the
+  same in both streams. The Indexer stores it as
+  `recordings.clock_unsynced`, so stale timestamps can be found and
+  corrected or excluded later. "Unsynchronised" means no time source
+  disciplines the clock: a station without network that keeps time from a
+  battery-backed RTC is marked too, although its drift is small.
 
 ## 8. Relevant documentation links
 

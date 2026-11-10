@@ -115,6 +115,45 @@ class TestParseTimestamp:
 
 
 @pytest.mark.unit
+class TestClockMarker:
+    """Segments named with an unsynchronised clock carry a suffix (Issue 002)."""
+
+    def test_marked_segment_parses_and_flags(self) -> None:
+        """The suffix leaves the timestamp intact and sets the flag."""
+        name = "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_unsynced.wav"
+        assert indexer.parse_timestamp(name) == datetime(2026, 3, 26, 1, 35, 0, tzinfo=UTC)
+        assert indexer.is_clock_unsynced(name) is True
+
+    def test_plain_segment_is_synced(self) -> None:
+        """Names without the suffix, the normal case, are trusted."""
+        assert indexer.is_clock_unsynced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav") is False
+
+    def test_unknown_suffix_rejected(self) -> None:
+        """Only the documented suffix is accepted."""
+        with pytest.raises(ValueError):
+            indexer.is_clock_unsynced("2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_x.wav")
+
+    async def test_marker_reaches_the_insert(self, tmp_path: Path) -> None:
+        """The indexer stores the flag with the recording."""
+        dev_dir = tmp_path / "mic-01" / "data" / "processed"
+        dev_dir.mkdir(parents=True)
+        _create_wav(dev_dir / "2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000_unsynced.wav")
+
+        device_result = MagicMock()
+        device_result.fetchone.return_value = ("mic-01",)
+        exists_result = MagicMock()
+        exists_result.all.return_value = []
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[exists_result, device_result, MagicMock()])
+
+        result = await indexer.index_recordings(session, tmp_path)
+
+        assert result.new == 1
+        insert_params = session.execute.await_args_list[-1].args[1]
+        assert insert_params["clock_unsynced"] is True
+
+
+@pytest.mark.unit
 class TestExtractMetadata:
     """Verify WAV metadata extraction via soundfile."""
 

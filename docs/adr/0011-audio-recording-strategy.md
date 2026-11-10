@@ -22,6 +22,7 @@ We need a standardized way to handle audio streams to ensure downstream services
     *   Streams and artifacts MUST be named `raw` and `processed`.
     *   We explicitly abandon names like `high`, `low`, `high_res`, `low_res` or specific bitrates (`384k`) in naming conventions (variables, directories, database columns).
     *   **Filename Format**: All files MUST adhere to the v0.6.0 collision-proof format: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}.wav`. Pre-v0.6.0 legacy fallback formats are strictly forbidden.
+    *   **Clock Marker**: A segment named while the system clock was not synchronised (`adjtimex(2)`, the rule `timedatectl` uses) gets the suffix `_unsynced` before `.wav`: `YYYY-MM-DDTHH-MM-SSZ_{duration}s_{run_id}_{seq:08d}_unsynced.wav`. Its timestamp may be off by however long the device ran without a time source; the Indexer stores the flag as `recordings.clock_unsynced` ([Issue 002](../development/issues/002-ntp-time-jump.md)). Both streams of a segment carry the same name, marker included.
 
 3.  **Local Storage Format**:
     *   **Format**: `WAV` (linear PCM).

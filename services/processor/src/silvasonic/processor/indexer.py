@@ -34,12 +34,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger()
 
-# Filename pattern produced by FFmpeg pipeline (v0.6+):
+# Filename pattern produced by FFmpeg pipeline (v0.6+, ADR-0011):
 #   Example:  2026-03-26T01-35-00Z_10s_1a2b3c4d_00000000.wav
+#   Named while the clock was unsynchronised: ..._00000000_unsynced.wav
 _FILENAME_TIME_FORMAT = "%Y-%m-%dT%H-%M-%S"
 _FILENAME_REGEX = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z)_"
-    r"(?P<duration>\d+)s_(?P<run_id>[a-f0-9]{8})_(?P<seq>\d{8})\.wav$"
+    r"(?P<duration>\d+)s_(?P<run_id>[a-f0-9]{8})_(?P<seq>\d{8})"
+    r"(?P<unsynced>_unsynced)?\.wav$"
 )
 
 
@@ -121,6 +123,21 @@ def parse_timestamp(filename: str) -> datetime:
         log.warning("indexer.pre_ntp_timestamp", filename=filename, year=dt.year)
 
     return dt
+
+
+def is_clock_unsynced(filename: str) -> bool:
+    """Return whether the Recorder named this segment with an unsynchronised clock.
+
+    Such a segment's timestamp may be off by however long the device ran
+    without a time source (Issue 002).
+
+    Raises:
+        ValueError: If filename does not match expected pattern.
+    """
+    match = _FILENAME_REGEX.match(filename)
+    if not match:
+        raise ValueError(f"Filename does not match expected pattern: {filename}")
+    return match.group("unsynced") is not None
 
 
 def extract_metadata(wav_path: Path) -> WavMeta:
@@ -307,6 +324,7 @@ async def index_recordings(
             # Extract metadata
             meta = extract_metadata(wav_path)
             timestamp = parse_timestamp(wav_path.name)
+            clock_unsynced = is_clock_unsynced(wav_path.name)
 
             # Resolve file paths for both streams
             if is_raw:
@@ -328,10 +346,12 @@ async def index_recordings(
                 text("""
                     INSERT INTO recordings (
                         time, sensor_id, file_raw, file_processed,
-                        duration, sample_rate, filesize_raw, filesize_processed
+                        duration, sample_rate, filesize_raw, filesize_processed,
+                        clock_unsynced
                     ) VALUES (
                         :time, :sensor_id, :file_raw, :file_processed,
-                        :duration, :sample_rate, :filesize_raw, :filesize_processed
+                        :duration, :sample_rate, :filesize_raw, :filesize_processed,
+                        :clock_unsynced
                     )
                 """),
                 {
@@ -343,6 +363,7 @@ async def index_recordings(
                     "sample_rate": meta.sample_rate,
                     "filesize_raw": filesize_raw,
                     "filesize_processed": filesize_processed,
+                    "clock_unsynced": clock_unsynced,
                 },
             )
             await session.commit()

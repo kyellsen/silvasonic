@@ -10,6 +10,7 @@ import os
 import signal
 import subprocess
 import wave
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
@@ -21,6 +22,7 @@ from silvasonic.recorder.ffmpeg_pipeline import (
     FFmpegConfig,
     FFmpegPipeline,
     SegmentPromoter,
+    SegmentStamp,
     TimestampRegistry,
     segment_start_time,
     wav_duration_s,
@@ -217,6 +219,13 @@ class TestFFmpegConfig:
         assert args[0] == "/usr/local/bin/ffmpeg"
 
 
+@pytest.fixture(autouse=True)
+def _clock_synced() -> Iterator[None]:
+    """Name segments as if the clock were synchronised, whatever the host's state."""
+    with patch("silvasonic.recorder.ffmpeg_pipeline.clock_synchronized", return_value=True):
+        yield
+
+
 # ===================================================================
 # TimestampRegistry
 # ===================================================================
@@ -234,29 +243,40 @@ class TestTimestampRegistry:
         start = datetime(2026, 3, 30, 10, 30, 0, 400_000, tzinfo=UTC)
 
         # First query fixes the time, rounded to the second
-        ts1 = registry.get_timestamp(key1, start)
+        ts1 = registry.get_stamp(key1, start).timestamp
         # Second query fetches the same time, whatever start it passes
-        ts2 = registry.get_timestamp(key1, start + timedelta(seconds=5))
+        ts2 = registry.get_stamp(key1, start + timedelta(seconds=5)).timestamp
         assert ts1 == ts2 == "2026-03-30T10-30-00Z"
 
         # A different seq gets its own start
-        ts3 = registry.get_timestamp(
+        ts3 = registry.get_stamp(
             ("1a2b3c4d", 1), start + timedelta(seconds=10, milliseconds=200)
-        )
+        ).timestamp
         assert ts3 == "2026-03-30T10-30-11Z"
+
+    def test_clock_marker_fixed_on_first_use(self) -> None:
+        """Both streams get the clock state the first promoter saw (Issue 002)."""
+        registry = TimestampRegistry()
+        start = datetime(2026, 3, 30, 10, 30, tzinfo=UTC)
+
+        assert registry.get_stamp(("r", 0), start, clock_synced=False).unsynced is True
+        # NTP takes hold before the second stream's promoter reaches the segment
+        assert registry.get_stamp(("r", 0), start, clock_synced=True).unsynced is True
+        # An unknown state does not mark the segment
+        assert registry.get_stamp(("r", 1), start, clock_synced=None).unsynced is False
 
     def test_evicts_old_entries(self) -> None:
         """Registry clears oldest elements when exceeding 128 elements."""
         registry = TimestampRegistry()
         start = datetime(2026, 3, 30, tzinfo=UTC)
         for i in range(130):
-            registry.get_timestamp(("run_x", i), start)
+            registry.get_stamp(("run_x", i), start)
 
         # Size should be clamped to 128
-        assert len(registry._times) == 128
+        assert len(registry._stamps) == 128
         # Sequence 0 and 1 should be gone
-        assert ("run_x", 0) not in registry._times
-        assert ("run_x", 1) not in registry._times
+        assert ("run_x", 0) not in registry._stamps
+        assert ("run_x", 1) not in registry._stamps
 
 
 # ===================================================================
@@ -344,7 +364,7 @@ class TestSegmentPromoter:
         seg2.write_text("active segment")
 
         mock_registry = MagicMock()
-        mock_registry.get_timestamp.return_value = "2026-03-30T10-30-00Z"
+        mock_registry.get_stamp.return_value = SegmentStamp("2026-03-30T10-30-00Z", False)
 
         promoter = SegmentPromoter(
             buffer_dir, data_dir, stream_name="raw", segment_duration_s=10, registry=mock_registry
@@ -359,7 +379,7 @@ class TestSegmentPromoter:
         assert expected_target.exists()
         assert promoter.segments_promoted == 1
 
-        mock_registry.get_timestamp.assert_called_once_with(("1a2b3c4d", 0), ANY)
+        mock_registry.get_stamp.assert_called_once_with(("1a2b3c4d", 0), ANY, True)
 
     def test_skips_single_file(self, tmp_path: Path) -> None:
         """When only 1 file exists, nothing is promoted (still active)."""
@@ -446,7 +466,10 @@ class TestSegmentPromoter:
         seg2.write_text("data2")
 
         mock_registry = MagicMock()
-        mock_registry.get_timestamp.side_effect = ["2026-03-30T10-30-00Z", "2026-03-30T10-30-10Z"]
+        mock_registry.get_stamp.side_effect = [
+            SegmentStamp("2026-03-30T10-30-00Z", False),
+            SegmentStamp("2026-03-30T10-30-10Z", False),
+        ]
 
         promoter = SegmentPromoter(buffer_dir, data_dir, stream_name="raw", registry=mock_registry)
         promoter._promote_all()
@@ -495,6 +518,35 @@ class TestSegmentPromoter:
         assert raw_files == proc_files, "Dual-stream filenames must be 100% identical"
         assert len(raw_files) == 2
         assert "_1a2b3c4d_00000000.wav" in raw_files[0]
+
+    def test_unsynced_clock_marks_both_streams(self, tmp_path: Path) -> None:
+        """A segment named before NTP sync carries the marker in both streams."""
+        dirs = {}
+        for stream in ("raw", "processed"):
+            buffer_dir = tmp_path / ".buffer" / stream
+            data_dir = tmp_path / "data" / stream
+            buffer_dir.mkdir(parents=True)
+            data_dir.mkdir(parents=True)
+            (buffer_dir / "1a2b3c4d_00000000.wav").write_text(stream)
+            dirs[stream] = (buffer_dir, data_dir)
+
+        registry = TimestampRegistry()
+        # The raw promoter sees the clock unsynchronised; by the time the
+        # processed promoter runs, NTP has taken hold.
+        SegmentPromoter(
+            *dirs["raw"], stream_name="raw", registry=registry, clock_state=lambda: False
+        )._promote_all()
+        SegmentPromoter(
+            *dirs["processed"],
+            stream_name="processed",
+            registry=registry,
+            clock_state=lambda: True,
+        )._promote_all()
+
+        raw_names = [f.name for f in dirs["raw"][1].iterdir()]
+        proc_names = [f.name for f in dirs["processed"][1].iterdir()]
+        assert raw_names == proc_names
+        assert raw_names[0].endswith("_1a2b3c4d_00000000_unsynced.wav")
 
     def test_thread_lifecycle(self, tmp_path: Path) -> None:
         """Promoter thread starts, runs, and stops cleanly."""
@@ -547,7 +599,7 @@ class TestSegmentPromoter:
 
         mock_stats = MagicMock()
         mock_registry = MagicMock()
-        mock_registry.get_timestamp.return_value = "2026-03-30T10-30-00Z"
+        mock_registry.get_stamp.return_value = SegmentStamp("2026-03-30T10-30-00Z", False)
 
         promoter = SegmentPromoter(
             buffer_dir,

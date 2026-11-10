@@ -54,6 +54,11 @@ class Recording(Base):
         nullable=False,
     )
 
+    # Named while the system clock was unsynchronised: ``time`` may be off (Issue 002)
+    clock_unsynced: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+
 
 class Upload(Base):
     """Immutable audit log of all upload attempts."""

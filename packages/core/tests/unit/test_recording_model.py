@@ -27,6 +27,12 @@ class TestRecordingModel:
         col = Recording.__table__.columns["local_deleted"]
         assert col.default.arg is False
 
+    def test_clock_unsynced_default_false(self) -> None:
+        """Recordings are trusted unless the Recorder marked them (Issue 002)."""
+        col = Recording.__table__.columns["clock_unsynced"]
+        assert col.default.arg is False
+        assert col.server_default is not None
+
     def test_uploaded_default_false(self) -> None:
         """Uploaded column defaults to False."""
         col = Recording.__table__.columns["uploaded"]

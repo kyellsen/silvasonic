@@ -25,6 +25,8 @@ Segment Timestamps:
     segment's first sample: the file's mtime (FFmpeg's last write, when it
     closes the segment) minus the audio duration in its WAV header.  The
     time of promotion would be the segment's end, delayed by polling.
+    A segment named while the system clock is not synchronised gets the
+    suffix ``_unsynced`` before ``.wav``: its timestamp may be off.
 """
 
 from __future__ import annotations
@@ -37,12 +39,15 @@ import threading
 import time
 import uuid
 import wave
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import structlog
 from pydantic import BaseModel, Field, PositiveInt
 from silvasonic.core.schemas.recorder import RecorderRuntimeConfig
+from silvasonic.recorder.clock import clock_synchronized
 
 if TYPE_CHECKING:
     from silvasonic.recorder.recording_stats import RecordingStats
@@ -293,40 +298,64 @@ def segment_start_time(path: Path, nominal_duration_s: float) -> datetime.dateti
 # ---------------------------------------------------------------------------
 # TimestampRegistry
 # ---------------------------------------------------------------------------
+# Appended to a segment's name when the system clock was not synchronised
+# while it was named, so its timestamp may be off (Issue 002, ADR-0011).
+UNSYNCED_SUFFIX = "_unsynced"
+
+
+@dataclass(frozen=True)
+class SegmentStamp:
+    """What a segment's name says about its time: start and clock trust."""
+
+    timestamp: str
+    unsynced: bool
+
+
 class TimestampRegistry:
-    """Hands out one timestamp per segment, shared by both streams.
+    """Hands out one stamp per segment, shared by both streams.
 
     Used by SegmentPromoter to ensure that raw and processed streams
-    receive the exact identical timestamp string for the same segment
-    sequence, even if CPU scheduling delays one promoter thread.  The
-    first promoter to reach a segment fixes its timestamp.
+    receive the exact identical name for the same segment sequence, even
+    if CPU scheduling delays one promoter thread.  The first promoter to
+    reach a segment fixes its timestamp and clock marker.
     """
 
     def __init__(self, max_size: int = 128) -> None:
         """Initialize the thread-safe registry with an eviction limit."""
-        self._times: dict[tuple[str, int], str] = {}
+        self._stamps: dict[tuple[str, int], SegmentStamp] = {}
         self._lock = threading.Lock()
         self._max_size = max_size
 
-    def get_timestamp(self, key: tuple[str, int], start: datetime.datetime) -> str:
-        """Get the timestamp for (run_id, seq), fixing it to ``start`` on first use.
+    def get_stamp(
+        self,
+        key: tuple[str, int],
+        start: datetime.datetime,
+        clock_synced: bool | None = None,
+    ) -> SegmentStamp:
+        """Get the stamp for (run_id, seq), fixing it on first use.
 
         Args:
             key: ``(run_id, seq)`` of the segment.
             start: Segment start time, used only if the key is new.
+            clock_synced: Clock sync state, used only if the key is new.
+                Only ``False`` marks the segment; ``None`` (unknown) does not.
 
         Returns:
-            Timestamp string ``YYYY-MM-DDTHH-MM-SSZ``, rounded to the second.
+            The timestamp ``YYYY-MM-DDTHH-MM-SSZ``, rounded to the second,
+            and whether the clock was unsynchronised.
         """
         with self._lock:
-            if key not in self._times:
+            if key not in self._stamps:
                 # Evict oldest if we hit the safe limit
-                if len(self._times) >= self._max_size:
-                    oldest_key = next(iter(self._times))
-                    del self._times[oldest_key]
+                if len(self._stamps) >= self._max_size:
+                    oldest_key = next(iter(self._stamps))
+                    del self._stamps[oldest_key]
                 rounded = (start + datetime.timedelta(milliseconds=500)).replace(microsecond=0)
-                self._times[key] = rounded.astimezone(datetime.UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
-            return self._times[key]
+                self._stamps[key] = SegmentStamp(
+                    timestamp=rounded.astimezone(datetime.UTC).strftime("%Y-%m-%dT%H-%M-%SZ"),
+                    unsynced=clock_synced is False,
+                )
+            return self._stamps[key]
 
 
 # ---------------------------------------------------------------------------
@@ -362,6 +391,7 @@ class SegmentPromoter(threading.Thread):
         registry: TimestampRegistry | None = None,
         poll_interval: float = 0.5,
         stats: RecordingStats | None = None,
+        clock_state: Callable[[], bool | None] | None = None,
     ) -> None:
         """Initialize the promoter thread."""
         super().__init__(name=f"segment-promoter-{stream_name}", daemon=True)
@@ -372,6 +402,8 @@ class SegmentPromoter(threading.Thread):
         self._registry = registry or TimestampRegistry()
         self._poll_interval = poll_interval
         self._stats = stats
+        # Read per segment; the default asks the kernel (Issue 002)
+        self._clock_state = clock_state or clock_synchronized
         self._running = False
         self._promoted_count = 0
         self._promoted_lock = threading.Lock()
@@ -447,8 +479,11 @@ class SegmentPromoter(threading.Thread):
                 start = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
                     seconds=self._segment_duration_s
                 )
-            ts_str = self._registry.get_timestamp((run_id, seq), start)
-            target_name = f"{ts_str}_{self._segment_duration_s}s_{run_id}_{seq:08d}.wav"
+            stamp = self._registry.get_stamp((run_id, seq), start, self._clock_state())
+            marker = UNSYNCED_SUFFIX if stamp.unsynced else ""
+            target_name = (
+                f"{stamp.timestamp}_{self._segment_duration_s}s_{run_id}_{seq:08d}{marker}.wav"
+            )
 
         dst = self._data_dir / target_name
 

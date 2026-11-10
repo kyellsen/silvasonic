@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import functools
+from typing import Any
 
 _MAXERROR_SYNCED_LIMIT_US = 16_000_000
 
@@ -33,17 +35,27 @@ class _Timex(ctypes.Structure):
     ]
 
 
+@functools.cache
+def _adjtimex() -> Any:
+    """Return libc's ``adjtimex``, looked up once, or ``None`` if unavailable."""
+    try:
+        libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
+        return libc.adjtimex
+    except (OSError, AttributeError):
+        return None
+
+
 def clock_synchronized() -> bool | None:
     """Return whether the system clock is synchronised to a time source.
+
+    Cheap enough to call for every segment: one system call.
 
     Returns:
         ``True`` or ``False``, or ``None`` if the state cannot be read
         (no ``adjtimex`` on this platform, or the call was refused).
     """
-    try:
-        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
-        adjtimex = libc.adjtimex
-    except (OSError, AttributeError):
+    adjtimex = _adjtimex()
+    if adjtimex is None:
         return None
 
     timex = _Timex()  # modes = 0: read only, no privilege required

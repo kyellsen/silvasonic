@@ -110,6 +110,8 @@ CREATE TABLE recordings (
     uploaded_at TIMESTAMP WITH TIME ZONE,
     local_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     analysis_state JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- TRUE: named while the system clock was unsynchronised, `time` may be off (Issue 002)
+    clock_unsynced BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     FOREIGN KEY(sensor_id) REFERENCES devices (name)
 );

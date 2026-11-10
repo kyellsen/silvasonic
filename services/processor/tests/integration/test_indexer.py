@@ -179,6 +179,34 @@ class TestIndexerIntegration:
 
         await engine.dispose()
 
+    async def test_unsynced_marker_is_stored(
+        self, postgres_container: PostgresContainer, tmp_path: Path
+    ) -> None:
+        """A segment named before NTP sync is flagged; a plain one is not."""
+        url = _build_async_url(postgres_container)
+        engine = create_async_engine(url, echo=False)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with factory() as session:
+            await _seed_device(session, "rode-01")
+
+        raw_dir = tmp_path / "rode-01" / "data" / "raw"
+        _create_wav(raw_dir / "2026-01-01T05-00-00Z_10s_1a2b3c4d_00000000_unsynced.wav")
+        _create_wav(raw_dir / "2026-01-01T05-00-10Z_10s_1a2b3c4d_00000001.wav")
+
+        async with factory() as session:
+            result = await indexer.index_recordings(session, tmp_path)
+        assert result.new == 2
+
+        async with factory() as session:
+            rows = await session.execute(
+                text("SELECT time, clock_unsynced FROM recordings ORDER BY time")
+            )
+            flags = [row[1] for row in rows]
+        assert flags == [True, False]
+
+        await engine.dispose()
+
     async def test_multiple_sensors_indexed(
         self, postgres_container: PostgresContainer, tmp_path: Path
     ) -> None:
