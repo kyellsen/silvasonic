@@ -1,0 +1,7 @@
+---
+# Copy to inventory.yml (git-ignored) and set the station's address and user.
+all:
+  hosts:
+    station:
+      ansible_host: silvasonic-pi4.local
+      ansible_user: silvasonic

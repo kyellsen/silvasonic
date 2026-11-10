@@ -29,6 +29,7 @@ VISION.md
 
 # === Project Directories ===
 config/
+deploy/
 docs/
 packages/
 scripts/

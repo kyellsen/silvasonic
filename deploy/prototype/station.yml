@@ -1,0 +1,205 @@
+---
+# Turns a fresh Raspberry Pi OS Lite (64-bit, Debian 13) into a prototype
+# station that runs one git ref of this repository the way the README's quick
+# start does: setup, build on the device, start.
+#
+#   ansible-playbook -i inventory.yml station.yml -e silvasonic_ref=884a607
+#
+# The ref is pushed from this checkout straight to the station, so it does not
+# have to exist on GitHub. See README.md beside this file.
+- name: Prototype Silvasonic station
+  hosts: station
+  gather_facts: true
+
+  vars:
+    # Any commit, branch or tag of the control checkout.
+    silvasonic_ref: HEAD
+    silvasonic_home: "{{ ansible_facts['user_dir'] }}"
+    silvasonic_user: "{{ ansible_facts['user_id'] }}"
+    silvasonic_bare: "{{ silvasonic_home }}/silvasonic.git"
+    silvasonic_dir: "{{ silvasonic_home }}/silvasonic"
+    # Recordings and service state. Keep it on the medium under test.
+    silvasonic_workspace: "{{ silvasonic_home }}/silvasonic-data"
+    silvasonic_control_checkout: "{{ playbook_dir }}/../.."
+    silvasonic_path: "{{ silvasonic_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    silvasonic_env:
+      SILVASONIC_REPO_PATH: "{{ silvasonic_dir }}"
+      SILVASONIC_WORKSPACE_PATH: "{{ silvasonic_workspace }}/"
+      # JSON logs, no hot reload, no developer database viewer.
+      SILVASONIC_DEVELOPMENT_MODE: "False"
+      SILVASONIC_DB_VIEWER_RUN: "false"
+
+  environment:
+    PATH: "{{ silvasonic_path }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['user_uid'] }}"
+
+  tasks:
+    - name: Refuse anything but a 64-bit Debian 13
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] == 'aarch64'
+          - ansible_facts['distribution_major_version'] == '13'
+        fail_msg: >-
+          Expected Raspberry Pi OS Lite 64-bit on Debian 13 (Trixie), found
+          {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          on {{ ansible_facts['architecture'] }}.
+
+    # --- Host ---------------------------------------------------------------
+
+    - name: Install the packages the quick start asks for
+      become: true
+      ansible.builtin.apt:
+        name:
+          - alsa-utils
+          - git
+          - just
+          - pipx
+          - podman
+          - podman-compose
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Let the station user open audio devices
+      become: true
+      ansible.builtin.user:
+        name: "{{ silvasonic_user }}"
+        groups: audio
+        append: true
+      notify: Reboot the station
+
+    - name: Keep the user's services running without a login session
+      become: true
+      ansible.builtin.command:
+        cmd: loginctl enable-linger {{ silvasonic_user }}
+        creates: /var/lib/systemd/linger/{{ silvasonic_user }}
+
+    # The user's service manager keeps the groups it started with. The
+    # Controller starts Recorders through that manager's Podman socket, so a
+    # new audio group only reaches them after a reboot, and before anything
+    # below starts a container.
+    - name: Reboot now if the audio group was just added
+      ansible.builtin.meta: flush_handlers
+
+    - name: Install uv for the station user
+      ansible.builtin.command:
+        cmd: pipx install uv
+        creates: "{{ silvasonic_home }}/.local/bin/uv"
+
+    - name: Enable the Podman socket the Controller manages Recorders through
+      ansible.builtin.systemd_service:
+        name: podman.socket
+        scope: user
+        enabled: true
+        state: started
+
+    # --- Code ---------------------------------------------------------------
+
+    # The git module clones; it cannot create an empty bare repository.
+    - name: Create the repository the control machine pushes to
+      ansible.builtin.command: # noqa: command-instead-of-module
+        cmd: git init --bare {{ silvasonic_bare }}
+        creates: "{{ silvasonic_bare }}/HEAD"
+
+    - name: Push the requested ref from the control checkout
+      delegate_to: localhost
+      ansible.builtin.command:
+        argv:
+          - git
+          - push
+          - --force
+          - "ssh://{{ ansible_user | default(silvasonic_user) }}@{{ ansible_host | default(inventory_hostname) }}{{ silvasonic_bare }}"
+          - "{{ silvasonic_ref }}:refs/heads/deploy"
+        chdir: "{{ silvasonic_control_checkout }}"
+      register: silvasonic_push
+      changed_when: "'up-to-date' not in silvasonic_push.stderr"
+
+    - name: Check whether a stack from an earlier ref is installed
+      ansible.builtin.stat:
+        path: "{{ silvasonic_dir }}/.venv"
+      register: silvasonic_installed
+
+    # The old ref's own scripts know how to stop what they started.
+    - name: Stop the running stack before the code under it changes
+      ansible.builtin.command:
+        cmd: just stop
+        chdir: "{{ silvasonic_dir }}"
+      when: silvasonic_installed.stat.exists and silvasonic_push is changed
+      changed_when: true
+      failed_when: false
+
+    - name: Check out the pushed ref
+      ansible.builtin.git:
+        repo: "{{ silvasonic_bare }}"
+        dest: "{{ silvasonic_dir }}"
+        version: deploy
+      register: silvasonic_checkout
+
+    # --- Configuration ------------------------------------------------------
+
+    - name: Create .env from the example of the checked-out ref
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ silvasonic_dir }}/.env.example"
+        dest: "{{ silvasonic_dir }}/.env"
+        force: false
+        mode: "0600"
+
+    - name: Point the station at its own paths
+      ansible.builtin.lineinfile:
+        path: "{{ silvasonic_dir }}/.env"
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop: "{{ silvasonic_env | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # --- Stack --------------------------------------------------------------
+
+    # `just setup` prints the Gateway password once. The log keeps it, readable
+    # by the station user only.
+    - name: Run the repository's setup
+      ansible.builtin.shell:
+        cmd: umask 077 && just setup >> {{ silvasonic_home }}/silvasonic-setup.log 2>&1
+        chdir: "{{ silvasonic_dir }}"
+      when: silvasonic_checkout is changed or not silvasonic_installed.stat.exists
+      changed_when: true
+
+    - name: Build the images on the device
+      ansible.builtin.shell:
+        cmd: just build >> {{ silvasonic_home }}/silvasonic-build.log 2>&1
+        chdir: "{{ silvasonic_dir }}"
+      when: silvasonic_checkout is changed or not silvasonic_installed.stat.exists
+      changed_when: true
+      async: 10800
+      poll: 30
+
+    - name: Start the stack
+      ansible.builtin.command:
+        cmd: just start
+        chdir: "{{ silvasonic_dir }}"
+      changed_when: true
+
+    # --- Measurement --------------------------------------------------------
+
+    # The script is newer than the refs it measures, so it travels separately.
+    - name: Copy the measurement script
+      ansible.builtin.copy:
+        src: "{{ silvasonic_control_checkout }}/scripts/measure_station.py"
+        dest: "{{ silvasonic_home }}/measure_station.py"
+        mode: "0755"
+
+    - name: List the running containers
+      ansible.builtin.command:
+        cmd: podman ps --format "{{ '{{' }}.Names{{ '}}' }}  {{ '{{' }}.Status{{ '}}' }}"
+      register: silvasonic_ps
+      changed_when: false
+
+    - name: Show what runs
+      ansible.builtin.debug:
+        msg: "{{ silvasonic_ps.stdout_lines }}"
+
+  handlers:
+    - name: Reboot the station
+      become: true
+      ansible.builtin.reboot:
