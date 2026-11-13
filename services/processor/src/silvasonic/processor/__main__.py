@@ -139,7 +139,7 @@ class ProcessorService(SilvaService):
     async def _run_indexer_cycle(
         self,
         errored_files: set[str],
-        stats: "IndexerStats",
+        stats: IndexerStats,
         known_files: set[str] | None = None,
     ) -> None:
         """Run one cycle of the Indexer."""
@@ -171,7 +171,7 @@ class ProcessorService(SilvaService):
             log.exception("processor.indexer_error")
             self.health.update_status("indexer", False, "error")
 
-    async def _run_janitor_cycle(self, stats: "JanitorStats") -> None:
+    async def _run_janitor_cycle(self, stats: JanitorStats) -> None:
         """Run one cycle of the Janitor, respecting the n-cycle interval."""
         self._janitor_counter += 1
         if self._janitor_counter >= self._janitor_every_n:

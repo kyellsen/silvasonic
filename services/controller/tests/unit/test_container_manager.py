@@ -764,7 +764,7 @@ class TestContainerManager:
         assert call_kwargs["devices"] == ["/dev/snd/pcmC2D0c"]
         assert call_kwargs["group_add"] == ["audio"]
 
-    def test_start_creates_bind_mount_dirs(self, tmp_path: "Any") -> None:
+    def test_start_creates_bind_mount_dirs(self, tmp_path: Any) -> None:
         """start() creates bind-mount source directories that don't exist."""
         from podman.errors import NotFound
 

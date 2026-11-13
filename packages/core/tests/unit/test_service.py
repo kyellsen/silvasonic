@@ -28,7 +28,7 @@ from silvasonic.core.schemas.settings import (
 # ===================================================================
 
 
-def _make_test_service() -> "Any":
+def _make_test_service() -> Any:
     """Helper: build a minimal concrete SilvaService subclass."""
     from silvasonic.core.service import SilvaService
 

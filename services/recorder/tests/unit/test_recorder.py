@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def bare_service() -> "RecorderService":
+def bare_service() -> RecorderService:
     """Create a bare RecorderService without triggering SilvaService.__init__.
 
     Sets up a mock _ctx with a real HealthMonitor so the `svc.health` property
@@ -217,7 +217,7 @@ class TestRecorderSettings:
 class TestMonitorRecording:
     """Tests for the _monitor_recording coroutine."""
 
-    def test_recording_active(self, bare_service: "RecorderService") -> None:
+    def test_recording_active(self, bare_service: RecorderService) -> None:
         """Reports healthy when pipeline is active."""
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = True
@@ -231,7 +231,7 @@ class TestMonitorRecording:
         assert status["components"]["recording"]["healthy"] is True
         assert "Recording active" in status["components"]["recording"]["details"]
 
-    def test_recording_not_initialized(self, bare_service: "RecorderService") -> None:
+    def test_recording_not_initialized(self, bare_service: RecorderService) -> None:
         """Reports unhealthy when pipeline is None."""
         bare_service._pipeline = None
 
@@ -241,7 +241,7 @@ class TestMonitorRecording:
         assert status["components"]["recording"]["healthy"] is False
         assert "Pipeline not initialized" in status["components"]["recording"]["details"]
 
-    def test_recording_ffmpeg_exited(self, bare_service: "RecorderService") -> None:
+    def test_recording_ffmpeg_exited(self, bare_service: RecorderService) -> None:
         """Reports unhealthy when FFmpeg process exited unexpectedly."""
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = False
@@ -264,7 +264,7 @@ class TestRecorderServiceRun:
     """Tests for the run() coroutine."""
 
     async def test_run_starts_pipeline_and_exits_on_shutdown(
-        self, bare_service: "RecorderService", tmp_path: MagicMock
+        self, bare_service: RecorderService, tmp_path: MagicMock
     ) -> None:
         """run() starts pipeline and exits when shutdown_event is set."""
         bare_service._shutdown_event = asyncio.Event()
@@ -296,7 +296,7 @@ class TestRecorderServiceRun:
         mock_pipeline.stop.assert_called_once()
 
     async def test_run_crashes_on_pipeline_start_failure(
-        self, bare_service: "RecorderService", tmp_path: MagicMock
+        self, bare_service: RecorderService, tmp_path: MagicMock
     ) -> None:
         """run() crashes when pipeline fails to start (Level-2 Recovery)."""
         bare_service._shutdown_event = asyncio.Event()
@@ -321,7 +321,7 @@ class TestRecorderServiceRun:
 class TestGetExtraMeta:
     """Tests for heartbeat metadata."""
 
-    def test_extra_meta_no_pipeline(self, bare_service: "RecorderService") -> None:
+    def test_extra_meta_no_pipeline(self, bare_service: RecorderService) -> None:
         """Returns recording metadata even without active pipeline."""
         meta = bare_service.get_extra_meta()
         assert "recording" in meta
@@ -336,7 +336,7 @@ class TestGetExtraMeta:
         assert meta["recording"]["watchdog_giving_up"] is False
         assert meta["recording"]["watchdog_last_failure"] is None
 
-    def test_extra_meta_with_pipeline(self, bare_service: "RecorderService") -> None:
+    def test_extra_meta_with_pipeline(self, bare_service: RecorderService) -> None:
         """Returns recording metadata from active pipeline."""
         mock_pipeline = MagicMock()
         mock_pipeline.is_active = True
@@ -351,7 +351,7 @@ class TestGetExtraMeta:
         assert meta["recording"]["raw_enabled"] is True
         assert meta["recording"]["processed_enabled"] is True
 
-    def test_extra_meta_includes_watchdog(self, bare_service: "RecorderService") -> None:
+    def test_extra_meta_includes_watchdog(self, bare_service: RecorderService) -> None:
         """Heartbeat metadata includes watchdog fields when watchdog is set."""
         mock_watchdog = MagicMock()
         mock_watchdog.restart_count = 2
@@ -366,7 +366,7 @@ class TestGetExtraMeta:
         assert meta["recording"]["watchdog_giving_up"] is False
         assert "returncode=-9" in meta["recording"]["watchdog_last_failure"]
 
-    def test_extra_meta_includes_clock_state(self, bare_service: "RecorderService") -> None:
+    def test_extra_meta_includes_clock_state(self, bare_service: RecorderService) -> None:
         """Heartbeat metadata reports the clock sync state (Issue 002)."""
         with patch("silvasonic.recorder.__main__.clock_synchronized", return_value=False):
             bare_service._check_clock()
@@ -374,7 +374,7 @@ class TestGetExtraMeta:
         assert bare_service.get_extra_meta()["recording"]["clock_synchronized"] is False
 
     def test_extra_meta_reports_effective_oom_score(
-        self, bare_service: "RecorderService", tmp_path: Path
+        self, bare_service: RecorderService, tmp_path: Path
     ) -> None:
         """The heartbeat shows the OOM score the kernel applies, not the requested one."""
         proc_file = tmp_path / "oom_score_adj"
@@ -397,7 +397,7 @@ class TestGetExtraMeta:
 class TestClockCheck:
     """The Recorder logs each change of the clock sync state once."""
 
-    def test_logs_only_on_change(self, bare_service: "RecorderService") -> None:
+    def test_logs_only_on_change(self, bare_service: RecorderService) -> None:
         """Unsynced at boot warns once; the switch to synced is logged once."""
         states = iter([False, False, True, True])
         with (

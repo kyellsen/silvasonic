@@ -67,7 +67,7 @@ class FakeResult:
         """Initialize FakeResult with static items."""
         self._items = items
 
-    def scalars(self) -> "FakeResult":
+    def scalars(self) -> FakeResult:
         return self
 
     def all(self) -> list[Any]:

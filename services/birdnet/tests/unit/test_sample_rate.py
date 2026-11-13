@@ -33,7 +33,7 @@ def _inline_loop() -> MagicMock:
     """An event loop stand-in whose executor runs the function at once."""
     loop = MagicMock()
 
-    def run_in_executor(_executor: Any, func: Any, *args: Any) -> "asyncio.Future[Any]":
+    def run_in_executor(_executor: Any, func: Any, *args: Any) -> asyncio.Future[Any]:
         future: asyncio.Future[Any] = asyncio.get_event_loop().create_future()
         future.set_result(func(*args))
         return future
