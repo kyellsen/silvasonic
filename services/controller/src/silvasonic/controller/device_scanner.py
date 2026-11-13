@@ -101,7 +101,7 @@ def _read_sysfs(path: Path) -> str | None:
     """Read a sysfs attribute file, return stripped text or ``None``."""
     try:
         return path.read_text().strip() or None
-    except (FileNotFoundError, PermissionError, OSError):
+    except FileNotFoundError, PermissionError, OSError:
         return None
 
 

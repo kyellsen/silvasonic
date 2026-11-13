@@ -59,7 +59,7 @@ def _is_podman_reachable() -> bool:
             ).returncode
             == 0
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except FileNotFoundError, subprocess.TimeoutExpired:
         return False
 
 

@@ -296,7 +296,7 @@ class ReconciliationLoop:
             payload = json.loads(raw)
             timestamp = float(payload.get("timestamp", 0.0))
             status = payload.get("health", {}).get("status")
-        except (ValueError, TypeError, AttributeError):
+        except ValueError, TypeError, AttributeError:
             return "reconciler.heartbeat_invalid", False
         seen = self._heartbeat_seen.get(name)
         if seen is None or seen[0] != timestamp:

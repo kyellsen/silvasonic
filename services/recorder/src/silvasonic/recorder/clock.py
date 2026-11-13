@@ -41,7 +41,7 @@ def _adjtimex() -> Any:
     try:
         libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
         return libc.adjtimex
-    except (OSError, AttributeError):
+    except OSError, AttributeError:
         return None
 
 

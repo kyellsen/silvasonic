@@ -164,7 +164,7 @@ class ContainerManager:
         except _NotFound:
             log.info("container_manager.stop.already_gone", name=name)
             return True
-        except (json.JSONDecodeError, _APIError):
+        except json.JSONDecodeError, _APIError:
             # podman-py raises JSONDecodeError when the container exits
             # before the stop response arrives (304 with empty body).
             # APIError may also occur in similar race conditions.

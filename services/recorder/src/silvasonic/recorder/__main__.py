@@ -41,7 +41,7 @@ def oom_score_adj() -> int | None:
     """
     try:
         return int(_OOM_SCORE_ADJ.read_text())
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
 
 

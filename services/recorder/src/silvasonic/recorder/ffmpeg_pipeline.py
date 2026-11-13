@@ -271,7 +271,7 @@ def wav_duration_s(path: Path) -> float | None:
         with wave.open(str(path), "rb") as wav:
             rate = wav.getframerate()
             return wav.getnframes() / rate if rate > 0 else None
-    except (wave.Error, EOFError, OSError):
+    except wave.Error, EOFError, OSError:
         return None
 
 

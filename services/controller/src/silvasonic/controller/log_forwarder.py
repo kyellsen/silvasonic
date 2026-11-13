@@ -69,7 +69,7 @@ def _parse_log_line(
                 if key in parsed:
                     base[key] = parsed[key]
             return base
-    except (json.JSONDecodeError, TypeError, ValueError):
+    except json.JSONDecodeError, TypeError, ValueError:
         pass
 
     # Fallback: non-JSON line → wrap as raw

@@ -690,7 +690,7 @@ class TestFullPipelineE2E:
                             if data.get("service") == "recorder":
                                 heartbeat_raw = str(val)
                                 break
-                        except (json.JSONDecodeError, TypeError):
+                        except json.JSONDecodeError, TypeError:
                             continue
                 if heartbeat_raw:
                     break

@@ -21,7 +21,7 @@ def has_usb_audio_device() -> bool:
     try:
         text = Path("/proc/asound/cards").read_text()
         return "USB-Audio" in text
-    except (FileNotFoundError, PermissionError):
+    except FileNotFoundError, PermissionError:
         return False
 
 

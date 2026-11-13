@@ -172,7 +172,7 @@ class SilvasonicPodmanClient:
             result: bool = self._client.ping()
             self._connected = result
             return result
-        except (ConnectionError, OSError):
+        except ConnectionError, OSError:
             self._connected = False
             return False
         except Exception as e:
