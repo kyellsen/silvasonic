@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.13-slim-bookworm AS base
+FROM docker.io/library/python:3.14-slim-bookworm AS base
 
 # Prevent Python from buffering stdout/stderr and writing pyc files
 ENV PYTHONUNBUFFERED=1 \
