@@ -19,7 +19,12 @@ env:
 jobs:
   ci:
     name: Full Pipeline (ci)
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: on ubuntu-26.04 (the latest since 2026-11)
+    # rootless Podman cannot tear down a testcontainer's network ("rootless
+    # netns: kill network process: permission denied"), and the integration
+    # tier fails in teardown. The last green run was on ubuntu-24.04. Move on
+    # once a run on the newer image passes.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
