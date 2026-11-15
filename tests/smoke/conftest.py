@@ -318,7 +318,10 @@ def gateway_container(
         .with_env("SILVASONIC_GATEWAY_PASSWORD_HASH", _GATEWAY_TEST_PASSWORD_HASH)
         .with_network(smoke_network)
         .with_network_aliases("test-gateway")
-        .with_volume_mapping(caddyfile, "/etc/caddy/Caddyfile", "ro")
+        # `z` relabels the file for containers, as the database mounts above do:
+        # under SELinux (Fedora) Caddy is refused the unlabelled file and never
+        # serves; Ubuntu's runner has no SELinux, so CI never showed it.
+        .with_volume_mapping(caddyfile, "/etc/caddy/Caddyfile", "ro,z")
     )
 
     # Stop both containers whatever fails: a Caddy that never comes up used
