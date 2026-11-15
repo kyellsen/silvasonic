@@ -100,7 +100,7 @@
 *   **HTTP:** `httpx` (Wikipedia lookups of the species enrichment).
 *   **Python:** `silvasonic-core` (core lifecycle infrastructure, health monitoring, two-phase logging, heartbeats), `structlog` (JSON logging).
 *   **Models:** BirdNET Global 6K V2.4 — FP32 classifier (~30 MB) + FP16 meta-model (~10 MB) + labels file. Models are downloaded at container build time from the `birdnetlib` PyPI wheel.
-*   **Base Image:** `python:3.13-slim-bookworm` (Containerfile).
+*   **Base Image:** `python:3.14-slim-bookworm` (Containerfile).
 
 ---
 

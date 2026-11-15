@@ -76,6 +76,7 @@
 - [ADR-0036: Svelte Single-Page Application on the Station API](adr/0036-svelte-spa-frontend.md) *(proposed)*
 - [ADR-0037: SQLite as the Station Database](adr/0037-sqlite-station-database.md)
 - [ADR-0038: Connection Classes and the Upload Path](adr/0038-connection-classes-and-upload-path.md) *(proposed)*
+- [ADR-0043: Python 3.14, until ai-edge-litert ships for 3.15](adr/0043-python-3-14.md)
 
 ## Development
 

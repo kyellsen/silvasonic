@@ -94,7 +94,7 @@
 *   **Audio Engine:** `ffmpeg` (subprocess management and capture)
 *   **System Dependencies:** `ffmpeg`, `alsa-utils`
 *   **Python:** `silvasonic-core` (SilvaService base class, health monitoring), `structlog` (JSON logging)
-*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
+*   **Base Image:** `python:3.14-slim-bookworm` (Dockerfile)
 
 ---
 

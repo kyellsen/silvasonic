@@ -84,7 +84,7 @@
 *   **Redis:** `redis-py` (async, for heartbeats + nudge subscription)
 *   **Config:** `pydantic` (Service configuration schemas, Microphone Profiles)
 *   **Core:** Standardized Service Lifecycle Framework (provides unified Health checks and Redis Publishing via `silvasonic-core`)
-*   **Base Image:** `python:3.13-slim-bookworm` (Dockerfile)
+*   **Base Image:** `python:3.14-slim-bookworm` (Dockerfile)
 
 ---
 

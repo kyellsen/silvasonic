@@ -52,7 +52,7 @@ build-backend = "hatchling.build"
 name = "silvasonic-<name>"
 description = "<one-line description>"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = ["silvasonic-core"]
 dynamic = ["version"]
 
@@ -160,7 +160,7 @@ from `silvasonic.core`:
 All Python service Containerfiles follow this **identical** structure:
 
 ```containerfile
-FROM python:3.13-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 WORKDIR /app
 
@@ -198,7 +198,7 @@ CMD ["silvasonic.<name>"]
 
 ### Mandatory Rules
 
-- **Base image:** `python:3.13-slim-bookworm` (mandatory for all services)
+- **Base image:** `python:3.14-slim-bookworm` (mandatory for all services)
 - **Build context:** Always the repo root (`.`), never the service directory
 - `curl` is always required (healthcheck)
 - `packages/` is always copied (contains `silvasonic-core`)

@@ -59,7 +59,7 @@ Every connection gets the same pragmas from `silvasonic.core.database.session`: 
 
 ## 6. Technology Stack
 
-*   **Engine:** SQLite (the version the `python:3.13-slim-bookworm` base image ships, 3.40)
+*   **Engine:** SQLite (the version the `python:3.14-slim-bookworm` base image ships, 3.40)
 *   **Client Libraries:** `sqlalchemy` (2.0+ async), `aiosqlite`
 *   **Inspection:** `sqlite3` on the host, the DB-Viewer in development
 

@@ -23,7 +23,7 @@ For the long-term vision and design philosophy see **[VISION.md](https://github.
 ### Prerequisites
 
 - Linux (Fedora, Debian, Ubuntu, Aurora DX, Raspberry Pi OS)
-- **Python 3.13** (required, `>=3.13, <3.14`)
+- **Python 3.14** (required, `>=3.14, <3.15`; why not 3.15: [ADR-0043](docs/adr/0043-python-3-14.md))
 - **uv** installed — Python package manager ([Installation](https://docs.astral.sh/uv/getting-started/installation/))
 - **just** installed — command runner ([Installation](https://github.com/casey/just#installation))
 - **Podman** & **podman-compose** installed
