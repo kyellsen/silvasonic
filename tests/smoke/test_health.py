@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 import pytest
 from redis import Redis
+from silvasonic.test_utils.helpers import wait_for_log
 from testcontainers.core.container import DockerContainer
 
 
@@ -29,7 +30,10 @@ class TestServiceHealth:
         SQLite has no server to probe: the database is healthy when the file
         exists in the shared directory and carries the schema (ADR-0037).
         """
-        _ = controller_container
+        # The Controller opens the database in a background task after its
+        # health endpoint is up, so the file can lag the fixture's readiness
+        # check; on a 2-core CI runner it did. Wait for the first connection.
+        wait_for_log(controller_container, "controller.database_connected", timeout=30.0)
         db = database_dir / "silvasonic.db"
         assert db.is_file(), f"no database file in {database_dir}"
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
